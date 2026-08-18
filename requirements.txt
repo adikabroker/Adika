@@ -2,3 +2,8 @@ python-telegram-bot>=20.0,<22
 flask>=2.3
 flask-cors>=4.0
 psycopg2-binary>=2.9
+uvicorn
+fastapi
+gunicorn
+
+supabase
