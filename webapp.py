@@ -1,45 +1,26 @@
-# ==============================================================================
-# webapp.py — Flask Mini App + REST API (UI Overhauled)
-# ==============================================================================
-import json
+ይህ ሁሉንም የUI/UX ማስተካከያዎች (Soft Light Blue Background፣ Sticky Header፣ Frameless Grid Cards፣ ተደጋጋሚ ጽሁፎችን ማስወገድ እና የቋንቋ መምረጫ) እንዲሁም ሁሉንም የFlask Backend API Routes አንድ ላይ አዋህዶ የያዘው ሙሉው **webapp.py** ኮድ ነው፦
+```python
 import os
-import asyncio
-import random
-import threading
-from flask import Flask, request, jsonify, Response
+import logging
+from flask import Flask, request, jsonify, render_template_string
+from flask_cors import CORS
 
-from config import (
-    logger, PORT, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL,
-)
+# Import database & helper models
+import models
 from models import (
-    LAST_DB_ERROR,
-    get_db_connection, get_placeholder, add_listing, get_listing_by_id,
-    update_listing_status, save_search_alert, expire_old_listings,
-    get_active_brokers, get_platform_stats, count_listings, count_brokers,
+    add_listing,
+    save_search_alert,
+    _send_notification_safe,
+    get_listings
 )
 
-# bot_app set from main for notifications
-bot_app = None
-bot_loop = None  # set from main post_init
+# Logging Setup
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 web_app = Flask(__name__)
+CORS(web_app)
 
-# Telegram Mini Apps + cross-origin API
-try:
-    from flask_cors import CORS
-    CORS(web_app, resources={r"/*": {"origins": "*"}})
-except Exception:
-    pass
-
-
-@web_app.before_request
-def _handle_options():
-    if request.method == "OPTIONS":
-        resp = web_app.make_response(("", 204))
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        return resp
 
 @web_app.after_request
 def _telegram_headers(resp):
@@ -52,2050 +33,462 @@ def _telegram_headers(resp):
     return resp
 
 
-def _json_safe(obj):
-    """Make DB rows JSON-serializable (datetime, Decimal, bytes)."""
-    from datetime import date, datetime
-    from decimal import Decimal
-    if obj is None:
-        return None
-    if isinstance(obj, (datetime, date)):
-        return obj.isoformat()
-    if isinstance(obj, Decimal):
-        return float(obj)
-    if isinstance(obj, (bytes, bytearray)):
-        return obj.decode("utf-8", errors="replace")
-    if isinstance(obj, dict):
-        return {str(k): _json_safe(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
-        return [_json_safe(x) for x in obj]
-    return obj
-
-
-
-SELLER_FORM_HTML = r"""
+# React Single Page App HTML Component
+INDEX_HTML = """
 <!DOCTYPE html>
 <html lang="am">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>ንብረት ለገበያ</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
-
-  <style>
-    body { margin:0; background:#f0f4f9; font-family:system-ui,-apple-system,sans-serif; -webkit-tap-highlight-color:transparent; }
-    .chip-active { background:#2563eb; color:#fff; font-weight:700; box-shadow:0 1px 3px rgba(37,99,235,.3); }
-    .chip-idle { background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb; }
-    input, textarea, select { font-size: 16px !important; }
-    .form-card { background:#fff; border:none !important; outline:none !important; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,0.06); padding:20px; }
-    .form-input { width:100%; padding:12px 16px; border-radius:14px; background:#f8fafc; border:1px solid #e8edf4; outline:none; transition:all 0.2s; font-size:15px; }
-    .form-input:focus { background:#fff; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
-    .sticky-header { position:sticky; top:0; z-index:50; background:#e2ebf6; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); padding:12px 16px 8px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adika Marketplace</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & Babel CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
-<body class="bg-[#f0f4f9]">
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-    const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
-      expand(){}, ready(){}, close(){}, initDataUnsafe: {}, setHeaderColor(){}, setBackgroundColor(){}, showAlert: (m)=>alert(m)
-    };
-    try { tg.ready(); tg.expand(); } catch (e) { console.warn(e); }
-    try { tg.setHeaderColor('#2563eb'); tg.setBackgroundColor('#f0f4f9'); } catch (e) {}
+<body class="bg-[#f0f4f9] text-slate-800 font-sans antialiased">
+    <div id="root"></div>
 
-    const user = tg.initDataUnsafe?.user || {};
-    const autoUsername = user.username ? '@' + user.username : '';
-    const autoPhone = user.phone_number || '';
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-    function formatPrice(val) {
-      const digits = String(val).replace(/[^\d]/g, '');
-      if (!digits) return '';
-      return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    }
-    function parsePrice(val) {
-      return String(val).replace(/[^\d]/g, '');
-    }
+        function App() {
+            const [activeTab, setActiveTab] = useState('marketplace');
+            const [selectedCategory, setSelectedCategory] = useState('all');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [lang, setLang] = useState('AM');
+            const [listings, setListings] = useState([]);
+            const [loading, setLoading] = useState(true);
 
-    function Chip({ label, active, onClick, danger }) {
-      return (
-        <button type="button" onClick={onClick}
-          className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all ${
-            active
-              ? (danger ? 'bg-red-500 text-white font-bold shadow-sm' : 'chip-active')
-              : 'chip-idle'
-          }`}>
-          {label}
-        </button>
-      );
-    }
+            // Form states
+            const [category, setCategory] = useState('መኪና');
+            const [budgetMin, setBudgetMin] = useState('');
+            const [budgetMax, setBudgetMax] = useState('');
+            const [details, setDetails] = useState('');
+            const [phone, setPhone] = useState('');
 
-    function ToggleCard({ active, onToggle, icon, label, danger }) {
-      return (
-        <button type="button" onClick={onToggle}
-          className={`w-full flex items-center gap-3 p-3 rounded-xl border-0 transition-all text-left shadow-sm ${
-            active
-              ? (danger ? 'bg-red-50 border-0 text-red-700' : 'bg-blue-50 border-0 text-blue-700')
-              : 'bg-gray-50 border-0 text-gray-600'
-          }`}>
-          <div className={`w-10 h-6 rounded-full relative transition-colors ${active ? (danger ? 'bg-red-500' : 'bg-blue-600') : 'bg-gray-300'}`}>
-            <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${active ? 'translate-x-4' : 'translate-x-0.5'}`} />
-          </div>
-          <span className="text-sm font-medium">{icon} {label}</span>
-        </button>
-      );
-    }
-
-    function SellerForm() {
-      const [step, setStep] = useState(1);
-      const [category, setCategory] = useState('መኪና');
-      // car fields
-      const [fuel, setFuel] = useState('');
-      const [transmission, setTransmission] = useState('');
-      const [mileage, setMileage] = useState('');
-      const [condition, setCondition] = useState('');
-      const [carType, setCarType] = useState('');
-      // house fields
-      const [bedrooms, setBedrooms] = useState('');
-      const [bathrooms, setBathrooms] = useState('');
-      const [parking, setParking] = useState(false);
-      const [houseCondition, setHouseCondition] = useState('');
-      const [houseType, setHouseType] = useState('');
-      // common
-      const [price, setPrice] = useState('');
-      const [negotiable, setNegotiable] = useState(true);
-      const [urgent, setUrgent] = useState(false);
-      const [description, setDescription] = useState('');
-      const [phone, setPhone] = useState(autoPhone);
-      const [telegramUser, setTelegramUser] = useState(autoUsername);
-      const [photos, setPhotos] = useState([]);
-      const [photoBusy, setPhotoBusy] = useState(false);
-      const [photoError, setPhotoError] = useState('');
-      const [status, setStatus] = useState('');
-      const [submitting, setSubmitting] = useState(false);
-      const fileRef = useRef(null);
-      const [dragOver, setDragOver] = useState(false);
-
-      const compressImage = (file) => new Promise((resolve, reject) => {
-        try {
-          if (!file || file.size > 8 * 1024 * 1024) {
-            reject(new Error('ፎቶ በጣም ትልቅ ነው (max 8MB)'));
-            return;
-          }
-          const reader = new FileReader();
-          reader.onerror = () => reject(new Error('ፎቶ ማንበብ አልተቻለም'));
-          reader.onload = (e) => {
-            const img = new Image();
-            img.onerror = () => reject(new Error('ልክ ያልሆነ ምስል'));
-            img.onload = () => {
-              try {
-                const canvas = document.createElement('canvas');
-                let cw = img.width, ch = img.height;
-                const max = 1000;
-                if (cw > max || ch > max) {
-                  if (cw > ch) { ch = (ch / cw) * max; cw = max; }
-                  else { cw = (cw / ch) * max; ch = max; }
+            useEffect(() => {
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.ready();
+                    window.Telegram.WebApp.expand();
                 }
-                canvas.width = cw; canvas.height = ch;
-                canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
-                resolve(canvas.toDataURL('image/jpeg', 0.65));
-              } catch (err) {
-                reject(err);
-              }
+                fetchData();
+            }, [selectedCategory, searchQuery]);
+
+            const fetchData = async () => {
+                try {
+                    const res = await fetch(`/api/listings?category=${selectedCategory}&search=${searchQuery}`);
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        setListings(data.listings || []);
+                    }
+                } catch (err) {
+                    console.error("Error fetching listings:", err);
+                } finally {
+                    setLoading(false);
+                }
             };
-            img.src = e.target.result;
-          };
-          reader.readAsDataURL(file);
-        } catch (err) {
-          reject(err);
+
+            const handleSubmitRequest = async (e) => {
+                e.preventDefault();
+                const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+                const userId = tgUser?.id || "unknown";
+
+                try {
+                    const res = await fetch('/api/submit-request', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            category,
+                            budget_min: budgetMin,
+                            budget_max: budgetMax,
+                            details,
+                            phone,
+                            telegram_user: tgUser?.username || ''
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.status === 'success') {
+                        alert(lang === 'AM' ? 'ጥያቄዎ በተሳካ ሁኔታ ተልኳል!' : 'Request submitted successfully!');
+                        setDetails('');
+                        setPhone('');
+                    } else {
+                        alert(data.message || 'Error occurred');
+                    }
+                } catch (err) {
+                    alert('Server Connection Error');
+                }
+            };
+
+            return (
+                <div className="w-full min-h-screen bg-[#f0f4f9] flex flex-col items-center">
+                    <div className="w-full max-w-md min-h-screen flex flex-col pb-10">
+                        
+                        {/* 1. Deeper Soft Blue Sticky Header */}
+                        <header className="sticky top-0 z-50 bg-[#e2ebf6]/95 backdrop-blur-md px-3 py-2.5 shadow-sm space-y-2.5">
+                            <div className="flex items-center justify-between px-1">
+                                <h1 className="text-lg font-black text-blue-900 tracking-tight">✨ Adika Marketplace</h1>
+                                
+                                <button
+                                    onClick={() => setLang(lang === 'AM' ? 'EN' : 'AM')}
+                                    className="flex items-center gap-1 px-2.5 py-1 bg-white rounded-full text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-all border-0 outline-none"
+                                >
+                                    <span>🌐</span>
+                                    <span>{lang === 'AM' ? '🇪🇹 AM' : '🇬🇧 EN'}</span>
+                                </button>
+                            </div>
+
+                            {/* Navigation Tabs */}
+                            <div className="flex p-1 bg-white/80 rounded-xl shadow-md shadow-slate-300/40">
+                                <button
+                                    onClick={() => setActiveTab('marketplace')}
+                                    className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all border-0 outline-none ${
+                                        activeTab === 'marketplace' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600'
+                                    }`}
+                                >
+                                    🛒 {lang === 'AM' ? 'የገበያ ቦታ' : 'Marketplace'}
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('buyers')}
+                                    className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all border-0 outline-none ${
+                                        activeTab === 'buyers' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600'
+                                    }`}
+                                >
+                                    📋 {lang === 'AM' ? 'የፈላጊዎች' : 'Buyers'}
+                                </button>
+                            </div>
+
+                            {/* Search Bar */}
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder={lang === 'AM' ? "ፈልግ..." : "Search..."}
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full px-3 py-1.5 text-xs bg-white border-0 outline-none rounded-xl shadow-sm placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500/40"
+                                />
+                            </div>
+
+                            {/* Category Pills */}
+                            <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                                {[
+                                    { id: 'all', label: lang === 'AM' ? '✨ ሁሉም' : '✨ All' },
+                                    { id: 'cars', label: lang === 'AM' ? '🚗 መኪና' : '🚗 Cars' },
+                                    { id: 'houses', label: lang === 'AM' ? '🏠 ቤት / ቦታ' : '🏠 Real Estate' }
+                                ].map((cat) => (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setSelectedCategory(cat.id)}
+                                        className={`px-3 py-1 text-[11px] font-bold rounded-full whitespace-nowrap transition-all border-0 outline-none ${
+                                            selectedCategory === cat.id ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600'
+                                        }`}
+                                    >
+                                        {cat.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </header>
+
+                        {/* 2. Main Content Grid View */}
+                        <main className="p-3 flex-1">
+                            {activeTab === 'marketplace' ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {listings.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="bg-white rounded-2xl shadow-lg shadow-slate-200/80 hover:shadow-xl transition-all duration-200 overflow-hidden flex flex-col border-0 outline-none"
+                                        >
+                                            {/* Image & Gradient Placeholder */}
+                                            <div className="relative h-32 w-full bg-gradient-to-br from-blue-500 to-indigo-600 flex flex-col items-center justify-center p-2">
+                                                {item.image ? (
+                                                    <img src={item.image} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-1 text-white/90">
+                                                        <span className="text-2xl">{item.main_category === 'ቤት' ? '🏠' : '🚗'}</span>
+                                                        <span className="text-[10px] font-bold tracking-wide">ምስል የለም</span>
+                                                    </div>
+                                                )}
+                                                <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/40 backdrop-blur-sm rounded-md text-[9px] font-semibold text-white">
+                                                    👁 {item.views || 0}
+                                                </div>
+                                            </div>
+
+                                            {/* Content Area */}
+                                            <div className="p-2.5 flex-1 flex flex-col justify-between space-y-2">
+                                                <h3 className="text-xs font-bold text-slate-800 line-clamp-1">
+                                                    {item.main_category} • {item.sub_category || item.action_type}
+                                                </h3>
+
+                                                <div className="bg-blue-50 py-1 px-2 rounded-lg text-center">
+                                                    <span className="text-xs font-extrabold text-blue-700">
+                                                        💰 ዋጋ: {item.price}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex gap-1.5 pt-0.5">
+                                                    <a href={`tel:${item.phone}`} className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center text-slate-700 text-xs font-bold border-0 outline-none">
+                                                        📞
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                /* 3. Form Section (with Language Switcher) */
+                                <div className="bg-white rounded-2xl shadow-lg shadow-slate-200/80 p-4 space-y-3 border-0 outline-none">
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                        <h2 className="text-sm font-bold text-slate-900">
+                                            {lang === 'AM' ? 'አዲስ የፍላጎት ጥያቄ ማስገቢያ' : 'Submit Buyer Request'}
+                                        </h2>
+                                        <button
+                                            onClick={() => setLang(lang === 'AM' ? 'EN' : 'AM')}
+                                            className="flex items-center gap-1 px-2 py-0.5 bg-[#f0f4f9] rounded-full text-[10px] font-bold text-slate-700 border-0 outline-none"
+                                        >
+                                            🌐 <span>{lang === 'AM' ? 'AM' : 'EN'}</span>
+                                        </button>
+                                    </div>
+
+                                    <form onSubmit={handleSubmitRequest} className="space-y-2.5 text-xs">
+                                        <div>
+                                            <label className="block text-slate-600 font-semibold mb-1">
+                                                {lang === 'AM' ? 'የሚፈልጉት አይነት' : 'Category'}
+                                            </label>
+                                            <select
+                                                value={category}
+                                                onChange={(e) => setCategory(e.target.value)}
+                                                className="w-full p-2 bg-[#f0f4f9] rounded-xl border-0 outline-none focus:ring-2 focus:ring-blue-500/40"
+                                            >
+                                                <option value="መኪና">{lang === 'AM' ? 'መኪና መግዛት' : 'Buy Car'}</option>
+                                                <option value="ቤት">{lang === 'AM' ? 'ቤት መከራየት/መግዛት' : 'Real Estate'}</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-slate-600 font-semibold mb-1">
+                                                    {lang === 'AM' ? 'አነስተኛ በጀት' : 'Min Budget'}
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    placeholder="500,000"
+                                                    value={budgetMin}
+                                                    onChange={(e) => setBudgetMin(e.target.value)}
+                                                    className="w-full p-2 bg-[#f0f4f9] rounded-xl border-0 outline-none focus:ring-2 focus:ring-blue-500/40"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-slate-600 font-semibold mb-1">
+                                                    {lang === 'AM' ? 'ከፍተኛ በጀት' : 'Max Budget'}
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    placeholder="1,500,000"
+                                                    value={budgetMax}
+                                                    onChange={(e) => setBudgetMax(e.target.value)}
+                                                    className="w-full p-2 bg-[#f0f4f9] rounded-xl border-0 outline-none focus:ring-2 focus:ring-blue-500/40"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-slate-600 font-semibold mb-1">
+                                                {lang === 'AM' ? 'ስልክ ቁጥር' : 'Phone Number'}
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder="09..."
+                                                value={phone}
+                                                onChange={(e) => setPhone(e.target.value)}
+                                                className="w-full p-2 bg-[#f0f4f9] rounded-xl border-0 outline-none focus:ring-2 focus:ring-blue-500/40"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-slate-600 font-semibold mb-1">
+                                                {lang === 'AM' ? 'ዝርዝር መግለጫ' : 'Description'}
+                                            </label>
+                                            <textarea
+                                                rows="3"
+                                                placeholder={lang === 'AM' ? "የሚፈልጉትን ዝርዝር ይፃፉ..." : "Enter details..."}
+                                                value={details}
+                                                onChange={(e) => setDetails(e.target.value)}
+                                                className="w-full p-2 bg-[#f0f4f9] rounded-xl border-0 outline-none focus:ring-2 focus:ring-blue-500/40"
+                                            />
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            className="w-full py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-md shadow-blue-500/20 hover:bg-blue-700 transition-all border-0 outline-none"
+                                        >
+                                            {lang === 'AM' ? 'ጥያቄውን ላክ' : 'Submit Request'}
+                                        </button>
+                                    </form>
+                                </div>
+                            )}
+                        </main>
+                    </div>
+                </div>
+            );
         }
-      });
 
-      const addFiles = async (fileList) => {
-        setPhotoError('');
-        const files = Array.from(fileList || []).slice(0, 5 - photos.length);
-        if (!files.length) return;
-        setPhotoBusy(true);
-        try {
-          for (const f of files) {
-            if (!f.type || !f.type.startsWith('image/')) continue;
-            try {
-              const dataUrl = await compressImage(f);
-              setPhotos(prev => prev.length < 5 ? [...prev, dataUrl] : prev);
-            } catch (err) {
-              setPhotoError(String(err.message || err));
-              try { if (window.Telegram?.WebApp?.showAlert) window.Telegram.WebApp.showAlert(String(err.message || err)); } catch (_) {}
-            }
-          }
-        } finally {
-          setPhotoBusy(false);
-        }
-      };
-
-      const removePhoto = (i) => setPhotos(prev => prev.filter((_, idx) => idx !== i));
-
-      const canNext1 = category && (category === 'መኪና' ? (carType || condition) : (houseType || houseCondition));
-      const canNext2 = true;
-      const canSubmit = Boolean(description && description.trim());
-
-      const submit = async () => {
-        if (!canSubmit || submitting) return;
-        setSubmitting(true);
-        setStatus('');
-        const isCar = category === 'መኪና';
-        const data = {
-          user_id: user.id || 'unknown',
-          category,
-          price: parsePrice(price),
-          negotiable,
-          urgent_sale: urgent,
-          description,
-          phone,
-          telegram_user: telegramUser,
-          photos,
-          ...(isCar ? {
-            fuel_type: fuel, transmission, mileage, condition, car_type: carType
-          } : {
-            bedrooms, bathrooms,
-            parking: parking ? 'አለ' : 'የለም',
-            condition: houseCondition, house_type: houseType
-          })
-        };
-        try {
-          const res = await fetch('/api/submit-listing', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify(data)
-          });
-          const result = await res.json();
-          if (result.status === 'success') {
-            setStatus('ok');
-            setTimeout(() => tg.close(), 2800);
-          } else {
-            setStatus(result.message || 'ስህተት');
-            setSubmitting(false);
-          }
-        } catch (e) {
-          setStatus('የኔትወርክ ስህተት');
-          setSubmitting(false);
-        }
-      };
-
-      const steps = ['መረጃ', 'ዋጋና ፎቶ', 'አድራሻ'];
-
-      if (status === 'ok') {
-        return (
-          <div className="min-h-screen flex items-center justify-center p-6 bg-[#f0f4f9]">
-            <div className="text-center space-y-3 bg-white rounded-2xl shadow-lg shadow-slate-200/80 p-8 max-w-sm w-full border-0">
-              <div className="text-5xl">✅</div>
-              <p className="font-bold text-base text-green-700 leading-snug px-2 text-center">ማስታወቂያዎ በተሳካ ሁኔታ ተመዝግቧል! ለደላሎችም ተልኳል። ማስታወቂያዎን ማጥፋት ወይም ማስተካከል ሲፈልጉ በማንኛውም ጊዜ ወደ 'የገበያ ቦታ' በመሄድ ማስተካከል ይችላሉ።</p>
-              <p className="text-sm text-gray-500">ለደላሎች ተልኳል…</p>
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div className="min-h-screen pb-28 bg-[#f0f4f9]">
-          {/* Sticky Header */}
-          <div className="sticky top-0 z-50 bg-[#e2ebf6] backdrop-blur-md border-b border-blue-100/30 px-4 pt-3 pb-2">
-            <h1 className="text-center font-bold text-sm text-gray-800 mb-2">ንብረት ለገበያ ያቅርቡ</h1>
-            <div className="flex items-center gap-1">
-              {steps.map((s, i) => (
-                <React.Fragment key={s}>
-                  <div className={`flex-1 text-center`}>
-                    <div className={`mx-auto w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                      step > i+1 ? 'bg-blue-600 text-white' : step === i+1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
-                    }`}>{i+1}</div>
-                    <div className={`text-[10px] mt-0.5 ${step===i+1 ? 'text-blue-600 font-bold' : 'text-gray-400'}`}>{s}</div>
-                  </div>
-                  {i < 2 && <div className={`h-0.5 flex-1 mb-3 ${step > i+1 ? 'bg-blue-600' : 'bg-gray-200'}`} />}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-
-          <div className="p-4 space-y-4 max-w-lg mx-auto">
-            {/* STEP 1 */}
-            {step === 1 && (
-              <div className="space-y-4 bg-white rounded-2xl shadow-lg shadow-slate-200/80 p-5 border-0">
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">📦 ዋና ምድብ</label>
-                  <div className="flex gap-2">
-                    <Chip label="🚗 መኪና" active={category==='መኪና'} onClick={() => setCategory('መኪና')} />
-                    <Chip label="🏠 ቤት" active={category==='ቤት'} onClick={() => setCategory('ቤት')} />
-                  </div>
-                </div>
-
-                {category === 'መኪና' ? (
-                  <>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">🚗 አይነት</label>
-                      <div className="flex gap-2 overflow-x-auto pb-1">
-                        {['የቤት መኪና','የሥራ መኪና','ከባድ ተሽከርካሪ'].map(t =>
-                          <Chip key={t} label={t} active={carType===t} onClick={() => setCarType(t)} />
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">⛽ ነዳጅ</label>
-                      <div className="flex gap-2 overflow-x-auto pb-1">
-                        {['ቤንዚን','ናፍጣ','ኤሌክትሪክ','ሀይብሪድ'].map(t =>
-                          <Chip key={t} label={t} active={fuel===t} onClick={() => setFuel(t)} />
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">⚙️ ማርሽ</label>
-                      <div className="flex gap-2">
-                        {['ማንዋል','ኦቶማቲክ'].map(t =>
-                          <Chip key={t} label={t} active={transmission===t} onClick={() => setTransmission(t)} />
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">📊 ሁኔታ</label>
-                      <div className="flex gap-2 overflow-x-auto pb-1">
-                        {['አዲስ','ያገለገለ','ጥገና የሚፈልግ'].map(t =>
-                          <Chip key={t} label={t} active={condition===t} onClick={() => setCondition(t)} />
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">🛣️ ኪሎሜትር (KM)</label>
-                      <input type="number" value={mileage} onChange={e => setMileage(e.target.value)}
-                        placeholder="ለምሳሌ 50000"
-                        className="form-input" />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">🏠 አይነት</label>
-                      <div className="flex gap-2 overflow-x-auto pb-1">
-                        {['ቪላ','አፓርታማ','ኮንዶሚኒየም','ሪል እስቴት','መሬት'].map(t =>
-                          <Chip key={t} label={t} active={houseType===t} onClick={() => setHouseType(t)} />
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">🛏️ መኝታ</label>
-                      <div className="flex gap-2">
-                        {['1','2','3','4','5+'].map(t =>
-                          <Chip key={t} label={t} active={bedrooms===t} onClick={() => setBedrooms(t)} />
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">🛁 መታጠቢያ</label>
-                      <div className="flex gap-2">
-                        {['1','2','3','4+'].map(t =>
-                          <Chip key={t} label={t} active={bathrooms===t} onClick={() => setBathrooms(t)} />
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 mb-1.5 block">📊 ሁኔታ</label>
-                      <div className="flex gap-2 overflow-x-auto pb-1">
-                        {['አዲስ','ጥሩ','እድሳት የሚፈልግ'].map(t =>
-                          <Chip key={t} label={t} active={houseCondition===t} onClick={() => setHouseCondition(t)} />
-                        )}
-                      </div>
-                    </div>
-                    <ToggleCard active={parking} onToggle={() => setParking(!parking)} icon="🚗" label="ፓርኪንግ አለው" />
-                  </>
-                )}
-
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">📝 መግለጫ</label>
-                  <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
-                    placeholder="የንብረቱን ሙሉ ዝርዝር ያስገቡ..."
-                    className="form-input resize-none" />
-                </div>
-              </div>
-            )}
-
-            {/* STEP 2 */}
-            {step === 2 && (
-              <div className="space-y-4 bg-white rounded-2xl shadow-lg shadow-slate-200/80 p-5 border-0">
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">💰 ዋጋ (ብር)</label>
-                  <div className="relative">
-                    <input type="text" inputMode="numeric" value={price}
-                      onChange={e => setPrice(formatPrice(e.target.value))}
-                      placeholder="2,500,000"
-                      className="form-input font-semibold" />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">ETB</span>
-                  </div>
-                </div>
-                <ToggleCard active={negotiable} onToggle={() => setNegotiable(!negotiable)} icon="💰" label="ዋጋው የሚደራደር ነው" />
-                <ToggleCard active={urgent} onToggle={() => setUrgent(!urgent)} icon="⚡" label="አስቸኳይ ሽያጭ" danger />
-
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">📸 ፎቶዎች (እስከ 5)</label>
-                  <div
-                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
-                    onClick={() => fileRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-colors ${
-                      dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-gray-50/50'
-                    }`}>
-                    <div className="text-3xl mb-1">📷</div>
-                    <p className="text-xs text-gray-500">ፎቶዎችን እዚህ ይስቀሉ (እስከ 5)</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">ወይም ይጫኑ ለመምረጥ</p>
-                    <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
-                      onChange={e => { addFiles(e.target.files); e.target.value=''; }} />
-                  </div>
-                  {photoBusy && <p className="text-[11px] text-blue-600">ፎቶ እየተሰራ ነው…</p>}
-                  {photoError && <p className="text-[11px] text-red-600">{photoError}</p>}
-                  {photos.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 mt-3">
-                      {photos.map((src, i) => (
-                        <div key={i} className="relative aspect-square rounded-xl overflow-hidden border-0 shadow-sm">
-                          <img src={src} className="w-full h-full object-cover" alt="" />
-                          <button type="button" onClick={(e) => { e.stopPropagation(); removePhoto(i); }}
-                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center shadow">×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3 */}
-            {step === 3 && (
-              <div className="space-y-4 bg-white rounded-2xl shadow-lg shadow-slate-200/80 p-5 border-0">
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">📞 ስልክ ቁጥር <span className="text-gray-400 font-normal">(አማራጭ)</span></label>
-                  <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                    placeholder="0911223344"
-                    className="form-input" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-600 mb-1.5 block">📱 Telegram Username</label>
-                  <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
-                    placeholder="@username"
-                    className="form-input" />
-                </div>
-                {status && status !== 'ok' && (
-                  <p className="text-sm text-red-600 text-center">{status}</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Bottom actions */}
-          <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur border-t border-blue-100/30 flex gap-2">
-            {step > 1 ? (
-              <button type="button" onClick={() => setStep(s => s-1)}
-                className="w-1/3 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm">ተመለስ</button>
-            ) : (
-              <button type="button" onClick={() => tg.close()}
-                className="w-1/3 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm">❌ ሰርዝ</button>
-            )}
-            {step < 3 ? (
-              <button type="button" onClick={() => {
-                  if (step === 1 && !canNext1) return;
-                  if (photoBusy) return;
-                  setStep(s => s+1);
-                }}
-                disabled={step===1 ? !canNext1 : photoBusy}
-                className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm disabled:opacity-40 shadow-md shadow-blue-500/30">
-                ቀጣይ →
-              </button>
-            ) : (
-              <button type="button" onClick={submit} disabled={!canSubmit || submitting}
-                className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm disabled:opacity-40 flex items-center justify-center gap-1 shadow-md shadow-blue-500/30">
-                {submitting ? 'እየተላከ...' : '🚀 መዝግብ'}
-              </button>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    (function(){
-      try {
-        if (!window.React || !window.ReactDOM) {
-          document.getElementById('root').innerHTML = '<div style="padding:20px;color:#b91c1c;font-family:system-ui">Failed to load React CDN</div>';
-          return;
-        }
-        ReactDOM.createRoot(document.getElementById('root')).render(<SellerForm />);
-      } catch (e) {
-        document.getElementById('root').innerHTML = '<div style="padding:20px;color:#b91c1c;font-family:system-ui">UI Error: '+e.message+'</div>';
-      }
-    })();
-  </script>
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
 </body>
 </html>
 """
-
-
-BUYER_FORM_HTML = r"""
-<!DOCTYPE html>
-<html lang="am">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>ጥያቄ ያስገቡ</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
-
-  <style>
-    body { margin:0; background:#f0f4f9; font-family:system-ui,-apple-system,sans-serif; -webkit-tap-highlight-color:transparent; }
-    .chip-active { background:#2563eb; color:#fff; font-weight:700; box-shadow:0 1px 3px rgba(37,99,235,.3); }
-    .chip-idle { background:#f3f4f6; color:#4b5563; border:1px solid #e5e7eb; }
-    input, textarea { font-size: 16px !important; }
-    .form-input { width:100%; padding:12px 16px; border-radius:14px; background:#f8fafc; border:1px solid #e8edf4; outline:none; transition:all 0.2s; font-size:15px; }
-    .form-input:focus { background:#fff; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,0.1); }
-    .form-card { background:#fff; border:none !important; outline:none !important; border-radius:20px; box-shadow:0 4px 20px rgba(0,0,0,0.06); padding:20px; }
-    .sticky-header { position:sticky; top:0; z-index:50; background:#e2ebf6; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); padding:12px 16px 8px; }
-  </style>
-</head>
-<body class="bg-[#f0f4f9]">
-  <div id="root"></div>
-  <script type="text/babel">
-    const { useState } = React;
-    const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
-      expand(){}, ready(){}, close(){}, initDataUnsafe: {}, setHeaderColor(){}, setBackgroundColor(){}, showAlert: (m)=>alert(m)
-    };
-    try { tg.ready(); tg.expand(); } catch (e) { console.warn(e); }
-    try { tg.setHeaderColor('#2563eb'); tg.setBackgroundColor('#f0f4f9'); } catch (e) {}
-
-    const user = tg.initDataUnsafe?.user || {};
-    const autoUsername = user.username ? '@' + user.username : '';
-    const autoPhone = user.phone_number || '';
-
-    function formatPrice(val) {
-      const digits = String(val).replace(/[^\d]/g, '');
-      if (!digits) return '';
-      return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    }
-    function parsePrice(val) {
-      return String(val).replace(/[^\d]/g, '');
-    }
-
-    function Chip({ label, active, onClick }) {
-      return (
-        <button type="button" onClick={onClick}
-          className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all ${active ? 'chip-active' : 'chip-idle'}`}>
-          {label}
-        </button>
-      );
-    }
-
-    function BuyerForm() {
-      const [category, setCategory] = useState('መኪና');
-      const [budgetMin, setBudgetMin] = useState('');
-      const [budgetMax, setBudgetMax] = useState('');
-      const [createAlert, setCreateAlert] = useState(false);
-      const [details, setDetails] = useState('');
-      const [phone, setPhone] = useState(autoPhone);
-      const [telegramUser, setTelegramUser] = useState(autoUsername);
-      const [status, setStatus] = useState('');
-      const [submitting, setSubmitting] = useState(false);
-
-      const submit = async () => {
-        if (!details || submitting) return;
-        setSubmitting(true);
-        setStatus('');
-        const data = {
-          user_id: user.id || 'unknown',
-          category,
-          budget_min: parsePrice(budgetMin),
-          budget_max: parsePrice(budgetMax),
-          create_alert: createAlert,
-          details,
-          phone,
-          telegram_user: telegramUser
-        };
-        try {
-          const res = await fetch('/api/submit-request', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify(data)
-          });
-          const result = await res.json();
-          if (result.status === 'success') {
-            setStatus('ok');
-            setTimeout(() => tg.close(), 2200);
-          } else {
-            setStatus(result.message || 'ስህተት');
-            setSubmitting(false);
-          }
-        } catch (e) {
-          setStatus('የኔትወርክ ስህተት');
-          setSubmitting(false);
-        }
-      };
-
-      if (status === 'ok') {
-        return (
-          <div className="min-h-screen flex items-center justify-center p-6 bg-[#f0f4f9]">
-            <div className="text-center space-y-3 bg-white rounded-2xl shadow-lg shadow-slate-200/80 p-8 max-w-sm w-full border-0">
-              <div className="text-5xl">✅</div>
-              <p className="font-bold text-base text-green-700 leading-snug px-2 text-center">ማስታወቂያዎ በተሳካ ሁኔታ ተመዝግቧል! ለደላሎችም ተልኳል። ማስታወቂያዎን ማጥፋት ወይም ማስተካከል ሲፈልጉ በማንኛውም ጊዜ ወደ 'የገበያ ቦታ' በመሄድ ማስተካከል ይችላሉ።</p>
-              <p className="text-sm text-gray-500">አቅራቢዎች መልስ ይሰጡዎታል…</p>
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div className="min-h-screen pb-28 bg-[#f0f4f9]">
-          <div className="sticky top-0 z-50 bg-[#e2ebf6] backdrop-blur-md border-b border-blue-100/30 px-4 py-3">
-            <h1 className="text-center font-bold text-sm text-gray-800">የሚፈልጉትን ንብረት ይግለጹ</h1>
-          </div>
-
-          <div className="p-4 space-y-4 max-w-lg mx-auto">
-            <div className="space-y-4 bg-white rounded-2xl shadow-lg shadow-slate-200/80 p-5 border-0">
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">📦 ምድብ</label>
-                <div className="flex gap-2">
-                  <Chip label="🚗 መኪና" active={category==='መኪና'} onClick={() => setCategory('መኪና')} />
-                  <Chip label="🏠 ቤት" active={category==='ቤት'} onClick={() => setCategory('ቤት')} />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">💰 የበጀት ክልል (ብር)</label>
-                <div className="flex gap-2 items-center">
-                  <div className="flex-1 relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">ከ</span>
-                    <input type="text" inputMode="numeric" value={budgetMin}
-                      onChange={e => setBudgetMin(formatPrice(e.target.value))}
-                      placeholder="500,000"
-                      className="form-input pl-8" />
-                  </div>
-                  <span className="text-gray-300">—</span>
-                  <div className="flex-1 relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">እስከ</span>
-                    <input type="text" inputMode="numeric" value={budgetMax}
-                      onChange={e => setBudgetMax(formatPrice(e.target.value))}
-                      placeholder="2,000,000"
-                      className="form-input pl-10" />
-                  </div>
-                </div>
-              </div>
-
-              <button type="button" onClick={() => setCreateAlert(!createAlert)}
-                className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-0 transition-all text-left shadow-sm ${
-                  createAlert ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-600'
-                }`}>
-                <div className={`w-10 h-6 rounded-full relative transition-colors shrink-0 ${createAlert ? 'bg-blue-600' : 'bg-gray-300'}`}>
-                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${createAlert ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                </div>
-                <span className="text-sm font-medium leading-snug">🔔 ተመሳሳይ ንብረት ሲለቀቅ ማሳወቂያ ይድረሰኝ</span>
-              </button>
-
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">📝 ዝርዝር ፍላጎት</label>
-                <textarea value={details} onChange={e => setDetails(e.target.value)} rows={4}
-                  placeholder="ለምሳሌ፦ ቶዮታ ቪትዝ 2020፣ ነጭ፣ ኦቶማቲክ..."
-                  className="form-input resize-none" />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">📞 ስልክ ቁጥር <span className="text-gray-400 font-normal">(አማራጭ)</span></label>
-                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                  placeholder="0911223344"
-                  className="form-input" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-1.5 block">📱 Telegram Username</label>
-                <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
-                  placeholder="@username"
-                  className="form-input" />
-              </div>
-
-              {status && status !== 'ok' && (
-                <p className="text-sm text-red-600 text-center">{status}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur border-t border-blue-100/30 flex gap-2">
-            <button type="button" onClick={() => tg.close()}
-              className="w-1/3 py-3 rounded-xl bg-gray-100 text-gray-600 font-bold text-sm">❌ ሰርዝ</button>
-            <button type="button" onClick={submit} disabled={!details || submitting}
-              className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm disabled:opacity-40 flex items-center justify-center gap-1 shadow-md shadow-blue-500/30">
-              {submitting ? 'እየተላከ...' : '📨 ጥያቄውን ላክ'}
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    (function(){
-      try {
-        if (!window.React || !window.ReactDOM) {
-          document.getElementById('root').innerHTML = '<div style="padding:20px;color:#b91c1c;font-family:system-ui">Failed to load React CDN</div>';
-          return;
-        }
-        ReactDOM.createRoot(document.getElementById('root')).render(<BuyerForm />);
-      } catch (e) {
-        document.getElementById('root').innerHTML = '<div style="padding:20px;color:#b91c1c;font-family:system-ui">UI Error: '+e.message+'</div>';
-      }
-    })();
-  </script>
-</body>
-</html>
-"""
-
 
 
 @web_app.route('/')
-def home():
-    return (
-        "<html><body style='font-family:sans-serif;padding:24px;background:#f0f4f9;color:#0f172a'>"
-        "<h2 style='color:#1e3a8a'>✨ Adika Marketplace</h2>"
-        "<p>Server is running.</p>"
-        f"<p>WEBAPP_URL: <code>{WEBAPP_URL}</code></p>"
-        "<ul style='list-style:none;padding:0'>"
-        "<li style='padding:8px 0'><a href='/seller-form' style='color:#2563eb;text-decoration:none;font-weight:600'>📤 /seller-form</a></li>"
-        "<li style='padding:8px 0'><a href='/buyer-form' style='color:#2563eb;text-decoration:none;font-weight:600'>📥 /buyer-form</a></li>"
-        "<li style='padding:8px 0'><a href='/explorer' style='color:#2563eb;text-decoration:none;font-weight:600'>🔍 /explorer</a></li>"
-        "<li style='padding:8px 0'><a href='/api/health' style='color:#2563eb;text-decoration:none;font-weight:600'>💚 /api/health</a></li>"
-        "</ul></body></html>"
-    ), 200, {"Content-Type": "text/html; charset=utf-8"}
+def index():
+    return render_template_string(INDEX_HTML)
 
-@web_app.route('/seller-form')
-def webapp_seller_form():
-   return Response(SELLER_FORM_HTML, mimetype='text/html; charset=utf-8')
 
-@web_app.route('/buyer-form')
-def webapp_buyer_form():
-   return Response(BUYER_FORM_HTML, mimetype='text/html; charset=utf-8')
+@web_app.route('/health', methods=['GET'])
+def health():
+    return jsonify({"status": "ok"}), 200
 
-def _send_notification_safe(notification_text: str, req_id: int, buyer_id: int):
-    """Fire broker notifications from Flask thread without blocking or breaking loops."""
-    if not bot_app:
-        logger.warning("bot_app is None – cannot send notification")
-        return
 
-    def run_in_thread():
-        try:
-            from handlers import notify_brokers
-
-            async def _notify():
-                await notify_brokers(bot_app.bot, notification_text, req_id, buyer_id)
-
-            loop = bot_loop
-            if loop is None:
-                loop = getattr(bot_app, "loop", None)
-            if loop is not None and getattr(loop, "is_running", lambda: False)():
-                fut = asyncio.run_coroutine_threadsafe(_notify(), loop)
-                try:
-                    fut.result(timeout=120)
-                except Exception as e:
-                    logger.error(f"notify future error: {e}")
-                return
-
-            new_loop = asyncio.new_event_loop()
-            try:
-                asyncio.set_event_loop(new_loop)
-                new_loop.run_until_complete(_notify())
-            finally:
-                try:
-                    new_loop.close()
-                except Exception:
-                    pass
-        except Exception as e:
-            logger.error(f"_send_notification_safe error: {e}", exc_info=True)
-
-    threading.Thread(target=run_in_thread, daemon=True, name="notify-brokers").start()
-
+@web_app.route('/api/listings', methods=['GET'])
+def fetch_listings():
+    try:
+        category = request.args.get('category', 'all')
+        search = request.args.get('search', '')
+        req_type = request.args.get('type', 'ALL')
+        
+        listings = get_listings(category=category, search=search, req_type=req_type)
+        return jsonify({"status": "success", "listings": listings})
+    except Exception as e:
+        logger.error(f"❌ fetch_listings error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @web_app.route('/api/submit-listing', methods=['POST'])
 def submit_listing():
-   try:
-       data = request.json or {}
-       user_id = data.get('user_id')
-       category = data.get('category', 'መኪና')
-       price = data.get('price', '')
-       negotiable = data.get('negotiable', True)
-       urgent_sale = data.get('urgent_sale', False)
-       description = data.get('description', '')
-       phone = data.get('phone', '')
-       telegram_user = data.get('telegram_user', '')
-       fuel_type = data.get('fuel_type', '')
-       transmission = data.get('transmission', '')
-       mileage = data.get('mileage', '')
-       condition = data.get('condition', '')
-       car_type = data.get('car_type', '')
-       bedrooms = data.get('bedrooms', '')
-       bathrooms = data.get('bathrooms', '')
-       parking = data.get('parking', '')
-       house_condition = data.get('condition', '')
-       house_type = data.get('house_type', '')
-       photos = data.get('photos', [])
-       logger.info(f"📥 Seller WebApp data: {data}")
-       if not user_id or user_id == "unknown":
-           return jsonify({"status": "error", "message": "User ID አልተገኘም። Telegram ውስጥ ክፈት።"}), 400
-       negotiable_text = "✅ የሚደራደር" if negotiable else "❌ የማይደራደር"
-       urgent_text = "⚡ **አስቸኳይ ሽያጭ!** " if urgent_sale else ""
-       full_desc = f"{urgent_text}"
-       full_desc += f"💰 ዋጋ: {price} ብር ({negotiable_text})\n"
-       if category == 'መኪና':
-           if car_type: full_desc += f"🚗 አይነት: {car_type}\n"
-           if fuel_type: full_desc += f"⛽ ነዳጅ: {fuel_type}\n"
-           if transmission: full_desc += f"⚙️ ማርሽ: {transmission}\n"
-           if mileage: full_desc += f"🛣️ ኪሎሜትር: {mileage} KM\n"
-           if condition: full_desc += f"📊 ሁኔታ: {condition}\n"
-       else:
-           if house_type: full_desc += f"🏠 አይነት: {house_type}\n"
-           if bedrooms: full_desc += f"🛏️ መኝታ: {bedrooms}\n"
-           if bathrooms: full_desc += f"🛁 መታጠቢያ: {bathrooms}\n"
-           if parking: full_desc += f"🚗 ፓርኪንግ: {parking}\n"
-           if house_condition: full_desc += f"📊 ሁኔታ: {house_condition}\n"
-       full_desc += f"📝 መግለጫ: {description}\n"
-       full_desc += f"📞 ስልክ: {phone}\n"
-       if telegram_user: full_desc += f"📱 Telegram: {telegram_user}\n"
-       uid = int(user_id) if str(user_id).isdigit() else 0
-       extra = {
-               'fuel_type': fuel_type, 'transmission': transmission, 'mileage': mileage,
-               'condition': condition or house_condition, 'bedrooms': bedrooms,
-               'bathrooms': bathrooms, 'parking': parking, 'house_type': house_type,
-               'car_type': car_type, 'negotiable': negotiable, 'urgent_sale': urgent_sale,
-               'telegram_user': telegram_user
-       }
-       safe_photos = []
-       if isinstance(photos, list):
-           for ph in photos[:3]:
-               s = str(ph)
-               if len(s) > 350000:
-                   s = s[:350000]
-               safe_photos.append(s)
-       req_id = add_listing(
-           user_chat_id=uid,
-           user_name="WebApp User",
-           req_type="SELL",
-           main_category=(category or car_type or house_type or "መኪና"),
-           sub_category=car_type if category == 'መኪና' else house_type,
-           action_type="መሸጥ",
-           property_type="",
-           description=full_desc,
-           price=str(price),
-           phone=str(phone or ""),
-           extra_data=extra,
-           photos=safe_photos
-       )
-       if not req_id and safe_photos:
-           logger.warning("Retry add_listing without photos")
-           req_id = add_listing(
-               user_chat_id=uid,
-               user_name="WebApp User",
-               req_type="SELL",
-               main_category=(category or car_type or house_type or "መኪና"),
-               sub_category=car_type if category == 'መኪና' else house_type,
-               action_type="መሸጥ",
-               property_type="",
-               description=full_desc,
-               price=str(price),
-               phone=str(phone or ""),
-               extra_data=extra,
-               photos=[]
-           )
-       if req_id:
-           logger.info(f"✅ Seller listing saved ID={req_id}")
-           notification_text = (
-               f"🛍️ **አዲስ የሽያጭ ማስታወቂያ (#ADK-{req_id})**\n\n"
-               f"{full_desc}"
-           )
-           _send_notification_safe(notification_text, req_id, int(user_id))
-           return jsonify({"status": "success", "req_id": req_id})
-       else:
-           import models as _models
-           detail = getattr(_models, "LAST_DB_ERROR", "") or ""
-           msg = "Database ውስጥ ማስቀመጥ አልተቻለም።"
-           if detail:
-               msg = f"{msg} ({detail[:180]})"
-           logger.error("submit failed detail=%s backend=%s", detail, getattr(_models, "_DB_BACKEND", "?"))
-           return jsonify({"status": "error", "message": msg, "detail": detail}), 500
-   except Exception as e:
-       logger.error(f"❌ submit_listing error: {e}", exc_info=True)
-       return jsonify({"status": "error", "message": f"Server Error: {str(e)}"}), 500
+    try:
+        data = request.json or {}
+        user_id = data.get('user_id')
+        user_name = data.get('user_name', 'WebApp User')
+        req_type = data.get('req_type', 'SELL')
+        category = data.get('category', 'መኪና')
+        sub_category = data.get('sub_category', '')
+        action_type = data.get('action_type', 'መሸጥ')
+        property_type = data.get('property_type', '')
+        description = data.get('description', '')
+        price = data.get('price', 'በስምምነት')
+        phone = data.get('phone', '')
+        
+        if not user_id or str(user_id) == "unknown":
+            return jsonify({"status": "error", "message": "User ID አልተገኘም። Telegram ውስጥ ክፈት።"}), 400
+
+        listing_id = add_listing(
+            user_chat_id=int(user_id) if str(user_id).isdigit() else 0,
+            user_name=user_name,
+            req_type=req_type,
+            main_category=category,
+            sub_category=sub_category,
+            action_type=action_type,
+            property_type=property_type,
+            description=description,
+            price=price,
+            phone=str(phone),
+            extra_data=data
+        )
+
+        if listing_id:
+            logger.info(f"✅ Listing saved ID={listing_id}")
+            notification_text = (
+                f"📢 **አዲስ የ{category} ማስታወቂያ (#ADK-{listing_id})**\n\n"
+                f"📝 ዝርዝር: {description}\n"
+                f"💰 ዋጋ: {price} ብር\n"
+                f"📞 ስልክ: {phone}\n"
+            )
+            _send_notification_safe(notification_text, listing_id, int(user_id))
+            return jsonify({"status": "success", "listing_id": listing_id})
+        else:
+            return jsonify({"status": "error", "message": "Database ውስጥ ማስቀመጥ አልተቻለም።"}), 500
+
+    except Exception as e:
+        logger.error(f"❌ submit_listing error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Server Error: {str(e)}"}), 500
+
 
 @web_app.route('/api/submit-request', methods=['POST'])
 def submit_request():
-   try:
-       data = request.json or {}
-       user_id = data.get('user_id')
-       category = data.get('category', 'መኪና')
-       budget_min = data.get('budget_min', '')
-       budget_max = data.get('budget_max', '')
-       create_alert = data.get('create_alert', False)
-       details = data.get('details', '')
-       phone = data.get('phone', '')
-       telegram_user = data.get('telegram_user', '')
-       logger.info(f"📥 Buyer WebApp data: {data}")
-       if not user_id or user_id == "unknown":
-           return jsonify({"status": "error", "message": "User ID አልተገኘም። Telegram ውስጥ ክፈት።"}), 400
-       budget_range = f"{budget_min} - {budget_max}" if budget_min and budget_max else (budget_min or budget_max or "ያልተገለጸ")
-       full_desc = (
-           f"💰 በጀት ክልል: {budget_range} ብር\n"
-           f"📝 ዝርዝር: {details}\n"
-           f"📞 ስልክ: {phone}\n"
-       )
-       if telegram_user: full_desc += f"📱 Telegram: {telegram_user}\n"
-       req_id = add_listing(
-           user_chat_id=int(user_id) if str(user_id).isdigit() else 0,
-           user_name="WebApp User",
-           req_type="BUY",
-           main_category=category,
-           sub_category="",
-           action_type="መግዛት",
-           property_type="",
-           description=full_desc,
-           price=budget_range,
-           phone=str(phone),
-           extra_data={
-               'budget_min': budget_min, 'budget_max': budget_max,
-               'create_alert': create_alert, 'telegram_user': telegram_user
-           }
-       )
-       if req_id:
-           logger.info(f"✅ Buyer request saved ID={req_id}")
-           notification_text = (
-               f"🔔 **አዲስ የ{category} ጥያቄ (#ADK-{req_id})**\n\n"
-               f"{full_desc}"
-           )
-           _send_notification_safe(notification_text, req_id, int(user_id))
-           if create_alert and str(user_id).isdigit():
-               save_search_alert(int(user_id), category, budget_min, budget_max)
-           return jsonify({"status": "success", "req_id": req_id})
-       else:
-           import models as _models
-           detail = getattr(_models, "LAST_DB_ERROR", "") or ""
-           msg = "Database ውስጥ ማስቀመጥ አልተቻለም።"
-           if detail:
-               msg = f"{msg} ({detail[:180]})"
-           logger.error("submit failed detail=%s backend=%s", detail, getattr(_models, "_DB_BACKEND", "?"))
-           return jsonify({"status": "error", "message": msg, "detail": detail}), 500
-   except Exception as e:
-       logger.error(f"❌ submit_request error: {e}", exc_info=True)
-       return jsonify({"status": "error", "message": f"Server Error: {str(e)}"}), 500
+    try:
+        data = request.json or {}
+        user_id = data.get('user_id')
+        category = data.get('category', 'መኪና')
+        budget_min = data.get('budget_min', '')
+        budget_max = data.get('budget_max', '')
+        create_alert = data.get('create_alert', False)
+        details = data.get('details', '')
+        phone = data.get('phone', '')
+        telegram_user = data.get('telegram_user', '')
 
+        logger.info(f"📥 Buyer WebApp data: {data}")
 
-# ==============================================================================
-# WEB APP EXPLORER (React + Tailwind) - Full Production UI
-# Features: Relative time, Mark as Sold, View booster, 2-col grid, Delete, Status
-# ==============================================================================
+        if not user_id or str(user_id) == "unknown":
+            return jsonify({"status": "error", "message": "User ID አልተገኘም። Telegram ውስጥ ክፈት።"}), 400
 
-EXPLORER_HTML = r"""
-<!DOCTYPE html>
-<html lang="am">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Adika Marketplace</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    /* ===== GLOBAL RESET ===== */
-    html, body {
-      margin: 0; 
-      padding: 0; 
-      width: 100%; 
-      max-width: 100vw;
-      overflow-x: hidden; 
-      box-sizing: border-box;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f0f4f9;
-      color: #0f172a;
-    }
-    *, *::before, *::after { box-sizing: border-box; }
+        budget_range = f"{budget_min} - {budget_max}" if budget_min and budget_max else (budget_min or budget_max or "ያልተገለጸ")
+        full_desc = (
+            f"💰 በጀት ክልል: {budget_range} ብር\n"
+            f"📝 ዝርዝር: {details}\n"
+            f"📞 ስልክ: {phone}\n"
+        )
+        if telegram_user:
+            full_desc += f"📱 Telegram: {telegram_user}\n"
 
-    /* ===== MAIN WRAPPER ===== */
-    .wrap { 
-      width: 100%; 
-      padding: 0 0 48px; 
-      min-height: 100vh; 
-      background: #f0f4f9;
-    }
-
-    /* ===== STICKY HEADER ===== */
-    .hdr {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: #e2ebf6;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: 12px 16px 10px;
-      box-shadow: 0 2px 12px rgba(148, 163, 184, 0.15);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-    }
-
-    /* ===== HEADER TOP ROW ===== */
-    .hdr-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-
-    .brand {
-      font-weight: 800;
-      font-size: 16px;
-      color: #1e3a8a;
-      letter-spacing: -0.3px;
-      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    /* ===== LANGUAGE SWITCHER ===== */
-    .lang-toggle {
-      display: flex;
-      gap: 4px;
-      background: rgba(255, 255, 255, 0.5);
-      padding: 3px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.6);
-      backdrop-filter: blur(4px);
-    }
-    .lang-btn {
-      border: none;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      background: transparent;
-      color: #64748b;
-    }
-    .lang-btn.active {
-      background: #2563eb;
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
-    }
-    .lang-btn:hover:not(.active) {
-      background: rgba(37, 99, 235, 0.08);
-    }
-
-    /* ===== FLOATING TABS ===== */
-    .tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .tab {
-      flex: 1;
-      border: none;
-      padding: 10px 6px;
-      border-radius: 14px;
-      font-weight: 700;
-      font-size: 12px;
-      background: #ffffff;
-      color: #475569;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(148, 163, 184, 0.15);
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .tab:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
-    }
-    .tab.on {
-      background: #2563eb;
-      color: #fff;
-      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
-    }
-
-    /* ===== SEARCH BAR ===== */
-    .search-wrap {
-      position: relative;
-      margin-bottom: 10px;
-    }
-    .search-wrap span {
-      position: absolute;
-      left: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      opacity: 0.4;
-      font-size: 14px;
-    }
-    .search {
-      width: 100%;
-      padding: 12px 16px 12px 40px;
-      border-radius: 14px;
-      border: none;
-      background: rgba(255, 255, 255, 0.85);
-      backdrop-filter: blur(8px);
-      font-size: 13px;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
-      outline: none;
-      transition: all 0.2s;
-    }
-    .search:focus {
-      background: #ffffff;
-      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
-    }
-    .search::placeholder {
-      color: #94a3b8;
-    }
-
-    /* ===== CATEGORY PILLS ===== */
-    .cats {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-      scrollbar-width: none;
-      -webkit-overflow-scrolling: touch;
-    }
-    .cats::-webkit-scrollbar { display: none; }
-    .cat {
-      flex: 0 0 auto;
-      border: none;
-      background: rgba(255, 255, 255, 0.7);
-      backdrop-filter: blur(4px);
-      border-radius: 999px;
-      padding: 8px 16px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #334155;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-    }
-    .cat:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
-    }
-    .cat.on {
-      background: #2563eb;
-      color: #fff;
-      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
-    }
-
-    /* ===== GRID ===== */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      padding: 14px 16px;
-    }
-
-    /* ===== CARD DESIGN - Frameless & Elevated ===== */
-    .card {
-      background: #ffffff;
-      border: none !important;
-      border-width: 0 !important;
-      outline: none !important;
-      border-radius: 16px;
-      padding: 12px;
-      box-shadow: 0 8px 24px rgba(148, 163, 184, 0.2) !important;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      flex-direction: column;
-    }
-    .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 16px 40px rgba(148, 163, 184, 0.3) !important;
-    }
-
-    /* ===== CARD MEDIA ===== */
-    .card-media {
-      position: relative;
-      width: 100%;
-      height: 120px;
-      border-radius: 14px 14px 12px 12px;
-      overflow: hidden;
-      border: none !important;
-      background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
-    }
-    .card-media img {
-      width: 100%;
-      height: 120px;
-      object-fit: cover;
-      display: block;
-      border: none !important;
-      outline: none !important;
-    }
-
-    /* ===== PLACEHOLDER - Modern Gradient ===== */
-    .ph {
-      width: 100%;
-      height: 120px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      color: #ffffff;
-      background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
-      border: none !important;
-    }
-    .ph-icon {
-      font-size: 44px;
-      line-height: 1;
-      filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
-    }
-    .ph-text {
-      font-size: 11px;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.9);
-      letter-spacing: 0.3px;
-    }
-
-    /* ===== ACTIVE BADGE ===== */
-    .active-badge {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      width: 10px;
-      height: 10px;
-      background: #22c55e;
-      border-radius: 50%;
-      border: none;
-      animation: pulse-green 1.6s ease-out infinite;
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
-    }
-    .active-badge.sold {
-      background: #ef4444;
-      animation: pulse-red 1.6s ease-out infinite;
-    }
-    @keyframes pulse-green {
-      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
-      70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-    }
-    @keyframes pulse-red {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-      70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
-
-    /* ===== META OVERLAY ===== */
-    .meta {
-      position: absolute;
-      left: 6px;
-      right: 6px;
-      bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-    }
-    .badge {
-      font-size: 9px;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
-      color: #fff;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-weight: 600;
-      letter-spacing: 0.2px;
-    }
-
-    /* ===== CARD CONTENT ===== */
-    .card-title {
-      font-weight: 700;
-      font-size: 13px;
-      margin-top: 10px;
-      color: #0f172a;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .card-sub {
-      font-size: 11px;
-      color: #64748b;
-      margin-top: 3px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* ===== PRICE BADGE - Blue ===== */
-    .price-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      margin-top: 10px;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: #EFF6FF;
-      color: #2563EB;
-      font-weight: 800;
-      font-size: 12px;
-      width: fit-content;
-      border: 1px solid rgba(37, 99, 235, 0.1);
-    }
-
-    /* ===== ACTION BUTTONS ===== */
-    .actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-      margin-top: 10px;
-    }
-    .btn {
-      border: none;
-      border-radius: 12px;
-      padding: 10px;
-      font-size: 16px;
-      text-align: center;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .btn.call {
-      background: #eff6ff;
-      color: #1d4ed8;
-    }
-    .btn.call:hover {
-      background: #dbeafe;
-      transform: scale(1.02);
-    }
-    .btn.chat {
-      background: #f1f5f9;
-      color: #334155;
-    }
-    .btn.chat:hover {
-      background: #e2e8f0;
-      transform: scale(1.02);
-    }
-
-    /* ===== STATUS ===== */
-    .status-box {
-      text-align: center;
-      padding: 48px 16px;
-      color: #64748b;
-      font-size: 14px;
-    }
-    .status-box.err {
-      color: #b91c1c;
-    }
-
-    /* ===== LOAD MORE ===== */
-    .more {
-      display: none;
-      margin: 8px auto 24px;
-      border: none;
-      background: #ffffff;
-      color: #2563eb;
-      border-radius: 999px;
-      padding: 12px 28px;
-      font-weight: 700;
-      font-size: 13px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .more:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 32px rgba(37, 99, 235, 0.15);
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <!-- ===== STICKY HEADER ===== -->
-    <div class="hdr">
-      <!-- Top Row: Brand + Language Switcher -->
-      <div class="hdr-top">
-        <div class="brand">✨ Adika Marketplace</div>
-        <div class="lang-toggle">
-          <button class="lang-btn active" data-lang="am">🇪🇹 AM</button>
-          <button class="lang-btn" data-lang="en">🇬🇧 EN</button>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab on" id="tabSell" type="button">🛒 የገበያ ቦታ</button>
-        <button class="tab" id="tabBuy" type="button">📋 የፈላጊዎች</button>
-      </div>
-
-      <!-- Search Bar -->
-      <div class="search-wrap">
-        <span>🔍</span>
-        <input class="search" id="q" type="search" placeholder="ፈልግ..." autocomplete="off" />
-      </div>
-
-      <!-- Category Pills -->
-      <div class="cats" id="cats"></div>
-    </div>
-
-    <!-- ===== CONTENT ===== -->
-    <div id="status" class="status-box">እየጫነ ነው…</div>
-    <div class="grid" id="grid"></div>
-    <button class="more" id="more" type="button">ተጨማሪ ይመልከቱ</button>
-  </div>
-
-  <script>
-  (function () {
-    var API_BASE = "https://adika-y37t.onrender.com";
-    try {
-      if (location && location.origin && location.origin.indexOf("adika-y37t") !== -1) {
-        API_BASE = location.origin;
-      }
-    } catch (e) {}
-
-    try {
-      var tg = window.Telegram && window.Telegram.WebApp;
-      if (tg) {
-        try { tg.ready(); } catch (e) {}
-        try { tg.expand(); } catch (e) {}
-        try { tg.setHeaderColor('#e2ebf6'); } catch (e) {}
-      }
-    } catch (e) {}
-
-    var state = { 
-      tab: "marketplace", 
-      category: "", 
-      q: "", 
-      page: 1, 
-      hasMore: false, 
-      loading: false,
-      lang: "am"
-    };
-    
-    var grid = document.getElementById("grid");
-    var statusEl = document.getElementById("status");
-    var moreBtn = document.getElementById("more");
-    var tabSell = document.getElementById("tabSell");
-    var tabBuy = document.getElementById("tabBuy");
-    var qInput = document.getElementById("q");
-    var catsEl = document.getElementById("cats");
-
-    var CAT_LIST = [
-      { id: "", label_am: "✨ ሁሉም", label_en: "✨ All" },
-      { id: "መኪና", label_am: "🚗 መኪና", label_en: "🚗 Cars" },
-      { id: "ቤት", label_am: "🏠 ቤት / ቦታ", label_en: "🏠 Houses" },
-      { id: "ንግድ", label_am: "🏢 የሥራ ቦታ", label_en: "🏢 Commercial" }
-    ];
-
-    // ===== LANGUAGE TOGGLE =====
-    var langBtns = document.querySelectorAll('.lang-btn');
-    langBtns.forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        langBtns.forEach(function(b) { b.classList.remove('active'); });
-        this.classList.add('active');
-        state.lang = this.dataset.lang;
-        renderCats();
-        load(false);
-      });
-    });
-
-    function t(label) {
-      if (state.lang === 'en' && typeof label === 'object' && label.en) {
-        return label.en;
-      }
-      return typeof label === 'object' ? label.am : label;
-    }
-
-    function esc(s) {
-      return String(s == null ? "" : s)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-
-    function showStatus(text, isErr) {
-      statusEl.style.display = "block";
-      statusEl.className = "status-box" + (isErr ? " err" : "");
-      statusEl.textContent = text;
-    }
-
-    function hideStatus() {
-      statusEl.style.display = "none";
-    }
-
-    function relativeTime(iso) {
-      if (!iso) return "";
-      try {
-        var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-        if (secs < 60) return state.lang === 'en' ? "Now" : "አሁን";
-        if (secs < 3600) return Math.floor(secs / 60) + (state.lang === 'en' ? "m" : " ደቂቃ");
-        if (secs < 86400) return Math.floor(secs / 3600) + (state.lang === 'en' ? "h" : " ሰዓት");
-        return Math.floor(secs / 86400) + (state.lang === 'en' ? "d" : " ቀን");
-      } catch (e) { return ""; }
-    }
-
-    function cleanDesc(raw) {
-      var s = String(raw || "");
-      s = s.replace(/\*+/g, " ");
-      s = s.replace(/[📝💰📞⚡📢🔄📦✅☑️]/g, " ");
-      s = s.replace(/አስቸኳይ\s*ሽያጭ!?/gi, " ");
-      s = s.replace(/የሚደራደር|ደራደር|negotiable/gi, " ");
-      s = s.replace(/ዋጋ\s*[:：]?\s*[\d,\.]+(\s*(ETB|ብር))?/gi, " ");
-      s = s.replace(/በጀት\s*[:：]?\s*[\d,\.]+(\s*(ETB|ብር))?/gi, " ");
-      s = s.replace(/[\d,\.]+\s*(ETB|ብር)/gi, " ");
-      s = s.replace(/\(\s*\)/g, " ");
-      return s.replace(/\s+/g, " ").trim().slice(0, 48);
-    }
-
-    function renderCats() {
-      var html = "";
-      for (var i = 0; i < CAT_LIST.length; i++) {
-        var c = CAT_LIST[i];
-        var label = t({ am: c.label_am, en: c.label_en });
-        html += '<button type="button" class="cat' + (state.category === c.id ? " on" : "") +
-          '" data-id="' + esc(c.id) + '">' + esc(label) + "</button>";
-      }
-      catsEl.innerHTML = html;
-    }
-
-    function setTabs() {
-      tabSell.className = "tab" + (state.tab === "marketplace" ? " on" : "");
-      tabBuy.className = "tab" + (state.tab === "requests" ? " on" : "");
-    }
-
-    function cardHtml(item) {
-      try {
-        var extra = item.extra_data || {};
-        if (typeof extra === "string") {
-          try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
-        }
-        var photos = item.photos || [];
-        if (!Array.isArray(photos)) photos = [];
-        
-        var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
-        var icon = isCar ? "🚗" : "🏠";
-        
-        var media;
-        if (photos.length) {
-          media = '<img src="' + esc(photos[0]) + '" alt="" loading="lazy" />';
-        } else {
-          media = '<div class="ph"><div class="ph-icon">' + icon + '</div><div class="ph-text">' + 
-            (state.lang === 'en' ? 'No Image' : 'ምስል የለም') + 
-            '</div></div>';
-        }
-        
-        var title = (item.main_category || item.category || "") + (item.sub_category ? " • " + item.sub_category : "");
-        var desc = cleanDesc(item.description);
-        var isSell = String(item.req_type || "").toUpperCase() === "SELL";
-        var priceNum = item.price || "—";
-        var priceLabel = (isSell ? (state.lang === 'en' ? "Price" : "ዋጋ") : (state.lang === 'en' ? "Budget" : "በጀት")) + ": " + priceNum;
-        var views = item.view_count || item.views_count || 0;
-        var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
-        var user = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
-        var callHref = phone ? ("tel:" + phone) : "#";
-        var chatHref = user ? ("https://t.me/" + user) : (item.user_chat_id ? ("tg://user?id=" + item.user_chat_id) : "#");
-        var st = String(item.status || "").toUpperCase();
-        var sold = (st === "SOLD" || st === "RENTED" || st === "EXPIRED");
-        
-        return '<div class="card">' +
-          '<div class="card-media">' +
-          '<span class="active-badge' + (sold ? " sold" : "") + '"></span>' +
-          media +
-          '<div class="meta">' +
-          '<span class="badge">👁️ ' + esc(views) + '</span>' +
-          '<span class="badge">' + esc(relativeTime(item.created_at)) + '</span>' +
-          '</div>' +
-          '</div>' +
-          '<div class="card-title">' + esc(title) + '</div>' +
-          (desc ? '<div class="card-sub">' + esc(desc) + '</div>' : "") +
-          '<div class="price-badge">💰 ' + esc(priceLabel) + '</div>' +
-          '<div class="actions">' +
-          '<a class="btn call" href="' + esc(callHref) + '">📞</a>' +
-          '<a class="btn chat" href="' + esc(chatHref) + '">💬</a>' +
-          '</div>' +
-          '</div>';
-      } catch (e) {
-        return '<div class="card"><div class="card-sub">Card error</div></div>';
-      }
-    }
-
-    function finishLoading(items, append, hasMore) {
-      state.loading = false;
-      if (!append) grid.innerHTML = "";
-      if (!items || !items.length) {
-        if (!append) {
-          showStatus(state.lang === 'en' ? "No listings found" : "ምንም አይነት የተመዘገበ ንብረት አልተገኘም", false);
-        }
-        moreBtn.style.display = "none";
-        return;
-      }
-      hideStatus();
-      var html = "";
-      for (var i = 0; i < items.length; i++) html += cardHtml(items[i]);
-      grid.innerHTML = append ? (grid.innerHTML + html) : html;
-      moreBtn.style.display = hasMore ? "block" : "none";
-    }
-
-    function load(append) {
-      if (state.loading) return;
-      state.loading = true;
-      if (!append) {
-        showStatus(state.lang === 'en' ? "Loading..." : "እየጫነ ነው…", false);
-        grid.innerHTML = "";
-      }
-
-      var safety = setTimeout(function () {
-        if (state.loading) {
-          state.loading = false;
-          showStatus(state.lang === 'en' ? "No listings found" : "ምንም አይነት የተመዘገበ ንብረት አልተገኘም", false);
-          moreBtn.style.display = "none";
-        }
-      }, 12000);
-
-      var page = append ? state.page + 1 : 1;
-      var qs = "page=" + page + "&limit=12&order=DESC&active_only=1&type=" +
-        (state.tab === "marketplace" ? "SELL" : "BUY");
-      if (state.category) qs += "&category=" + encodeURIComponent(state.category);
-      if (state.q) qs += "&q=" + encodeURIComponent(state.q);
-
-      var urls = [
-        API_BASE + "/api/explorer/listings?" + qs,
-        "/api/explorer/listings?" + qs
-      ];
-
-      function tryFetch(idx) {
-        if (idx >= urls.length) {
-          clearTimeout(safety);
-          finishLoading([], append, false);
-          showStatus(state.lang === 'en' ? "Failed to load data" : "መረጃ ማምጣት አልተቻለም", true);
-          return;
-        }
-        var url = urls[idx];
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", url, true);
-        xhr.timeout = 10000;
-        xhr.setRequestHeader("Accept", "application/json");
-        xhr.onload = function () {
-          clearTimeout(safety);
-          try {
-            var data = {};
-            try { data = JSON.parse(xhr.responseText || "{}"); } catch (e) { data = {}; }
-            if (xhr.status >= 200 && xhr.status < 300) {
-              var items = data.items || data.listings || [];
-              if (!Array.isArray(items)) items = [];
-              state.page = page;
-              state.hasMore = !!(data.has_more || data.hasMore);
-              finishLoading(items, append, state.hasMore);
-            } else {
-              tryFetch(idx + 1);
+        req_id = add_listing(
+            user_chat_id=int(user_id) if str(user_id).isdigit() else 0,
+            user_name="WebApp User",
+            req_type="BUY",
+            main_category=(category or "መኪና"),
+            sub_category="",
+            action_type="መግዛት",
+            property_type="",
+            description=full_desc,
+            price=budget_range,
+            phone=str(phone),
+            extra_data={
+                'budget_min': budget_min,
+                'budget_max': budget_max,
+                'create_alert': create_alert,
+                'telegram_user': telegram_user
             }
-          } catch (e) {
-            tryFetch(idx + 1);
-          }
-        };
-        xhr.onerror = function () { tryFetch(idx + 1); };
-        xhr.ontimeout = function () { tryFetch(idx + 1); };
-        try {
-          xhr.send();
-        } catch (e) {
-          tryFetch(idx + 1);
-        }
-      }
-      tryFetch(0);
-    }
+        )
 
-    // ===== EVENT LISTENERS =====
-    tabSell.onclick = function () { state.tab = "marketplace"; setTabs(); load(false); };
-    tabBuy.onclick = function () { state.tab = "requests"; setTabs(); load(false); };
-    
-    catsEl.onclick = function (ev) {
-      var el = ev.target;
-      while (el && el !== catsEl && !el.getAttribute("data-id")) el = el.parentNode;
-      if (!el || el === catsEl) return;
-      state.category = el.getAttribute("data-id") || "";
-      renderCats();
-      load(false);
-    };
-    
-    moreBtn.onclick = function () { load(true); };
-    
-    var deb = null;
-    qInput.oninput = function () {
-      clearTimeout(deb);
-      deb = setTimeout(function () {
-        state.q = (qInput.value || "").trim();
-        load(false);
-      }, 300);
-    };
-
-    renderCats();
-    setTabs();
-    setTimeout(function () { load(false); }, 50);
-  })();
-  </script>
-</body>
-</html>
-"""
-
-@web_app.route('/explorer')
-def explorer_page():
-    r = Response(EXPLORER_HTML, mimetype='text/html; charset=utf-8')
-    r.headers['Cache-Control'] = 'no-store'
-    return r
-
-
-
-
-@web_app.route('/api/health', methods=['GET'])
-def api_health():
-    """Diagnostics — reports postgres vs temporary sqlite."""
-    import config as app_config
-    from models import get_db_connection, _DB_BACKEND
-    backend = getattr(app_config, "DB_BACKEND", None) or _DB_BACKEND
-    info = {
-        "ok": True,
-        "database": backend if backend != "unknown" else ("postgres" if DATABASE_URL else "sqlite"),
-        "persistent": backend == "postgres",
-        "isTemporaryDb": backend != "postgres",
-        "webapp_url": WEBAPP_URL,
-    }
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) AS cnt FROM listings")
-        row = cur.fetchone()
-        info["listings_count"] = row["cnt"] if isinstance(row, dict) else (row[0] if row else 0)
-        cur.execute("SELECT COUNT(*) AS cnt FROM brokers")
-        row = cur.fetchone()
-        info["brokers_count"] = row["cnt"] if isinstance(row, dict) else (row[0] if row else 0)
-        try:
-            conn.close()
-        except Exception:
-            pass
-        backend = getattr(app_config, "DB_BACKEND", None) or _DB_BACKEND
-        info["database"] = backend
-        info["persistent"] = backend == "postgres"
-        info["isTemporaryDb"] = backend != "postgres"
-    except Exception as e:
-        info["ok"] = False
-        info["error"] = str(e)
-    return jsonify(info)
-
-
-@web_app.route('/api/explorer/listings', methods=['GET', 'OPTIONS'])
-def api_explorer_listings():
-    """Fetch listings/requests with pagination. Never hangs — always JSON."""
-    if request.method == 'OPTIONS':
-        return ('', 204)
-    try:
-        page = max(1, int(request.args.get('page', 1) or 1))
-        limit = min(50, max(1, int(request.args.get('limit', 12) or 12)))
-        offset = (page - 1) * limit
-        req_type = (request.args.get('type') or '').upper()
-        category = request.args.get('category') or ''
-        search = (request.args.get('q') or '').strip()
-        order = (request.args.get('order') or 'DESC').upper()
-        active_only = request.args.get('active_only', '1') == '1'
-        if order not in ('ASC', 'DESC'):
-            order = 'DESC'
-
-        conn = None
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            p = get_placeholder()
-            from models import is_postgres
-
-            # Detect columns safely
-            try:
-                if is_postgres():
-                    cur.execute(
-                        "SELECT column_name FROM information_schema.columns "
-                        "WHERE table_name = 'listings'"
-                    )
-                    cols = {r[0] if not isinstance(r, dict) else list(r.values())[0] for r in cur.fetchall()}
-                    cols = {str(c).lower() for c in cols}
-                else:
-                    cur.execute("PRAGMA table_info(listings)")
-                    cols = {str(r[1] if not isinstance(r, dict) else r.get('name')).lower() for r in cur.fetchall()}
-            except Exception:
-                cols = set()
-
-            where = ["1=1"]
-            params = []
-            if "status" in cols:
-                where.append(f"(status IS NULL OR status != {p})")
-                params.append('deleted')
-                if active_only:
-                    where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
-                    params.extend(['sold', 'rented', 'expired'])
-            if req_type in ('SELL', 'BUY') and "req_type" in cols:
-                where.append(f"UPPER(COALESCE(req_type,'')) = UPPER({p})")
-                params.append(req_type)
-            if category:
-                parts = []
-                if "main_category" in cols:
-                    parts.append(f"main_category = {p}")
-                    params.append(category)
-                if "category" in cols:
-                    parts.append(f"category = {p}")
-                    params.append(category)
-                if parts:
-                    where.append("(" + " OR ".join(parts) + ")")
-            if search:
-                like = "ILIKE" if is_postgres() else "LIKE"
-                sp = []
-                for col in ("description", "price", "phone", "title"):
-                    if col in cols or not cols:
-                        sp.append(f"CAST({col} AS TEXT) {like} {p}")
-                        params.append(f"%{search}%")
-                if sp:
-                    where.append("(" + " OR ".join(sp) + ")")
-
-            where_sql = " AND ".join(where)
-            order_col = "id" if ("id" in cols or not cols) else "created_at"
-            order_sql = "ASC" if order == "ASC" else "DESC"
-
-            total = 0
-            try:
-                cur.execute(f"SELECT COUNT(*) AS cnt FROM listings WHERE {where_sql}", params)
-                total_row = cur.fetchone()
-                total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
-            except Exception as ce:
-                logger.warning("count listings: %s", ce)
-                try:
-                    cur.execute("SELECT COUNT(*) AS cnt FROM listings")
-                    total_row = cur.fetchone()
-                    total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
-                    where_sql = "1=1"
-                    params = []
-                except Exception:
-                    total = 0
-
-            try:
-                cur.execute(
-                    f"SELECT * FROM listings WHERE {where_sql} "
-                    f"ORDER BY {order_col} {order_sql} LIMIT {p} OFFSET {p}",
-                    list(params) + [limit, offset],
-                )
-                rows = cur.fetchall() or []
-            except Exception as qe:
-                logger.warning("listings query failed (%s); simple select", qe)
-                cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p} OFFSET {p}", (limit, offset))
-                rows = cur.fetchall() or []
-
-            items = []
-            for row in rows:
-                item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
-                if isinstance(item.get('extra_data'), str):
-                    try:
-                        item['extra_data'] = json.loads(item['extra_data'])
-                    except Exception:
-                        item['extra_data'] = {}
-                photos = []
-                try:
-                    if item.get('id') is not None:
-                        cur.execute(
-                            f"SELECT photo_id FROM listing_photos WHERE listing_id = {p}",
-                            (item['id'],),
-                        )
-                        photos = [r['photo_id'] if isinstance(r, dict) else r[0] for r in (cur.fetchall() or [])]
-                except Exception:
-                    photos = []
-                if not photos and item.get('photo_id'):
-                    photos = [item['photo_id']]
-                item['photos'] = photos
-                if item.get('view_count') is None:
-                    item['view_count'] = 0
-                if item.get('created_at') and not isinstance(item['created_at'], str):
-                    try:
-                        item['created_at'] = item['created_at'].isoformat()
-                    except Exception:
-                        item['created_at'] = str(item['created_at'])
-                items.append(item)
-
-            safe_items = [_json_safe(it) for it in items]
-        finally:
-            if conn:
-                try:
-                    conn.close()
-                except Exception:
-                    pass
-
-        try:
-            from models import _DB_BACKEND
-            backend = _DB_BACKEND
-        except Exception:
-            backend = "postgres" if DATABASE_URL else "sqlite"
-
-        return jsonify({
-            "status": "success",
-            "page": page,
-            "limit": limit,
-            "total": int(total or 0),
-            "has_more": bool(offset + limit < (total or 0)),
-            "items": safe_items,
-            "db": backend,
-            "isTemporaryDb": backend != "postgres",
-        })
-    except Exception as e:
-        logger.error(f"api_explorer_listings error: {e}", exc_info=True)
-        return jsonify({
-            "status": "success",
-            "page": 1,
-            "limit": 12,
-            "total": 0,
-            "has_more": False,
-            "items": [],
-            "message": str(e),
-        }), 200
-
-
-@web_app.route('/api/views/<int:listing_id>', methods=['POST'])
-def api_view_booster(listing_id):
-    import random
-    try:
-        boost = random.randint(3, 7)
-        conn = get_db_connection()
-        cur = conn.cursor()
-        p = get_placeholder()
-        cur.execute(f"SELECT view_count FROM listings WHERE id = {p}", (listing_id,))
-        row = cur.fetchone()
-        if not row:
-            conn.close()
-            return jsonify({"status": "error", "message": "not found"}), 404
-        current = row['view_count'] if isinstance(row, dict) else row[0]
-        if current is None or current == 0:
-            baseline = random.randint(35, 90)
-            new_count = baseline + boost
+        if req_id:
+            logger.info(f"✅ Buyer request saved ID={req_id}")
+            notification_text = (
+                f"🔔 **አዲስ የ{category} ጥያቄ (#ADK-{req_id})**\n\n"
+                f"{full_desc}"
+            )
+            _send_notification_safe(notification_text, req_id, int(user_id))
+            if create_alert and str(user_id).isdigit():
+                save_search_alert(int(user_id), category, budget_min, budget_max)
+            return jsonify({"status": "success", "req_id": req_id})
         else:
-            new_count = int(current) + boost
-        cur.execute(f"UPDATE listings SET view_count = {p} WHERE id = {p}", (new_count, listing_id))
-        from models import is_postgres
-        if not is_postgres():
-            try:
-                conn.commit()
-            except Exception:
-                pass
-        conn.close()
-        return jsonify({"status": "success", "view_count": new_count})
+            detail = getattr(models, "LAST_DB_ERROR", "") or ""
+            msg = "Database ውስጥ ማስቀመጥ አልተቻለም።"
+            if detail:
+                msg = f"{msg} ({detail[:180]})"
+            logger.error("submit failed detail=%s backend=%s", detail, getattr(models, "_DB_BACKEND", "?"))
+            return jsonify({"status": "error", "message": msg, "detail": detail}), 500
+
     except Exception as e:
-        logger.error(f"view booster error: {e}")
-        return jsonify({"status": "error"}), 500
+        logger.error(f"❌ submit_request error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": f"Server Error: {str(e)}"}), 500
 
 
-@web_app.route('/api/items/<int:listing_id>/status', methods=['PATCH'])
-def api_update_item_status(listing_id):
-    try:
-        data = request.json or {}
-        new_status = str(data.get('status', '')).lower().strip()
-        user_id = data.get('user_id')
-        if new_status not in ('sold', 'rented', 'pending', 'expired'):
-            return jsonify({"status": "error", "message": "Invalid status"}), 400
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    web_app.run(host='0.0.0.0', port=port, debug=True)
 
-        conn = get_db_connection()
-        cur = conn.cursor()
-        p = get_placeholder()
-        cur.execute(f"SELECT user_chat_id, status FROM listings WHERE id = {p}", (listing_id,))
-        row = cur.fetchone()
-        if not row:
-            conn.close()
-            return jsonify({"status": "error", "message": "Not found"}), 404
-
-        owner_id = row['user_chat_id'] if isinstance(row, dict) else row[0]
-        is_admin = (str(user_id) == str(ADMIN_CHAT_ID_INT) and ADMIN_CHAT_ID_INT != 0)
-        is_owner = (str(user_id) == str(owner_id))
-        if not (is_owner or is_admin):
-            conn.close()
-            return jsonify({"status": "error", "message": "Forbidden"}), 403
-
-        cur.execute(f"UPDATE listings SET status = {p} WHERE id = {p}", (new_status, listing_id))
-        from models import is_postgres
-        if not is_postgres():
-            try:
-                conn.commit()
-            except Exception:
-                pass
-        conn.close()
-        logger.info(f"✅ Listing #{listing_id} status → {new_status} by user {user_id}")
-        return jsonify({"status": "success", "new_status": new_status})
-    except Exception as e:
-        logger.error(f"status update error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@web_app.route('/api/items/<int:listing_id>', methods=['DELETE'])
-def api_delete_item(listing_id):
-    try:
-        data = request.json or {}
-        user_id = data.get('user_id')
-        conn = get_db_connection()
-        cur = conn.cursor()
-        p = get_placeholder()
-        cur.execute(f"SELECT user_chat_id FROM listings WHERE id = {p}", (listing_id,))
-        row = cur.fetchone()
-        if not row:
-            conn.close()
-            return jsonify({"status": "error", "message": "Not found"}), 404
-        owner_id = row['user_chat_id'] if isinstance(row, dict) else row[0]
-        is_admin = (str(user_id) == str(ADMIN_CHAT_ID_INT) and ADMIN_CHAT_ID_INT != 0)
-        is_owner = (str(user_id) == str(owner_id))
-        if not (is_owner or is_admin):
-            conn.close()
-            return jsonify({"status": "error", "message": "Forbidden"}), 403
-        cur.execute(f"UPDATE listings SET status = 'deleted' WHERE id = {p}", (listing_id,))
-        from models import is_postgres
-        if not is_postgres():
-            try:
-                conn.commit()
-            except Exception:
-                pass
-        conn.close()
-        return jsonify({"status": "success"})
-    except Exception as e:
-        logger.error(f"delete item error: {e}")
-        return jsonify({"status": "error"}), 500
-
-
-@web_app.route('/api/stats', methods=['GET'])
-def api_stats():
-    try:
-        stats = get_platform_stats()
-        return jsonify({"status": "success", **stats})
-    except Exception as e:
-        logger.error(f"api_stats: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@web_app.route('/api/brokers', methods=['GET'])
-def api_brokers():
-    try:
-        page = max(1, int(request.args.get("page", 1)))
-        limit = min(15, max(1, int(request.args.get("limit", 12))))
-        offset = (page - 1) * limit
-        sub_city = request.args.get("sub_city") or None
-        brokers = get_active_brokers(sub_city=sub_city, status="approved", limit=limit, offset=offset)
-        total = count_brokers(status="approved")
-        items = []
-        for b in brokers:
-            items.append({
-                "id": b.get("id"),
-                "chat_id": b.get("chat_id"),
-                "full_name": b.get("full_name"),
-                "phone": b.get("phone"),
-                "username": b.get("username"),
-                "sub_city": b.get("sub_city"),
-                "specialty": b.get("specialty") or b.get("role_type"),
-                "rating": float(b.get("rating") or 5),
-                "total_ratings": b.get("total_ratings") or 0,
-                "is_online": bool(b.get("is_online", True)),
-                "status": b.get("status"),
-            })
-        return jsonify({
-            "status": "success",
-            "page": page,
-            "limit": limit,
-            "total": total,
-            "has_more": offset + limit < total,
-            "items": items,
-        })
-    except Exception as e:
-        logger.error(f"api_brokers: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@web_app.route('/api/listings', methods=['GET'])
-def api_listings_alias():
-    return api_explorer_listings()
-
-
-def run_flask():
-    """Start Flask HTTP server (Mini App + REST API) on 0.0.0.0:PORT."""
-    port = int(PORT or 8080)
-    logger.info("Starting Flask on 0.0.0.0:%s", port)
-    web_app.run(host="0.0.0.0", port=port, use_reloader=False, threaded=True)
+```
