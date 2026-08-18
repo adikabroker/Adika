@@ -996,165 +996,96 @@ EXPLORER_HTML = r"""
   <style>
     html, body {
       margin: 0; padding: 0; width: 100%; max-width: 100vw;
-      overflow-x: hidden !important; box-sizing: border-box;
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      overflow-x: hidden; box-sizing: border-box;
+      font-family: system-ui, -apple-system, sans-serif;
       background: #F0F4F8; color: #0f172a;
-      -webkit-text-size-adjust: 100%;
     }
     *, *::before, *::after { box-sizing: border-box; }
-    .wrap { width: 100%; max-width: 100%; margin: 0 auto; padding: 0 0 48px; min-height: 100vh; overflow-x: hidden; background: #F0F4F8; }
+    .wrap { width: 100%; padding: 0 0 48px; min-height: 100vh; background: #F0F4F8; }
     .hdr {
       position: sticky; top: 0; z-index: 30;
-      background: rgba(240, 244, 248, 0.92);
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      border-bottom: none !important;
-      box-shadow: 0 1px 0 rgba(148, 163, 184, 0.25);
-      padding: 10px 12px; width: 100%;
+      background: rgba(240,244,248,0.95);
+      backdrop-filter: blur(10px);
+      padding: 10px 12px;
+      box-shadow: 0 1px 0 rgba(148,163,184,0.25);
     }
     .brand { font-weight: 800; font-size: 14px; color: #1e3a8a; margin-bottom: 8px; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 8px; width: 100%; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 8px; }
     .tab {
-      flex: 1; min-width: 0; border: none !important; padding: 10px 6px;
-      border-radius: 14px; font-weight: 700; font-size: 12px;
-      background: #ffffff; color: #475569; cursor: pointer;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+      flex: 1; border: none; padding: 10px 6px; border-radius: 14px;
+      font-weight: 700; font-size: 12px; background: #fff; color: #475569;
+      box-shadow: 0 2px 8px rgba(15,23,42,0.05); cursor: pointer;
     }
-    .tab.on {
-      background: #2563eb; color: #fff;
-      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
-    }
-    .search-wrap { position: relative; margin-bottom: 8px; width: 100%; }
-    .search-wrap span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: .4; pointer-events: none; }
+    .tab.on { background: #2563eb; color: #fff; }
+    .search-wrap { position: relative; margin-bottom: 8px; }
+    .search-wrap span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: .4; }
     .search {
       width: 100%; padding: 11px 14px 11px 34px; border-radius: 14px;
-      border: none !important; background: #ffffff; font-size: 13px;
-      outline: none; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
-      transition: box-shadow 0.15s ease;
+      border: none; background: #fff; font-size: 13px;
+      box-shadow: 0 2px 8px rgba(15,23,42,0.05); outline: none;
     }
-    .search:focus { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18), 0 2px 8px rgba(15, 23, 42, 0.05); }
-    .cats {
-      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;
-      width: 100%; -ms-overflow-style: none; scrollbar-width: none;
-    }
+    .cats { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
     .cats::-webkit-scrollbar { display: none; }
     .cat {
-      flex: 0 0 auto; border: none !important; background: #ffffff;
-      border-radius: 999px; padding: 7px 12px; font-size: 11px; font-weight: 600;
-      color: #334155; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05); cursor: pointer;
+      flex: 0 0 auto; border: none; background: #fff; border-radius: 999px;
+      padding: 7px 12px; font-size: 11px; font-weight: 600; color: #334155;
+      box-shadow: 0 2px 6px rgba(15,23,42,0.05); cursor: pointer;
     }
-    .cat.on { background: linear-gradient(90deg,#2563eb,#4f46e5); color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
-
-    .grid, .listings-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    .cat.on { background: #2563eb; color: #fff; }
+    .grid {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px; padding: 12px;
-      width: 100%; max-width: 100%; margin: 0;
     }
-
-    .card, .listing-card {
-      width: 100%; max-width: 100%; min-width: 0;
-      background: #ffffff !important;
-      border-radius: 16px !important;
-      border: none !important;
-      outline: none !important;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.01) !important;
-      overflow: hidden; display: flex; flex-direction: column; padding: 8px;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      -webkit-tap-highlight-color: transparent;
+    .card {
+      background: #fff; border: none; border-radius: 16px; padding: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.01);
+      display: flex; flex-direction: column;
     }
-    .card:active {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 30px -5px rgba(0, 0, 0, 0.12), 0 8px 12px -6px rgba(0, 0, 0, 0.04) !important;
-    }
-
     .card-media {
-      position: relative; width: 100%; height: 120px;
-      border-radius: 12px; overflow: hidden;
-      border: none !important;
+      position: relative; width: 100%; height: 120px; border-radius: 12px; overflow: hidden;
       background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
     }
-    .card-media img, .img {
-      width: 100%; height: 120px; object-fit: cover;
-      border: none !important; outline: none !important; display: block;
-    }
+    .card-media img { width: 100%; height: 120px; object-fit: cover; display: block; border: none; }
     .ph {
-      width: 100%; height: 120px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 4px;
-      background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
-      border: none !important;
-      color: rgba(255,255,255,0.92);
+      width: 100%; height: 120px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px; color: rgba(255,255,255,0.92);
     }
-    .ph .ph-icon { font-size: 36px; opacity: 0.85; line-height: 1; }
-    .ph .ph-text { font-size: 10px; font-weight: 600; opacity: 0.8; letter-spacing: 0.02em; }
-
+    .ph-icon { font-size: 36px; opacity: 0.85; }
+    .ph-text { font-size: 10px; font-weight: 600; opacity: 0.8; }
     .active-badge {
-      position: absolute; top: 8px; left: 8px;
-      width: 10px; height: 10px;
-      background-color: #22c55e;
-      border-radius: 50%;
-      border: none !important; outline: none !important;
-      z-index: 2; display: block;
-      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+      position: absolute; top: 8px; left: 8px; width: 10px; height: 10px;
+      background: #22c55e; border-radius: 50%; border: none;
       animation: pulse-green 1.6s ease-out infinite;
     }
-    .active-badge.sold {
-      background-color: #ef4444;
-      animation: pulse-red 1.6s ease-out infinite;
-    }
+    .active-badge.sold { background: #ef4444; animation: pulse-red 1.6s ease-out infinite; }
     @keyframes pulse-green {
-      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55), 0 0 6px rgba(34, 197, 94, 0.8); }
-      70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0), 0 0 10px rgba(34, 197, 94, 0.45); }
-      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0), 0 0 6px rgba(34, 197, 94, 0.8); }
+      0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
     }
     @keyframes pulse-red {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55), 0 0 6px rgba(239, 68, 68, 0.8); }
-      70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0), 0 0 10px rgba(239, 68, 68, 0.45); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0), 0 0 6px rgba(239, 68, 68, 0.8); }
+      0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+      100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
     }
-
-    .meta {
-      display: flex; justify-content: space-between; gap: 4px;
-      position: absolute; left: 6px; right: 6px; bottom: 6px;
-    }
-    .badge {
-      font-size: 9px; background: rgba(0,0,0,.48); color: #fff;
-      padding: 2px 6px; border-radius: 999px; max-width: 48%;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      border: none !important;
-    }
-    .title {
-      font-weight: 700; font-size: 13px; margin-top: 8px; line-height: 1.25;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .sub {
-      font-size: 11px; color: #64748b; margin-top: 3px; line-height: 1.3;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
+    .meta { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; justify-content: space-between; }
+    .badge { font-size: 9px; background: rgba(0,0,0,.48); color: #fff; padding: 2px 6px; border-radius: 999px; }
+    .title { font-weight: 700; font-size: 13px; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sub { font-size: 11px; color: #64748b; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .price-badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      margin-top: 8px; padding: 6px 10px; border-radius: 999px;
+      display: inline-flex; margin-top: 8px; padding: 6px 10px; border-radius: 999px;
       background: #EFF6FF; color: #2563EB; font-weight: 800; font-size: 12px;
-      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      border: none !important;
     }
-    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; width: 100%; }
-    .btn {
-      border: none !important; border-radius: 12px; padding: 9px;
-      font-size: 16px; text-decoration: none; text-align: center; min-width: 0;
-      transition: transform 0.12s ease;
-    }
-    .btn:active { transform: scale(0.96); }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .btn { border: none; border-radius: 12px; padding: 9px; font-size: 16px; text-align: center; text-decoration: none; }
     .btn.call { background: #eff6ff; color: #1d4ed8; }
     .btn.chat { background: #f1f5f9; color: #334155; }
-    .empty, .err, .load { text-align: center; padding: 40px 16px; color: #64748b; font-size: 14px; }
-    .err { color: #b91c1c; background: #fff; border-radius: 16px; margin: 12px;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); }
+    .status-box { text-align: center; padding: 48px 16px; color: #64748b; font-size: 14px; }
+    .status-box.err { color: #b91c1c; }
     .more {
-      display: block; margin: 16px auto; border: none !important; background: #ffffff;
-      color: #2563eb; border-radius: 999px; padding: 11px 22px;
-      font-weight: 700; font-size: 12px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); cursor: pointer;
+      display: none; margin: 16px auto; border: none; background: #fff; color: #2563eb;
+      border-radius: 999px; padding: 11px 22px; font-weight: 700; font-size: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); cursor: pointer;
     }
   </style>
 </head>
@@ -1168,234 +1099,253 @@ EXPLORER_HTML = r"""
       </div>
       <div class="search-wrap">
         <span>🔍</span>
-        <input class="search" id="q" placeholder="ፈልግ..." />
+        <input class="search" id="q" type="search" placeholder="ፈልግ..." autocomplete="off" />
       </div>
       <div class="cats" id="cats"></div>
     </div>
-    <div id="status" class="load">እየጫነ ነው…</div>
-    <div class="grid listings-grid" id="grid"></div>
-    <button class="more" id="more" type="button" style="display:none">ተጨማሪ ይመልከቱ</button>
+    <div id="status" class="status-box">እየጫነ ነው…</div>
+    <div class="grid" id="grid"></div>
+    <button class="more" id="more" type="button">ተጨማሪ ይመልከቱ</button>
   </div>
   <script>
   (function () {
+    var API_BASE = "https://adika-y37t.onrender.com";
     try {
-      var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+      if (location && location.origin && location.origin.indexOf("adika-y37t") !== -1) {
+        API_BASE = location.origin;
+      }
+    } catch (e) {}
+
+    try {
+      var tg = window.Telegram && window.Telegram.WebApp;
       if (tg) {
         try { tg.ready(); } catch (e) {}
         try { tg.expand(); } catch (e) {}
-        try { tg.setHeaderColor('#2563eb'); } catch (e) {}
-        try { tg.setBackgroundColor('#F0F4F8'); } catch (e) {}
+      }
+    } catch (e) {}
+
+    var state = { tab: "marketplace", category: "", q: "", page: 1, hasMore: false, loading: false };
+    var grid = document.getElementById("grid");
+    var statusEl = document.getElementById("status");
+    var moreBtn = document.getElementById("more");
+    var tabSell = document.getElementById("tabSell");
+    var tabBuy = document.getElementById("tabBuy");
+    var qInput = document.getElementById("q");
+    var catsEl = document.getElementById("cats");
+
+    var CAT_LIST = [
+      { id: "", label: "✨ ሁሉም" },
+      { id: "መኪና", label: "🚗 መኪና" },
+      { id: "ቤት", label: "🏠 ቤት / ቦታ" },
+      { id: "ንግድ", label: "🏢 የሥራ ቦታ" }
+    ];
+
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function showStatus(text, isErr) {
+      statusEl.style.display = "block";
+      statusEl.className = "status-box" + (isErr ? " err" : "");
+      statusEl.textContent = text;
+    }
+
+    function hideStatus() {
+      statusEl.style.display = "none";
+    }
+
+    function relativeTime(iso) {
+      if (!iso) return "";
+      try {
+        var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+        if (secs < 60) return "አሁን";
+        if (secs < 3600) return Math.floor(secs / 60) + " ደቂቃ";
+        if (secs < 86400) return Math.floor(secs / 3600) + " ሰዓት";
+        return Math.floor(secs / 86400) + " ቀን";
+      } catch (e) { return ""; }
+    }
+
+    function cleanDesc(raw) {
+      var s = String(raw || "");
+      s = s.replace(/[📝💰📞⚡📢🔄📦]/g, " ");
+      s = s.replace(/አስቸኳይ\s*ሽያጭ!?/gi, " ");
+      s = s.replace(/ዋጋ\s*[:：]?\s*[\d,]+(\s*ETB)?/gi, " ");
+      s = s.replace(/በጀት\s*[:：]?\s*[\d,]+(\s*ETB)?/gi, " ");
+      return s.replace(/\s+/g, " ").trim().slice(0, 48);
+    }
+
+    function renderCats() {
+      var html = "";
+      for (var i = 0; i < CAT_LIST.length; i++) {
+        var c = CAT_LIST[i];
+        html += '<button type="button" class="cat' + (state.category === c.id ? " on" : "") +
+          '" data-id="' + esc(c.id) + '">' + esc(c.label) + "</button>";
+      }
+      catsEl.innerHTML = html;
+    }
+
+    function setTabs() {
+      tabSell.className = "tab" + (state.tab === "marketplace" ? " on" : "");
+      tabBuy.className = "tab" + (state.tab === "requests" ? " on" : "");
+    }
+
+    function cardHtml(item) {
+      try {
+        var extra = item.extra_data || {};
+        if (typeof extra === "string") {
+          try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+        }
+        var photos = item.photos || [];
+        if (!Array.isArray(photos)) photos = [];
+        var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
+        var icon = isCar ? "🚗" : "🏠";
+        var media;
+        if (photos.length) {
+          media = '<img src="' + esc(photos[0]) + '" alt="" loading="lazy" />';
+        } else {
+          media = '<div class="ph"><div class="ph-icon">' + icon + '</div><div class="ph-text">No Image Available</div></div>';
+        }
+        var title = (item.main_category || item.category || "") + (item.sub_category ? " • " + item.sub_category : "");
+        var desc = cleanDesc(item.description);
+        var isSell = String(item.req_type || "").toUpperCase() === "SELL";
+        var priceNum = item.price || "—";
+        var priceLabel = (isSell ? "ዋጋ" : "በጀት") + ": " + priceNum;
+        var views = item.view_count || item.views_count || 0;
+        var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
+        var user = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
+        var callHref = phone ? ("tel:" + phone) : "#";
+        var chatHref = user ? ("https://t.me/" + user) : (item.user_chat_id ? ("tg://user?id=" + item.user_chat_id) : "#");
+        var st = String(item.status || "").toUpperCase();
+        var sold = (st === "SOLD" || st === "RENTED" || st === "EXPIRED");
+        return '<div class="card">' +
+          '<div class="card-media"><span class="active-badge' + (sold ? " sold" : "") + '"></span>' + media +
+          '<div class="meta"><span class="badge">👁️ ' + esc(views) + '</span>' +
+          '<span class="badge">' + esc(relativeTime(item.created_at)) + '</span></div></div>' +
+          '<div class="title">' + esc(title) + '</div>' +
+          (desc ? '<div class="sub">' + esc(desc) + '</div>' : "") +
+          '<div class="price-badge">💰 ' + esc(priceLabel) + '</div>' +
+          '<div class="actions">' +
+          '<a class="btn call" href="' + esc(callHref) + '">📞</a>' +
+          '<a class="btn chat" href="' + esc(chatHref) + '">💬</a>' +
+          '</div></div>';
+      } catch (e) {
+        return '<div class="card"><div class="sub">Card error</div></div>';
+      }
+    }
+
+    function finishLoading(items, append, hasMore) {
+      state.loading = false;
+      if (!append) grid.innerHTML = "";
+      if (!items || !items.length) {
+        if (!append) {
+          showStatus("ምንም አይነት የተመዘገበ ንብረት አልተገኘም", false);
+        }
+        moreBtn.style.display = "none";
+        return;
+      }
+      hideStatus();
+      var html = "";
+      for (var i = 0; i < items.length; i++) html += cardHtml(items[i]);
+      grid.innerHTML = append ? (grid.innerHTML + html) : html;
+      moreBtn.style.display = hasMore ? "block" : "none";
+    }
+
+    function load(append) {
+      if (state.loading) return;
+      state.loading = true;
+      if (!append) {
+        showStatus("እየጫነ ነው…", false);
+        grid.innerHTML = "";
       }
 
-      var state = {
-        tab: (new URLSearchParams(location.search).get('tab') === 'requests') ? 'requests' : 'marketplace',
-        category: '',
-        q: '',
-        page: 1,
-        hasMore: false,
-        loading: false
-      };
+      // Hard UI timeout: never stay on loading forever (Render cold start)
+      var safety = setTimeout(function () {
+        if (state.loading) {
+          state.loading = false;
+          showStatus("ምንም አይነት የተመዘገበ ንብረት አልተገኘም", false);
+          moreBtn.style.display = "none";
+        }
+      }, 12000);
 
-      var cats = [
-        { id: '', label: '✨ ሁሉም' },
-        { id: 'መኪና', label: '🚗 መኪና' },
-        { id: 'ቤት', label: '🏠 ቤት / ቦታ' },
-        { id: 'ንግድ', label: '🏢 የሥራ ቦታ' }
+      var page = append ? state.page + 1 : 1;
+      var qs = "page=" + page + "&limit=12&order=DESC&active_only=1&type=" +
+        (state.tab === "marketplace" ? "SELL" : "BUY");
+      if (state.category) qs += "&category=" + encodeURIComponent(state.category);
+      if (state.q) qs += "&q=" + encodeURIComponent(state.q);
+
+      // Prefer same-origin relative path (works when Mini App is served from Render)
+      var urls = [
+        API_BASE + "/api/explorer/listings?" + qs,
+        "/api/explorer/listings?" + qs
       ];
 
-      var grid = document.getElementById('grid');
-      var statusEl = document.getElementById('status');
-      var moreBtn = document.getElementById('more');
-      var tabSell = document.getElementById('tabSell');
-      var tabBuy = document.getElementById('tabBuy');
-      var qInput = document.getElementById('q');
-      var catsEl = document.getElementById('cats');
-
-      function esc(s) {
-        return String(s == null ? '' : s)
-          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      }
-
-      function relativeTime(iso) {
-        if (!iso) return '';
-        try {
-          var d = new Date(iso);
-          var secs = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
-          if (secs < 60) return 'አሁን';
-          if (secs < 3600) return Math.floor(secs / 60) + ' ደቂቃ';
-          if (secs < 86400) return Math.floor(secs / 3600) + ' ሰዓት';
-          if (secs < 172800) return 'ትናንት';
-          return Math.floor(secs / 86400) + ' ቀን';
-        } catch (e) { return ''; }
-      }
-
-      /** Strip price / budget / urgent sale noise from description so price shows only in badge */
-      function cleanDesc(raw) {
-        var s = String(raw || '');
-        s = s.replace(/[📝💰📞⚡📢🔄📦]/g, ' ');
-        s = s.replace(/አስቸኳይ\\s*ሽያጭ!?/gi, ' ');
-        s = s.replace(/ዋጋ\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
-        s = s.replace(/በጀት\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
-        s = s.replace(/price\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
-        s = s.replace(/budget\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
-        s = s.replace(/\\s+/g, ' ').trim();
-        return s.slice(0, 48);
-      }
-
-      function renderCats() {
-        catsEl.innerHTML = cats.map(function (c) {
-          return '<button type="button" class="cat' + (state.category === c.id ? ' on' : '') +
-            '" data-id="' + esc(c.id) + '">' + esc(c.label) + '</button>';
-        }).join('');
-      }
-
-      function setTabs() {
-        tabSell.className = 'tab' + (state.tab === 'marketplace' ? ' on' : '');
-        tabBuy.className = 'tab' + (state.tab === 'requests' ? ' on' : '');
-      }
-
-      function cardHtml(item) {
-        try {
-          var extra = item.extra_data || {};
-          if (typeof extra === 'string') {
-            try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
-          }
-          var photos = item.photos || [];
-          if (!Array.isArray(photos)) photos = [];
-          var isCar = (item.main_category === 'መኪና' || item.category === 'መኪና');
-          var icon = isCar ? '🚗' : '🏠';
-          var mediaInner = photos.length
-            ? '<img class="img" src="' + esc(photos[0]) + '" alt="" loading="lazy" onerror="this.style.display=\\'none\\';var p=this.parentNode.querySelector(\\'.ph\\');if(p)p.style.display=\\'flex\\';">' +
-              '<div class="ph" style="display:none;position:absolute;inset:0"><div class="ph-icon">' + icon + '</div><div class="ph-text">No Image</div></div>'
-            : '<div class="ph"><div class="ph-icon">' + icon + '</div><div class="ph-text">No Image Available</div></div>';
-          var title = (item.main_category || item.category || '') + (item.sub_category ? ' • ' + item.sub_category : '');
-          var desc = cleanDesc(item.description);
-          var isSell = String(item.req_type || '').toUpperCase() === 'SELL';
-          var priceNum = item.price || '—';
-          var priceLabel = (isSell ? 'ዋጋ' : 'በጀት') + ': ' + priceNum + (String(priceNum).match(/ETB|ብር/i) ? '' : ' ETB');
-          var views = item.view_count || item.views_count || 0;
-          var phone = item.phone ? String(item.phone).replace(/\\s+/g,'') : '';
-          var user = extra.telegram_user ? String(extra.telegram_user).replace('@','') : '';
-          var callHref = phone ? ('tel:' + phone) : '#';
-          var chatHref = user ? ('https://t.me/' + user) : (item.user_chat_id ? ('tg://user?id=' + item.user_chat_id) : '#');
-          var st = String(item.status || '').toUpperCase();
-          var isSold = (st === 'SOLD' || st === 'RENTED' || st === 'EXPIRED' || item.is_sold === true);
-          var badgeCls = isSold ? 'active-badge sold' : 'active-badge';
-          return '<div class="card listing-card">' +
-            '<div class="card-media">' +
-            '<span class="' + badgeCls + '"></span>' +
-            mediaInner +
-            '<div class="meta">' +
-            '<span class="badge">👁️ ' + esc(views) + '</span>' +
-            '<span class="badge">' + esc(relativeTime(item.created_at)) + '</span></div></div>' +
-            '<div class="title">' + esc(title) + '</div>' +
-            (desc ? '<div class="sub">' + esc(desc) + '</div>' : '') +
-            '<div class="price-badge">💰 ' + esc(priceLabel) + '</div>' +
-            '<div class="actions">' +
-            '<a class="btn call" href="' + esc(callHref) + '">📞</a>' +
-            '<a class="btn chat" href="' + esc(chatHref) + '" target="_blank" rel="noreferrer">💬</a>' +
-            '</div></div>';
-        } catch (e) {
-          return '<div class="card listing-card"><div class="sub">Card error</div></div>';
+      function tryFetch(idx) {
+        if (idx >= urls.length) {
+          clearTimeout(safety);
+          finishLoading([], append, false);
+          showStatus("መረጃ ማምጣት አልተቻለም — እንደገና ይሞክሩ", true);
+          return;
         }
-      }
-
-      async function load(append) {
-        if (state.loading) return;
-        state.loading = true;
-        if (!append) {
-          statusEl.style.display = 'block';
-          statusEl.className = 'load';
-          statusEl.textContent = 'እየጫነ ነው…';
-          grid.innerHTML = '';
-        }
-        try {
-          var page = append ? state.page + 1 : 1;
-          var qs = new URLSearchParams({
-            page: String(page),
-            limit: '12',
-            type: state.tab === 'marketplace' ? 'SELL' : 'BUY',
-            order: 'DESC',
-            active_only: '1'
-          });
-          if (state.category) qs.set('category', state.category);
-          if (state.q) qs.set('q', state.q);
-          var API_BASE = 'https://adika-y37t.onrender.com';
-          var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-          var timer = controller ? setTimeout(function(){ try { controller.abort(); } catch(e){} }, 15000) : null;
-          var res;
+        var url = urls[idx];
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url, true);
+        xhr.timeout = 10000;
+        xhr.setRequestHeader("Accept", "application/json");
+        xhr.onload = function () {
+          clearTimeout(safety);
           try {
-            res = await fetch(API_BASE + '/api/explorer/listings?' + qs.toString(), {
-              method: 'GET',
-              headers: { 'Accept': 'application/json' },
-              credentials: 'omit',
-              signal: controller ? controller.signal : undefined
-            });
-          } finally {
-            if (timer) clearTimeout(timer);
+            var data = {};
+            try { data = JSON.parse(xhr.responseText || "{}"); } catch (e) { data = {}; }
+            if (xhr.status >= 200 && xhr.status < 300) {
+              var items = data.items || data.listings || [];
+              if (!Array.isArray(items)) items = [];
+              state.page = page;
+              state.hasMore = !!(data.has_more || data.hasMore);
+              finishLoading(items, append, state.hasMore);
+            } else {
+              tryFetch(idx + 1);
+            }
+          } catch (e) {
+            tryFetch(idx + 1);
           }
-          var data = {};
-          try { data = await res.json(); } catch (e) { data = {}; }
-          if (!res.ok) {
-            statusEl.style.display = 'block';
-            statusEl.className = 'err';
-            statusEl.textContent = (data && data.message) ? data.message : ('API ስህተት ' + res.status);
-            moreBtn.style.display = 'none';
-            return;
-          }
-          // accept both status:success and plain {items:[]}
-          var items = Array.isArray(data.items) ? data.items
-                    : (Array.isArray(data.listings) ? data.listings
-                    : (Array.isArray(data) ? data : []));
-          if (!append) grid.innerHTML = '';
-          if (!items.length && !append) {
-            statusEl.style.display = 'block';
-            statusEl.className = 'empty';
-            statusEl.textContent = 'ምንም አይነት የተመዘገበ ንብረት አልተገኘም';
-          } else {
-            statusEl.style.display = 'none';
-            grid.innerHTML += items.map(cardHtml).join('');
-          }
-          state.page = page;
-          state.hasMore = !!(data.has_more || data.hasMore);
-          moreBtn.style.display = state.hasMore ? 'block' : 'none';
+        };
+        xhr.onerror = function () { tryFetch(idx + 1); };
+        xhr.ontimeout = function () { tryFetch(idx + 1); };
+        try {
+          xhr.send();
         } catch (e) {
-          statusEl.style.display = 'block';
-          statusEl.className = 'err';
-          var msg = (e && e.name === 'AbortError') ? 'ጊዜ አልቋል — እንደገና ይሞክሩ' : ('Network error: ' + (e && e.message ? e.message : e));
-          statusEl.textContent = msg;
-          moreBtn.style.display = 'none';
-        } finally {
-          state.loading = false;
+          tryFetch(idx + 1);
         }
       }
-
-      tabSell.onclick = function () { state.tab = 'marketplace'; setTabs(); load(false); };
-      tabBuy.onclick = function () { state.tab = 'requests'; setTabs(); load(false); };
-      catsEl.onclick = function (ev) {
-        var el = ev.target.closest('[data-id]');
-        if (!el) return;
-        state.category = el.getAttribute('data-id') || '';
-        renderCats();
-        load(false);
-      };
-      moreBtn.onclick = function () { load(true); };
-      var deb = null;
-      qInput.oninput = function () {
-        clearTimeout(deb);
-        deb = setTimeout(function () {
-          state.q = qInput.value.trim();
-          load(false);
-        }, 300);
-      };
-
-      renderCats();
-      setTabs();
-      load(false);
-    } catch (e) {
-      document.body.innerHTML = '<div class="err" style="margin:20px">UI Error: ' +
-        (e && e.message ? e.message : e) + '</div>';
+      tryFetch(0);
     }
+
+    tabSell.onclick = function () { state.tab = "marketplace"; setTabs(); load(false); };
+    tabBuy.onclick = function () { state.tab = "requests"; setTabs(); load(false); };
+    catsEl.onclick = function (ev) {
+      var el = ev.target;
+      while (el && el !== catsEl && !el.getAttribute("data-id")) el = el.parentNode;
+      if (!el || el === catsEl) return;
+      state.category = el.getAttribute("data-id") || "";
+      renderCats();
+      load(false);
+    };
+    moreBtn.onclick = function () { load(true); };
+    var deb = null;
+    qInput.oninput = function () {
+      clearTimeout(deb);
+      deb = setTimeout(function () {
+        state.q = (qInput.value || "").trim();
+        load(false);
+      }, 300);
+    };
+
+    renderCats();
+    setTabs();
+    // Start load immediately
+    setTimeout(function () { load(false); }, 50);
   })();
   </script>
 </body>
