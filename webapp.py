@@ -31,6 +31,16 @@ try:
 except Exception:
     pass
 
+
+@web_app.before_request
+def _handle_options():
+    if request.method == "OPTIONS":
+        resp = web_app.make_response(("", 204))
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        return resp
+
 @web_app.after_request
 def _telegram_headers(resp):
     resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -985,176 +995,173 @@ EXPLORER_HTML = r"""
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      max-width: 100vw;
-      overflow-x: hidden !important;
-      box-sizing: border-box;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #E8F3FC;
-      color: #0f172a;
+      margin: 0; padding: 0; width: 100%; max-width: 100vw;
+      overflow-x: hidden !important; box-sizing: border-box;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #F0F4F8; color: #0f172a;
       -webkit-text-size-adjust: 100%;
     }
     *, *::before, *::after { box-sizing: border-box; }
-    .wrap {
-      width: 100%;
-      max-width: 100%;
-      margin: 0 auto;
-      padding: 0 0 40px;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
+    .wrap { width: 100%; max-width: 100%; margin: 0 auto; padding: 0 0 48px; min-height: 100vh; overflow-x: hidden; background: #F0F4F8; }
     .hdr {
-      position: sticky; top: 0; z-index: 20;
-      background: #D4E6F5;
-      border-bottom: 1px solid #bfdbfe;
-      padding: 8px 10px;
-      width: 100%;
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(240, 244, 248, 0.92);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-bottom: none !important;
+      box-shadow: 0 1px 0 rgba(148, 163, 184, 0.25);
+      padding: 10px 12px; width: 100%;
     }
+    .brand { font-weight: 800; font-size: 14px; color: #1e3a8a; margin-bottom: 8px; }
     .tabs { display: flex; gap: 8px; margin-bottom: 8px; width: 100%; }
     .tab {
-      flex: 1; min-width: 0; border: none; padding: 10px 6px;
-      border-radius: 12px; font-weight: 700; font-size: 12px;
-      background: rgba(255,255,255,0.45); color: #475569;
+      flex: 1; min-width: 0; border: none !important; padding: 10px 6px;
+      border-radius: 14px; font-weight: 700; font-size: 12px;
+      background: #ffffff; color: #475569; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
     }
-    .tab.on { background: #fff; color: #1d4ed8; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .tab.on {
+      background: #2563eb; color: #fff;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
+    }
     .search-wrap { position: relative; margin-bottom: 8px; width: 100%; }
-    .search-wrap span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: .5; }
+    .search-wrap span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: .4; pointer-events: none; }
     .search {
-      width: 100%; max-width: 100%;
-      padding: 10px 12px 10px 32px; border-radius: 12px;
-      border: 1px solid #e2e8f0; background: #fff; font-size: 13px;
+      width: 100%; padding: 11px 14px 11px 34px; border-radius: 14px;
+      border: none !important; background: #ffffff; font-size: 13px;
+      outline: none; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+      transition: box-shadow 0.15s ease;
     }
+    .search:focus { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18), 0 2px 8px rgba(15, 23, 42, 0.05); }
     .cats {
-      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
-      width: 100%; max-width: 100%;
-      -ms-overflow-style: none; scrollbar-width: none;
+      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;
+      width: 100%; -ms-overflow-style: none; scrollbar-width: none;
     }
     .cats::-webkit-scrollbar { display: none; }
     .cat {
-      flex: 0 0 auto; border: 1px solid #dbeafe; background: #fff;
-      border-radius: 999px; padding: 6px 12px; font-size: 11px; font-weight: 600; color: #334155;
+      flex: 0 0 auto; border: none !important; background: #ffffff;
+      border-radius: 999px; padding: 7px 12px; font-size: 11px; font-weight: 600;
+      color: #334155; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05); cursor: pointer;
     }
-    .cat.on { background: linear-gradient(90deg,#2563eb,#4f46e5); color: #fff; border-color: transparent; }
+    .cat.on { background: linear-gradient(90deg,#2563eb,#4f46e5); color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
 
-    /* Strict 2-column screen-fit grid */
     .grid, .listings-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      padding: 10px;
-      width: 100%;
-      max-width: 100%;
-      box-sizing: border-box;
-      margin: 0;
-      overflow-x: hidden;
+      gap: 12px; padding: 12px;
+      width: 100%; max-width: 100%; margin: 0;
     }
 
-    /* Frameless soft-shadow cards */
     .card, .listing-card {
-      width: 100%;
-      max-width: 100%;
-      min-width: 0;
-      box-sizing: border-box;
+      width: 100%; max-width: 100%; min-width: 0;
       background: #ffffff !important;
       border-radius: 16px !important;
       border: none !important;
       outline: none !important;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08) !important;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      padding: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.01) !important;
+      overflow: hidden; display: flex; flex-direction: column; padding: 8px;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
       -webkit-tap-highlight-color: transparent;
     }
-    .card:active, .listing-card:active {
+    .card:active {
       transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12) !important;
+      box-shadow: 0 14px 30px -5px rgba(0, 0, 0, 0.12), 0 8px 12px -6px rgba(0, 0, 0, 0.04) !important;
     }
 
-    .card-media, .img-wrap {
-      position: relative;
-      width: 100%;
-      height: 110px;
-      border-radius: 10px;
-      overflow: hidden;
-      background: #e2e8f0;
+    .card-media {
+      position: relative; width: 100%; height: 120px;
+      border-radius: 12px; overflow: hidden;
+      border: none !important;
+      background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
     }
+    .card-media img, .img {
+      width: 100%; height: 120px; object-fit: cover;
+      border: none !important; outline: none !important; display: block;
+    }
+    .ph {
+      width: 100%; height: 120px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 4px;
+      background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
+      border: none !important;
+      color: rgba(255,255,255,0.92);
+    }
+    .ph .ph-icon { font-size: 36px; opacity: 0.85; line-height: 1; }
+    .ph .ph-text { font-size: 10px; font-weight: 600; opacity: 0.8; letter-spacing: 0.02em; }
+
     .active-badge {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      width: 10px;
-      height: 10px;
+      position: absolute; top: 8px; left: 8px;
+      width: 10px; height: 10px;
       background-color: #22c55e;
       border-radius: 50%;
-      border: 2px solid #ffffff;
-      box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
-      z-index: 2;
-      display: block;
+      border: none !important; outline: none !important;
+      z-index: 2; display: block;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+      animation: pulse-green 1.6s ease-out infinite;
     }
     .active-badge.sold {
       background-color: #ef4444;
-      box-shadow: 0 0 6px rgba(239, 68, 68, 0.8);
+      animation: pulse-red 1.6s ease-out infinite;
     }
-    .card-media img, .img {
-      width: 100%;
-      height: 110px;
-      max-width: 100%;
-      object-fit: cover;
-      border-radius: 10px;
-      display: block;
-      border: none !important;
+    @keyframes pulse-green {
+      0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55), 0 0 6px rgba(34, 197, 94, 0.8); }
+      70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0), 0 0 10px rgba(34, 197, 94, 0.45); }
+      100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0), 0 0 6px rgba(34, 197, 94, 0.8); }
     }
-    .ph {
-      width: 100%;
-      height: 110px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      background: #e2e8f0;
-      border: none !important;
+    @keyframes pulse-red {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55), 0 0 6px rgba(239, 68, 68, 0.8); }
+      70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0), 0 0 10px rgba(239, 68, 68, 0.45); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0), 0 0 6px rgba(239, 68, 68, 0.8); }
     }
-    .title {
-      font-weight: 700; font-size: 13px; margin-top: 8px; line-height: 1.25;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-    }
-    .sub {
-      font-size: 11px; color: #64748b; margin-top: 2px; line-height: 1.3;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-    }
-    .price { font-weight: 800; color: #2563eb; font-size: 13px; margin-top: 6px; line-height: 1.2; }
-    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; width: 100%; }
-    .btn {
-      border: none !important; border-radius: 12px; padding: 8px;
-      font-size: 16px; text-decoration: none; text-align: center; min-width: 0;
-    }
-    .btn.call { background: #eff6ff; color: #1d4ed8; }
-    .btn.chat { background: #f8fafc; color: #334155; }
+
     .meta {
       display: flex; justify-content: space-between; gap: 4px;
       position: absolute; left: 6px; right: 6px; bottom: 6px;
     }
     .badge {
-      font-size: 9px; background: rgba(0,0,0,.5); color: #fff;
+      font-size: 9px; background: rgba(0,0,0,.48); color: #fff;
       padding: 2px 6px; border-radius: 999px; max-width: 48%;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      border: none !important;
     }
+    .title {
+      font-weight: 700; font-size: 13px; margin-top: 8px; line-height: 1.25;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sub {
+      font-size: 11px; color: #64748b; margin-top: 3px; line-height: 1.3;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .price-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 8px; padding: 6px 10px; border-radius: 999px;
+      background: #EFF6FF; color: #2563EB; font-weight: 800; font-size: 12px;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      border: none !important;
+    }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; width: 100%; }
+    .btn {
+      border: none !important; border-radius: 12px; padding: 9px;
+      font-size: 16px; text-decoration: none; text-align: center; min-width: 0;
+      transition: transform 0.12s ease;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn.call { background: #eff6ff; color: #1d4ed8; }
+    .btn.chat { background: #f1f5f9; color: #334155; }
     .empty, .err, .load { text-align: center; padding: 40px 16px; color: #64748b; font-size: 14px; }
-    .err { color: #b91c1c; background: #fef2f2; border-radius: 12px; margin: 12px 10px; }
+    .err { color: #b91c1c; background: #fff; border-radius: 16px; margin: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); }
     .more {
-      display: block; margin: 16px auto; border: 1px solid #bfdbfe; background: #fff;
-      color: #2563eb; border-radius: 999px; padding: 8px 18px; font-weight: 600; font-size: 12px;
+      display: block; margin: 16px auto; border: none !important; background: #ffffff;
+      color: #2563eb; border-radius: 999px; padding: 11px 22px;
+      font-weight: 700; font-size: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="hdr">
+      <div class="brand">Adika Marketplace</div>
       <div class="tabs">
         <button class="tab on" id="tabSell" type="button">🛒 የገበያ ቦታ</button>
         <button class="tab" id="tabBuy" type="button">📋 የፈላጊዎች</button>
@@ -1177,7 +1184,7 @@ EXPLORER_HTML = r"""
         try { tg.ready(); } catch (e) {}
         try { tg.expand(); } catch (e) {}
         try { tg.setHeaderColor('#2563eb'); } catch (e) {}
-        try { tg.setBackgroundColor('#E8F3FC'); } catch (e) {}
+        try { tg.setBackgroundColor('#F0F4F8'); } catch (e) {}
       }
 
       var state = {
@@ -1196,13 +1203,13 @@ EXPLORER_HTML = r"""
         { id: 'ንግድ', label: '🏢 የሥራ ቦታ' }
       ];
 
-      var catsEl = document.getElementById('cats');
       var grid = document.getElementById('grid');
       var statusEl = document.getElementById('status');
       var moreBtn = document.getElementById('more');
       var tabSell = document.getElementById('tabSell');
       var tabBuy = document.getElementById('tabBuy');
       var qInput = document.getElementById('q');
+      var catsEl = document.getElementById('cats');
 
       function esc(s) {
         return String(s == null ? '' : s)
@@ -1214,12 +1221,25 @@ EXPLORER_HTML = r"""
         try {
           var d = new Date(iso);
           var secs = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
-          if (secs < 60) return 'Just now';
-          if (secs < 3600) return Math.floor(secs / 60) + 'm ago';
-          if (secs < 86400) return Math.floor(secs / 3600) + ' hrs ago';
-          if (secs < 172800) return 'Yesterday';
-          return Math.floor(secs / 86400) + 'd ago';
+          if (secs < 60) return 'አሁን';
+          if (secs < 3600) return Math.floor(secs / 60) + ' ደቂቃ';
+          if (secs < 86400) return Math.floor(secs / 3600) + ' ሰዓት';
+          if (secs < 172800) return 'ትናንት';
+          return Math.floor(secs / 86400) + ' ቀን';
         } catch (e) { return ''; }
+      }
+
+      /** Strip price / budget / urgent sale noise from description so price shows only in badge */
+      function cleanDesc(raw) {
+        var s = String(raw || '');
+        s = s.replace(/[📝💰📞⚡📢🔄📦]/g, ' ');
+        s = s.replace(/አስቸኳይ\\s*ሽያጭ!?/gi, ' ');
+        s = s.replace(/ዋጋ\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
+        s = s.replace(/በጀት\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
+        s = s.replace(/price\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
+        s = s.replace(/budget\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
+        s = s.replace(/\\s+/g, ' ').trim();
+        return s.slice(0, 48);
       }
 
       function renderCats() {
@@ -1229,6 +1249,11 @@ EXPLORER_HTML = r"""
         }).join('');
       }
 
+      function setTabs() {
+        tabSell.className = 'tab' + (state.tab === 'marketplace' ? ' on' : '');
+        tabBuy.className = 'tab' + (state.tab === 'requests' ? ' on' : '');
+      }
+
       function cardHtml(item) {
         try {
           var extra = item.extra_data || {};
@@ -1236,15 +1261,20 @@ EXPLORER_HTML = r"""
             try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
           }
           var photos = item.photos || [];
+          if (!Array.isArray(photos)) photos = [];
+          var isCar = (item.main_category === 'መኪና' || item.category === 'መኪና');
+          var icon = isCar ? '🚗' : '🏠';
           var mediaInner = photos.length
-            ? '<img class="img" src="' + esc(photos[0]) + '" alt="" loading="lazy" onerror="this.parentNode.innerHTML=\'<div class=ph>📷</div>\'">'
-            : '<div class="ph">' + (item.main_category === 'መኪና' || item.category === 'መኪና' ? '🚗' : '🏠') + '</div>';
+            ? '<img class="img" src="' + esc(photos[0]) + '" alt="" loading="lazy" onerror="this.style.display=\\'none\\';var p=this.parentNode.querySelector(\\'.ph\\');if(p)p.style.display=\\'flex\\';">' +
+              '<div class="ph" style="display:none;position:absolute;inset:0"><div class="ph-icon">' + icon + '</div><div class="ph-text">No Image</div></div>'
+            : '<div class="ph"><div class="ph-icon">' + icon + '</div><div class="ph-text">No Image Available</div></div>';
           var title = (item.main_category || item.category || '') + (item.sub_category ? ' • ' + item.sub_category : '');
-          var desc = (item.description || '').replace(/[📝💰📞⚡📢🔄📦]/g,'').slice(0, 42);
+          var desc = cleanDesc(item.description);
           var isSell = String(item.req_type || '').toUpperCase() === 'SELL';
-          var price = (isSell ? '💰 ዋጋ: ' : '💰 በጀት: ') + (item.price || '—');
+          var priceNum = item.price || '—';
+          var priceLabel = (isSell ? 'ዋጋ' : 'በጀት') + ': ' + priceNum + (String(priceNum).match(/ETB|ብር/i) ? '' : ' ETB');
           var views = item.view_count || item.views_count || 0;
-          var phone = item.phone ? String(item.phone).replace(/\s+/g,'') : '';
+          var phone = item.phone ? String(item.phone).replace(/\\s+/g,'') : '';
           var user = extra.telegram_user ? String(extra.telegram_user).replace('@','') : '';
           var callHref = phone ? ('tel:' + phone) : '#';
           var chatHref = user ? ('https://t.me/' + user) : (item.user_chat_id ? ('tg://user?id=' + item.user_chat_id) : '#');
@@ -1259,20 +1289,15 @@ EXPLORER_HTML = r"""
             '<span class="badge">👁️ ' + esc(views) + '</span>' +
             '<span class="badge">' + esc(relativeTime(item.created_at)) + '</span></div></div>' +
             '<div class="title">' + esc(title) + '</div>' +
-            '<div class="sub">' + esc(desc) + '</div>' +
-            '<div class="price">' + esc(price) + '</div>' +
+            (desc ? '<div class="sub">' + esc(desc) + '</div>' : '') +
+            '<div class="price-badge">💰 ' + esc(priceLabel) + '</div>' +
             '<div class="actions">' +
             '<a class="btn call" href="' + esc(callHref) + '">📞</a>' +
             '<a class="btn chat" href="' + esc(chatHref) + '" target="_blank" rel="noreferrer">💬</a>' +
             '</div></div>';
         } catch (e) {
-          return '<div class="card"><div class="sub">Card error</div></div>';
+          return '<div class="card listing-card"><div class="sub">Card error</div></div>';
         }
-      }
-
-      function setTabs() {
-        tabSell.className = 'tab' + (state.tab === 'marketplace' ? ' on' : '');
-        tabBuy.className = 'tab' + (state.tab === 'requests' ? ' on' : '');
       }
 
       async function load(append) {
@@ -1295,33 +1320,51 @@ EXPLORER_HTML = r"""
           });
           if (state.category) qs.set('category', state.category);
           if (state.q) qs.set('q', state.q);
-          var res = await fetch('/api/explorer/listings?' + qs.toString());
+          var API_BASE = 'https://adika-y37t.onrender.com';
+          var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+          var timer = controller ? setTimeout(function(){ try { controller.abort(); } catch(e){} }, 15000) : null;
+          var res;
+          try {
+            res = await fetch(API_BASE + '/api/explorer/listings?' + qs.toString(), {
+              method: 'GET',
+              headers: { 'Accept': 'application/json' },
+              credentials: 'omit',
+              signal: controller ? controller.signal : undefined
+            });
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
           var data = {};
           try { data = await res.json(); } catch (e) { data = {}; }
-          if (!res.ok || data.status !== 'success') {
+          if (!res.ok) {
             statusEl.style.display = 'block';
             statusEl.className = 'err';
-            statusEl.textContent = (data && data.message) ? data.message : ('API error ' + res.status);
+            statusEl.textContent = (data && data.message) ? data.message : ('API ስህተት ' + res.status);
             moreBtn.style.display = 'none';
             return;
           }
-          var items = Array.isArray(data.items) ? data.items : [];
+          // accept both status:success and plain {items:[]}
+          var items = Array.isArray(data.items) ? data.items
+                    : (Array.isArray(data.listings) ? data.listings
+                    : (Array.isArray(data) ? data : []));
           if (!append) grid.innerHTML = '';
           if (!items.length && !append) {
             statusEl.style.display = 'block';
             statusEl.className = 'empty';
-            statusEl.textContent = 'ምንም ንብረት አልተገኘም';
+            statusEl.textContent = 'ምንም አይነት የተመዘገበ ንብረት አልተገኘም';
           } else {
             statusEl.style.display = 'none';
             grid.innerHTML += items.map(cardHtml).join('');
           }
           state.page = page;
-          state.hasMore = !!data.has_more;
+          state.hasMore = !!(data.has_more || data.hasMore);
           moreBtn.style.display = state.hasMore ? 'block' : 'none';
         } catch (e) {
           statusEl.style.display = 'block';
           statusEl.className = 'err';
-          statusEl.textContent = 'Network error: ' + (e && e.message ? e.message : e);
+          var msg = (e && e.name === 'AbortError') ? 'ጊዜ አልቋል — እንደገና ይሞክሩ' : ('Network error: ' + (e && e.message ? e.message : e));
+          statusEl.textContent = msg;
+          moreBtn.style.display = 'none';
         } finally {
           state.loading = false;
         }
@@ -1330,17 +1373,17 @@ EXPLORER_HTML = r"""
       tabSell.onclick = function () { state.tab = 'marketplace'; setTabs(); load(false); };
       tabBuy.onclick = function () { state.tab = 'requests'; setTabs(); load(false); };
       catsEl.onclick = function (ev) {
-        var t = ev.target.closest('[data-id]');
-        if (!t) return;
-        state.category = t.getAttribute('data-id') || '';
+        var el = ev.target.closest('[data-id]');
+        if (!el) return;
+        state.category = el.getAttribute('data-id') || '';
         renderCats();
         load(false);
       };
       moreBtn.onclick = function () { load(true); };
-      var t = null;
+      var deb = null;
       qInput.oninput = function () {
-        clearTimeout(t);
-        t = setTimeout(function () {
+        clearTimeout(deb);
+        deb = setTimeout(function () {
           state.q = qInput.value.trim();
           load(false);
         }, 300);
@@ -1405,91 +1448,152 @@ def api_health():
     return jsonify(info)
 
 
-@web_app.route('/api/explorer/listings', methods=['GET'])
+@web_app.route('/api/explorer/listings', methods=['GET', 'OPTIONS'])
 def api_explorer_listings():
-    """Fetch listings/requests with pagination, filters, relative-ready timestamps."""
+    """Fetch listings/requests with pagination. Never hangs — always JSON."""
+    if request.method == 'OPTIONS':
+        return ('', 204)
     try:
-        page = max(1, int(request.args.get('page', 1)))
-        limit = min(50, max(1, int(request.args.get('limit', 12))))
+        page = max(1, int(request.args.get('page', 1) or 1))
+        limit = min(50, max(1, int(request.args.get('limit', 12) or 12)))
         offset = (page - 1) * limit
-        req_type = request.args.get('type', '').upper()
-        category = request.args.get('category', '')
-        search = request.args.get('q', '').strip()
-        order = request.args.get('order', 'DESC').upper()
+        req_type = (request.args.get('type') or '').upper()
+        category = request.args.get('category') or ''
+        search = (request.args.get('q') or '').strip()
+        order = (request.args.get('order') or 'DESC').upper()
         active_only = request.args.get('active_only', '1') == '1'
         if order not in ('ASC', 'DESC'):
             order = 'DESC'
 
-        conn = get_db_connection()
-        cur = conn.cursor()
-        p = get_placeholder()
-
-        where = ["status != 'deleted'"]
-        params = []
-
-        if active_only:
-            where.append("status NOT IN ('sold', 'rented', 'expired')")
-        if req_type in ('SELL', 'BUY'):
-            where.append(f"UPPER(req_type) = UPPER({p})")
-            params.append(req_type)
-        if category:
-            where.append(f"(main_category = {p} OR category = {p})")
-            params.append(category)
-            params.append(category)
-        if search:
-            from models import is_postgres
-            like = "ILIKE" if is_postgres() else "LIKE"
-            where.append(f"(description {like} {p} OR price {like} {p} OR phone {like} {p})")
-            params.extend([f'%{search}%'] * 3)
-
-        where_sql = " AND ".join(where)
-        order_sql = "ASC" if order == "ASC" else "DESC"
-
-        cur.execute(f"SELECT COUNT(*) as cnt FROM listings WHERE {where_sql}", params)
-        total_row = cur.fetchone()
-        total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
-
-        cur.execute(f"""
-            SELECT * FROM listings
-            WHERE {where_sql}
-            ORDER BY id {order_sql}
-            LIMIT {p} OFFSET {p}
-        """, params + [limit, offset])
-
-        rows = cur.fetchall()
-        items = []
-        for row in rows:
-            item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
-            if isinstance(item.get('extra_data'), str):
-                try:
-                    item['extra_data'] = json.loads(item['extra_data'])
-                except Exception:
-                    item['extra_data'] = {}
-            # photos
-            cur.execute(f"SELECT photo_id FROM listing_photos WHERE listing_id = {p}", (item['id'],))
-            photos = [r['photo_id'] if isinstance(r, dict) else r[0] for r in cur.fetchall()]
-            if not photos and item.get('photo_id'):
-                photos = [item['photo_id']]
-            item['photos'] = photos
-            # Ensure view_count baseline for old rows
-            if item.get('view_count') is None:
-                item['view_count'] = 0
-            # Serialize created_at for frontend
-            if item.get('created_at') and not isinstance(item['created_at'], str):
-                try:
-                    item['created_at'] = item['created_at'].isoformat()
-                except Exception:
-                    item['created_at'] = str(item['created_at'])
-            items.append(item)
-
-        conn.close()
-        safe_items = [_json_safe(it) for it in items]
+        conn = None
         try:
-            import config as app_config
+            conn = get_db_connection()
+            cur = conn.cursor()
+            p = get_placeholder()
+            from models import is_postgres
+
+            # Detect columns safely
+            try:
+                if is_postgres():
+                    cur.execute(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'listings'"
+                    )
+                    cols = {r[0] if not isinstance(r, dict) else list(r.values())[0] for r in cur.fetchall()}
+                    cols = {str(c).lower() for c in cols}
+                else:
+                    cur.execute("PRAGMA table_info(listings)")
+                    cols = {str(r[1] if not isinstance(r, dict) else r.get('name')).lower() for r in cur.fetchall()}
+            except Exception:
+                cols = set()
+
+            where = ["1=1"]
+            params = []
+            if "status" in cols:
+                where.append(f"(status IS NULL OR status != {p})")
+                params.append('deleted')
+                if active_only:
+                    where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
+                    params.extend(['sold', 'rented', 'expired'])
+            if req_type in ('SELL', 'BUY') and "req_type" in cols:
+                where.append(f"UPPER(COALESCE(req_type,'')) = UPPER({p})")
+                params.append(req_type)
+            if category:
+                parts = []
+                if "main_category" in cols:
+                    parts.append(f"main_category = {p}")
+                    params.append(category)
+                if "category" in cols:
+                    parts.append(f"category = {p}")
+                    params.append(category)
+                if parts:
+                    where.append("(" + " OR ".join(parts) + ")")
+            if search:
+                like = "ILIKE" if is_postgres() else "LIKE"
+                sp = []
+                for col in ("description", "price", "phone", "title"):
+                    if col in cols or not cols:
+                        sp.append(f"CAST({col} AS TEXT) {like} {p}")
+                        params.append(f"%{search}%")
+                if sp:
+                    where.append("(" + " OR ".join(sp) + ")")
+
+            where_sql = " AND ".join(where)
+            order_col = "id" if ("id" in cols or not cols) else "created_at"
+            order_sql = "ASC" if order == "ASC" else "DESC"
+
+            total = 0
+            try:
+                cur.execute(f"SELECT COUNT(*) AS cnt FROM listings WHERE {where_sql}", params)
+                total_row = cur.fetchone()
+                total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
+            except Exception as ce:
+                logger.warning("count listings: %s", ce)
+                try:
+                    cur.execute("SELECT COUNT(*) AS cnt FROM listings")
+                    total_row = cur.fetchone()
+                    total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
+                    where_sql = "1=1"
+                    params = []
+                except Exception:
+                    total = 0
+
+            try:
+                cur.execute(
+                    f"SELECT * FROM listings WHERE {where_sql} "
+                    f"ORDER BY {order_col} {order_sql} LIMIT {p} OFFSET {p}",
+                    list(params) + [limit, offset],
+                )
+                rows = cur.fetchall() or []
+            except Exception as qe:
+                logger.warning("listings query failed (%s); simple select", qe)
+                cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p} OFFSET {p}", (limit, offset))
+                rows = cur.fetchall() or []
+
+            items = []
+            for row in rows:
+                item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
+                if isinstance(item.get('extra_data'), str):
+                    try:
+                        item['extra_data'] = json.loads(item['extra_data'])
+                    except Exception:
+                        item['extra_data'] = {}
+                photos = []
+                try:
+                    if item.get('id') is not None:
+                        cur.execute(
+                            f"SELECT photo_id FROM listing_photos WHERE listing_id = {p}",
+                            (item['id'],),
+                        )
+                        photos = [r['photo_id'] if isinstance(r, dict) else r[0] for r in (cur.fetchall() or [])]
+                except Exception:
+                    photos = []
+                if not photos and item.get('photo_id'):
+                    photos = [item['photo_id']]
+                item['photos'] = photos
+                if item.get('view_count') is None:
+                    item['view_count'] = 0
+                if item.get('created_at') and not isinstance(item['created_at'], str):
+                    try:
+                        item['created_at'] = item['created_at'].isoformat()
+                    except Exception:
+                        item['created_at'] = str(item['created_at'])
+                items.append(item)
+
+            safe_items = [_json_safe(it) for it in items]
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        try:
             from models import _DB_BACKEND
-            backend = getattr(app_config, "DB_BACKEND", None) or _DB_BACKEND
+            backend = _DB_BACKEND
         except Exception:
             backend = "postgres" if DATABASE_URL else "sqlite"
+
         return jsonify({
             "status": "success",
             "page": page,
@@ -1502,7 +1606,16 @@ def api_explorer_listings():
         })
     except Exception as e:
         logger.error(f"api_explorer_listings error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
+        # Never leave the Mini App spinning — return empty success payload
+        return jsonify({
+            "status": "success",
+            "page": 1,
+            "limit": 12,
+            "total": 0,
+            "has_more": False,
+            "items": [],
+            "message": str(e),
+        }), 200
 
 
 @web_app.route('/api/views/<int:listing_id>', methods=['POST'])
