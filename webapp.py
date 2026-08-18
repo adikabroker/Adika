@@ -1037,21 +1037,45 @@ EXPLORER_HTML = r"""
       gap: 12px; padding: 12px;
     }
     .card {
-      background: #fff; border: none; border-radius: 16px; padding: 8px;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.01);
-      display: flex; flex-direction: column;
+      background: #fff;
+      border: none !important;
+      border-width: 0 !important;
+      outline: none !important;
+      border-radius: 16px;
+      padding: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+      display: flex;
+      flex-direction: column;
     }
     .card-media {
-      position: relative; width: 100%; height: 120px; border-radius: 12px; overflow: hidden;
+      position: relative; width: 100%; height: 120px;
+      border-radius: 14px 14px 12px 12px;
+      overflow: hidden;
+      border: none !important;
       background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
     }
-    .card-media img { width: 100%; height: 120px; object-fit: cover; display: block; border: none; }
-    .ph {
-      width: 100%; height: 120px; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 4px; color: rgba(255,255,255,0.92);
+    .card-media img {
+      width: 100%; height: 120px; object-fit: cover; display: block;
+      border: none !important; outline: none !important;
     }
-    .ph-icon { font-size: 36px; opacity: 0.85; }
-    .ph-text { font-size: 10px; font-weight: 600; opacity: 0.8; }
+    .ph {
+      width: 100%; height: 120px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
+      border: none !important;
+    }
+    .ph-icon {
+      font-size: 40px; line-height: 1;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+    }
+    .ph-text {
+      font-size: 10px; font-weight: 600;
+      color: rgba(255,255,255,0.95);
+      text-shadow: none;
+      background: none;
+    }
     .active-badge {
       position: absolute; top: 8px; left: 8px; width: 10px; height: 10px;
       background: #22c55e; border-radius: 50%; border: none;
@@ -1169,10 +1193,14 @@ EXPLORER_HTML = r"""
 
     function cleanDesc(raw) {
       var s = String(raw || "");
-      s = s.replace(/[📝💰📞⚡📢🔄📦]/g, " ");
+      s = s.replace(/\*+/g, " ");
+      s = s.replace(/[📝💰📞⚡📢🔄📦✅☑️]/g, " ");
       s = s.replace(/አስቸኳይ\s*ሽያጭ!?/gi, " ");
-      s = s.replace(/ዋጋ\s*[:：]?\s*[\d,]+(\s*ETB)?/gi, " ");
-      s = s.replace(/በጀት\s*[:：]?\s*[\d,]+(\s*ETB)?/gi, " ");
+      s = s.replace(/የሚደራደር|ደራደር|negotiable/gi, " ");
+      s = s.replace(/ዋጋ\s*[:：]?\s*[\d,\.]+(\s*(ETB|ብር))?/gi, " ");
+      s = s.replace(/በጀት\s*[:：]?\s*[\d,\.]+(\s*(ETB|ብር))?/gi, " ");
+      s = s.replace(/[\d,\.]+\s*(ETB|ብር)/gi, " ");
+      s = s.replace(/\(\s*\)/g, " ");
       return s.replace(/\s+/g, " ").trim().slice(0, 48);
     }
 
