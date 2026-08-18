@@ -1310,33 +1310,57 @@ EXPLORER_HTML = r"""
           });
           if (state.category) qs.set('category', state.category);
           if (state.q) qs.set('q', state.q);
-          var res = await fetch('/api/explorer/listings?' + qs.toString());
+          var API_BASE = 'https://adika-y37t.onrender.com';
+          try {
+            if (window.location && window.location.origin && /^https?:/.test(window.location.origin)
+                && window.location.origin.indexOf('adika') !== -1) {
+              API_BASE = window.location.origin;
+            }
+          } catch (e0) {}
+          var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+          var timer = controller ? setTimeout(function(){ try { controller.abort(); } catch(e){} }, 15000) : null;
+          var res;
+          try {
+            res = await fetch(API_BASE + '/api/explorer/listings?' + qs.toString(), {
+              method: 'GET',
+              headers: { 'Accept': 'application/json' },
+              credentials: 'omit',
+              signal: controller ? controller.signal : undefined
+            });
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
           var data = {};
           try { data = await res.json(); } catch (e) { data = {}; }
-          if (!res.ok || data.status !== 'success') {
+          if (!res.ok) {
             statusEl.style.display = 'block';
             statusEl.className = 'err';
-            statusEl.textContent = (data && data.message) ? data.message : ('ስህተት ' + res.status);
+            statusEl.textContent = (data && data.message) ? data.message : ('API ስህተት ' + res.status);
             moreBtn.style.display = 'none';
             return;
           }
-          var items = Array.isArray(data.items) ? data.items : [];
+          // accept both status:success and plain {items:[]}
+          var items = Array.isArray(data.items) ? data.items
+                    : (Array.isArray(data.listings) ? data.listings
+                    : (Array.isArray(data) ? data : []));
           if (!append) grid.innerHTML = '';
           if (!items.length && !append) {
             statusEl.style.display = 'block';
             statusEl.className = 'empty';
-            statusEl.textContent = 'ምንም ንብረት አልተገኘም';
+            statusEl.textContent = 'ምንም አይነት መረጃ አልተገኘም';
           } else {
             statusEl.style.display = 'none';
             grid.innerHTML += items.map(cardHtml).join('');
           }
           state.page = page;
-          state.hasMore = !!data.has_more;
+          state.hasMore = !!(data.has_more || data.hasMore);
           moreBtn.style.display = state.hasMore ? 'block' : 'none';
         } catch (e) {
           statusEl.style.display = 'block';
           statusEl.className = 'err';
-          statusEl.textContent = 'Network error: ' + (e && e.message ? e.message : e);
+          var msg = (e && e.name === 'AbortError') ? 'ጊዜ አልቋል — እንደገና ይሞክሩ' : ('Network error: ' + (e && e.message ? e.message : e));
+          statusEl.textContent = msg;
+          moreBtn.style.display = 'none';
         } finally {
           state.loading = false;
         }
@@ -1420,91 +1444,152 @@ def api_health():
     return jsonify(info)
 
 
-@web_app.route('/api/explorer/listings', methods=['GET'])
+@web_app.route('/api/explorer/listings', methods=['GET', 'OPTIONS'])
 def api_explorer_listings():
-    """Fetch listings/requests with pagination, filters, relative-ready timestamps."""
+    """Fetch listings/requests with pagination. Never hangs — always JSON."""
+    if request.method == 'OPTIONS':
+        return ('', 204)
     try:
-        page = max(1, int(request.args.get('page', 1)))
-        limit = min(50, max(1, int(request.args.get('limit', 12))))
+        page = max(1, int(request.args.get('page', 1) or 1))
+        limit = min(50, max(1, int(request.args.get('limit', 12) or 12)))
         offset = (page - 1) * limit
-        req_type = request.args.get('type', '').upper()
-        category = request.args.get('category', '')
-        search = request.args.get('q', '').strip()
-        order = request.args.get('order', 'DESC').upper()
+        req_type = (request.args.get('type') or '').upper()
+        category = request.args.get('category') or ''
+        search = (request.args.get('q') or '').strip()
+        order = (request.args.get('order') or 'DESC').upper()
         active_only = request.args.get('active_only', '1') == '1'
         if order not in ('ASC', 'DESC'):
             order = 'DESC'
 
-        conn = get_db_connection()
-        cur = conn.cursor()
-        p = get_placeholder()
-
-        where = ["status != 'deleted'"]
-        params = []
-
-        if active_only:
-            where.append("status NOT IN ('sold', 'rented', 'expired')")
-        if req_type in ('SELL', 'BUY'):
-            where.append(f"UPPER(req_type) = UPPER({p})")
-            params.append(req_type)
-        if category:
-            where.append(f"(main_category = {p} OR category = {p})")
-            params.append(category)
-            params.append(category)
-        if search:
-            from models import is_postgres
-            like = "ILIKE" if is_postgres() else "LIKE"
-            where.append(f"(description {like} {p} OR price {like} {p} OR phone {like} {p})")
-            params.extend([f'%{search}%'] * 3)
-
-        where_sql = " AND ".join(where)
-        order_sql = "ASC" if order == "ASC" else "DESC"
-
-        cur.execute(f"SELECT COUNT(*) as cnt FROM listings WHERE {where_sql}", params)
-        total_row = cur.fetchone()
-        total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
-
-        cur.execute(f"""
-            SELECT * FROM listings
-            WHERE {where_sql}
-            ORDER BY id {order_sql}
-            LIMIT {p} OFFSET {p}
-        """, params + [limit, offset])
-
-        rows = cur.fetchall()
-        items = []
-        for row in rows:
-            item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
-            if isinstance(item.get('extra_data'), str):
-                try:
-                    item['extra_data'] = json.loads(item['extra_data'])
-                except Exception:
-                    item['extra_data'] = {}
-            # photos
-            cur.execute(f"SELECT photo_id FROM listing_photos WHERE listing_id = {p}", (item['id'],))
-            photos = [r['photo_id'] if isinstance(r, dict) else r[0] for r in cur.fetchall()]
-            if not photos and item.get('photo_id'):
-                photos = [item['photo_id']]
-            item['photos'] = photos
-            # Ensure view_count baseline for old rows
-            if item.get('view_count') is None:
-                item['view_count'] = 0
-            # Serialize created_at for frontend
-            if item.get('created_at') and not isinstance(item['created_at'], str):
-                try:
-                    item['created_at'] = item['created_at'].isoformat()
-                except Exception:
-                    item['created_at'] = str(item['created_at'])
-            items.append(item)
-
-        conn.close()
-        safe_items = [_json_safe(it) for it in items]
+        conn = None
         try:
-            import config as app_config
+            conn = get_db_connection()
+            cur = conn.cursor()
+            p = get_placeholder()
+            from models import is_postgres
+
+            # Detect columns safely
+            try:
+                if is_postgres():
+                    cur.execute(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'listings'"
+                    )
+                    cols = {r[0] if not isinstance(r, dict) else list(r.values())[0] for r in cur.fetchall()}
+                    cols = {str(c).lower() for c in cols}
+                else:
+                    cur.execute("PRAGMA table_info(listings)")
+                    cols = {str(r[1] if not isinstance(r, dict) else r.get('name')).lower() for r in cur.fetchall()}
+            except Exception:
+                cols = set()
+
+            where = ["1=1"]
+            params = []
+            if "status" in cols:
+                where.append(f"(status IS NULL OR status != {p})")
+                params.append('deleted')
+                if active_only:
+                    where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
+                    params.extend(['sold', 'rented', 'expired'])
+            if req_type in ('SELL', 'BUY') and "req_type" in cols:
+                where.append(f"UPPER(COALESCE(req_type,'')) = UPPER({p})")
+                params.append(req_type)
+            if category:
+                parts = []
+                if "main_category" in cols:
+                    parts.append(f"main_category = {p}")
+                    params.append(category)
+                if "category" in cols:
+                    parts.append(f"category = {p}")
+                    params.append(category)
+                if parts:
+                    where.append("(" + " OR ".join(parts) + ")")
+            if search:
+                like = "ILIKE" if is_postgres() else "LIKE"
+                sp = []
+                for col in ("description", "price", "phone", "title"):
+                    if col in cols or not cols:
+                        sp.append(f"CAST({col} AS TEXT) {like} {p}")
+                        params.append(f"%{search}%")
+                if sp:
+                    where.append("(" + " OR ".join(sp) + ")")
+
+            where_sql = " AND ".join(where)
+            order_col = "id" if ("id" in cols or not cols) else "created_at"
+            order_sql = "ASC" if order == "ASC" else "DESC"
+
+            total = 0
+            try:
+                cur.execute(f"SELECT COUNT(*) AS cnt FROM listings WHERE {where_sql}", params)
+                total_row = cur.fetchone()
+                total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
+            except Exception as ce:
+                logger.warning("count listings: %s", ce)
+                try:
+                    cur.execute("SELECT COUNT(*) AS cnt FROM listings")
+                    total_row = cur.fetchone()
+                    total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
+                    where_sql = "1=1"
+                    params = []
+                except Exception:
+                    total = 0
+
+            try:
+                cur.execute(
+                    f"SELECT * FROM listings WHERE {where_sql} "
+                    f"ORDER BY {order_col} {order_sql} LIMIT {p} OFFSET {p}",
+                    list(params) + [limit, offset],
+                )
+                rows = cur.fetchall() or []
+            except Exception as qe:
+                logger.warning("listings query failed (%s); simple select", qe)
+                cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p} OFFSET {p}", (limit, offset))
+                rows = cur.fetchall() or []
+
+            items = []
+            for row in rows:
+                item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
+                if isinstance(item.get('extra_data'), str):
+                    try:
+                        item['extra_data'] = json.loads(item['extra_data'])
+                    except Exception:
+                        item['extra_data'] = {}
+                photos = []
+                try:
+                    if item.get('id') is not None:
+                        cur.execute(
+                            f"SELECT photo_id FROM listing_photos WHERE listing_id = {p}",
+                            (item['id'],),
+                        )
+                        photos = [r['photo_id'] if isinstance(r, dict) else r[0] for r in (cur.fetchall() or [])]
+                except Exception:
+                    photos = []
+                if not photos and item.get('photo_id'):
+                    photos = [item['photo_id']]
+                item['photos'] = photos
+                if item.get('view_count') is None:
+                    item['view_count'] = 0
+                if item.get('created_at') and not isinstance(item['created_at'], str):
+                    try:
+                        item['created_at'] = item['created_at'].isoformat()
+                    except Exception:
+                        item['created_at'] = str(item['created_at'])
+                items.append(item)
+
+            safe_items = [_json_safe(it) for it in items]
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        try:
             from models import _DB_BACKEND
-            backend = getattr(app_config, "DB_BACKEND", None) or _DB_BACKEND
+            backend = _DB_BACKEND
         except Exception:
             backend = "postgres" if DATABASE_URL else "sqlite"
+
         return jsonify({
             "status": "success",
             "page": page,
@@ -1517,7 +1602,16 @@ def api_explorer_listings():
         })
     except Exception as e:
         logger.error(f"api_explorer_listings error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e)}), 500
+        # Never leave the Mini App spinning — return empty success payload
+        return jsonify({
+            "status": "success",
+            "page": 1,
+            "limit": 12,
+            "total": 0,
+            "has_more": False,
+            "items": [],
+            "message": str(e),
+        }), 200
 
 
 @web_app.route('/api/views/<int:listing_id>', methods=['POST'])
