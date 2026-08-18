@@ -987,96 +987,96 @@ EXPLORER_HTML = r"""
     html, body {
       margin: 0; padding: 0; width: 100%; max-width: 100vw;
       overflow-x: hidden !important; box-sizing: border-box;
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #E8F3FC; color: #0f172a;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #F0F4F8; color: #0f172a;
       -webkit-text-size-adjust: 100%;
     }
     *, *::before, *::after { box-sizing: border-box; }
-    .wrap { width: 100%; max-width: 100%; margin: 0 auto; padding: 0 0 48px; min-height: 100vh; overflow-x: hidden; }
+    .wrap { width: 100%; max-width: 100%; margin: 0 auto; padding: 0 0 48px; min-height: 100vh; overflow-x: hidden; background: #F0F4F8; }
     .hdr {
       position: sticky; top: 0; z-index: 30;
-      background: rgba(212, 230, 245, 0.92);
+      background: rgba(240, 244, 248, 0.92);
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid #bfdbfe; padding: 8px 10px; width: 100%;
+      border-bottom: none !important;
+      box-shadow: 0 1px 0 rgba(148, 163, 184, 0.25);
+      padding: 10px 12px; width: 100%;
     }
-    .hdr-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-    .brand { font-weight: 800; font-size: 14px; color: #1e3a8a; letter-spacing: -0.02em; }
-    .lang-toggle {
-      display: inline-flex; align-items: center; background: #fff;
-      border-radius: 999px; padding: 2px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-      border: 1px solid #e2e8f0;
-    }
-    .lang-btn {
-      border: none; background: transparent; padding: 5px 10px;
-      font-size: 11px; font-weight: 700; color: #64748b; border-radius: 999px;
-      cursor: pointer; transition: all 0.15s ease;
-    }
-    .lang-btn.on { background: #2563eb; color: #fff; }
+    .brand { font-weight: 800; font-size: 14px; color: #1e3a8a; margin-bottom: 8px; }
     .tabs { display: flex; gap: 8px; margin-bottom: 8px; width: 100%; }
     .tab {
-      flex: 1; min-width: 0; border: none; padding: 10px 6px;
-      border-radius: 12px; font-weight: 700; font-size: 12px;
-      background: rgba(255,255,255,0.5); color: #475569; cursor: pointer;
+      flex: 1; min-width: 0; border: none !important; padding: 10px 6px;
+      border-radius: 14px; font-weight: 700; font-size: 12px;
+      background: #ffffff; color: #475569; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
     }
-    .tab.on { background: #fff; color: #1d4ed8; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .tab.on {
+      background: #2563eb; color: #fff;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
+    }
     .search-wrap { position: relative; margin-bottom: 8px; width: 100%; }
-    .search-wrap span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); opacity: .45; pointer-events: none; }
+    .search-wrap span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: .4; pointer-events: none; }
     .search {
-      width: 100%; max-width: 100%;
-      padding: 10px 12px 10px 32px; border-radius: 12px;
-      border: 1px solid #e2e8f0; background: #fff; font-size: 13px;
-      outline: none; transition: box-shadow 0.15s ease, border-color 0.15s ease;
+      width: 100%; padding: 11px 14px 11px 34px; border-radius: 14px;
+      border: none !important; background: #ffffff; font-size: 13px;
+      outline: none; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+      transition: box-shadow 0.15s ease;
     }
-    .search:focus {
-      border-color: #93c5fd;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
-    }
+    .search:focus { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18), 0 2px 8px rgba(15, 23, 42, 0.05); }
     .cats {
-      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px;
       width: 100%; -ms-overflow-style: none; scrollbar-width: none;
     }
     .cats::-webkit-scrollbar { display: none; }
     .cat {
-      flex: 0 0 auto; border: none; background: #fff;
-      border-radius: 999px; padding: 6px 12px; font-size: 11px; font-weight: 600;
-      color: #334155; box-shadow: 0 1px 4px rgba(0,0,0,0.05); cursor: pointer;
+      flex: 0 0 auto; border: none !important; background: #ffffff;
+      border-radius: 999px; padding: 7px 12px; font-size: 11px; font-weight: 600;
+      color: #334155; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05); cursor: pointer;
     }
-    .cat.on { background: linear-gradient(90deg,#2563eb,#4f46e5); color: #fff; }
+    .cat.on { background: linear-gradient(90deg,#2563eb,#4f46e5); color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
 
     .grid, .listings-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px; padding: 10px;
-      width: 100%; max-width: 100%; box-sizing: border-box; margin: 0;
+      gap: 12px; padding: 12px;
+      width: 100%; max-width: 100%; margin: 0;
     }
 
     .card, .listing-card {
       width: 100%; max-width: 100%; min-width: 0;
       background: #ffffff !important;
       border-radius: 16px !important;
-      border: none !important; outline: none !important;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06) !important;
+      border: none !important;
+      outline: none !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.01) !important;
       overflow: hidden; display: flex; flex-direction: column; padding: 8px;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
       -webkit-tap-highlight-color: transparent;
     }
     .card:active {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
+      box-shadow: 0 14px 30px -5px rgba(0, 0, 0, 0.12), 0 8px 12px -6px rgba(0, 0, 0, 0.04) !important;
     }
 
     .card-media {
-      position: relative; width: 100%; height: 110px;
-      border-radius: 12px; overflow: hidden; background: #e2e8f0;
+      position: relative; width: 100%; height: 120px;
+      border-radius: 12px; overflow: hidden;
+      border: none !important;
+      background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
     }
     .card-media img, .img {
-      width: 100%; height: 110px; object-fit: cover;
+      width: 100%; height: 120px; object-fit: cover;
       border: none !important; outline: none !important; display: block;
     }
     .ph {
-      width: 100%; height: 110px; display: flex; align-items: center;
-      justify-content: center; font-size: 32px; background: #e2e8f0;
+      width: 100%; height: 120px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 4px;
+      background: linear-gradient(135deg, #60A5FA 0%, #2563EB 100%);
+      border: none !important;
+      color: rgba(255,255,255,0.92);
     }
+    .ph .ph-icon { font-size: 36px; opacity: 0.85; line-height: 1; }
+    .ph .ph-text { font-size: 10px; font-weight: 600; opacity: 0.8; letter-spacing: 0.02em; }
 
     .active-badge {
       position: absolute; top: 8px; left: 8px;
@@ -1111,50 +1111,47 @@ EXPLORER_HTML = r"""
       font-size: 9px; background: rgba(0,0,0,.48); color: #fff;
       padding: 2px 6px; border-radius: 999px; max-width: 48%;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      border: none !important;
     }
     .title {
       font-weight: 700; font-size: 13px; margin-top: 8px; line-height: 1.25;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .sub {
-      font-size: 11px; color: #64748b; margin-top: 2px; line-height: 1.3;
+      font-size: 11px; color: #64748b; margin-top: 3px; line-height: 1.3;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .price-badge {
       display: inline-flex; align-items: center; gap: 4px;
-      margin-top: 8px; padding: 5px 10px; border-radius: 999px;
+      margin-top: 8px; padding: 6px 10px; border-radius: 999px;
       background: #EFF6FF; color: #2563EB; font-weight: 800; font-size: 12px;
       max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      border: none !important;
     }
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; width: 100%; }
     .btn {
-      border: none !important; border-radius: 12px; padding: 8px;
+      border: none !important; border-radius: 12px; padding: 9px;
       font-size: 16px; text-decoration: none; text-align: center; min-width: 0;
       transition: transform 0.12s ease;
     }
     .btn:active { transform: scale(0.96); }
     .btn.call { background: #eff6ff; color: #1d4ed8; }
-    .btn.chat { background: #f8fafc; color: #334155; }
+    .btn.chat { background: #f1f5f9; color: #334155; }
     .empty, .err, .load { text-align: center; padding: 40px 16px; color: #64748b; font-size: 14px; }
-    .err { color: #b91c1c; background: #fef2f2; border-radius: 12px; margin: 12px 10px; }
+    .err { color: #b91c1c; background: #fff; border-radius: 16px; margin: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); }
     .more {
-      display: block; margin: 16px auto; border: none; background: #fff;
-      color: #2563eb; border-radius: 999px; padding: 10px 20px;
-      font-weight: 700; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      cursor: pointer;
+      display: block; margin: 16px auto; border: none !important; background: #ffffff;
+      color: #2563eb; border-radius: 999px; padding: 11px 22px;
+      font-weight: 700; font-size: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="hdr">
-      <div class="hdr-top">
-        <div class="brand">Adika</div>
-        <div class="lang-toggle" role="group" aria-label="Language">
-          <button type="button" class="lang-btn on" id="langAM" data-lang="am">AM</button>
-          <button type="button" class="lang-btn" id="langEN" data-lang="en">EN</button>
-        </div>
-      </div>
+      <div class="brand">Adika Marketplace</div>
       <div class="tabs">
         <button class="tab on" id="tabSell" type="button">🛒 የገበያ ቦታ</button>
         <button class="tab" id="tabBuy" type="button">📋 የፈላጊዎች</button>
@@ -1177,43 +1174,9 @@ EXPLORER_HTML = r"""
         try { tg.ready(); } catch (e) {}
         try { tg.expand(); } catch (e) {}
         try { tg.setHeaderColor('#2563eb'); } catch (e) {}
-        try { tg.setBackgroundColor('#E8F3FC'); } catch (e) {}
+        try { tg.setBackgroundColor('#F0F4F8'); } catch (e) {}
       }
 
-      var i18n = {
-        am: {
-          sell: '🛒 የገበያ ቦታ',
-          buy: '📋 የፈላጊዎች',
-          search: 'ፈልግ...',
-          loading: 'እየጫነ ነው…',
-          empty: 'ምንም ንብረት አልተገኘም',
-          more: 'ተጨማሪ ይመልከቱ',
-          price: 'ዋጋ',
-          budget: 'በጀት',
-          all: '✨ ሁሉም',
-          car: '🚗 መኪና',
-          house: '🏠 ቤት / ቦታ',
-          biz: '🏢 የሥራ ቦታ',
-          err: 'ስህተት ተከስቷል'
-        },
-        en: {
-          sell: '🛒 Marketplace',
-          buy: '📋 Requests',
-          search: 'Search...',
-          loading: 'Loading…',
-          empty: 'No listings found',
-          more: 'Load more',
-          price: 'Price',
-          budget: 'Budget',
-          all: '✨ All',
-          car: '🚗 Cars',
-          house: '🏠 Homes',
-          biz: '🏢 Business',
-          err: 'Something went wrong'
-        }
-      };
-
-      var lang = localStorage.getItem('adika_lang') || 'am';
       var state = {
         tab: (new URLSearchParams(location.search).get('tab') === 'requests') ? 'requests' : 'marketplace',
         category: '',
@@ -1223,6 +1186,13 @@ EXPLORER_HTML = r"""
         loading: false
       };
 
+      var cats = [
+        { id: '', label: '✨ ሁሉም' },
+        { id: 'መኪና', label: '🚗 መኪና' },
+        { id: 'ቤት', label: '🏠 ቤት / ቦታ' },
+        { id: 'ንግድ', label: '🏢 የሥራ ቦታ' }
+      ];
+
       var grid = document.getElementById('grid');
       var statusEl = document.getElementById('status');
       var moreBtn = document.getElementById('more');
@@ -1230,10 +1200,6 @@ EXPLORER_HTML = r"""
       var tabBuy = document.getElementById('tabBuy');
       var qInput = document.getElementById('q');
       var catsEl = document.getElementById('cats');
-      var langAM = document.getElementById('langAM');
-      var langEN = document.getElementById('langEN');
-
-      function t(key) { return (i18n[lang] && i18n[lang][key]) || key; }
 
       function esc(s) {
         return String(s == null ? '' : s)
@@ -1245,33 +1211,28 @@ EXPLORER_HTML = r"""
         try {
           var d = new Date(iso);
           var secs = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
-          if (secs < 60) return lang === 'am' ? 'አሁን' : 'Just now';
-          if (secs < 3600) return Math.floor(secs / 60) + (lang === 'am' ? ' ደቂቃ' : 'm ago');
-          if (secs < 86400) return Math.floor(secs / 3600) + (lang === 'am' ? ' ሰዓት' : ' hrs ago');
-          if (secs < 172800) return lang === 'am' ? 'ትናንት' : 'Yesterday';
-          return Math.floor(secs / 86400) + (lang === 'am' ? ' ቀን' : 'd ago');
+          if (secs < 60) return 'አሁን';
+          if (secs < 3600) return Math.floor(secs / 60) + ' ደቂቃ';
+          if (secs < 86400) return Math.floor(secs / 3600) + ' ሰዓት';
+          if (secs < 172800) return 'ትናንት';
+          return Math.floor(secs / 86400) + ' ቀን';
         } catch (e) { return ''; }
       }
 
-      function applyLang() {
-        langAM.className = 'lang-btn' + (lang === 'am' ? ' on' : '');
-        langEN.className = 'lang-btn' + (lang === 'en' ? ' on' : '');
-        tabSell.textContent = t('sell');
-        tabBuy.textContent = t('buy');
-        qInput.placeholder = t('search');
-        moreBtn.textContent = t('more');
-        document.documentElement.lang = lang;
-        renderCats();
-        setTabs();
+      /** Strip price / budget / urgent sale noise from description so price shows only in badge */
+      function cleanDesc(raw) {
+        var s = String(raw || '');
+        s = s.replace(/[📝💰📞⚡📢🔄📦]/g, ' ');
+        s = s.replace(/አስቸኳይ\\s*ሽያጭ!?/gi, ' ');
+        s = s.replace(/ዋጋ\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
+        s = s.replace(/በጀት\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
+        s = s.replace(/price\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
+        s = s.replace(/budget\\s*[:：]?\\s*[\\d,]+(\\s*ETB)?/gi, ' ');
+        s = s.replace(/\\s+/g, ' ').trim();
+        return s.slice(0, 48);
       }
 
       function renderCats() {
-        var cats = [
-          { id: '', label: t('all') },
-          { id: 'መኪና', label: t('car') },
-          { id: 'ቤት', label: t('house') },
-          { id: 'ንግድ', label: t('biz') }
-        ];
         catsEl.innerHTML = cats.map(function (c) {
           return '<button type="button" class="cat' + (state.category === c.id ? ' on' : '') +
             '" data-id="' + esc(c.id) + '">' + esc(c.label) + '</button>';
@@ -1290,15 +1251,20 @@ EXPLORER_HTML = r"""
             try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
           }
           var photos = item.photos || [];
+          if (!Array.isArray(photos)) photos = [];
+          var isCar = (item.main_category === 'መኪና' || item.category === 'መኪና');
+          var icon = isCar ? '🚗' : '🏠';
           var mediaInner = photos.length
-            ? '<img class="img" src="' + esc(photos[0]) + '" alt="" loading="lazy" onerror="this.parentNode.querySelector(\'.ph-fallback\')||0;this.style.display=\'none\'">'
-            : '<div class="ph">' + (item.main_category === 'መኪና' || item.category === 'መኪና' ? '🚗' : '🏠') + '</div>';
+            ? '<img class="img" src="' + esc(photos[0]) + '" alt="" loading="lazy" onerror="this.style.display=\\'none\\';var p=this.parentNode.querySelector(\\'.ph\\');if(p)p.style.display=\\'flex\\';">' +
+              '<div class="ph" style="display:none;position:absolute;inset:0"><div class="ph-icon">' + icon + '</div><div class="ph-text">No Image</div></div>'
+            : '<div class="ph"><div class="ph-icon">' + icon + '</div><div class="ph-text">No Image Available</div></div>';
           var title = (item.main_category || item.category || '') + (item.sub_category ? ' • ' + item.sub_category : '');
-          var desc = (item.description || '').replace(/[📝💰📞⚡📢🔄📦]/g,'').slice(0, 42);
+          var desc = cleanDesc(item.description);
           var isSell = String(item.req_type || '').toUpperCase() === 'SELL';
-          var priceLabel = (isSell ? t('price') : t('budget')) + ': ' + (item.price || '—');
+          var priceNum = item.price || '—';
+          var priceLabel = (isSell ? 'ዋጋ' : 'በጀት') + ': ' + priceNum + (String(priceNum).match(/ETB|ብር/i) ? '' : ' ETB');
           var views = item.view_count || item.views_count || 0;
-          var phone = item.phone ? String(item.phone).replace(/\s+/g,'') : '';
+          var phone = item.phone ? String(item.phone).replace(/\\s+/g,'') : '';
           var user = extra.telegram_user ? String(extra.telegram_user).replace('@','') : '';
           var callHref = phone ? ('tel:' + phone) : '#';
           var chatHref = user ? ('https://t.me/' + user) : (item.user_chat_id ? ('tg://user?id=' + item.user_chat_id) : '#');
@@ -1313,7 +1279,7 @@ EXPLORER_HTML = r"""
             '<span class="badge">👁️ ' + esc(views) + '</span>' +
             '<span class="badge">' + esc(relativeTime(item.created_at)) + '</span></div></div>' +
             '<div class="title">' + esc(title) + '</div>' +
-            '<div class="sub">' + esc(desc) + '</div>' +
+            (desc ? '<div class="sub">' + esc(desc) + '</div>' : '') +
             '<div class="price-badge">💰 ' + esc(priceLabel) + '</div>' +
             '<div class="actions">' +
             '<a class="btn call" href="' + esc(callHref) + '">📞</a>' +
@@ -1330,7 +1296,7 @@ EXPLORER_HTML = r"""
         if (!append) {
           statusEl.style.display = 'block';
           statusEl.className = 'load';
-          statusEl.textContent = t('loading');
+          statusEl.textContent = 'እየጫነ ነው…';
           grid.innerHTML = '';
         }
         try {
@@ -1350,7 +1316,7 @@ EXPLORER_HTML = r"""
           if (!res.ok || data.status !== 'success') {
             statusEl.style.display = 'block';
             statusEl.className = 'err';
-            statusEl.textContent = (data && data.message) ? data.message : (t('err') + ' ' + res.status);
+            statusEl.textContent = (data && data.message) ? data.message : ('ስህተት ' + res.status);
             moreBtn.style.display = 'none';
             return;
           }
@@ -1359,7 +1325,7 @@ EXPLORER_HTML = r"""
           if (!items.length && !append) {
             statusEl.style.display = 'block';
             statusEl.className = 'empty';
-            statusEl.textContent = t('empty');
+            statusEl.textContent = 'ምንም ንብረት አልተገኘም';
           } else {
             statusEl.style.display = 'none';
             grid.innerHTML += items.map(cardHtml).join('');
@@ -1370,14 +1336,12 @@ EXPLORER_HTML = r"""
         } catch (e) {
           statusEl.style.display = 'block';
           statusEl.className = 'err';
-          statusEl.textContent = t('err') + ': ' + (e && e.message ? e.message : e);
+          statusEl.textContent = 'Network error: ' + (e && e.message ? e.message : e);
         } finally {
           state.loading = false;
         }
       }
 
-      langAM.onclick = function () { lang = 'am'; localStorage.setItem('adika_lang', lang); applyLang(); load(false); };
-      langEN.onclick = function () { lang = 'en'; localStorage.setItem('adika_lang', lang); applyLang(); load(false); };
       tabSell.onclick = function () { state.tab = 'marketplace'; setTabs(); load(false); };
       tabBuy.onclick = function () { state.tab = 'requests'; setTabs(); load(false); };
       catsEl.onclick = function (ev) {
@@ -1397,7 +1361,8 @@ EXPLORER_HTML = r"""
         }, 300);
       };
 
-      applyLang();
+      renderCats();
+      setTabs();
       load(false);
     } catch (e) {
       document.body.innerHTML = '<div class="err" style="margin:20px">UI Error: ' +
