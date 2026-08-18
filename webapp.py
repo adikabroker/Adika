@@ -31,6 +31,16 @@ try:
 except Exception:
     pass
 
+
+@web_app.before_request
+def _handle_options():
+    if request.method == "OPTIONS":
+        resp = web_app.make_response(("", 204))
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        return resp
+
 @web_app.after_request
 def _telegram_headers(resp):
     resp.headers["Access-Control-Allow-Origin"] = "*"
@@ -1311,12 +1321,6 @@ EXPLORER_HTML = r"""
           if (state.category) qs.set('category', state.category);
           if (state.q) qs.set('q', state.q);
           var API_BASE = 'https://adika-y37t.onrender.com';
-          try {
-            if (window.location && window.location.origin && /^https?:/.test(window.location.origin)
-                && window.location.origin.indexOf('adika') !== -1) {
-              API_BASE = window.location.origin;
-            }
-          } catch (e0) {}
           var controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
           var timer = controller ? setTimeout(function(){ try { controller.abort(); } catch(e){} }, 15000) : null;
           var res;
@@ -1347,7 +1351,7 @@ EXPLORER_HTML = r"""
           if (!items.length && !append) {
             statusEl.style.display = 'block';
             statusEl.className = 'empty';
-            statusEl.textContent = 'ምንም አይነት መረጃ አልተገኘም';
+            statusEl.textContent = 'ምንም አይነት የተመዘገበ ንብረት አልተገኘም';
           } else {
             statusEl.style.display = 'none';
             grid.innerHTML += items.map(cardHtml).join('');
