@@ -1081,26 +1081,76 @@ EXPLORER_HTML = r"""
       <!-- Tab 1: AI Tools Hub -->
       <div id="aiToolsView" class="overflow-y-auto flex-1 p-4 space-y-4">
         <!-- Smart Budget & Purchase Advisor -->
-        <div class="bg-gradient-to-br from-[#16acbd]/10 to-[#b5eff3]/40 p-3.5 rounded-2xl border border-[#16acbd]/30 space-y-2">
-          <div class="flex items-center gap-1.5 text-[#0e7490] font-extrabold text-xs">
-            <span>💡</span>
-            <span class="lang-am">የግዢና የበጀት አማካሪ (AI Advisor)</span>
-            <span class="lang-en">Smart Purchase & Budget Advisor</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-[10px] font-bold text-slate-600 block">የእርስዎ በጀት (ብር)</label>
-              <input id="advisorBudget" type="number" placeholder="2,000,000" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold" />
+        <div class="bg-gradient-to-br from-[#16acbd]/10 to-[#b5eff3]/40 p-3.5 rounded-2xl border border-[#16acbd]/30 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1.5 text-[#0e7490] font-extrabold text-xs">
+              <span>💡</span>
+              <span class="lang-am">የግዢና የበጀት አማካሪ (AI Smart Advisor)</span>
+              <span class="lang-en">Smart Financial & Purchase Advisor</span>
             </div>
-            <div>
-              <label class="text-[10px] font-bold text-slate-600 block">ወርሃዊ ገቢ (ብር)</label>
-              <input id="advisorIncome" type="number" placeholder="60,000" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-bold" />
+            <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#16acbd]/20 text-[#0e7490]">Pro Advisor</span>
+          </div>
+
+          <!-- 1. Budget Input & Quick Chips -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[10px] font-bold text-slate-700 block">የእርስዎ በጀት (Total Budget in ETB)</label>
+              <span id="advisorBudgetFormatted" class="text-[10px] font-extrabold text-[#0e7490]">2,000,000 ETB</span>
+            </div>
+            <input id="advisorBudget" type="number" value="2000000" placeholder="2,000,000" class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#16acbd]" />
+            <div class="flex gap-1 mt-1.5 overflow-x-auto no-scrollbar">
+              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="70000">70k</button>
+              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="500000">500k</button>
+              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="1500000">1.5M</button>
+              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="3000000">3M</button>
+              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="6000000">6M</button>
             </div>
           </div>
-          <button id="advisorBtn" type="button" class="w-full py-2 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-sm active:scale-95 flex items-center justify-center gap-1">
-            <span>✨ AI ምክር አፍልቅ</span>
+
+          <!-- 2. Purpose Selector (ለስራ/ንግድ vs ለቤት/ቤተሰብ) -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-700 block mb-1">የግዢ አላማ (Purchase Purpose)</label>
+            <div class="grid grid-cols-2 gap-1 bg-white/80 p-1 rounded-xl border border-slate-200">
+              <button id="advisorPurposeBiz" type="button" class="advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1" data-purpose="business">
+                <span>🚕</span>
+                <span>ለስራ / ንግድ (Ride/Cargo)</span>
+              </button>
+              <button id="advisorPurposeFam" type="button" class="advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1" data-purpose="personal">
+                <span>🏠</span>
+                <span>ለግል / ቤተሰብ (Personal)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. Payment Strategy Selector (ጥሬ ገንዘብ vs በባንክ ብድር) -->
+          <div>
+            <label class="text-[10px] font-bold text-slate-700 block mb-1">የግዢ መንገድ (Payment Strategy)</label>
+            <div class="grid grid-cols-2 gap-1 bg-white/80 p-1 rounded-xl border border-slate-200">
+              <button id="advisorPayCash" type="button" class="advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1" data-pay="cash">
+                <span>💵</span>
+                <span>ባለኝ በጀት (Cash Buy)</span>
+              </button>
+              <button id="advisorPayLoan" type="button" class="advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1" data-pay="loan">
+                <span>🏦</span>
+                <span>በባንክ ብድር (Down Payment)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Optional Monthly Income row (Dynamic) -->
+          <div id="advisorIncomeRow" class="hidden">
+            <label class="text-[10px] font-bold text-slate-700 block mb-1">ወርሃዊ የተጣራ ገቢ (Monthly Net Income in ETB)</label>
+            <input id="advisorIncome" type="number" placeholder="80,000" value="80000" class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 outline-none" />
+          </div>
+
+          <!-- Action Button -->
+          <button id="advisorBtn" type="button" class="w-full py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5">
+            <span>✨</span>
+            <span>ብልህ የገበያና የበጀት ምክር አፍልቅ (Generate AI Advice)</span>
           </button>
-          <div id="advisorResult" class="hidden p-2.5 bg-white rounded-xl border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium"></div>
+
+          <!-- Result Container -->
+          <div id="advisorResult" class="hidden p-3 bg-white rounded-2xl border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium shadow-sm space-y-3"></div>
         </div>
 
         <!-- Tools Grid -->
@@ -1974,32 +2024,160 @@ EXPLORER_HTML = r"""
     document.getElementById("toolPoaBtn").onclick = function() { aiModalClose.onclick(); openToolModal("poaModal"); };
     document.getElementById("toolDiagBtn").onclick = function() { aiModalClose.onclick(); openToolModal("diagModal"); };
 
-    // Advisor Button
+    // AI Smart Financial Advisor Interactive Controls
+    var selectedPurpose = "business";
+    var selectedPay = "cash";
+
+    var budgetInputEl = document.getElementById("advisorBudget");
+    var budgetFormattedEl = document.getElementById("advisorBudgetFormatted");
+
+    if (budgetInputEl && budgetFormattedEl) {
+      budgetInputEl.oninput = function() {
+        var v = Number(budgetInputEl.value) || 0;
+        budgetFormattedEl.textContent = v > 0 ? (v.toLocaleString() + " ETB") : "0 ETB";
+      };
+    }
+
+    document.querySelectorAll(".advisor-preset-chip").forEach(function(btn) {
+      btn.onclick = function() {
+        var b = btn.getAttribute("data-budget");
+        if (budgetInputEl) {
+          budgetInputEl.value = b;
+          if (budgetFormattedEl) budgetFormattedEl.textContent = Number(b).toLocaleString() + " ETB";
+        }
+      };
+    });
+
+    var purposeBizBtn = document.getElementById("advisorPurposeBiz");
+    var purposeFamBtn = document.getElementById("advisorPurposeFam");
+    if (purposeBizBtn && purposeFamBtn) {
+      purposeBizBtn.onclick = function() {
+        selectedPurpose = "business";
+        purposeBizBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
+        purposeFamBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
+      };
+      purposeFamBtn.onclick = function() {
+        selectedPurpose = "personal";
+        purposeFamBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
+        purposeBizBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
+      };
+    }
+
+    var payCashBtn = document.getElementById("advisorPayCash");
+    var payLoanBtn = document.getElementById("advisorPayLoan");
+    var incomeRow = document.getElementById("advisorIncomeRow");
+    if (payCashBtn && payLoanBtn) {
+      payCashBtn.onclick = function() {
+        selectedPay = "cash";
+        payCashBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
+        payLoanBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
+        if (incomeRow) incomeRow.classList.add("hidden");
+      };
+      payLoanBtn.onclick = function() {
+        selectedPay = "loan";
+        payLoanBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
+        payCashBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
+        if (incomeRow) incomeRow.classList.remove("hidden");
+      };
+    }
+
+    // Advisor Button Action (/api/ai-advisor)
     document.getElementById("advisorBtn").onclick = function() {
-      var budget = document.getElementById("advisorBudget").value || "2000000";
-      var income = document.getElementById("advisorIncome").value || "500000";
+      var budget = Number(document.getElementById("advisorBudget").value) || 2000000;
+      var income = document.getElementById("advisorIncome") ? (Number(document.getElementById("advisorIncome").value) || 80000) : 80000;
       var resEl = document.getElementById("advisorResult");
       resEl.classList.remove("hidden");
-      resEl.innerHTML = "⏳ AI በጀትዎን እየተነተነ ነው...";
+      resEl.innerHTML = '<div class="text-center py-3 text-slate-600"><div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div><div>⏳ AI የኢትዮጵያ ገበያንና የበጀት አማራጮችን እየተነተነ ነው...</div></div>';
 
-      fetch("/api/calculate-loan", {
+      fetch("/api/ai-advisor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ property_price: Number(budget), monthly_income: Number(income), down_payment_percent: 20 })
+        body: JSON.stringify({
+          budget: budget,
+          purpose: selectedPurpose,
+          payment_strategy: selectedPay,
+          monthly_income: income
+        })
       })
       .then(function(r){ return r.json(); })
       .then(function(d){
-        var rep = d.repayment_details || {};
-        var elig = d.eligibility_analysis || {};
-        var monthly = rep.monthly_repayment_etb || d.monthly_payment_etb || d.estimated_monthly_payment || 0;
+        var rep = d.advisor_report || d;
+        var title = rep.verdict_title_amharic || ("የ" + budget.toLocaleString() + " ብር በጀት ትንተና");
+        var tier = rep.budget_tier || "የተገመገመ";
+        var options = rep.recommended_options || [];
+        var strat = rep.financial_strategy || {};
+        var adviceAm = rep.expert_advice_amharic || "";
+        var steps = rep.actionable_steps || [];
+
         resEl.innerHTML =
-          '<div class="font-extrabold text-[#0e7490] mb-1">💡 AI የበጀት ምክረ ሃሳብ:</div>' +
-          '<div>• ወርሃዊ የባንክ ክፍያ: <b>' + (monthly ? Number(monthly).toLocaleString() + ' ETB' : "—") + '</b></div>' +
-          '<div>• የብድር ብቁነት ሁኔታ: <b class="text-emerald-600">' + esc(elig.verdict || d.eligibility_status || "ብቁ (Eligible)") + '</b></div>' +
-          '<div>• የገቢ ሬሾ (DTI): <b>' + (elig.dti_ratio_pct || d.debt_to_income_ratio || 35) + '%</b> (ጤናማ ክልል)</div>';
+          '<div class="space-y-3">' +
+            // Header Banner
+            '<div class="p-3 rounded-2xl bg-gradient-to-r from-[#0e7490] to-[#16acbd] text-white shadow-sm flex items-center justify-between">' +
+              '<div>' +
+                '<div class="text-[9px] uppercase tracking-wider text-cyan-200 font-extrabold">የአማካሪ ውሳኔ (AI Assessment)</div>' +
+                '<div class="text-xs font-black mt-0.5">' + esc(title) + '</div>' +
+              '</div>' +
+              '<span class="px-2.5 py-1 rounded-full bg-white/20 text-white font-extrabold text-[10px] shrink-0 border border-white/30">' + esc(tier) + '</span>' +
+            '</div>' +
+
+            // Recommended Options Cards
+            (options.length > 0 ?
+              '<div class="space-y-2">' +
+                '<div class="font-extrabold text-slate-800 text-xs flex items-center gap-1.5"><span>🏆</span><span>ተመራጭ የገበያ አማራጮች (Recommended Options):</span></div>' +
+                options.map(function(opt){
+                  var optName = opt.name || "ተመራጭ ንብረት";
+                  var optCat = opt.category || "Car";
+                  var optPrice = opt.estimated_price_range_etb || "";
+                  var optPros = opt.pros || [];
+                  var optWhy = opt.why_it_fits_amharic || "";
+                  return '<div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 shadow-sm">' +
+                    '<div class="flex items-center justify-between">' +
+                      '<div class="font-extrabold text-xs text-slate-900 flex items-center gap-1">' +
+                        '<span>' + (optCat.toLowerCase().indexOf("prop") !== -1 ? "🏠" : "🚗") + '</span>' +
+                        '<span>' + esc(optName) + '</span>' +
+                      '</div>' +
+                      (optPrice ? '<span class="text-[10px] font-black text-[#0e7490] bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200">' + esc(optPrice) + '</span>' : '') +
+                    '</div>' +
+                    (optPros.length > 0 ?
+                      '<div class="flex flex-wrap gap-1">' +
+                        optPros.map(function(p){ return '<span class="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 rounded-md font-bold">✔ ' + esc(p) + '</span>'; }).join('') +
+                      '</div>' : '') +
+                    (optWhy ? '<div class="text-[10px] text-slate-600 leading-snug pt-0.5">• ' + esc(optWhy) + '</div>' : '') +
+                  '</div>';
+                }).join('') +
+              '</div>' : '') +
+
+            // Financial & Payment Strategy Breakdown
+            (strat.strategy_type ?
+              '<div class="p-3 bg-cyan-50/60 rounded-2xl border border-cyan-200 space-y-1.5 text-slate-800">' +
+                '<div class="font-extrabold text-[#0e7490] text-xs flex items-center gap-1"><span>📊</span><span>የፋይናንስና ክፍያ ስትራቴጂ:</span></div>' +
+                '<div class="font-bold text-[11px] text-slate-900">' + esc(strat.strategy_type) + '</div>' +
+                '<div class="grid grid-cols-2 gap-1.5 text-[10px] pt-1 border-t border-cyan-200/60">' +
+                  (strat.down_payment_etb ? '<div>• ቅድመ ክፍያ: <b>' + Number(strat.down_payment_etb).toLocaleString() + ' ETB</b></div>' : '') +
+                  (strat.monthly_bank_payment_etb ? '<div>• ወርሃዊ የባንክ ክፍያ: <b>' + Number(strat.monthly_bank_payment_etb).toLocaleString() + ' ETB</b></div>' : '') +
+                  (strat.monthly_estimated_income_etb ? '<div>• የሚጠበቅ ወርሃዊ ገቢ: <b class="text-emerald-700">' + Number(strat.monthly_estimated_income_etb).toLocaleString() + ' ETB</b></div>' : '') +
+                  (strat.payback_period_months ? '<div>• የካፒታል መመለሻ: <b>~' + strat.payback_period_months + ' ወራት</b></div>' : '') +
+                '</div>' +
+                (strat.summary_amharic ? '<div class="text-[10px] text-slate-600 italic pt-1">' + esc(strat.summary_amharic) + '</div>' : '') +
+              '</div>' : '') +
+
+            // Expert Advice in Amharic
+            (adviceAm ?
+              '<div class="p-3 bg-amber-50/80 rounded-2xl border border-amber-200 text-slate-800 text-[11px] leading-relaxed space-y-1">' +
+                '<div class="font-extrabold text-amber-900 text-xs flex items-center gap-1"><span>💡</span><span>የባለሙያ ገበያ ምክር (Expert Advice):</span></div>' +
+                '<p class="whitespace-pre-line">' + esc(adviceAm) + '</p>' +
+              '</div>' : '') +
+
+            // Actionable Steps
+            (steps.length > 0 ?
+              '<div class="p-2.5 bg-slate-50 rounded-2xl border border-slate-200 text-[10px] text-slate-700 space-y-1">' +
+                '<div class="font-extrabold text-slate-900 text-[11px]">📌 ቀጣይ ተግባራዊ እርምጃዎች:</div>' +
+                steps.map(function(s){ return '<div class="flex items-start gap-1"><span class="text-[#16acbd] font-bold">✓</span><span>' + esc(s) + '</span></div>'; }).join('') +
+              '</div>' : '') +
+          '</div>';
       })
-      .catch(function(){
-        resEl.innerHTML = "• በጀትዎ " + Number(budget).toLocaleString() + " ብር ለጥሩ ቪትዝ፣ ድዛየር ወይም ባለ 1 መኝታ አፓርትመንት ግዢ ተስማሚ ነው።";
+      .catch(function(err){
+        resEl.innerHTML = '<div class="p-3 bg-rose-50 text-rose-700 rounded-2xl text-xs font-bold">ምክረ-ሃሳቡን ማመንጨት አልተቻለም። እባክዎ በጀቱን አስተካክለው እንደገና ይሞክሩ።</div>';
       });
     };
 
@@ -3834,6 +4012,253 @@ def api_calculate_loan():
         })
     except Exception as e:
         logger.error(f"api_calculate_loan error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@web_app.route('/api/ai-advisor', methods=['POST', 'OPTIONS'])
+def api_ai_advisor():
+    """
+    SMART FINANCIAL & PURCHASE ADVISOR (/api/ai-advisor)
+    Interactive AI evaluation based on realistic Ethiopian vehicle and property markets.
+    Handles low budgets (< 500k ETB), cash vs bank loan options, and commercial ROI.
+    """
+    if request.method == 'OPTIONS':
+        return ('', 204)
+    try:
+        data = request.json or {}
+        budget = float(data.get('budget') or data.get('property_price') or 2000000.0)
+        purpose = str(data.get('purpose') or 'business').lower().strip()
+        payment_strategy = str(data.get('payment_strategy') or data.get('payment') or 'cash').lower().strip()
+        monthly_income = float(data.get('monthly_income') or (budget * 0.05 if payment_strategy == 'loan' else 0.0))
+
+        api_key = os.environ.get("GEMINI_API_KEY")
+        advice_result = None
+
+        if api_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=api_key)
+                prompt = (
+                    "You are the top Ethiopian automotive & real-estate financial investment advisor in Addis Ababa.\\n"
+                    f"Evaluate this buyer inquiry under REAL Ethiopian market conditions:\\n"
+                    f"• Total Budget: {budget:,.0f} ETB\\n"
+                    f"• Purpose: {'ለስራ / ለንግድ (Commercial/Ride/Cargo/Business)' if purpose == 'business' else 'ለቤት / ለቤተሰብ (Personal/Family/Residence)'}\\n"
+                    f"• Payment Strategy: {'ሙሉ በሙሉ በጥሬ ገንዘብ (Cash Buy)' if payment_strategy == 'cash' else 'በባንክ ብድር / Down Payment Financing (CBE/Awash Bank Loan)'}\\n"
+                    f"• Monthly Income: {monthly_income:,.0f} ETB\\n\\n"
+                    "REALISTIC ETHIOPIAN MARKET RULES:\\n"
+                    "1. If Budget < 500,000 ETB: Do not dismiss the user or suggest unattainable 3M ETB cars. Provide constructive entry pathways such as Bajaj (Tuk-Tuk), motorcycle (TVS/Bajaj Boxer), co-investment / Equb pooling, or 20% down payment deposit for bank financing.\\n"
+                    "2. If Budget 500k - 2.5M ETB: Suggest realistic Ethiopian market models (e.g., Toyota Vitz 2000-2005, Toyota Yaris, Suzuki Dzire/Swift, Hyundai Atos/Santro, or 40/60 condominium down payment).\\n"
+                    "3. If Budget 2.5M - 6M ETB: Suggest top liquid cars (Toyota Vitz 2018+, Corolla Executive, Suzuki Dzire 2022, Hyundai Tucson, Electric BYD/Neta) or 1-2 bed residential apartments.\\n"
+                    "4. If Purpose is Business/Ride/Cargo: Include estimated net monthly ROI in Addis Ababa (e.g., Ride/Feres grossing 45,000 - 75,000 ETB/mo net after fuel/maintenance).\\n"
+                    "5. If Payment is Loan: Model 20-30% down payment, 17.5% annual bank interest, monthly repayments, and eligibility.\\n\\n"
+                    "Generate strictly valid JSON with keys:\\n"
+                    "1. 'verdict_title_amharic': Catchy summary title in Amharic\\n"
+                    "2. 'budget_tier': 'Low (<500k)' | 'Entry (500k-1.5M)' | 'Mid (1.5M-3.5M)' | 'High (3.5M-7M)' | 'Premium (>7M)'\\n"
+                    "3. 'recommended_options': list of 2-3 specific model/property objects with {'name': string, 'category': 'Car'|'Property'|'Commercial', 'estimated_price_range_etb': string, 'pros': [string, string], 'why_it_fits_amharic': string}\\n"
+                    "4. 'financial_strategy': {'strategy_type': string, 'down_payment_etb': number, 'monthly_bank_payment_etb': number, 'monthly_estimated_income_etb': number, 'payback_period_months': number, 'summary_amharic': string}\\n"
+                    "5. 'expert_advice_amharic': Deep, actionable, highly knowledgeable paragraph in Amharic offering clear financial roadmap and next steps.\\n"
+                    "6. 'actionable_steps': list of 3 practical next steps in Amharic.\\n"
+                    "Return ONLY JSON."
+                )
+                model = genai.GenerativeModel(
+                    model_name="gemini-1.5-flash",
+                    generation_config={"response_mime_type": "application/json", "temperature": 0.2}
+                )
+                res = model.generate_content(prompt)
+                txt = (res.text or "").strip()
+                if txt.startswith("```json"): txt = txt[7:]
+                if txt.startswith("```"): txt = txt[3:]
+                if txt.endswith("```"): txt = txt[:-3]
+                advice_result = json.loads(txt.strip())
+            except Exception as e:
+                logger.warning(f"AI advisor Gemini error: {e}")
+
+        if not advice_result:
+            # High-precision heuristic fallback tailored to Ethiopian market
+            if budget < 500000:
+                tier = "Low (<500k)"
+                if purpose == "business":
+                    title = f"የ{budget:,.0f} ብር በጀት ለባጃጅ፣ ሞተር ወይም ለቅድመ ክፍያ ማከማቻ"
+                    options = [
+                        {
+                            "name": "ባጃጅ (Bajaj RE 4-Stroke 2017-2020)",
+                            "category": "Commercial",
+                            "estimated_price_range_etb": "350,000 - 480,000 ETB",
+                            "pros": ["በጣም አነስተኛ የነዳጅ ፍጆታ", "ቀን በቀን አስተማማኝ ገቢ (1,200 - 2,000 ብር/ቀን)"],
+                            "why_it_fits_amharic": "በአነስተኛ ካፒታል ፈጣን የቀን ገቢ ለማስገኘት ተስማሚ ነው።"
+                        },
+                        {
+                            "name": "TVS / Bajaj Boxer የጭነት ሞተርሳይክል",
+                            "category": "Commercial",
+                            "estimated_price_range_etb": "180,000 - 260,000 ETB",
+                            "pros": ["ለዴሊቨሪና ፈጣን መልእክት ስራ ተፈላጊ", "አነስተኛ ጥገና"],
+                            "why_it_fits_amharic": "በአዲስ አበባ ፈጣን የዴሊቨሪ ስራ በመስራት በወር እስከ 25,000-35,000 ብር ገቢ ያስገኛል።"
+                        },
+                        {
+                            "name": "የመኪና ባንክ ብድር ቅድመ ክፍያ (20% Down Payment Fund)",
+                            "category": "Car",
+                            "estimated_price_range_etb": f"{budget:,.0f} ETB (እንደ መነሻ)",
+                            "pros": ["በእቁብ ወይም በቁጠባ ካፒታልን ማሳደግ", "ለወደፊት የባንክ ብድር መመቻቸት"],
+                            "why_it_fits_amharic": "ይህን በጀት እንደ 20% ቅድመ ክፍያ በመጠቀም እስከ 350,000 ብር የሚደርስ አነስተኛ ንብረት ማመቻቸት ይቻላል።"
+                        }
+                    ]
+                    strat = {
+                        "strategy_type": "የአነስተኛ ንግድ ማስጀመሪያ / የቅድመ ክፍያ ቁጠባ",
+                        "down_payment_etb": budget,
+                        "monthly_bank_payment_etb": 0,
+                        "monthly_estimated_income_etb": 30000,
+                        "payback_period_months": 14,
+                        "summary_amharic": "በዚህ በጀት ሞተርሳይክል ወይም ባጃጅ በመግዛት ወይም በእቁብ በማሳደግ ወደ መኪና መሸጋገር ይመረጣል።"
+                    }
+                    advice_am = (
+                        f"የእርስዎ በጀት {budget:,.0f} ብር ነው። ሙሉ መኪና በጥሬ ገንዘብ ለመግዛት በቂ ባይሆንም፣ "
+                        "ለዴሊቨሪ ሞተርሳይክል ወይም ለባጃጅ ግዢ በቂ ነው። እንዲሁም በባንክ የ20% ቅድመ ክፍያ በማስያዝ "
+                        "ወይም በእቁብ ካፒታልዎን በማሳደግ በ6-12 ወራት ውስጥ ወደ ትልቅ ንብረት መሸጋገር ይችላሉ።"
+                    )
+                else:
+                    title = f"የ{budget:,.0f} ብር በጀት ለግል ቁጠባና ለኮንዶሚኒየም ምዝገባ"
+                    options = [
+                        {
+                            "name": "የቤት ቁጠባና የኮንዶሚኒየም ክፍያ (CBE 40/60 or 20/80)",
+                            "category": "Property",
+                            "estimated_price_range_etb": f"{budget:,.0f} ETB",
+                            "pros": ["አስተማማኝ የረጅም ጊዜ የቤት ባለቤትነት", "የዋጋ ግሽበትን መቋቋም"],
+                            "why_it_fits_amharic": "ለቤት መስሪያ ቁጠባ ወይም ለኮንዶሚኒየም ቅድመ ክፍያ ምርጥ መነሻ ነው።"
+                        },
+                        {
+                            "name": "የግል ኤሌክትሪክ ሞተርሳይክል (EV Scooter)",
+                            "category": "Car",
+                            "estimated_price_range_etb": "120,000 - 220,000 ETB",
+                            "pros": ["የዜሮ ነዳጅ ወጪ", "ቀላል የቤት ውስጥ ቻርጅ"],
+                            "why_it_fits_amharic": "ለዕለታዊ የከተማ ውስጥ የትራንስፖርት ወጪ ቆጣቢ መፍትሄ።"
+                        }
+                    ]
+                    strat = {
+                        "strategy_type": "የቁጠባና የወደፊት ንብረት ግንባታ",
+                        "down_payment_etb": budget,
+                        "monthly_bank_payment_etb": 0,
+                        "monthly_estimated_income_etb": 0,
+                        "payback_period_months": 0,
+                        "summary_amharic": "ገንዘቡን ለቤት ቁጠባ ወይም ለቀላል ትራንስፖርት ማዋል ተመራጭ ነው።"
+                    }
+                    advice_am = f"በ{budget:,.0f} ብር በጀት ለግል ትራንስፖርት የኤሌክትሪክ ስኩተር መግዛት ወይም ለቤት ግዢ ቁጠባ ማጠናከር አስተማማኝ ምርጫ ነው።"
+            elif budget < 2500000:
+                tier = "Entry (500k-2.5M)"
+                if payment_strategy == "loan":
+                    asset_cap = budget * 4.0
+                    title = f"የባንክ ብድር ስትራቴጂ (እስከ {asset_cap:,.0f} ብር የሚደርስ ንብረት)"
+                    options = [
+                        {
+                            "name": "Suzuki Dzire / Swift 2022 (አዲስ ሞዴል)",
+                            "category": "Car",
+                            "estimated_price_range_etb": "2,400,000 - 3,200,000 ETB",
+                            "pros": ["እጅግ ቆጣቢ 22 KM/L", "ከባንክ ብድር ጋር በቀላሉ የሚፈቀድ"],
+                            "why_it_fits_amharic": "በቀላል ወርሃዊ ክፍያ አዲስ መኪና ባለቤት ለመሆን ፍጹም ነው።"
+                        },
+                        {
+                            "name": "ባለ 1 መኝታ አፓርትመንት ቅድመ ክፍያ (CMC/Ayat)",
+                            "category": "Property",
+                            "estimated_price_range_etb": "3,500,000 - 4,800,000 ETB",
+                            "pros": ["ከፍተኛ የኪራይ ገቢ", "የንብረት ዋጋ ዕድገት"],
+                            "why_it_fits_amharic": "በቀላሉ በባንክና በሪልስቴት የክፍያ ስምምነት የሚገዛ።"
+                        }
+                    ]
+                    monthly_loan = round((asset_cap - budget) * 0.016, 2)
+                    strat = {
+                        "strategy_type": "የባንክ ብድር ማበረታቻ (75% Bank Loan + 25% Down Payment)",
+                        "down_payment_etb": budget,
+                        "monthly_bank_payment_etb": monthly_loan,
+                        "monthly_estimated_income_etb": 55000 if purpose == "business" else 0,
+                        "payback_period_months": 60,
+                        "summary_amharic": f"በ{budget:,.0f} ብር ቅድመ ክፍያ እስከ {asset_cap:,.0f} ብር የሚገመት መኪና ወይም ቤት መግዛት ይቻላል።"
+                    }
+                    advice_am = (
+                        f"በእጅዎ ያለው {budget:,.0f} ብር እንደ 25% ቅድመ ክፍያ በማስያዝ እስከ {asset_cap:,.0f} ብር የሚደርስ "
+                        "አዲስ የሱዙኪ ወይም የቶዮታ መኪና በባንክ ብድር መግዛት ይችላሉ። በወር የሚከፈለው ~" + f"{monthly_loan:,.0f} ብር "
+                        "ሲሆን፣ ለራይድ ስራ ካዋሉት ራሱ ወርሃዊ ክፍያውን ሙሉ በሙሉ ይሸፍነዋል።"
+                    )
+                else:
+                    title = f"የ{budget:,.0f} ብር የጥሬ ገንዘብ ግዢ ምርጫዎች"
+                    options = [
+                        {
+                            "name": "Toyota Vitz 2004 - 2008 (Auto/Manual)",
+                            "category": "Car",
+                            "estimated_price_range_etb": "1,400,000 - 1,950,000 ETB",
+                            "pros": ["መለዋወጫ በየቦታው መገኘቱ", "ፈጣን ሽያጭ (High Resale)", "ዝቅተኛ የጥገና ወጪ"],
+                            "why_it_fits_amharic": "በአዲስ አበባ ውስጥ ያለምንም ዕዳ በጥሬ ገንዘብ የሚገዛ አስተማማኝ መኪና።"
+                        },
+                        {
+                            "name": "Toyota Yaris / Suzuki Alto 2015",
+                            "category": "Car",
+                            "estimated_price_range_etb": "1,600,000 - 2,200,000 ETB",
+                            "pros": ["የነዳጅ ቆጣቢነት", "ለከተማ መንዳት ምቹ"],
+                            "why_it_fits_amharic": "ለዕለታዊ የከተማ እንቅስቃሴ እና ለቤተሰብ እጅግ ተስማሚ ነው።"
+                        }
+                    ]
+                    strat = {
+                        "strategy_type": "100% የጥሬ ገንዘብ ግዢ (Debt-Free Ownership)",
+                        "down_payment_etb": budget,
+                        "monthly_bank_payment_etb": 0,
+                        "monthly_estimated_income_etb": 45000 if purpose == "business" else 0,
+                        "payback_period_months": 24 if purpose == "business" else 0,
+                        "summary_amharic": "ያለምንም የባንክ ወለድና ዕዳ ወዲያውኑ ንብረትዎን በስምዎ ማዛወር ይችላሉ።"
+                    }
+                    advice_am = (
+                        f"በ{budget:,.0f} ብር ጥሬ ገንዘብ ቶዮታ ቪትዝ ወይም ያሪስ መግዛት ከዕዳ ነጻ የሆነ አስተማማኝ ኢንቨስትመንት ነው። "
+                        "ለመለዋወጫ ወጪ የማይጠይቅና በፈለጉበት ሰዓት ያለምንም ኪሳራ መልሰው መሸጥ የሚችሉት ንብረት ነው።"
+                    )
+            else:
+                tier = "Mid/High (2.5M - 6M+)"
+                title = f"የ{budget:,.0f} ብር የፕሪሚየም መኪናና የሪልስቴት ኢንቨስትመንት"
+                options = [
+                    {
+                        "name": "Toyota Vitz 2018 / Suzuki Dzire 2023 / BYD Dolphin EV",
+                        "category": "Car",
+                        "estimated_price_range_etb": "2,600,000 - 3,600,000 ETB",
+                        "pros": ["ዘመናዊ ቴክኖሎጂ", "ዜሮ የጥገና ችግር", "እጅግ ከፍተኛ የገበያ ተፈላጊነት"],
+                        "why_it_fits_amharic": "ለራይድ ፕሪሚየምም ሆነ ለግል ክብርና ምቾት አንደኛ ምርጫ ነው።"
+                    },
+                    {
+                        "name": "ባለ 2 መኝታ አፓርትመንት ወይም ሰፊ ኮንዶሚኒየም (Bole/Ayat/CMC)",
+                        "category": "Property",
+                        "estimated_price_range_etb": "4,200,000 - 7,500,000 ETB",
+                        "pros": ["በወር 25,000 - 45,000 ብር ኪራይ", "ዓመታዊ 15-20% የዋጋ ዕድገት"],
+                        "why_it_fits_amharic": "የዋጋ ግሽበትን የሚከላከል ዘላቂ የሀብት ማከማቻ።"
+                    }
+                ]
+                strat = {
+                    "strategy_type": "ከፍተኛ ምርታማነት ያለው ኢንቨስትመንት (High Yield Asset)",
+                    "down_payment_etb": budget,
+                    "monthly_bank_payment_etb": 0,
+                    "monthly_estimated_income_etb": 65000 if purpose == "business" else 30000,
+                    "payback_period_months": 36,
+                    "summary_amharic": "በዚህ በጀት ዘመናዊ መኪና ወይም ከፍተኛ የኪራይ ገቢ የሚያስገኝ አፓርትመንት መግዛት ይቻላል።"
+                }
+                advice_am = (
+                    f"የ{budget:,.0f} ብር በጀት በአዲስ አበባ ገበያ ውስጥ ጠንካራ የመደራደር አቅም ይሰጥዎታል። "
+                    "አዳዲስ የኤሌክትሪክ (EV) መኪኖች ከቀረጥ ነጻ በመሆናቸው የነዳጅ ወጪዎን 90% ይቀንሳሉ፤ "
+                    "ሪልስቴት ላይ ካዋሉት ደግሞ ቋሚ ወርሃዊ የኪራይ ገቢ ያስገኝልዎታል።"
+                )
+
+            advice_result = {
+                "verdict_title_amharic": title,
+                "budget_tier": tier,
+                "recommended_options": options,
+                "financial_strategy": strat,
+                "expert_advice_amharic": advice_am,
+                "actionable_steps": [
+                    "በአዲካ ገበያ ላይ ያሉትን ትክክለኛ ዋጋዎችና ሰነዶች ያረጋግጡ",
+                    "የባንክ ብድር ከሆነ የገቢ ማስረጃና የ3 ወር የባንክ እስቴትመንት ያዘጋጁ",
+                    "ከመግዛትዎ በፊት የጋራዥ ምርመራና የውክልና ሰነድ በሲስተሙ ያጣሩ"
+                ]
+            }
+
+        return jsonify({
+            "status": "success",
+            "advisor_report": advice_result
+        })
+    except Exception as e:
+        logger.error(f"api_ai_advisor error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
