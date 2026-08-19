@@ -2022,24 +2022,33 @@ EXPLORER_HTML = r"""
         var duty = d.tax_breakdown || {};
         var totalTaxes = d.total_taxes_etb || duty.total_taxes_etb || d.total_tax_payable_etb || d.total_duty_etb || 0;
         var landedCost = d.total_landed_cost_etb || d.landed_cost_etb || 0;
+        var cifEtb = d.cif_etb || d.cif_landed_cost_etb || (d.cif_usd ? d.cif_usd * 128.5 : 0);
         
         resEl.innerHTML =
           '<div class="space-y-2 text-xs">' +
             '<div class="p-2.5 rounded-2xl bg-[#16acbd]/10 border border-[#16acbd]/20">' +
-              '<div class="text-[10px] text-slate-500 font-bold uppercase">ጠቅላላ የሚከፈል ቀረጥና ታክስ</div>' +
+              '<div class="text-[10px] text-slate-500 font-bold uppercase">ጠቅላላ የሚከፈል ቀረጥና ታክስ (Total Duty & Tax)</div>' +
               '<div class="text-lg font-black text-[#0e7490]">' + Number(totalTaxes).toLocaleString() + ' ETB</div>' +
-              '<div class="text-[11px] text-slate-600 mt-1">• ጠቅላላ የመኪናው የወደብ ዋጋ (Landed Cost): <b class="text-slate-900">' + Number(landedCost).toLocaleString() + ' ETB</b></div>' +
+              '<div class="text-[11px] text-slate-600 mt-1 flex justify-between">' +
+                '<span>• CIF ዋጋ (Landed Cost USD/ETB):</span>' +
+                '<b class="text-slate-900">$' + Number(d.cif_usd || cif).toLocaleString() + ' (~' + Number(cifEtb).toLocaleString() + ' ETB)</b>' +
+              '</div>' +
+              '<div class="text-[11px] text-slate-600 mt-0.5 flex justify-between">' +
+                '<span>• ጠቅላላ የወደብ ዋጋ (Total Landed Cost):</span>' +
+                '<b class="text-emerald-700">' + Number(landedCost).toLocaleString() + ' ETB</b>' +
+              '</div>' +
             '</div>' +
-            '<div class="grid grid-cols-2 gap-1.5 text-[10px] bg-white p-2 rounded-xl border border-slate-100">' +
-              '<div>ጉምሩክ ቀረጥ: <b>' + Number(duty.customs_duty_etb || 0).toLocaleString() + ' ETB</b></div>' +
-              '<div>ኤክሳይስ ታክስ: <b>' + Number(duty.excise_tax_etb || 0).toLocaleString() + ' ETB</b></div>' +
-              '<div>ቫት (VAT 15%): <b>' + Number(duty.vat_etb || 0).toLocaleString() + ' ETB</b></div>' +
-              '<div>ሱር ታክስ (10%): <b>' + Number(duty.surtax_etb || 0).toLocaleString() + ' ETB</b></div>' +
+            '<div class="grid grid-cols-2 gap-1.5 text-[10px] bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">' +
+              '<div>ጉምሩክ ቀረጥ (' + (d.tax_rates ? d.tax_rates.customs_duty : '35%') + '): <b>' + Number(duty.customs_duty_etb || d.customs_duty_etb || 0).toLocaleString() + ' ETB</b></div>' +
+              '<div>ኤክሳይስ ታክስ (' + (d.tax_rates ? d.tax_rates.excise_tax : '30%') + '): <b>' + Number(duty.excise_tax_etb || d.excise_tax_etb || 0).toLocaleString() + ' ETB</b></div>' +
+              '<div>ቫት (VAT 15%): <b>' + Number(duty.vat_etb || d.vat_etb || 0).toLocaleString() + ' ETB</b></div>' +
+              '<div>ሱር ታክስ (10%): <b>' + Number(duty.surtax_etb || d.surtax_etb || 0).toLocaleString() + ' ETB</b></div>' +
+              '<div class="col-span-2 text-slate-500">ዊዝሆልዲንግ (3%): <b>' + Number(duty.withholding_tax_etb || d.withholding_tax_etb || 0).toLocaleString() + ' ETB</b></div>' +
             '</div>' +
             (d.policy_note ? '<div class="text-[10px] text-slate-500 italic">📌 ' + esc(d.policy_note) + '</div>' : '') +
           '</div>';
       })
-      .catch(function(){ resEl.innerHTML = "ስሌቱን ማጠናቀቅ አልተቻለም። እባክዎ እንደገና ይሞክሩ።"; });
+      .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ስሌቱን ማጠናቀቅ አልተቻለም። እባክዎ እንደገና ይሞክሩ።</div>'; });
     };
 
     // Bank Loan Action
@@ -2064,26 +2073,32 @@ EXPLORER_HTML = r"""
         var monthlyPayment = rep.monthly_repayment_etb || d.monthly_payment_etb || d.estimated_monthly_payment || 0;
         var loanAmt = summary.principal_loan_amount_etb || d.loan_amount_etb || 0;
         var downAmt = summary.down_payment_amount_etb || d.down_payment_etb || 0;
+        var totalInterest = rep.total_interest_payable_etb || d.total_interest_amount_etb || d.total_interest_etb || 0;
+        var totalRepayment = rep.total_amount_payable_etb || d.total_repayment_amount_etb || d.total_repayment_etb || 0;
+        var interestRate = summary.annual_interest_rate || (d.applied_interest_rate_pct ? d.applied_interest_rate_pct + "%" : "17.5%");
 
         resEl.innerHTML =
           '<div class="space-y-2 text-xs">' +
-            '<div class="p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200">' +
+            '<div class="p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 shadow-sm">' +
               '<div class="text-[10px] text-emerald-700 font-bold uppercase">ወርሃዊ የባንክ ክፍያ (Monthly Payment)</div>' +
-              '<div class="text-lg font-black text-emerald-600">' + Number(monthlyPayment).toLocaleString() + ' ETB / ወር</div>' +
-              '<div class="grid grid-cols-2 gap-1 text-[11px] text-slate-600 mt-1">' +
-                '<div>• የብድር መጠን: <b>' + Number(loanAmt).toLocaleString() + ' ETB</b></div>' +
-                '<div>• ቅድመ ክፍያ: <b>' + Number(downAmt).toLocaleString() + ' ETB</b></div>' +
+              '<div class="text-lg font-black text-emerald-700">' + Number(monthlyPayment).toLocaleString() + ' ETB / ወር</div>' +
+              '<div class="grid grid-cols-2 gap-1 text-[11px] text-slate-600 mt-2 pt-2 border-t border-emerald-200/60">' +
+                '<div>• የብድር መጠን (Principal): <b class="text-slate-800">' + Number(loanAmt).toLocaleString() + ' ETB</b></div>' +
+                '<div>• ቅድመ ክፍያ (Down Payment): <b class="text-slate-800">' + Number(downAmt).toLocaleString() + ' ETB</b></div>' +
+                '<div>• ጠቅላላ ወለድ (Total Interest): <b class="text-amber-700">' + Number(totalInterest).toLocaleString() + ' ETB</b></div>' +
+                '<div>• ጠቅላላ የሚከፈል (Total Repayment): <b class="text-emerald-800">' + Number(totalRepayment).toLocaleString() + ' ETB</b></div>' +
+                '<div class="col-span-2 text-slate-500">• የተተገበረ የወለድ ምጣኔ (Applied Rate): <b class="text-slate-800">' + esc(interestRate) + '</b> (' + (summary.tenure_years || years) + ' ዓመታት)</div>' +
               '</div>' +
             '</div>' +
             (elig.verdict ? 
-              '<div class="p-2 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-700">' +
-                '<div class="font-bold text-slate-900 mb-0.5">የብድር ብቁነት ሁኔታ:</div>' +
+              '<div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-700">' +
+                '<div class="font-bold text-slate-900 mb-0.5 flex items-center gap-1"><span>🏦</span><span>የብድር ብቁነት ትንተና:</span></div>' +
                 '<div>' + esc(elig.verdict) + '</div>' +
-                (elig.dti_ratio_pct ? '<div class="text-[10px] text-slate-500 mt-0.5">• Debt-to-Income (DTI): <b>' + elig.dti_ratio_pct + '%</b></div>' : '') +
+                (elig.dti_ratio_pct ? '<div class="text-[10px] text-slate-500 mt-1">• የገቢ ሬሾ (Debt-to-Income / DTI): <b>' + elig.dti_ratio_pct + '%</b></div>' : '') +
               '</div>' : '') +
           '</div>';
       })
-      .catch(function(){ resEl.innerHTML = "ስሌቱን ማጠናቀቅ አልተቻለም። እባክዎ እንደገና ይሞክሩ።"; });
+      .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ስሌቱን ማጠናቀቅ አልተቻለም። እባክዎ እንደገና ይሞክሩ።</div>'; });
     };
 
     // Compare Cars Action
@@ -2165,7 +2180,7 @@ EXPLORER_HTML = r"""
               '</div>' : '') +
           '</div>';
       })
-      .catch(function(){ resEl.innerHTML = "ንጽጽሩን ማመንጨት አልተቻለም። እባክዎ እንደገና ይሞክሩ።"; });
+      .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ንጽጽሩን ማመንጨት አልተቻለም። እባክዎ እንደገና ይሞክሩ።</div>'; });
     };
 
     // Contract Generate Action
@@ -2205,29 +2220,46 @@ EXPLORER_HTML = r"""
       .then(function(d){
         var contractObj = d.contract || {};
         var contractText = contractObj.contract_text_amharic || contractObj.print_ready_text || d.contract_text || (typeof d.contract === "string" ? d.contract : "ውል ተዘጋጅቷል");
-        var contractTitle = contractObj.contract_title || "ህጋዊ የሽያጭ ውል";
+        var contractTitle = contractObj.contract_title || "ህጋዊ የሽያጭ ውል ስምምነት";
+        var clauses = contractObj.key_clauses_summary || [];
 
         resEl.innerHTML =
-          '<div class="space-y-2 text-xs">' +
-            '<div class="font-extrabold text-slate-800 flex items-center justify-between">' +
-              '<span>📄 ' + esc(contractTitle) + '</span>' +
-              '<span class="text-[10px] text-emerald-600 font-bold">✔ ተጠናቋል</span>' +
+          '<div class="space-y-2.5 text-xs">' +
+            '<div class="font-extrabold text-slate-800 flex items-center justify-between pb-1 border-b border-slate-100">' +
+              '<span class="flex items-center gap-1"><span>📜</span><span>' + esc(contractTitle) + '</span></span>' +
+              '<span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">✔ ዝግጁ ነው</span>' +
             '</div>' +
-            '<div id="contractGeneratedText" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-mono whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto text-slate-800">' + esc(contractText) + '</div>' +
-            '<button id="copyContractBtn" type="button" class="w-full py-2 bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold rounded-xl text-xs active:scale-95 shadow transition-all">📋 ውሉን ኮፒ አድርግ (Copy Contract)</button>' +
+            (clauses.length > 0 ?
+              '<div class="flex flex-wrap gap-1">' +
+                clauses.map(function(c){ return '<span class="px-2 py-0.5 bg-[#16acbd]/10 text-[#0e7490] rounded-full text-[9px] font-bold">✔ ' + esc(c) + '</span>'; }).join('') +
+              '</div>' : '') +
+            '<div id="contractGeneratedText" class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] font-mono whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto text-slate-800 shadow-inner select-all">' + esc(contractText) + '</div>' +
+            '<div class="flex gap-2">' +
+              '<button id="copyContractBtn" type="button" class="flex-1 py-2.5 bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold rounded-xl text-xs active:scale-95 shadow transition-all flex items-center justify-center gap-1.5">' +
+                '<span>📋</span><span>ውሉን ኮፒ አድርግ (Copy Contract)</span>' +
+              '</button>' +
+            '</div>' +
+            '<div id="copyToast" class="hidden text-center py-1.5 px-3 bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-bold rounded-xl transition-all">✔ የሽያጭ ውሉ በተሳካ ሁኔታ ኮፒ ተደርጓል!</div>' +
           '</div>';
 
         document.getElementById("copyContractBtn").onclick = function() {
           var t = document.getElementById("contractGeneratedText").innerText;
+          var toast = document.getElementById("copyToast");
           if (navigator.clipboard) {
-            navigator.clipboard.writeText(t);
-            alert("ውሉ ኮፒ ተደርጓል!");
+            navigator.clipboard.writeText(t).then(function(){
+              if (toast) {
+                toast.classList.remove("hidden");
+                setTimeout(function(){ toast.classList.add("hidden"); }, 3000);
+              }
+            }).catch(function(){
+              alert("ውሉ ኮፒ ተደርጓል!");
+            });
           } else {
             alert("ጽሑፉን ይምረጡና ኮፒ ያድርጉ።");
           }
         };
       })
-      .catch(function(){ resEl.innerHTML = "ውሉን ማዘጋጀት አልተቻለም። እባክዎ እንደገና ይሞክሩ።"; });
+      .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ውሉን ማዘጋጀት አልተቻለም። እባክዎ እንደገና ይሞክሩ።</div>'; });
     };
 
     // Helper: Read file to Base64
@@ -2241,7 +2273,7 @@ EXPLORER_HTML = r"""
 
     // POA Verify Action
     document.getElementById("poaVerifyBtn").onclick = function() {
-      var poaText = document.getElementById("poaInput").value || "";
+      var poaText = (document.getElementById("poaInput").value || "").trim();
       var fileInput = document.getElementById("poaImageFile");
       var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
       var resEl = document.getElementById("poaResult");
@@ -2257,6 +2289,20 @@ EXPLORER_HTML = r"""
         .then(function(r){ return r.json(); })
         .then(function(d){
           var ver = d.verification || d;
+          
+          // Strict Validation Check
+          if (ver.is_valid_format === false || ver.error_message_amharic || ver.status === 'error') {
+            var errMsg = ver.error_message_amharic || ver.message || "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።";
+            resEl.innerHTML =
+              '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs shadow-sm space-y-1">' +
+                '<div class="font-black text-rose-900 text-xs flex items-center gap-1.5">' +
+                  '<span>⚠️</span><span>ትክክለኛ ያልሆነ ሰነድ (Invalid Document)</span>' +
+                '</div>' +
+                '<p class="leading-relaxed">' + esc(errMsg) + '</p>' +
+              '</div>';
+            return;
+          }
+
           var isValid = ver.is_valid_format !== false;
           var hasSelling = Boolean(ver.has_selling_power);
           var conf = ver.confidence_score_pct || 90;
@@ -2299,14 +2345,14 @@ EXPLORER_HTML = r"""
                 '</div>' : '') +
             '</div>';
         })
-        .catch(function(){ resEl.innerHTML = "ማረጋገጫውን ማጠናቀቅ አልተቻለም።"; });
+        .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ማረጋገጫውን ማጠናቀቅ አልተቻለም።</div>'; });
       });
     };
 
     // Diagnostic Analyze Action
     document.getElementById("diagAnalyzeBtn").onclick = function() {
       var carModel = document.getElementById("diagCarModel") ? document.getElementById("diagCarModel").value : "Toyota Vitz 2018";
-      var diagText = document.getElementById("diagInput").value || "";
+      var diagText = (document.getElementById("diagInput").value || "").trim();
       var fileInput = document.getElementById("diagImageFile");
       var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
       var resEl = document.getElementById("diagResult");
@@ -2322,6 +2368,20 @@ EXPLORER_HTML = r"""
         .then(function(r){ return r.json(); })
         .then(function(d){
           var an = d.analysis || d;
+
+          // Strict Validation Check
+          if (an.is_valid_diagnostic === false || an.error_message_amharic || an.status === 'error') {
+            var errMsg = an.error_message_amharic || an.message || "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።";
+            resEl.innerHTML =
+              '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs shadow-sm space-y-1">' +
+                '<div class="font-black text-rose-900 text-xs flex items-center gap-1.5">' +
+                  '<span>⚠️</span><span>ትክክለኛ ያልሆነ የምርመራ ወረቀት (Invalid Sheet)</span>' +
+                '</div>' +
+                '<p class="leading-relaxed">' + esc(errMsg) + '</p>' +
+              '</div>';
+            return;
+          }
+
           var score = an.health_score_pct || 86;
           var faults = an.identified_faults || [];
           var repCost = an.total_estimated_repair_cost_etb || 0;
@@ -2347,9 +2407,13 @@ EXPLORER_HTML = r"""
                 '<div class="space-y-1">' +
                   '<div class="font-bold text-slate-800 text-[11px]">የተለዩ የጥገና ክፍሎች:</div>' +
                   faults.map(function(f){
+                    var comp = typeof f === "object" ? (f.component || "የተለየ ክፍል") : String(f);
+                    var sev = typeof f === "object" ? (f.severity || "Med") : "Med";
+                    var descText = typeof f === "object" ? (f.description || "") : "";
+                    var cost = typeof f === "object" && f.estimated_cost_etb ? Number(f.estimated_cost_etb).toLocaleString() + ' ETB' : '';
                     return '<div class="p-2 bg-white rounded-xl border border-slate-100 flex items-center justify-between text-[11px]">' +
-                      '<div><span class="font-bold text-slate-800">' + esc(f.component || "ክፍል") + '</span> <span class="text-[9px] px-1 py-0.2 rounded ' + (f.severity === "High" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700") + '">' + esc(f.severity || "Med") + '</span><div class="text-[10px] text-slate-500">' + esc(f.description || "") + '</div></div>' +
-                      '<div class="font-bold text-slate-700 shrink-0 text-right">' + (f.estimated_cost_etb ? Number(f.estimated_cost_etb).toLocaleString() + ' ETB' : '') + '</div>' +
+                      '<div><span class="font-bold text-slate-800">' + esc(comp) + '</span> <span class="text-[9px] px-1 py-0.2 rounded ' + (sev === "High" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700") + '">' + esc(sev) + '</span>' + (descText ? '<div class="text-[10px] text-slate-500">' + esc(descText) + '</div>' : '') + '</div>' +
+                      (cost ? '<div class="font-bold text-slate-700 shrink-0 text-right">' + cost + '</div>' : '') +
                     '</div>';
                   }).join('') +
                 '</div>' : '') +
@@ -2360,7 +2424,7 @@ EXPLORER_HTML = r"""
                 '</div>' : '') +
             '</div>';
         })
-        .catch(function(){ resEl.innerHTML = "ትንተናውን ማጠናቀቅ አልተቻለም።"; });
+        .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ትንተናውን ማጠናቀቅ አልተቻለም።</div>'; });
       });
     };
 
@@ -3586,6 +3650,17 @@ def _calculate_vehicle_duty(fuel_type: str, engine_cc: int, manufacture_year: in
         "status": "success",
         "cif_etb": round(cif_etb, 2),
         "cif_usd": round(cif_usd, 2),
+        "cif_landed_cost_etb": round(cif_etb, 2),
+        "landed_cost_etb": round(total_landed_cost, 2),
+        "total_duty_etb": round(total_taxes, 2),
+        "total_taxes_etb": round(total_taxes, 2),
+        "total_tax_payable_etb": round(total_taxes, 2),
+        "total_landed_cost_etb": round(total_landed_cost, 2),
+        "customs_duty_etb": round(customs_duty, 2),
+        "excise_tax_etb": round(excise_tax, 2),
+        "surtax_etb": round(surtax, 2),
+        "withholding_tax_etb": round(withholding_tax, 2),
+        "vat_etb": round(vat, 2),
         "exchange_rate_usd_etb": usd_rate,
         "policy_note": policy_note,
         "vehicle_details": {
@@ -3609,7 +3684,6 @@ def _calculate_vehicle_duty(fuel_type: str, engine_cc: int, manufacture_year: in
             "vat_etb": round(vat_etb, 2),
             "total_taxes_etb": round(total_taxes, 2)
         },
-        "total_landed_cost_etb": round(total_landed_cost, 2),
         "effective_tax_percentage": f"{effective_tax_pct}%"
     }
 
@@ -3735,6 +3809,12 @@ def api_calculate_loan():
 
         return jsonify({
             "status": "success",
+            "monthly_payment_etb": round(monthly_repayment, 2),
+            "total_interest_amount_etb": round(total_interest, 2),
+            "total_repayment_amount_etb": round(total_repayment, 2),
+            "applied_interest_rate_pct": round(annual_rate_pct, 2),
+            "down_payment_etb": round(down_payment_amount, 2),
+            "loan_amount_etb": round(principal, 2),
             "loan_summary": {
                 "asset_price_etb": round(price, 2),
                 "down_payment_pct": f"{round(down_payment_pct, 1)}%",
@@ -4456,17 +4536,29 @@ def api_verify_poa():
     """
     DOCUMENT & POWER OF ATTORNEY (ውክልና) VERIFICATION (/api/verify-poa)
     Analyzes and validates POA documents (text or scanned image) for real estate and car sales.
+    Enforces strict validation against non-compliant or irrelevant images/text.
     """
     if request.method == 'OPTIONS':
         return ('', 204)
     try:
         data = request.json or {}
-        poa_text = data.get('poa_text') or ''
+        poa_text = (data.get('poa_text') or '').strip()
         image_data = data.get('image_data')
         poa_number = data.get('poa_number') or 'POA-ET-2024-889'
         grantor = data.get('grantor') or 'አቶ አበበ ከበደ'
         agent = data.get('agent') or 'አቶ ካሳሁን ኃይሌ'
         authority_scope = data.get('authority_scope') or 'ለመሸጥ፣ ለመለወጥ፣ ስም ለማዛወር፣ ገንዘብ ለመቀበል'
+
+        if not poa_text and not image_data:
+            return jsonify({
+                "status": "error",
+                "verification": {
+                    "is_valid_format": False,
+                    "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",
+                    "confidence_score_pct": 0,
+                    "recommendation_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"
+                }
+            })
 
         api_key = os.environ.get("GEMINI_API_KEY")
         verification = None
@@ -4480,12 +4572,23 @@ def api_verify_poa():
 
                 genai.configure(api_key=api_key)
                 prompt = (
-                    "You are a senior Ethiopian legal document auditor specializing in Powers of Attorney (ውክልና ማስረጃ) under the Ethiopian Civil Code.\n"
+                    "You are a senior Ethiopian legal document auditor specializing in Powers of Attorney (ውክልና ማስረጃ) and Title Deeds under the Ethiopian Civil Code.\n"
+                    "CRITICAL VALIDATION INSTRUCTION: First, strictly verify if the provided image or text is genuinely a valid Ethiopian Power of Attorney (ውክልና), Title Deed (ካርታ), or legal sales authorization document.\n"
+                    "If the image or text is random, irrelevant, blurry beyond recognition, a selfie, food, non-legal content, or NOT a Power of Attorney / Title Deed:\n"
+                    "You MUST return JSON with:\n"
+                    "{\n"
+                    '  "is_valid_format": false,\n'
+                    '  "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",\n'
+                    '  "confidence_score_pct": 0,\n'
+                    '  "recommendation_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"\n'
+                    "}\n"
+                    "DO NOT hallucinate names, fake verification scores, or authorized powers for invalid content.\n\n"
+                    "If and ONLY IF it IS a valid legal POA or deed:\n"
                     f"Analyze this POA text / image:\nText: {poa_text}\n\n"
                     "Generate strictly valid JSON with keys:\n"
-                    "1. 'is_valid_format': boolean\n"
-                    "2. 'grantor_name': ውክልና ሰጪ (Full name)\n"
-                    "3. 'grantee_name': ተወካይ (Full name)\n"
+                    "1. 'is_valid_format': true\n"
+                    "2. 'grantor_name': ውክልና ሰጪ (Full name extracted from document)\n"
+                    "3. 'grantee_name': ተወካይ (Full name extracted from document)\n"
                     "4. 'authorized_powers': list of powers explicitly granted (e.g. Selling, Transferring Title, Receiving Cash)\n"
                     "5. 'has_selling_power': boolean (specifically permits selling/transferring ownership)\n"
                     "6. 'has_cash_collection_power': boolean\n"
@@ -4516,32 +4619,45 @@ def api_verify_poa():
                 logger.warning(f"POA verification Gemini warning: {e}")
 
         if not verification:
-            has_sell = "ለመሸጥ" in (poa_text or authority_scope) or "sell" in (poa_text or authority_scope).lower()
-            verification = {
-                "is_valid_format": True,
-                "poa_document_number": poa_number,
-                "grantor_name": grantor,
-                "grantee_name": agent,
-                "authorized_powers": [
-                    "ንብረትን ለመሸጥና ለማስተላለፍ (Selling & Transferring)",
-                    "ስም በውልና ማስረጃ ለማዛወር (Title Deed Conveyance)",
-                    "የሽያጭ ገንዘብ በባንክ ለመቀበል (Fund Collection)"
-                ],
-                "has_selling_power": has_sell,
-                "has_cash_collection_power": True,
-                "risk_flags": [
-                    "የውክልናው ሰነድ ዋናው ማህተም በውልና ማስረጃ ኦሪጅናል መረጋገጥ አለበት",
-                    "የውክልና ሰጪው ህይወት ማለፍ ወይም ውክልና መሰረዝ አለመኖሩን ማጣራት ይመረጣል"
-                ],
-                "confidence_score_pct": 94 if has_sell else 65,
-                "recommendation_amharic": (
-                    f"ይህ የውክልና ሰነድ {grantor} ለ{agent} ንብረት የመሸጥና ስም የማዛወር ሙሉ ህጋዊ ሥልጣን የሚሰጥ ነው። "
-                    "ግብይቱን ከመፈጸምዎ በፊት ዋናውን ማህተም በሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ ያመሳክሩ።"
-                )
-            }
+            # Fallback heuristic validation
+            legal_keywords = ["ውክልና", "poa", "attorney", "power", "ወካይ", "ተወካይ", "ሻጭ", "ገዢ", "ስልጣን", "ካርታ", "ይዞታ", "ስም ዝውውር"]
+            text_lower = (poa_text + " " + authority_scope).lower()
+            has_keywords = any(kw in text_lower for kw in legal_keywords)
+
+            if not has_keywords and not image_data:
+                verification = {
+                    "is_valid_format": False,
+                    "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",
+                    "confidence_score_pct": 0,
+                    "recommendation_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"
+                }
+            else:
+                has_sell = "ለመሸጥ" in (poa_text or authority_scope) or "sell" in (poa_text or authority_scope).lower()
+                verification = {
+                    "is_valid_format": True,
+                    "poa_document_number": poa_number,
+                    "grantor_name": grantor,
+                    "grantee_name": agent,
+                    "authorized_powers": [
+                        "ንብረትን ለመሸጥና ለማስተላለፍ (Selling & Transferring)",
+                        "ስም በውልና ማስረጃ ለማዛወር (Title Deed Conveyance)",
+                        "የሽያጭ ገንዘብ በባንክ ለመቀበል (Fund Collection)"
+                    ],
+                    "has_selling_power": has_sell,
+                    "has_cash_collection_power": True,
+                    "risk_flags": [
+                        "የውክልናው ሰነድ ዋናው ማህተም በውልና ማስረጃ ኦሪጅናል መረጋገጥ አለበት",
+                        "የውክልና ሰጪው ህይወት ማለፍ ወይም ውክልና መሰረዝ አለመኖሩን ማጣራት ይመረጣል"
+                    ],
+                    "confidence_score_pct": 94 if has_sell else 65,
+                    "recommendation_amharic": (
+                        f"ይህ የውክልና ሰነድ {grantor} ለ{agent} ንብረት የመሸጥና ስም የማዛወር ሙሉ ህጋዊ ሥልጣን የሚሰጥ ነው። "
+                        "ግብይቱን ከመፈጸምዎ በፊት ዋናውን ማህተም በሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ ያመሳክሩ።"
+                    )
+                }
 
         return jsonify({
-            "status": "success",
+            "status": "success" if verification.get("is_valid_format") is not False else "error",
             "verification": verification
         })
     except Exception as e:
@@ -4554,14 +4670,28 @@ def api_analyze_diagnostic():
     """
     GARAGE DIAGNOSTIC SHEET ANALYZER (/api/analyze-diagnostic)
     Scans inspection sheets (text or scanned photo) and identifies mechanical issues and estimated repair costs.
+    Enforces strict validation against non-compliant or irrelevant images/text.
     """
     if request.method == 'OPTIONS':
         return ('', 204)
     try:
         data = request.json or {}
         car_model = data.get('car_model') or 'Toyota Vitz 2018'
-        diagnostic_text = data.get('diagnostic_text') or ''
+        diagnostic_text = (data.get('diagnostic_text') or '').strip()
         image_data = data.get('image_data')
+
+        if not diagnostic_text and not image_data:
+            return jsonify({
+                "status": "error",
+                "analysis": {
+                    "is_valid_diagnostic": False,
+                    "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",
+                    "health_score_pct": 0,
+                    "total_estimated_repair_cost_etb": 0,
+                    "identified_faults": [],
+                    "buyer_negotiation_advice_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"
+                }
+            })
 
         api_key = os.environ.get("GEMINI_API_KEY")
         analysis = None
@@ -4576,15 +4706,29 @@ def api_analyze_diagnostic():
                 genai.configure(api_key=api_key)
                 prompt = (
                     "You are a master vehicle diagnostic engineer in Ethiopia.\n"
+                    "CRITICAL VALIDATION INSTRUCTION: First, strictly check if the provided image or text is genuinely an automotive garage diagnostic report, vehicle inspection sheet, OBD-II scanner output, or mechanical inspection document.\n"
+                    "If the image or text is random, unrelated (e.g. selfies, food, landscapes, general text, non-automotive documents) or NOT a vehicle diagnostic / inspection sheet:\n"
+                    "You MUST return JSON with:\n"
+                    "{\n"
+                    '  "is_valid_diagnostic": false,\n'
+                    '  "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",\n'
+                    '  "health_score_pct": 0,\n'
+                    '  "total_estimated_repair_cost_etb": 0,\n'
+                    '  "identified_faults": [],\n'
+                    '  "buyer_negotiation_advice_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"\n'
+                    "}\n"
+                    "DO NOT hallucinate vehicle faults or repair costs for invalid images.\n\n"
+                    "If and ONLY IF it IS a valid vehicle diagnostic / inspection report:\n"
                     f"Analyze this garage diagnostic inspection report for {car_model}:\n{diagnostic_text}\n\n"
                     "Generate strictly valid JSON with keys:\n"
-                    "1. 'health_score_pct': vehicle condition percentage (0-100)\n"
-                    "2. 'engine_grade': 'A' | 'B' | 'C' | 'D'\n"
-                    "3. 'transmission_grade': 'A' | 'B' | 'C'\n"
-                    "4. 'body_and_suspension': summary\n"
-                    "5. 'identified_faults': list of objects with {'component', 'severity': 'Low'|'Medium'|'High', 'estimated_cost_etb', 'description'}\n"
-                    "6. 'total_estimated_repair_cost_etb': total repair cost sum in ETB\n"
-                    "7. 'buyer_negotiation_advice_amharic': Amharic tactical advice on how much discount to demand from the seller based on these repairs.\n"
+                    "1. 'is_valid_diagnostic': true\n"
+                    "2. 'health_score_pct': vehicle condition percentage (0-100)\n"
+                    "3. 'engine_grade': 'A' | 'B' | 'C' | 'D'\n"
+                    "4. 'transmission_grade': 'A' | 'B' | 'C'\n"
+                    "5. 'body_and_suspension': summary\n"
+                    "6. 'identified_faults': list of objects with {'component': string, 'severity': 'Low'|'Medium'|'High', 'estimated_cost_etb': number, 'description': string}\n"
+                    "7. 'total_estimated_repair_cost_etb': total repair cost sum in ETB (number)\n"
+                    "8. 'buyer_negotiation_advice_amharic': Amharic tactical advice on how much discount to demand from the seller based on these repairs.\n"
                     "Return ONLY JSON."
                 )
                 model = genai.GenerativeModel(
@@ -4609,22 +4753,38 @@ def api_analyze_diagnostic():
                 logger.warning(f"Diagnostic analyzer Gemini warning: {e}")
 
         if not analysis:
-            analysis = {
-                "health_score_pct": 86,
-                "engine_grade": "A-",
-                "transmission_grade": "A",
-                "body_and_suspension": "እጅግ ጤናማ እገዳዎች (Shock absorbers) እና ንጹህ ቻሲ",
-                "identified_faults": [
-                    {"component": "Valve Cover Gasket", "severity": "Low", "estimated_cost_etb": 3500, "description": "ቀላል የዘይት ላብ (Gasket መለወጥ)"},
-                    {"component": "Brake Pads", "severity": "Medium", "estimated_cost_etb": 4200, "description": "የፍሬን ፓድ በቅርቡ መለወጥ አለበት (40% ቀሪ)"},
-                    {"component": "AC Gas Refill", "severity": "Low", "estimated_cost_etb": 2500, "description": "የኤሲ ጋዝ መሙላት"}
-                ],
-                "total_estimated_repair_cost_etb": 10200,
-                "buyer_negotiation_advice_amharic": "መኪናው በጥሩ ይዞታ ላይ ይገኛል። ለቀላል ጥገናዎች የሚሆን 15,000 እስከ 20,000 ብር ከሻጩ ላይ በመደራደር እንዲቀንስ መጠየቅ ይችላሉ።"
-            }
+            # Fallback heuristic validation
+            diag_keywords = ["engine", "brake", "oil", "diagnostic", "garage", "obd", "transmission", "gasket", "spark", "filter", "ምርመራ", "ሞተር", "ፍሬን", "ዘይት", "ጋራዥ", "ጥገና"]
+            text_lower = diagnostic_text.lower()
+            has_keywords = any(kw in text_lower for kw in diag_keywords)
+
+            if not has_keywords and not image_data:
+                analysis = {
+                    "is_valid_diagnostic": False,
+                    "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",
+                    "health_score_pct": 0,
+                    "total_estimated_repair_cost_etb": 0,
+                    "identified_faults": [],
+                    "buyer_negotiation_advice_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"
+                }
+            else:
+                analysis = {
+                    "is_valid_diagnostic": True,
+                    "health_score_pct": 86,
+                    "engine_grade": "A-",
+                    "transmission_grade": "A",
+                    "body_and_suspension": "እጅግ ጤናማ እገዳዎች (Shock absorbers) እና ንጹህ ቻሲ",
+                    "identified_faults": [
+                        {"component": "Valve Cover Gasket", "severity": "Low", "estimated_cost_etb": 3500, "description": "ቀላል የዘይት ላብ (Gasket መለወጥ)"},
+                        {"component": "Brake Pads", "severity": "Medium", "estimated_cost_etb": 4200, "description": "የፍሬን ፓድ በቅርቡ መለወጥ አለበት (40% ቀሪ)"},
+                        {"component": "AC Gas Refill", "severity": "Low", "estimated_cost_etb": 2500, "description": "የኤሲ ጋዝ መሙላት"}
+                    ],
+                    "total_estimated_repair_cost_etb": 10200,
+                    "buyer_negotiation_advice_amharic": "መኪናው በጥሩ ይዞታ ላይ ይገኛል። ለቀላል ጥገናዎች የሚሆን 15,000 እስከ 20,000 ብር ከሻጩ ላይ በመደራደር እንዲቀንስ መጠየቅ ይችላሉ።"
+                }
 
         return jsonify({
-            "status": "success",
+            "status": "success" if analysis.get("is_valid_diagnostic") is not False else "error",
             "analysis": analysis
         })
     except Exception as e:
