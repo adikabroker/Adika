@@ -1622,14 +1622,36 @@ EXPLORER_HTML = r"""
 
     aiApplyBtn.onclick = function() {
       var query = aiPrompt.value.trim();
-      if (query) {
+      if (!query) {
+        aiModalClose.onclick();
+        return;
+      }
+      aiApplyBtn.disabled = true;
+      aiApplyBtn.innerHTML = '<span>⏳ Searching...</span>';
+      filterText.textContent = "AI Filter: " + query;
+      filterBanner.classList.remove("hidden");
+
+      fetch("/api/ai-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: query })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        aiApplyBtn.disabled = false;
+        aiApplyBtn.innerHTML = '<span>✨ <span class="lang-am">አጣራ</span><span class="lang-en">Apply</span></span>';
+        aiModalClose.onclick();
+        var items = data.items || [];
+        finishLoading(items, false, false);
+      })
+      .catch(function(err) {
+        aiApplyBtn.disabled = false;
+        aiApplyBtn.innerHTML = '<span>✨ <span class="lang-am">አጣራ</span><span class="lang-en">Apply</span></span>';
+        aiModalClose.onclick();
         state.q = query;
         qInput.value = query;
-        filterText.textContent = "AI Filter: " + query;
-        filterBanner.classList.remove("hidden");
-      }
-      aiModalClose.onclick();
-      load(false);
+        load(false);
+      });
     };
 
     aiResetBtn.onclick = function() {
@@ -2024,6 +2046,153 @@ def api_explorer_listings():
             "has_more": False,
             "items": [],
         }), 200
+
+
+def parse_search_with_gemini(prompt_text: str):
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        cat = "all"
+        lower = prompt_text.lower()
+        if any(w in lower for w in ["car", "vitz", "toyota", "hyundai", "መኪና"]):
+            cat = "cars"
+        elif any(w in lower for w in ["house", "villa", "apartment", "condo", "ቤት", "ኮንዶ", "ቪላ"]):
+            cat = "property"
+        return {"category": cat, "max_price": None, "keyword": prompt_text}
+
+    try:
+        import urllib.request
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        system_instruction = (
+            "You are a search query parser for an Ethiopian marketplace (cars, properties/houses, commercial items). "
+            "Given a user prompt in English or Amharic, extract a JSON object with keys: "
+            "'category' (one of 'cars', 'property', 'all'), "
+            "'max_price' (integer budget in ETB or null), "
+            "'keyword' (clean search terms without price/category words, or null). "
+            "Respond ONLY with valid JSON, nothing else."
+        )
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": f"{system_instruction}\nUser Query: {prompt_text}"}
+                ]
+            }],
+            "generationConfig": {
+                "temperature": 0.1,
+                "responseMimeType": "application/json"
+            }
+        }
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            raw = json.loads(resp.read().decode("utf-8"))
+            text = raw["candidates"][0]["content"]["parts"][0]["text"].strip()
+            if text.startswith("```json"):
+                text = text[7:]
+            if text.startswith("```"):
+                text = text[3:]
+            if text.endswith("```"):
+                text = text[:-3]
+            return json.loads(text.strip())
+    except Exception as e:
+        logger.warning(f"Gemini API parse error, falling back: {e}")
+        cat = "all"
+        lower = prompt_text.lower()
+        if any(w in lower for w in ["car", "vitz", "toyota", "hyundai", "መኪና"]):
+            cat = "cars"
+        elif any(w in lower for w in ["house", "villa", "apartment", "condo", "ቤት", "ኮንዶ", "ቪላ"]):
+            cat = "property"
+        return {"category": cat, "max_price": None, "keyword": prompt_text}
+
+
+@web_app.route('/api/ai-search', methods=['POST', 'OPTIONS'])
+def api_ai_search():
+    if request.method == 'OPTIONS':
+        return ('', 204)
+    try:
+        data = request.json or {}
+        prompt = (data.get('prompt') or '').strip()
+        if not prompt:
+            return jsonify({"status": "success", "parsed": {}, "items": []})
+
+        parsed = parse_search_with_gemini(prompt)
+        category = parsed.get("category", "all")
+        max_price = parsed.get("max_price")
+        keyword = parsed.get("keyword") or prompt
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        from models import is_postgres
+
+        where = ["1=1"]
+        params = []
+        where.append(f"(status IS NULL OR status != {p})")
+        params.append('deleted')
+        where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
+        params.extend(['sold', 'rented', 'expired'])
+
+        if category == "cars":
+            where.append(f"(main_category = {p} OR category = {p})")
+            params.extend(["መኪና", "መኪና"])
+        elif category == "property":
+            where.append(f"(main_category = {p} OR category = {p})")
+            params.extend(["ቤት", "ቤት"])
+
+        if keyword:
+            like = "ILIKE" if is_postgres() else "LIKE"
+            where.append(f"(CAST(description AS TEXT) {like} {p} OR CAST(sub_category AS TEXT) {like} {p} OR CAST(price AS TEXT) {like} {p})")
+            params.extend([f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"])
+
+        where_sql = " AND ".join(where)
+        cur.execute(
+            f"SELECT * FROM listings WHERE {where_sql} ORDER BY id DESC LIMIT 30",
+            params
+        )
+        rows = cur.fetchall() or []
+        items = []
+        for row in rows:
+            item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
+            if isinstance(item.get('extra_data'), str):
+                try:
+                    item['extra_data'] = json.loads(item['extra_data'])
+                except Exception:
+                    item['extra_data'] = {}
+            photos = []
+            try:
+                if item.get('id') is not None:
+                    cur.execute(f"SELECT photo_id FROM listing_photos WHERE listing_id = {p}", (item['id'],))
+                    photos = [r['photo_id'] if isinstance(r, dict) else r[0] for r in (cur.fetchall() or [])]
+            except Exception:
+                photos = []
+            if not photos and item.get('photo_id'):
+                photos = [item['photo_id']]
+            item['photos'] = photos
+            if item.get('view_count') is None:
+                item['view_count'] = 0
+            if item.get('created_at') and not isinstance(item['created_at'], str):
+                try:
+                    item['created_at'] = item['created_at'].isoformat()
+                except Exception:
+                    item['created_at'] = str(item['created_at'])
+
+            if max_price:
+                digits = "".join([c for c in str(item.get('price', '')) if c.isdigit()])
+                if digits and int(digits) > int(max_price):
+                    continue
+            items.append(item)
+
+        conn.close()
+        return jsonify({
+            "status": "success",
+            "parsed": parsed,
+            "items": [_json_safe(it) for it in items]
+        })
+    except Exception as e:
+        logger.error(f"api_ai_search error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e), "items": []}), 500
 
 
 @web_app.route('/api/views/<int:listing_id>', methods=['POST'])
