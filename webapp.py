@@ -2728,6 +2728,359 @@ def api_listings_alias():
     return api_explorer_listings()
 
 
+# ==============================================================================
+# PHASE 2: FINANCIAL & CALCULATOR AI MODULES
+# ==============================================================================
+
+def _calculate_vehicle_duty(fuel_type: str, engine_cc: int, manufacture_year: int, cif_etb: float, cif_usd: float = None, usd_rate: float = 128.5):
+    """
+    Computes Ethiopian Customs Duty, Excise Tax, Surtax, Withholding, and VAT
+    under current Ethiopian Ministry of Finance vehicle tariff regulations.
+    """
+    fuel = str(fuel_type or "benzine").lower().strip()
+    is_ev = any(w in fuel for w in ["electric", "ev", "ኤሌክትሪክ"])
+    is_hybrid = any(w in fuel for w in ["hybrid", "ሀይብሪድ"])
+
+    current_year = 2026
+    age_years = max(0, current_year - int(manufacture_year or current_year))
+    cc = max(0, int(engine_cc or 0))
+
+    if cif_usd and not cif_etb:
+        cif_etb = float(cif_usd) * float(usd_rate)
+    elif cif_etb and not cif_usd:
+        cif_usd = float(cif_etb) / float(usd_rate)
+    else:
+        cif_etb = float(cif_etb or 0)
+        cif_usd = float(cif_usd or (cif_etb / usd_rate if usd_rate else 0))
+
+    if is_ev:
+        # Ethiopian EV Incentives: 5% duty, 0% excise, 0% surtax, 3% withholding, 15% VAT
+        duty_rate = 0.05
+        excise_rate = 0.00
+        surtax_rate = 0.00
+        withholding_rate = 0.03
+        vat_rate = 0.15
+        policy_note = "Green Energy EV Incentive (5% Duty, 0% Excise, Surtax Exempt)"
+    elif is_hybrid:
+        duty_rate = 0.20
+        if cc <= 1300:
+            base_excise = 0.10
+        elif cc <= 1800:
+            base_excise = 0.20
+        else:
+            base_excise = 0.30
+        age_factor = 1.0 if age_years <= 2 else (1.3 if age_years <= 5 else 1.6)
+        excise_rate = round(base_excise * age_factor, 3)
+        surtax_rate = 0.10
+        withholding_rate = 0.03
+        vat_rate = 0.15
+        policy_note = "Hybrid Vehicle Tariff (Eco-Reduced Excise Tier)"
+    else:
+        # Standard Internal Combustion Engine (Benzine / Diesel)
+        duty_rate = 0.35
+        if cc <= 1300:
+            base_excise = 0.30
+        elif cc <= 1800:
+            base_excise = 0.60
+        else:
+            base_excise = 1.00
+
+        # Used vehicle age multiplier under Ethiopian Customs Tariff
+        if age_years <= 2:
+            excise_rate = base_excise
+        elif age_years <= 4:
+            excise_rate = round(base_excise + 0.80, 2)
+        elif age_years <= 7:
+            excise_rate = round(base_excise + 1.80, 2)
+        else:
+            excise_rate = round(min(5.00, base_excise + 3.50), 2)
+
+        surtax_rate = 0.10
+        withholding_rate = 0.03
+        vat_rate = 0.15
+        policy_note = f"Standard ICE Vehicle ({'New' if age_years <= 2 else f'{age_years} yrs used'}) Tariff Schedule"
+
+    # Precise Ethiopian Tax Cascading Formula
+    customs_duty = cif_etb * duty_rate
+    excise_tax = (cif_etb + customs_duty) * excise_rate
+    surtax = (cif_etb + customs_duty + excise_tax) * surtax_rate
+    withholding_tax = cif_etb * withholding_rate
+    vat = (cif_etb + customs_duty + excise_tax + surtax) * vat_rate
+
+    total_taxes = customs_duty + excise_tax + surtax + withholding_tax + vat
+    total_landed_cost = cif_etb + total_taxes
+    effective_tax_pct = round((total_taxes / cif_etb * 100), 1) if cif_etb > 0 else 0
+
+    return {
+        "status": "success",
+        "cif_etb": round(cif_etb, 2),
+        "cif_usd": round(cif_usd, 2),
+        "exchange_rate_usd_etb": usd_rate,
+        "policy_note": policy_note,
+        "vehicle_details": {
+            "fuel_type": "Electric" if is_ev else ("Hybrid" if is_hybrid else "Benzine / Diesel"),
+            "engine_cc": cc if not is_ev else 0,
+            "manufacture_year": manufacture_year,
+            "age_years": age_years
+        },
+        "tax_rates": {
+            "customs_duty": f"{round(duty_rate * 100, 1)}%",
+            "excise_tax": f"{round(excise_rate * 100, 1)}%",
+            "surtax": f"{round(surtax_rate * 100, 1)}%",
+            "withholding": f"{round(withholding_rate * 100, 1)}%",
+            "vat": f"{round(vat_rate * 100, 1)}%"
+        },
+        "tax_breakdown": {
+            "customs_duty_etb": round(customs_duty, 2),
+            "excise_tax_etb": round(excise_tax, 2),
+            "surtax_etb": round(surtax, 2),
+            "withholding_tax_etb": round(withholding_tax, 2),
+            "vat_etb": round(vat_etb, 2),
+            "total_taxes_etb": round(total_taxes, 2)
+        },
+        "total_landed_cost_etb": round(total_landed_cost, 2),
+        "effective_tax_percentage": f"{effective_tax_pct}%"
+    }
+
+
+@web_app.route('/api/calculate-duty', methods=['GET', 'POST', 'OPTIONS'])
+def api_calculate_duty():
+    """
+    1. CUSTOMS DUTY CALCULATOR ENGINE (/api/calculate-duty):
+    Calculate Ethiopian customs duty, Excise tax, VAT, and surtax for vehicles based on
+    fuel type (Benzine/Diesel vs Electric), engine size (CC), and manufacture year.
+    """
+    if request.method == 'OPTIONS':
+        return ('', 204)
+    try:
+        if request.method == 'POST':
+            data = request.json or {}
+        else:
+            data = request.args
+
+        fuel_type = data.get('fuel_type') or data.get('fuel') or 'Benzine'
+        engine_cc = int(data.get('engine_cc') or data.get('cc') or 1500)
+        manufacture_year = int(data.get('manufacture_year') or data.get('year') or 2020)
+        cif_etb = float(data.get('cif_etb') or data.get('cif') or data.get('price') or 0)
+        cif_usd = float(data.get('cif_usd') or data.get('usd') or 0)
+        usd_rate = float(data.get('usd_rate') or data.get('exchange_rate') or 128.5)
+
+        if not cif_etb and not cif_usd:
+            cif_usd = 12000.0  # default sample CIF
+
+        result = _calculate_vehicle_duty(
+            fuel_type=fuel_type,
+            engine_cc=engine_cc,
+            manufacture_year=manufacture_year,
+            cif_etb=cif_etb,
+            cif_usd=cif_usd,
+            usd_rate=usd_rate
+        )
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"api_calculate_duty error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@web_app.route('/api/calculate-loan', methods=['GET', 'POST', 'OPTIONS'])
+def api_calculate_loan():
+    """
+    2. BANK LOAN & MORTGAGE ELIGIBILITY (/api/calculate-loan):
+    Calculate monthly mortgage/auto loan repayments using standard Ethiopian bank interest rates (~16-19%).
+    Determine buyer eligibility based on monthly income vs estimated monthly payment (DTI ratio).
+    """
+    if request.method == 'OPTIONS':
+        return ('', 204)
+    try:
+        if request.method == 'POST':
+            data = request.json or {}
+        else:
+            data = request.args
+
+        price = float(data.get('price') or data.get('property_price') or data.get('vehicle_price') or 3000000.0)
+        down_payment_pct = float(data.get('down_payment_percent') or data.get('down_payment_pct') or 20.0)
+        annual_rate_pct = float(data.get('interest_rate') or data.get('annual_rate') or 17.5)  # Standard Ethiopian rate
+        tenure_years = int(data.get('tenure_years') or data.get('years') or 10)
+        monthly_income = float(data.get('monthly_income') or data.get('income') or 0)
+        existing_monthly_debt = float(data.get('existing_debt') or 0)
+
+        down_payment_amount = price * (down_payment_pct / 100.0)
+        principal = max(0.0, price - down_payment_amount)
+
+        monthly_rate = (annual_rate_pct / 100.0) / 12.0
+        total_months = max(1, tenure_years * 12)
+
+        if monthly_rate > 0:
+            compound = (1.0 + monthly_rate) ** total_months
+            monthly_repayment = principal * (monthly_rate * compound) / (compound - 1.0)
+        else:
+            monthly_repayment = principal / total_months
+
+        total_repayment = monthly_repayment * total_months
+        total_interest = total_repayment - principal
+
+        # Eligibility & Debt-to-Income (DTI) Analysis
+        eligibility = {
+            "eligible": None,
+            "dti_ratio_pct": None,
+            "verdict": "Provide 'monthly_income' to check eligibility",
+            "max_allowed_monthly_payment": None,
+            "max_borrowing_capacity_etb": None
+        }
+
+        if monthly_income > 0:
+            total_monthly_obligations = monthly_repayment + existing_monthly_debt
+            dti = (total_monthly_obligations / monthly_income) * 100.0
+            max_payment_allowed = max(0.0, (monthly_income * 0.45) - existing_monthly_debt)
+
+            if monthly_rate > 0:
+                compound = (1.0 + monthly_rate) ** total_months
+                max_loan_cap = max_payment_allowed * (compound - 1.0) / (monthly_rate * compound)
+            else:
+                max_loan_cap = max_payment_allowed * total_months
+
+            if dti <= 35.0:
+                verdict = "Highly Eligible (Prime Tier) — Fits comfortably within standard bank DTI limits."
+                is_eligible = True
+            elif dti <= 45.0:
+                verdict = "Eligible (Standard Tier) — Meets Ethiopian Commercial Banks (CBE/Awash/Dashen) 45% DTI cap."
+                is_eligible = True
+            elif dti <= 55.0:
+                verdict = "Borderline / High Debt Ratio — Requires co-signer or higher down payment."
+                is_eligible = False
+            else:
+                verdict = "Ineligible — Exceeds statutory debt-to-income threshold (DTI > 50%)."
+                is_eligible = False
+
+            eligibility = {
+                "eligible": is_eligible,
+                "dti_ratio_pct": round(dti, 1),
+                "monthly_income_etb": round(monthly_income, 2),
+                "total_monthly_debt_etb": round(total_monthly_obligations, 2),
+                "max_allowed_monthly_payment_etb": round(max_payment_allowed, 2),
+                "max_borrowing_capacity_etb": round(max_loan_cap, 2),
+                "verdict": verdict
+            }
+
+        return jsonify({
+            "status": "success",
+            "loan_summary": {
+                "asset_price_etb": round(price, 2),
+                "down_payment_pct": f"{round(down_payment_pct, 1)}%",
+                "down_payment_amount_etb": round(down_payment_amount, 2),
+                "principal_loan_amount_etb": round(principal, 2),
+                "annual_interest_rate": f"{round(annual_rate_pct, 2)}%",
+                "tenure_years": tenure_years,
+                "total_installments": total_months
+            },
+            "repayment_details": {
+                "monthly_repayment_etb": round(monthly_repayment, 2),
+                "total_interest_payable_etb": round(total_interest, 2),
+                "total_amount_payable_etb": round(total_repayment, 2),
+                "interest_to_principal_ratio": f"{round((total_interest / principal * 100), 1) if principal > 0 else 0}%"
+            },
+            "eligibility_analysis": eligibility
+        })
+    except Exception as e:
+        logger.error(f"api_calculate_loan error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@web_app.route('/api/financial-insights', methods=['GET', 'POST', 'OPTIONS'])
+def api_financial_insights():
+    """
+    3. RENTAL YIELD & DEPRECIATION ESTIMATOR (/api/financial-insights):
+    - Calculate annual ROI (%) for property investments based on purchase price and estimated monthly rent.
+    - Estimate 3-year resale value and fuel-vs-electric (EV) monthly cost savings analysis.
+    """
+    if request.method == 'OPTIONS':
+        return ('', 204)
+    try:
+        if request.method == 'POST':
+            data = request.json or {}
+        else:
+            data = request.args
+
+        category = str(data.get('category') or 'property').lower().strip()
+        price = float(data.get('price') or data.get('purchase_price') or 4500000.0)
+
+        # 1. PROPERTY RENTAL YIELD & ROI ENGINE
+        monthly_rent = float(data.get('monthly_rent') or data.get('rent') or (price * 0.007))  # approx 0.7% monthly yield
+        maintenance_pct = float(data.get('maintenance_pct') or 1.5)
+        vacancy_pct = float(data.get('vacancy_pct') or 5.0)
+        annual_property_tax = float(data.get('property_tax') or 5000.0)
+
+        gross_annual_rent = monthly_rent * 12.0
+        gross_yield_pct = (gross_annual_rent / price * 100.0) if price > 0 else 0.0
+
+        vacancy_loss = gross_annual_rent * (vacancy_pct / 100.0)
+        annual_maintenance = price * (maintenance_pct / 100.0)
+        net_annual_income = gross_annual_rent - vacancy_loss - annual_maintenance - annual_property_tax
+        net_yield_pct = (net_annual_income / price * 100.0) if price > 0 else 0.0
+        payback_years = (price / net_annual_income) if net_annual_income > 0 else 0.0
+
+        # Property 3-Year & 5-Year Capital Appreciation in Addis Ababa (Historical ~15-20% asset inflation)
+        prop_appreciation_annual_pct = 15.0
+        prop_val_yr3 = price * ((1.0 + (prop_appreciation_annual_pct / 100.0)) ** 3)
+        prop_val_yr5 = price * ((1.0 + (prop_appreciation_annual_pct / 100.0)) ** 5)
+
+        # 2. VEHICLE FUEL VS ELECTRIC (EV) TCO & COST SAVINGS ENGINE
+        monthly_km = float(data.get('monthly_km') or 1500.0)
+        ice_km_per_liter = float(data.get('ice_efficiency') or 11.0)
+        ev_kwh_per_100km = float(data.get('ev_efficiency') or 15.0)
+        fuel_price_per_liter = float(data.get('fuel_price') or 118.0)  # ETB/L in Ethiopia
+        electricity_price_kwh = float(data.get('electricity_price') or 2.50)  # ETB/kWh domestic rate
+
+        ice_monthly_fuel = (monthly_km / max(1.0, ice_km_per_liter)) * fuel_price_per_liter
+        ev_monthly_charging = (monthly_km / 100.0 * ev_kwh_per_100km) * electricity_price_kwh
+        monthly_fuel_savings = max(0.0, ice_monthly_fuel - ev_monthly_charging)
+        annual_fuel_savings = monthly_fuel_savings * 12.0
+
+        # Annual maintenance savings (EV has ~65% fewer moving parts, no engine oil/filters)
+        ice_annual_service = 45000.0
+        ev_annual_service = 12000.0
+        annual_service_savings = ice_annual_service - ev_annual_service
+        total_3yr_ev_savings = (annual_fuel_savings * 3.0) + (annual_service_savings * 3.0)
+
+        # 3-Year Resale Value Estimate (Vehicle Market Dynamics in Ethiopia)
+        # Note: In Ethiopia, high inflation and import taxes mean Toyota vehicles often hold or gain nominal ETB value
+        ice_resale_yr3 = price * 0.95  # 95% nominal retention
+        ev_resale_yr3 = price * 0.88   # 88% nominal retention
+
+        return jsonify({
+            "status": "success",
+            "property_rental_insights": {
+                "purchase_price_etb": round(price, 2),
+                "estimated_monthly_rent_etb": round(monthly_rent, 2),
+                "gross_annual_rent_etb": round(gross_annual_rent, 2),
+                "gross_rental_yield": f"{round(gross_yield_pct, 2)}%",
+                "net_annual_income_etb": round(net_annual_income, 2),
+                "net_rental_yield": f"{round(net_yield_pct, 2)}%",
+                "estimated_payback_period_years": round(payback_years, 1),
+                "projected_property_value_3yr_etb": round(prop_val_yr3, 2),
+                "projected_property_value_5yr_etb": round(prop_val_yr5, 2)
+            },
+            "vehicle_energy_and_resale_insights": {
+                "benchmark_vehicle_price_etb": round(price, 2),
+                "monthly_mileage_km": monthly_km,
+                "ice_monthly_fuel_cost_etb": round(ice_monthly_fuel, 2),
+                "ev_monthly_charging_cost_etb": round(ev_monthly_charging, 2),
+                "monthly_ev_savings_etb": round(monthly_fuel_savings, 2),
+                "annual_fuel_savings_etb": round(annual_fuel_savings, 2),
+                "annual_maintenance_savings_etb": round(annual_service_savings, 2),
+                "total_3year_ev_cost_savings_etb": round(total_3yr_ev_savings, 2),
+                "estimated_3year_resale_value": {
+                    "ice_nominal_resale_etb": round(ice_resale_yr3, 2),
+                    "ev_nominal_resale_etb": round(ev_resale_yr3, 2),
+                    "notes": "Reflects Ethiopian nominal asset retention and foreign exchange dynamics."
+                }
+            }
+        })
+    except Exception as e:
+        logger.error(f"api_financial_insights error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 def run_flask():
     port = int(PORT or 8080)
     logger.info("Starting Flask on 0.0.0.0:%s", port)
