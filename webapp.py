@@ -1,12 +1,12 @@
 # ==============================================================================
 # webapp.py — Flask Mini App + REST API for Adika Marketplace
 # Upgraded with:
-# - Clean Single-Language UI with Dedicated AM | EN Language Switcher
-# - Dynamic category-specific listing card specs (Cars: Model + Trans + Fuel; Property: Type + Location)
-# - Favorite (❤️) Heart button in the Card Footer next to Price (NEVER over image)
-# - Perfectly aligned 3-row compact Teal Header with pt-40 main padding
-# - Telegram-native floating bottom navigation bar
-# - AI Smart Filter Modal & Bottom-Sheet Detail Modal with Call, Telegram, & Share
+# - Truly Global & Instant Reactive i18n Language Switcher System (AM | EN)
+# - Tightened Header-to-Card Spacing (pt-28) with snug card layout
+# - Elevated Telegram-style Cards with Heart (❤️) in the Footer next to Price
+# - Dynamic category specs (Cars: Model + Trans + Fuel; Property: Type + Location)
+# - Floating translucent bottom navigation bar with reactive single-language labels
+# - AI Smart Filter Modal & Bottom Sheet Details with Call, Telegram, & Share
 # ==============================================================================
 import json
 import os
@@ -75,7 +75,7 @@ def _json_safe(obj):
 
 
 # ==============================================================================
-# SELLER FORM HTML (Dynamic Single-Language with AM | EN Switcher)
+# SELLER FORM HTML (Dynamic Single-Language with Global AM | EN Switcher)
 # ==============================================================================
 SELLER_FORM_HTML = r"""
 <!DOCTYPE html>
@@ -100,7 +100,7 @@ SELLER_FORM_HTML = r"""
 <body class="bg-[#b5eff3] min-h-screen text-slate-800">
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useRef } = React;
+    const { useState, useRef, useEffect } = React;
     const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
       expand(){}, ready(){}, close(){}, initDataUnsafe: {}, setHeaderColor(){}, setBackgroundColor(){}
     };
@@ -228,8 +228,13 @@ SELLER_FORM_HTML = r"""
     }
 
     function SellerForm() {
-      const [lang, setLang] = useState('am');
+      const [lang, setLang] = useState(() => localStorage.getItem('adika_lang') || 'am');
       const t = I18N[lang];
+
+      const changeLanguage = (newLang) => {
+        setLang(newLang);
+        localStorage.setItem('adika_lang', newLang);
+      };
 
       const [step, setStep] = useState(1);
       const [category, setCategory] = useState('መኪና');
@@ -272,7 +277,7 @@ SELLER_FORM_HTML = r"""
               const max = 1000;
               if (cw > max || ch > max) {
                 if (cw > ch) { ch = (ch / cw) * max; cw = max; }
-                else { cw = (cw / ch) * max; ch = max; }
+                else { cw = (cw / ch) * max; cw = max; }
               }
               canvas.width = cw; canvas.height = ch;
               canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
@@ -373,10 +378,16 @@ SELLER_FORM_HTML = r"""
             <div className="flex items-center justify-between max-w-xs mx-auto mb-1.5">
               <div className="font-extrabold text-xs tracking-wide">{t.title}</div>
               <div className="flex items-center gap-1.5">
-                <button type="button" onClick={() => setLang(lang === 'am' ? 'en' : 'am')}
-                  className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded-full text-[10px] font-extrabold">
-                  {lang === 'am' ? 'EN' : 'አማ'}
-                </button>
+                <div className="flex items-center bg-black/20 p-0.5 rounded-lg shrink-0">
+                  <button type="button" onClick={() => changeLanguage('am')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all ${lang === 'am' ? 'bg-white text-[#16acbd] shadow-sm' : 'text-white/80'}`}>
+                    AM
+                  </button>
+                  <button type="button" onClick={() => changeLanguage('en')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all ${lang === 'en' ? 'bg-white text-[#16acbd] shadow-sm' : 'text-white/80'}`}>
+                    EN
+                  </button>
+                </div>
                 <div className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">{t.step} {step}/3</div>
               </div>
             </div>
@@ -594,7 +605,7 @@ SELLER_FORM_HTML = r"""
 
 
 # ==============================================================================
-# BUYER FORM HTML (Dynamic Single-Language with AM | EN Switcher)
+# BUYER FORM HTML (Dynamic Single-Language with Global AM | EN Switcher)
 # ==============================================================================
 BUYER_FORM_HTML = r"""
 <!DOCTYPE html>
@@ -690,8 +701,13 @@ BUYER_FORM_HTML = r"""
     }
 
     function BuyerForm() {
-      const [lang, setLang] = useState('am');
+      const [lang, setLang] = useState(() => localStorage.getItem('adika_lang') || 'am');
       const t = I18N[lang];
+
+      const changeLanguage = (newLang) => {
+        setLang(newLang);
+        localStorage.setItem('adika_lang', newLang);
+      };
 
       const [category, setCategory] = useState('መኪና');
       const [budgetMin, setBudgetMin] = useState('');
@@ -755,10 +771,16 @@ BUYER_FORM_HTML = r"""
         <div className="min-h-screen bg-[#b5eff3] pb-24">
           <div className="fixed top-0 left-0 right-0 z-40 bg-[#16acbd] shadow-md px-4 py-2.5 text-white flex items-center justify-between">
             <h1 className="font-extrabold text-xs tracking-wide">{t.title}</h1>
-            <button type="button" onClick={() => setLang(lang === 'am' ? 'en' : 'am')}
-              className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded-full text-[10px] font-extrabold">
-              {lang === 'am' ? 'EN' : 'አማ'}
-            </button>
+            <div className="flex items-center bg-black/20 p-0.5 rounded-lg shrink-0">
+              <button type="button" onClick={() => changeLanguage('am')}
+                className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all ${lang === 'am' ? 'bg-white text-[#16acbd] shadow-sm' : 'text-white/80'}`}>
+                AM
+              </button>
+              <button type="button" onClick={() => changeLanguage('en')}
+                className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all ${lang === 'en' ? 'bg-white text-[#16acbd] shadow-sm' : 'text-white/80'}`}>
+                EN
+              </button>
+            </div>
           </div>
 
           <div className="pt-14 px-3.5">
@@ -853,7 +875,7 @@ BUYER_FORM_HTML = r"""
 
 
 # ==============================================================================
-# EXPLORER HTML (Marketplace + Pure Single-Language AM|EN + Dynamic Cards)
+# EXPLORER HTML (Marketplace with Global i18n & Snug Spacing pt-28)
 # ==============================================================================
 EXPLORER_HTML = r"""
 <!DOCTYPE html>
@@ -878,7 +900,7 @@ EXPLORER_HTML = r"""
       background: #ffffff;
       border: 1px solid rgba(226, 232, 240, 0.85);
       border-radius: 1rem;
-      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
       transition: transform 0.12s ease, box-shadow 0.12s ease;
       display: flex;
       flex-direction: column;
@@ -896,25 +918,25 @@ EXPLORER_HTML = r"""
 <body class="bg-[#b5eff3] min-h-screen">
 
   <!-- ================================================================= -->
-  <!-- 1. FIXED STICKY TEAL HEADER WITH AM | EN TOGGLE, SEARCH & PILLS   -->
+  <!-- 1. FIXED STICKY TEAL HEADER (Compact 3-Row Layout)                -->
   <!-- ================================================================= -->
-  <header class="fixed top-0 left-0 right-0 z-50 bg-[#16acbd] text-white shadow-md p-2 flex flex-col gap-2">
-    <div class="w-full max-w-md mx-auto flex flex-col gap-2">
+  <header class="fixed top-0 left-0 right-0 z-50 bg-[#16acbd] text-white shadow-md p-2 flex flex-col gap-1.5">
+    <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
       <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
-        <div class="flex-1 grid grid-cols-2 gap-1 p-1 bg-black/15 rounded-xl">
+        <div class="flex-1 grid grid-cols-2 gap-1 p-0.5 bg-black/15 rounded-xl">
           <button id="tabSell" type="button"
-            class="py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1">
+            class="py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1">
             <span>🛒</span> <span id="txtTabSell">ገበያ</span>
           </button>
           <button id="tabBuy" type="button"
-            class="py-1.5 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1">
+            class="py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1">
             <span>📋</span> <span id="txtTabBuy">ፈላጊዎች</span>
           </button>
         </div>
 
-        <!-- Language Toggle Switcher (AM | EN) -->
-        <div class="flex items-center bg-black/20 p-1 rounded-xl shrink-0">
+        <!-- Global AM | EN Language Switcher -->
+        <div class="flex items-center bg-black/20 p-0.5 rounded-xl shrink-0">
           <button id="langAmBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm">
             AM
           </button>
@@ -928,7 +950,7 @@ EXPLORER_HTML = r"""
       <div class="relative">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
         <input id="q" type="search" placeholder="ንብረት ይፈልጉ..." autocomplete="off"
-          class="w-full pl-8 pr-3 py-2 rounded-xl bg-white text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
+          class="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
       </div>
 
       <!-- Third Row: Category Pills (Horizontal Scroll) -->
@@ -937,16 +959,16 @@ EXPLORER_HTML = r"""
   </header>
 
   <!-- ================================================================= -->
-  <!-- 2. MAIN CONTENT AREA (pt-40 to prevent header clipping)           -->
+  <!-- 2. MAIN CONTENT AREA (Tightened pt-28 Spacing for Snug Fit)       -->
   <!-- ================================================================= -->
-  <main class="w-full max-w-md mx-auto pt-40 pb-28 px-2.5">
+  <main class="w-full max-w-md mx-auto pt-28 pb-24 px-2.5">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <div id="status" class="text-center py-12 text-slate-600 font-semibold text-xs">
+    <div id="status" class="text-center py-10 text-slate-600 font-semibold text-xs">
       <div class="inline-block animate-spin w-6 h-6 border-2 border-[#16acbd] border-t-transparent rounded-full mb-2"></div>
       <div id="txtLoading">እየጫነ ነው…</div>
     </div>
@@ -955,7 +977,7 @@ EXPLORER_HTML = r"""
     <div id="grid" class="grid grid-cols-2 gap-2"></div>
 
     <!-- Load More -->
-    <div class="text-center mt-4 mb-2">
+    <div class="text-center mt-3 mb-2">
       <button id="more" type="button"
         class="hidden px-5 py-2 rounded-full bg-white text-[#16acbd] font-extrabold text-xs shadow-md border border-white/60 active:scale-95 transition-all">
         <span id="txtLoadMore">ተጨማሪ ↓</span>
@@ -966,7 +988,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 3. FLOATING TRANSLUCENT BOTTOM NAVIGATION WITH AI & DYNAMIC "+"   -->
   <!-- ================================================================= -->
-  <nav class="fixed bottom-4 left-4 right-4 max-w-md mx-auto bg-white/95 backdrop-blur-xl rounded-full shadow-2xl border border-white/60 p-2 z-40 flex items-center justify-around">
+  <nav class="fixed bottom-4 left-4 right-4 max-w-md mx-auto bg-white/95 backdrop-blur-xl rounded-full shadow-2xl border border-white/60 p-1.5 z-40 flex items-center justify-around">
     <!-- Home Tab -->
     <button id="navHome" type="button" class="nav-item flex flex-col items-center justify-center px-2 py-1 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1118,7 +1140,7 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- ================================================================= -->
-  <!-- 6. JAVASCRIPT LOGIC WITH DYNAMIC SINGLE-LANGUAGE SWITCHER         -->
+  <!-- 6. CENTRALIZED REACTIVE JAVASCRIPT i18n & APPLICATION LOGIC       -->
   <!-- ================================================================= -->
   <script>
   (function () {
@@ -1127,9 +1149,8 @@ EXPLORER_HTML = r"""
       try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
     }
 
-    var currentLang = localStorage.getItem('adika_lang') || 'am';
-
-    var DICT = {
+    // Comprehensive Translation Dictionary
+    const i18n = {
       am: {
         tabSell: "ገበያ",
         tabBuy: "ፈላጊዎች",
@@ -1160,6 +1181,10 @@ EXPLORER_HTML = r"""
         noDesc: "ምንም ዝርዝር መግለጫ አልተሰጠም።",
         copied: "ሊንኩ ተገልብጧል!",
         helpAlert: "አዲካ የገበያ መድረክ • የደንበኞች እርዳታ\nለእርዳታ በ @AdikaMarketplaceBot ያግኙን ወይም በ 0911000000 ይደውሉ።",
+        carBadge: "መኪና",
+        propBadge: "ቤት / ንብረት",
+        verifiedText: "የተረጋገጠ",
+        bedsText: "መኝታ",
         cats: [
           { id: "", label: "✨ ሁሉም" },
           { id: "መኪና", label: "🚗 መኪኖች" },
@@ -1206,6 +1231,10 @@ EXPLORER_HTML = r"""
         noDesc: "No further description provided.",
         copied: "Link copied to clipboard!",
         helpAlert: "Adika Marketplace • Help Center\nFor support, contact @AdikaMarketplaceBot or call 0911000000.",
+        carBadge: "Vehicle",
+        propBadge: "Property",
+        verifiedText: "Verified",
+        bedsText: "Beds",
         cats: [
           { id: "", label: "✨ All" },
           { id: "መኪና", label: "🚗 Cars" },
@@ -1223,6 +1252,8 @@ EXPLORER_HTML = r"""
         ]
       }
     };
+
+    var currentLang = localStorage.getItem('adika_lang') || 'am';
 
     var favorites = {};
     try {
@@ -1289,21 +1320,28 @@ EXPLORER_HTML = r"""
     var aiResetBtn = document.getElementById("aiResetBtn");
     var aiQuickChipsEl = document.getElementById("aiQuickChips");
 
-    function applyLanguage(l) {
-      currentLang = l;
-      localStorage.setItem('adika_lang', l);
-      var t = DICT[l];
+    // =================================================================
+    // GLOBAL INSTANT LANGUAGE SWITCHER FUNCTION
+    // =================================================================
+    window.changeLanguage = function(lang) {
+      currentLang = lang;
+      localStorage.setItem('adika_lang', lang);
+      var t = i18n[lang];
 
+      // Update Header Text & Placeholders
       document.getElementById("txtTabSell").textContent = t.tabSell;
       document.getElementById("txtTabBuy").textContent = t.tabBuy;
       qInput.placeholder = t.searchPh;
       document.getElementById("txtLoading").textContent = t.loading;
       document.getElementById("txtLoadMore").textContent = t.loadMore;
+
+      // Update Bottom Nav
       document.getElementById("txtNavHome").textContent = t.navHome;
       document.getElementById("txtNavAi").textContent = t.navAi;
       document.getElementById("txtNavMsg").textContent = t.navMsg;
       document.getElementById("txtNavHelp").textContent = t.navHelp;
 
+      // Update AI Modal Strings
       document.getElementById("txtAiTitle").textContent = t.aiTitle;
       document.getElementById("txtAiSubtitle").textContent = t.aiSubtitle;
       document.getElementById("txtAiPromptLabel").textContent = t.aiPromptLabel;
@@ -1313,11 +1351,13 @@ EXPLORER_HTML = r"""
       aiResetBtn.textContent = t.aiReset;
       aiApplyBtn.innerHTML = t.aiApply;
 
+      // Update Detail Modal Actions
       document.getElementById("modalDescHeading").textContent = t.modalDescHeading;
       document.getElementById("txtModalCall").textContent = t.modalCall;
       document.getElementById("txtModalShare").textContent = t.modalShare;
 
-      if (l === 'am') {
+      // Toggle Switcher Active Styles
+      if (lang === 'am') {
         langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
         langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
       } else {
@@ -1325,15 +1365,21 @@ EXPLORER_HTML = r"""
         langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
       }
 
+      // Re-render Category Pills & Quick Filter Chips
       renderCats();
       renderAiQuickChips();
+
+      // Immediately Re-render Current Cards Grid with New Language Labels
       if (state.items && state.items.length) {
         finishLoading(state.items, false, state.hasMore);
       }
-    }
+      if (state.selectedItem) {
+        openDetailModal(state.selectedItem);
+      }
+    };
 
-    langAmBtn.onclick = function() { applyLanguage('am'); };
-    langEnBtn.onclick = function() { applyLanguage('en'); };
+    langAmBtn.onclick = function() { window.changeLanguage('am'); };
+    langEnBtn.onclick = function() { window.changeLanguage('en'); };
 
     function esc(s) {
       return String(s == null ? "" : s)
@@ -1345,7 +1391,7 @@ EXPLORER_HTML = r"""
       if (!iso) return "";
       try {
         var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-        var t = DICT[currentLang];
+        var t = i18n[currentLang];
         if (secs < 60) return t.justNow;
         if (secs < 3600) return Math.floor(secs / 60) + "m";
         if (secs < 86400) return Math.floor(secs / 3600) + "h";
@@ -1354,7 +1400,7 @@ EXPLORER_HTML = r"""
     }
 
     function renderCats() {
-      var catList = DICT[currentLang].cats;
+      var catList = i18n[currentLang].cats;
       var html = "";
       for (var i = 0; i < catList.length; i++) {
         var c = catList[i];
@@ -1367,7 +1413,7 @@ EXPLORER_HTML = r"""
     }
 
     function renderAiQuickChips() {
-      var chips = DICT[currentLang].quickChips;
+      var chips = i18n[currentLang].quickChips;
       var html = "";
       for (var i = 0; i < chips.length; i++) {
         var ch = chips[i];
@@ -1384,11 +1430,11 @@ EXPLORER_HTML = r"""
 
     function setTabs() {
       if (state.tab === "marketplace") {
-        tabSell.className = "py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
-        tabBuy.className = "py-1.5 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
       } else {
-        tabBuy.className = "py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
-        tabSell.className = "py-1.5 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
       }
     }
 
@@ -1412,7 +1458,7 @@ EXPLORER_HTML = r"""
       if (!Array.isArray(photos)) photos = [];
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
       var icon = isCar ? "🚗" : "🏠";
-      var t = DICT[currentLang];
+      var t = i18n[currentLang];
 
       var extra = item.extra_data || {};
       if (typeof extra === "string") {
@@ -1425,12 +1471,12 @@ EXPLORER_HTML = r"""
       var subBadge2 = "";
 
       if (isCar) {
-        cardTitle = extra.car_model || item.sub_category || (currentLang === 'am' ? 'መኪና' : 'Vehicle');
+        cardTitle = extra.car_model || item.sub_category || t.carBadge;
         if (extra.transmission) subBadge1 = extra.transmission.split('/')[0].trim();
         if (extra.fuel_type) subBadge2 = extra.fuel_type.split('/')[0].trim();
       } else {
-        cardTitle = item.sub_category || extra.house_type || (currentLang === 'am' ? 'ቤት / ንብረት' : 'Property');
-        if (extra.bedrooms) subBadge1 = extra.bedrooms + " " + (currentLang === 'am' ? 'መኝታ' : 'Beds');
+        cardTitle = item.sub_category || extra.house_type || t.propBadge;
+        if (extra.bedrooms) subBadge1 = extra.bedrooms + " " + t.bedsText;
         if (extra.location_area) subBadge2 = extra.location_area;
       }
 
@@ -1444,7 +1490,6 @@ EXPLORER_HTML = r"""
           '</div>';
       }
 
-      var isSell = String(item.req_type || "").toUpperCase() === "SELL";
       var priceNum = item.price || "—";
       var priceLabel = priceNum + " ETB";
       var views = item.view_count || item.views_count || 12;
@@ -1464,7 +1509,7 @@ EXPLORER_HTML = r"""
           '<div>' +
             '<div class="font-extrabold text-xs text-slate-800 truncate flex items-center gap-0.5">' +
               '<span class="truncate">' + esc(cardTitle) + '</span>' +
-              '<span class="text-emerald-600 text-[10px] shrink-0" title="Verified">✔</span>' +
+              '<span class="text-emerald-600 text-[10px] shrink-0" title="' + esc(t.verifiedText) + '">✔</span>' +
             '</div>' +
             '<div class="flex items-center gap-1 mt-1 overflow-hidden">' +
               (subBadge1 ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[8px] truncate">' + esc(subBadge1) + '</span>' : '') +
@@ -1501,10 +1546,10 @@ EXPLORER_HTML = r"""
       var photos = item.photos || [];
       if (!Array.isArray(photos)) photos = [];
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
-      var t = DICT[currentLang];
+      var t = i18n[currentLang];
 
-      var catBadge = isCar ? (currentLang === 'am' ? 'መኪና' : 'Vehicle') : (currentLang === 'am' ? 'ቤት / ንብረት' : 'Property');
-      modalCategoryBadge.textContent = catBadge + " • Verified ✔";
+      var catBadge = isCar ? t.carBadge : t.propBadge;
+      modalCategoryBadge.textContent = catBadge + " • " + t.verifiedText + " ✔";
       modalIdBadge.textContent = "#ADK-" + (item.id || "001");
 
       var modalTitleText = isCar ? (extra.car_model || item.sub_category || catBadge) : (item.sub_category || extra.house_type || catBadge);
@@ -1590,7 +1635,7 @@ EXPLORER_HTML = r"""
       if (!items || !items.length) {
         if (!append) {
           statusEl.style.display = "block";
-          statusEl.innerHTML = '<div class="text-2xl mb-1">📭</div><div class="text-slate-600 font-bold text-xs">' + DICT[currentLang].noListings + '</div>';
+          statusEl.innerHTML = '<div class="text-2xl mb-1">📭</div><div class="text-slate-600 font-bold text-xs">' + i18n[currentLang].noListings + '</div>';
         }
         moreBtn.classList.add("hidden");
         return;
@@ -1611,7 +1656,7 @@ EXPLORER_HTML = r"""
       state.loading = true;
       if (!append) {
         statusEl.style.display = "block";
-        statusEl.innerHTML = '<div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div><div>' + DICT[currentLang].loading + '</div>';
+        statusEl.innerHTML = '<div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div><div>' + i18n[currentLang].loading + '</div>';
         grid.innerHTML = "";
       }
 
@@ -1736,7 +1781,7 @@ EXPLORER_HTML = r"""
       }
     };
     document.getElementById("navHelp").onclick = function () {
-      var t = DICT[currentLang];
+      var t = i18n[currentLang];
       if (tg && tg.showAlert) {
         tg.showAlert(t.helpAlert);
       } else {
@@ -1744,7 +1789,7 @@ EXPLORER_HTML = r"""
       }
     };
 
-    applyLanguage(currentLang);
+    window.changeLanguage(currentLang);
     setTabs();
     load(false);
   })();
@@ -1760,7 +1805,7 @@ def home():
         "<html><body style='font-family:sans-serif;padding:24px;background:#b5eff3'>"
         "<div style='background:#fff;padding:20px;border-radius:16px;box-shadow:0 12px 28px rgba(15,23,42,0.12);max-width:500px;margin:auto'>"
         "<h2 style='color:#16acbd;margin-top:0'>Adika Marketplace Server</h2>"
-        "<p>Single-Language AI-powered Mini App with AM | EN Language Switcher.</p>"
+        "<p>Single-Language AI-powered Mini App with Global AM | EN Language Switcher.</p>"
         f"<p>WEBAPP_URL: <code>{WEBAPP_URL}</code></p>"
         "<ul>"
         "<li><a href='/explorer'>/explorer (Main Mini App)</a></li>"
