@@ -1628,7 +1628,7 @@ EXPLORER_HTML = r"""
       }
       aiApplyBtn.disabled = true;
       aiApplyBtn.innerHTML = '<span>⏳ Searching...</span>';
-      filterText.textContent = "AI Filter: " + query;
+      filterText.textContent = "🔍 " + query;
       filterBanner.classList.remove("hidden");
 
       fetch("/api/ai-search", {
@@ -1641,6 +1641,16 @@ EXPLORER_HTML = r"""
         aiApplyBtn.disabled = false;
         aiApplyBtn.innerHTML = '<span>✨ <span class="lang-am">አጣራ</span><span class="lang-en">Apply</span></span>';
         aiModalClose.onclick();
+        var parsed = data.parsed || {};
+        var tagParts = [];
+        if (parsed.keyword) tagParts.push(parsed.keyword);
+        if (parsed.category && parsed.category !== "all") {
+          tagParts.push(parsed.category === "cars" ? "🚗 Cars" : "🏠 Property");
+        }
+        if (parsed.max_price) {
+          tagParts.push("< " + Number(parsed.max_price).toLocaleString() + " ETB");
+        }
+        filterText.textContent = tagParts.length ? tagParts.join(" • ") : ("AI Filter: " + query);
         var items = data.items || [];
         finishLoading(items, false, false);
       })
@@ -2048,63 +2058,130 @@ def api_explorer_listings():
         }), 200
 
 
-def parse_search_with_gemini(prompt_text: str):
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        cat = "all"
-        lower = prompt_text.lower()
-        if any(w in lower for w in ["car", "vitz", "toyota", "hyundai", "መኪና"]):
-            cat = "cars"
-        elif any(w in lower for w in ["house", "villa", "apartment", "condo", "ቤት", "ኮንዶ", "ቪላ"]):
-            cat = "property"
-        return {"category": cat, "max_price": None, "keyword": prompt_text}
+import re
 
-    try:
-        import urllib.request
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        system_instruction = (
-            "You are a search query parser for an Ethiopian marketplace (cars, properties/houses, commercial items). "
-            "Given a user prompt in English or Amharic, extract a JSON object with keys: "
-            "'category' (one of 'cars', 'property', 'all'), "
-            "'max_price' (integer budget in ETB or null), "
-            "'keyword' (clean search terms without price/category words, or null). "
-            "Respond ONLY with valid JSON, nothing else."
-        )
-        payload = {
-            "contents": [{
-                "parts": [
-                    {"text": f"{system_instruction}\nUser Query: {prompt_text}"}
-                ]
-            }],
-            "generationConfig": {
-                "temperature": 0.1,
-                "responseMimeType": "application/json"
-            }
-        }
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"}
-        )
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            raw = json.loads(resp.read().decode("utf-8"))
-            text = raw["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+def _clean_keyword(kw: str):
+    if not kw:
+        return None
+    s = str(kw).strip()
+    amharic_map = {
+        "ቪትስ": "vits", "ቪትዝ": "vits", "ያሪስ": "yaris", "ኮሮላ": "corolla",
+        "ቱክሰን": "tucson", "ሱዙኪ": "suzuki", "ዲዛየር": "dzire", "አክሰንት": "accent",
+        "ራቭ4": "rav4", "ቪላ": "villa", "አፓርታማ": "apartment", "ኮንዶ": "condo",
+        "ኮንዶሚኒየም": "condo", "ቦሌ": "bole", "ሲኤምሲ": "cmc", "መኪና": "cars", "ቤት": "property"
+    }
+    for amh, eng in amharic_map.items():
+        if amh in s:
+            s = s.replace(amh, eng)
+    # Remove numbers and price patterns
+    s = re.sub(r'\b\d+(\.\d+)?\s*(m|million|k|ሚሊዮን|ሺህ|ብር|etb)?\b', '', s, flags=re.IGNORECASE)
+    # Remove comparison and filler symbols/words
+    s = re.sub(r'[<>=~+]', ' ', s)
+    tokens = [t.strip(",. ") for t in s.split()]
+    fillers = {
+        "under", "below", "less", "than", "price", "etb", "birr", "ብር", "በታች", "ከ",
+        "ለ", "የሚሆን", "ያነሰ", "ዋጋ", "around", "for", "in", "car", "cars", "vehicle",
+        "መኪና", "ቤት", "house", "property", "all", "buy", "sell"
+    }
+    cleaned_tokens = [t for t in tokens if t.lower() not in fillers and len(t) > 1 and not t.isdigit()]
+    res = " ".join(cleaned_tokens).strip()
+    return res if len(res) >= 2 else None
+
+
+def _extract_fallback_price(text: str):
+    t = text.lower().replace(",", "")
+    m = re.search(r'(\d+(\.\d+)?)\s*(m|million|ሚሊዮን)', t)
+    if m:
+        return int(float(m.group(1)) * 1_000_000)
+    k = re.search(r'(\d+(\.\d+)?)\s*(k|ሺህ|thousand)', t)
+    if k:
+        return int(float(k.group(1)) * 1_000)
+    d = re.search(r'\b(\d{5,10})\b', t)
+    if d:
+        return int(d.group(1))
+    return None
+
+
+def parse_prompt_with_ai(prompt_text: str):
+    clean_text = (prompt_text or "").strip()
+    if not clean_text:
+        return {"category": "all", "max_price": None, "keyword": None}
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    parsed_result = None
+
+    if api_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            system_instruction = (
+                "You are an AI Search Parser for an Ethiopian marketplace (cars, properties, commercial items).\n"
+                "Given a search prompt in English or Amharic (e.g. 'Vits under 2M ETB', 'ቪትስ < 2M', 'ኮሮላ 1.5 ሚሊዮን', 'መኪና < 1M', '2 bedroom apartment in Bole below 30k'):\n"
+                "Extract a strictly formatted JSON object with keys:\n"
+                "- 'category': 'cars' | 'property' | 'all'\n"
+                "- 'max_price': integer ETB value or null (e.g. '2M', '2 million', '2 ሚሊዮን' -> 2000000; '500k', '500 ሺህ' -> 500000; '1.5M' -> 1500000; '< 1M' -> 1000000)\n"
+                "- 'keyword': clean single item model/brand/neighborhood in English (e.g. 'vits', 'yaris', 'corolla', 'tucson', 'suzuki', 'villa', 'apartment', 'bole', 'cmc') or null.\n"
+                "RULES:\n"
+                "1. NEVER include filler words like 'under', 'below', 'price', 'ETB', 'ብር', 'በታች', '<', '>', 'ለ', or price numbers inside 'keyword'.\n"
+                "2. Transliterate Amharic item names to English (e.g. 'ቪትስ' -> 'vits', 'ያሪስ' -> 'yaris', 'ኮሮላ' -> 'corolla', 'ቱክሰን' -> 'tucson', 'አፓርታማ' -> 'apartment', 'ቪላ' -> 'villa').\n"
+                "3. If query is just 'መኪና' or 'cars', set category='cars' and keyword=null.\n"
+                "4. If query is just 'ቤት' or 'house', set category='property' and keyword=null.\n"
+                "Respond ONLY with valid JSON."
+            )
+            model = genai.GenerativeModel(
+                model_name="gemini-1.5-flash",
+                system_instruction=system_instruction,
+                generation_config={"response_mime_type": "application/json", "temperature": 0.0}
+            )
+            response = model.generate_content(f"User Query: {clean_text}")
+            text = (response.text or "").strip()
             if text.startswith("```json"):
                 text = text[7:]
             if text.startswith("```"):
                 text = text[3:]
             if text.endswith("```"):
                 text = text[:-3]
-            return json.loads(text.strip())
-    except Exception as e:
-        logger.warning(f"Gemini API parse error, falling back: {e}")
+            parsed_result = json.loads(text.strip())
+        except Exception as e:
+            logger.warning(f"Gemini API parse error via google.generativeai, falling back: {e}")
+
+    if not parsed_result or not isinstance(parsed_result, dict):
         cat = "all"
-        lower = prompt_text.lower()
-        if any(w in lower for w in ["car", "vitz", "toyota", "hyundai", "መኪና"]):
+        lower = clean_text.lower()
+        if any(w in lower for w in ["car", "vitz", "toyota", "hyundai", "መኪና", "ቪትስ", "ኮሮላ", "ያሪስ"]):
             cat = "cars"
-        elif any(w in lower for w in ["house", "villa", "apartment", "condo", "ቤት", "ኮንዶ", "ቪላ"]):
+        elif any(w in lower for w in ["house", "villa", "apartment", "condo", "ቤት", "ኮንዶ", "ቪላ", "አፓርታማ"]):
             cat = "property"
-        return {"category": cat, "max_price": None, "keyword": prompt_text}
+        parsed_result = {
+            "category": cat,
+            "max_price": _extract_fallback_price(clean_text),
+            "keyword": _clean_keyword(clean_text)
+        }
+
+    # Final sanitization
+    raw_kw = parsed_result.get("keyword")
+    cleaned_kw = _clean_keyword(raw_kw) if raw_kw else None
+    cat = str(parsed_result.get("category", "all")).lower()
+    if cat not in ("cars", "property", "all"):
+        cat = "all"
+
+    max_p = parsed_result.get("max_price")
+    if max_p is not None:
+        try:
+            max_p = int(float(str(max_p).replace(",", "")))
+        except Exception:
+            max_p = _extract_fallback_price(clean_text)
+
+    return {
+        "category": cat,
+        "max_price": max_p,
+        "keyword": cleaned_kw
+    }
+
+
+# Alias for backward-compatibility
+parse_search_with_gemini = parse_prompt_with_ai
 
 
 @web_app.route('/api/ai-search', methods=['POST', 'OPTIONS'])
@@ -2120,7 +2197,7 @@ def api_ai_search():
         parsed = parse_search_with_gemini(prompt)
         category = parsed.get("category", "all")
         max_price = parsed.get("max_price")
-        keyword = parsed.get("keyword") or prompt
+        keyword = parsed.get("keyword")
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -2143,12 +2220,12 @@ def api_ai_search():
 
         if keyword:
             like = "ILIKE" if is_postgres() else "LIKE"
-            where.append(f"(CAST(description AS TEXT) {like} {p} OR CAST(sub_category AS TEXT) {like} {p} OR CAST(price AS TEXT) {like} {p})")
-            params.extend([f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"])
+            where.append(f"(CAST(description AS TEXT) {like} {p} OR CAST(sub_category AS TEXT) {like} {p})")
+            params.extend([f"%{keyword}%", f"%{keyword}%"])
 
         where_sql = " AND ".join(where)
         cur.execute(
-            f"SELECT * FROM listings WHERE {where_sql} ORDER BY id DESC LIMIT 30",
+            f"SELECT * FROM listings WHERE {where_sql} ORDER BY id DESC LIMIT 50",
             params
         )
         rows = cur.fetchall() or []
@@ -2178,17 +2255,24 @@ def api_ai_search():
                 except Exception:
                     item['created_at'] = str(item['created_at'])
 
+            # Apply integer price comparison
             if max_price:
-                digits = "".join([c for c in str(item.get('price', '')) if c.isdigit()])
-                if digits and int(digits) > int(max_price):
-                    continue
+                price_str = str(item.get('price', '') or '')
+                digits = re.sub(r'[^\d]', '', price_str)
+                if digits:
+                    try:
+                        numeric_price = int(digits)
+                        if numeric_price > int(max_price):
+                            continue
+                    except Exception:
+                        pass
             items.append(item)
 
         conn.close()
         return jsonify({
             "status": "success",
             "parsed": parsed,
-            "items": [_json_safe(it) for it in items]
+            "items": [_json_safe(it) for it in items[:30]]
         })
     except Exception as e:
         logger.error(f"api_ai_search error: {e}", exc_info=True)
