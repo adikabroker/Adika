@@ -1,12 +1,14 @@
 # ==============================================================================
 # webapp.py — Flask Mini App + REST API for Adika Marketplace
-# Upgraded with:
-# - Bulletproof CSS Dual-Class Language Switcher (.lang-am / .lang-en / .lang-en-active)
-# - Active Online Status Pulsing Green Dot on cards
-# - Proportional Header Spacing (pt-36, px-3.5) with wider responsive cards
-# - Mathematically centered floating "+" FAB button
-# - Footer-aligned Heart (❤️) Favorite button next to Price badge
-# - Dynamic category specs (Cars: Model + Trans + Fuel; Houses: Type + Area)
+# Upgraded Layout & CSS:
+# - Fixed Floating Bottom Nav (fixed bottom-3 left-3 right-3 z-50 bg-white/95)
+# - Precision Center-Locked FAB "+" Button (absolute -top-5 left-1/2 -translate-x-1/2 border-4 border-[#b5eff3])
+# - Snug Header Gap (pt-32 top padding on main container)
+# - Wider Cards & Grid (px-2.5 outer margin, grid-cols-2 gap-2.5)
+# - Elevated Floating White Cards (shadow-[0_8px_20px_rgba(15,23,42,0.08)])
+# - Active Green Pulse Online Indicator Dot
+# - Bulletproof Dual-Class Language Switcher (.lang-am / .lang-en / .lang-en-active)
+# - Footer-Aligned Heart (❤️) Favorite button next to Price badge
 # ==============================================================================
 import json
 import os
@@ -842,7 +844,7 @@ BUYER_FORM_HTML = r"""
 
 
 # ==============================================================================
-# EXPLORER HTML (CSS Dual-Class Switcher + Centered FAB + Status Dot + pt-36)
+# EXPLORER HTML (CSS Dual-Class Switcher + Fixed Bottom Nav + Centered FAB)
 # ==============================================================================
 EXPLORER_HTML = r"""
 <!DOCTYPE html>
@@ -871,12 +873,13 @@ EXPLORER_HTML = r"""
 
     .adika-card {
       background: #ffffff;
-      border: 1px solid rgba(226, 232, 240, 0.85);
+      border: 1px solid rgba(226, 232, 240, 0.8);
       border-radius: 1rem;
-      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
       transition: transform 0.12s ease, box-shadow 0.12s ease;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       overflow: hidden;
       position: relative;
     }
@@ -953,17 +956,17 @@ EXPLORER_HTML = r"""
   </header>
 
   <!-- ================================================================= -->
-  <!-- 2. MAIN CONTENT AREA (Proportional pt-36 Spacing & px-3.5 Margin)  -->
+  <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main class="w-full max-w-md mx-auto pt-36 pb-24 px-3.5">
+  <main class="w-full max-w-md mx-auto pt-32 pb-24 px-2.5">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <div id="status" class="text-center py-10 text-slate-600 font-semibold text-xs">
-      <div class="inline-block animate-spin w-6 h-6 border-2 border-[#16acbd] border-t-transparent rounded-full mb-2"></div>
+    <div id="status" class="text-center py-8 text-slate-600 font-semibold text-xs">
+      <div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div>
       <div>
         <span class="lang-am">እየጫነ ነው…</span>
         <span class="lang-en">Loading listings…</span>
@@ -984,12 +987,12 @@ EXPLORER_HTML = r"""
   </main>
 
   <!-- ================================================================= -->
-  <!-- 3. FLOATING TRANSLUCENT BOTTOM NAVIGATION WITH CENTERED "+" FAB   -->
+  <!-- 3. FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+)         -->
   <!-- ================================================================= -->
-  <nav class="fixed bottom-4 left-4 right-4 max-w-md mx-auto bg-white/95 backdrop-blur-xl rounded-full shadow-2xl border border-white/60 p-1.5 z-40 relative flex items-center justify-between">
+  <nav class="fixed bottom-3 left-3 right-3 z-50 bg-white/95 backdrop-blur-xl rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] border border-white/60 px-4 py-2 flex items-center justify-between max-w-md mx-auto">
     <!-- Left Section: Home & AI Tabs -->
-    <div class="flex items-center gap-1 w-2/5 justify-around">
-      <button id="navHome" type="button" class="flex flex-col items-center justify-center px-2 py-1 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
+    <div class="flex items-center gap-2 w-5/12 justify-around">
+      <button id="navHome" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
         </svg>
@@ -999,7 +1002,7 @@ EXPLORER_HTML = r"""
         </span>
       </button>
 
-      <button id="navAi" type="button" class="flex flex-col items-center justify-center px-2 py-1 rounded-full text-slate-500 hover:text-slate-800 transition-all">
+      <button id="navAi" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-slate-500 hover:text-slate-800 transition-all">
         <div class="relative">
           <svg class="w-4 h-4 text-[#16acbd]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
@@ -1007,23 +1010,23 @@ EXPLORER_HTML = r"""
           <span class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
         </div>
         <span class="text-[9px] font-semibold mt-0.5 text-[#0e7490]">
-          <span class="lang-am">AI ፍለጋ ✨</span>
-          <span class="lang-en">AI Smart ✨</span>
+          <span class="lang-am">AI ✨</span>
+          <span class="lang-en">AI ✨</span>
         </span>
       </button>
     </div>
 
-    <!-- Mathematically Centered Dynamic "+" Floating Action Button -->
+    <!-- Center Precision-Locked FAB (+) Button -->
     <button id="fabBtn" type="button"
-      class="absolute -top-5 left-1/2 transform -translate-x-1/2 z-50 w-12 h-12 rounded-full bg-[#16acbd] text-white flex items-center justify-center shadow-[0_6px_18px_rgba(22,172,189,0.45)] active:scale-90 transition-all border-2 border-white">
+      class="absolute -top-5 left-1/2 -translate-x-1/2 z-50 w-12 h-12 bg-[#16acbd] text-white rounded-full shadow-lg flex items-center justify-center border-4 border-[#b5eff3] active:scale-95 transition-transform">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.8" d="M12 4v16m8-8H4"/>
       </svg>
     </button>
 
     <!-- Right Section: Messages & Help Tabs -->
-    <div class="flex items-center gap-1 w-2/5 justify-around">
-      <button id="navMessages" type="button" class="flex flex-col items-center justify-center px-2 py-1 rounded-full text-slate-500 hover:text-slate-800 transition-all">
+    <div class="flex items-center gap-2 w-5/12 justify-around">
+      <button id="navMessages" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-slate-500 hover:text-slate-800 transition-all">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
         </svg>
@@ -1033,7 +1036,7 @@ EXPLORER_HTML = r"""
         </span>
       </button>
 
-      <button id="navHelp" type="button" class="flex flex-col items-center justify-center px-2 py-1 rounded-full text-slate-500 hover:text-slate-800 transition-all">
+      <button id="navHelp" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-slate-500 hover:text-slate-800 transition-all">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
