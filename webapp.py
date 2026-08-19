@@ -998,15 +998,15 @@ EXPLORER_HTML = r"""
     html, body {
       width: 100%; max-width: 100vw; overflow-x: hidden;
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: #f0f4f9; color: #0f172a;
+      background: #b8d8ec; color: #0f172a;
       -webkit-text-size-adjust: 100%;
     }
-    .app { min-height: 100vh; background: #f0f4f9; padding-bottom: 92px; }
+    .app { min-height: 100vh; background: #b8d8ec; padding-bottom: 92px; }
 
     /* Sticky header — darker than body, includes search */
     .hdr {
       position: sticky; top: 0; z-index: 50;
-      background: rgba(219, 230, 243, 0.95);
+      background: rgba(184, 236, 230, 0.95);
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       padding: 10px 12px 12px;
       box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
@@ -1069,14 +1069,13 @@ EXPLORER_HTML = r"""
       background: #ffffff !important;
       border: 0 !important; outline: none !important;
       border-radius: 16px; padding: 8px; cursor: pointer;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+      box-shadow: none !important;
       display: flex; flex-direction: column;
-      transition: box-shadow 0.2s ease, transform 0.15s ease;
+      transition: transform 0.15s ease;
       -webkit-tap-highlight-color: transparent;
     }
     .card:active {
       transform: translateY(-1px);
-      box-shadow: 0 8px 22px rgba(15,23,42,0.12);
     }
     .card-media {
       position: relative; width: 100%; height: 112px;
@@ -1214,8 +1213,10 @@ EXPLORER_HTML = r"""
     /* Bottom nav — English labels, SVG only */
     .bnav {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-      background: rgba(255,255,255,0.97); backdrop-filter: blur(12px);
-      box-shadow: 0 -2px 20px rgba(15,23,42,0.06);
+      background: rgba(255, 255, 255, 0.70);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255, 255, 255, 0.40);
+      box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.08);
       padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
       display: grid; grid-template-columns: 1fr 1fr 56px 1fr 1fr;
       align-items: center;
@@ -1326,7 +1327,7 @@ EXPLORER_HTML = r"""
       if (tg) {
         try { tg.ready(); } catch (e) {}
         try { tg.expand(); } catch (e) {}
-        try { tg.setBackgroundColor("#f0f4f9"); } catch (e) {}
+        try { tg.setBackgroundColor("#b8d8ec"); } catch (e) {}
       }
       var navMsg = document.getElementById("navMsg");
       if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
