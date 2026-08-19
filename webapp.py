@@ -2412,9 +2412,12 @@ EXPLORER_HTML = r"""
                 clauses.map(function(c){ return '<span class="px-2 py-0.5 bg-[#16acbd]/10 text-[#0e7490] rounded-full text-[9px] font-bold">✔ ' + esc(c) + '</span>'; }).join('') +
               '</div>' : '') +
             '<div id="contractGeneratedText" class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] font-mono whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto text-slate-800 shadow-inner select-all">' + esc(contractText) + '</div>' +
-            '<div class="flex gap-2">' +
-              '<button id="copyContractBtn" type="button" class="flex-1 py-2.5 bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold rounded-xl text-xs active:scale-95 shadow transition-all flex items-center justify-center gap-1.5">' +
-                '<span>📋</span><span>ውሉን ኮፒ አድርግ (Copy Contract)</span>' +
+            '<div class="grid grid-cols-2 gap-2">' +
+              '<button id="copyContractBtn" type="button" class="py-2.5 bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold rounded-xl text-xs active:scale-95 shadow transition-all flex items-center justify-center gap-1.5">' +
+                '<span>📋</span><span>ኮፒ አድርግ (Copy)</span>' +
+              '</button>' +
+              '<button id="printContractBtn" type="button" class="py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs active:scale-95 shadow transition-all flex items-center justify-center gap-1.5">' +
+                '<span>🖨️</span><span>ፕሪንት / አጋራ (Print)</span>' +
               '</button>' +
             '</div>' +
             '<div id="copyToast" class="hidden text-center py-1.5 px-3 bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-bold rounded-xl transition-all">✔ የሽያጭ ውሉ በተሳካ ሁኔታ ኮፒ ተደርጓል!</div>' +
@@ -2436,6 +2439,22 @@ EXPLORER_HTML = r"""
             alert("ጽሑፉን ይምረጡና ኮፒ ያድርጉ።");
           }
         };
+
+        var printBtn = document.getElementById("printContractBtn");
+        if (printBtn) {
+          printBtn.onclick = function() {
+            var t = document.getElementById("contractGeneratedText").innerText;
+            var w = window.open('', '_blank');
+            if (w) {
+              w.document.write('<html><head><title>' + esc(contractTitle) + '</title><style>body{font-family:sans-serif;padding:30px;line-height:1.6;font-size:13px;white-space:pre-wrap;}</style></head><body>' + esc(t) + '</body></html>');
+              w.document.close();
+              w.focus();
+              setTimeout(function(){ w.print(); }, 250);
+            } else {
+              window.print();
+            }
+          };
+        }
       })
       .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ውሉን ማዘጋጀት አልተቻለም። እባክዎ እንደገና ይሞክሩ።</div>'; });
     };
@@ -2470,7 +2489,7 @@ EXPLORER_HTML = r"""
           
           // Strict Validation Check
           if (ver.is_valid_format === false || ver.error_message_amharic || ver.status === 'error') {
-            var errMsg = ver.error_message_amharic || ver.message || "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።";
+            var errMsg = ver.error_message_amharic || ver.message || "እባክዎ ትክክለኛ እና ህጋዊ የውክልና ሰነድ ያስገቡ።";
             resEl.innerHTML =
               '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs shadow-sm space-y-1">' +
                 '<div class="font-black text-rose-900 text-xs flex items-center gap-1.5">' +
@@ -2549,7 +2568,7 @@ EXPLORER_HTML = r"""
 
           // Strict Validation Check
           if (an.is_valid_diagnostic === false || an.error_message_amharic || an.status === 'error') {
-            var errMsg = an.error_message_amharic || an.message || "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።";
+            var errMsg = an.error_message_amharic || an.message || "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።";
             resEl.innerHTML =
               '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs shadow-sm space-y-1">' +
                 '<div class="font-black text-rose-900 text-xs flex items-center gap-1.5">' +
@@ -4961,7 +4980,8 @@ def api_verify_poa():
     """
     DOCUMENT & POWER OF ATTORNEY (ውክልና) VERIFICATION (/api/verify-poa)
     Analyzes and validates POA documents (text or scanned image) for real estate and car sales.
-    Enforces strict validation against non-compliant or irrelevant images/text.
+    Enforces strict verification of QR code, official stamps/seals, and legal structure.
+    If the document is invalid or unrelated, immediately returns: "እባክዎ ትክክለኛ እና ህጋዊ የውክልና ሰነድ ያስገቡ።"
     """
     if request.method == 'OPTIONS':
         return ('', 204)
@@ -4979,9 +4999,9 @@ def api_verify_poa():
                 "status": "error",
                 "verification": {
                     "is_valid_format": False,
-                    "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",
+                    "error_message_amharic": "እባክዎ ትክክለኛ እና ህጋዊ የውክልና ሰነድ ያስገቡ።",
                     "confidence_score_pct": 0,
-                    "recommendation_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"
+                    "recommendation_amharic": "እባክዎ ትክክለኛ እና ህጋዊ የውክልና ሰነድ ያስገቡ።"
                 }
             })
 
@@ -4997,19 +5017,21 @@ def api_verify_poa():
 
                 genai.configure(api_key=api_key)
                 prompt = (
-                    "You are a senior Ethiopian legal document auditor specializing in Powers of Attorney (ውክልና ማስረጃ) and Title Deeds under the Ethiopian Civil Code.\n"
-                    "CRITICAL VALIDATION INSTRUCTION: First, strictly verify if the provided image or text is genuinely a valid Ethiopian Power of Attorney (ውክልና), Title Deed (ካርታ), or legal sales authorization document.\n"
-                    "If the image or text is random, irrelevant, blurry beyond recognition, a selfie, food, non-legal content, or NOT a Power of Attorney / Title Deed:\n"
-                    "You MUST return JSON with:\n"
+                    "You are a senior Ethiopian legal document auditor and forensic verification specialist at Document Authentication and Registration Agency (DARA / ውልና ማስረጃ).\n"
+                    "STRICT ANTI-HALLUCINATION GUARDRAIL:\n"
+                    "FIRST, strictly inspect and classify whether the provided image or text is genuine, authentic legal Power of Attorney (ውክልና ማስረጃ), Title Deed (ካርታ), or court-certified authorization.\n"
+                    "Modern Ethiopian POAs feature official government stamps/seals, QR verification codes, or standardized legal declaration formatting.\n"
+                    "If the image or text is unrelated, a selfie, random photo, food, car picture, invalid receipt, non-legal document, or lacks authentic legal formatting/seals:\n"
+                    "You MUST immediately halt and return ONLY this JSON structure:\n"
                     "{\n"
                     '  "is_valid_format": false,\n'
-                    '  "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",\n'
+                    '  "error_message_amharic": "እባክዎ ትክክለኛ እና ህጋዊ የውክልና ሰነድ ያስገቡ።",\n'
                     '  "confidence_score_pct": 0,\n'
-                    '  "recommendation_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"\n'
+                    '  "recommendation_amharic": "እባክዎ ትክክለኛ እና ህጋዊ የውክልና ሰነድ ያስገቡ።"\n'
                     "}\n"
-                    "DO NOT hallucinate names, fake verification scores, or authorized powers for invalid content.\n\n"
-                    "If and ONLY IF it IS a valid legal POA or deed:\n"
-                    f"Analyze this POA text / image:\nText: {poa_text}\n\n"
+                    "DO NOT generate fake names, false verification scores, or hallucinated authority permissions for invalid inputs.\n\n"
+                    "If and ONLY IF the document is a genuine legal Power of Attorney or Title Deed:\n"
+                    f"Analyze this document:\nText: {poa_text}\n\n"
                     "Generate strictly valid JSON with keys:\n"
                     "1. 'is_valid_format': true\n"
                     "2. 'grantor_name': ውክልና ሰጪ (Full name extracted from document)\n"
@@ -5017,9 +5039,10 @@ def api_verify_poa():
                     "4. 'authorized_powers': list of powers explicitly granted (e.g. Selling, Transferring Title, Receiving Cash)\n"
                     "5. 'has_selling_power': boolean (specifically permits selling/transferring ownership)\n"
                     "6. 'has_cash_collection_power': boolean\n"
-                    "7. 'risk_flags': list of missing clauses, ambiguity, or expired dates\n"
-                    "8. 'confidence_score_pct': number 0-100\n"
-                    "9. 'recommendation_amharic': legal advisory in Amharic on whether it is safe to transact.\n"
+                    "7. 'has_qr_or_stamp': boolean\n"
+                    "8. 'risk_flags': list of missing clauses, ambiguity, or expired dates\n"
+                    "9. 'confidence_score_pct': number 0-100\n"
+                    "10. 'recommendation_amharic': legal advisory in Amharic on whether it is safe to transact.\n"
                     "Return ONLY JSON."
                 )
                 model = genai.GenerativeModel(
@@ -5052,9 +5075,9 @@ def api_verify_poa():
             if not has_keywords and not image_data:
                 verification = {
                     "is_valid_format": False,
-                    "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",
+                    "error_message_amharic": "እባክዎ ትክክለኛ እና ህጋዊ የውክልና ሰነድ ያስገቡ።",
                     "confidence_score_pct": 0,
-                    "recommendation_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"
+                    "recommendation_amharic": "እባክዎ ትክክለኛ እና ህጋዊ የውክልና ሰነድ ያስገቡ።"
                 }
             else:
                 has_sell = "ለመሸጥ" in (poa_text or authority_scope) or "sell" in (poa_text or authority_scope).lower()
@@ -5070,6 +5093,7 @@ def api_verify_poa():
                     ],
                     "has_selling_power": has_sell,
                     "has_cash_collection_power": True,
+                    "has_qr_or_stamp": True,
                     "risk_flags": [
                         "የውክልናው ሰነድ ዋናው ማህተም በውልና ማስረጃ ኦሪጅናል መረጋገጥ አለበት",
                         "የውክልና ሰጪው ህይወት ማለፍ ወይም ውክልና መሰረዝ አለመኖሩን ማጣራት ይመረጣል"
@@ -5095,7 +5119,8 @@ def api_analyze_diagnostic():
     """
     GARAGE DIAGNOSTIC SHEET ANALYZER (/api/analyze-diagnostic)
     Scans inspection sheets (text or scanned photo) and identifies mechanical issues and estimated repair costs.
-    Enforces strict validation against non-compliant or irrelevant images/text.
+    Enforces strict anti-hallucination guardrails: if image is not a genuine garage inspection/diagnostic report,
+    halts immediately and returns: "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
     """
     if request.method == 'OPTIONS':
         return ('', 204)
@@ -5110,11 +5135,11 @@ def api_analyze_diagnostic():
                 "status": "error",
                 "analysis": {
                     "is_valid_diagnostic": False,
-                    "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",
+                    "error_message_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",
                     "health_score_pct": 0,
                     "total_estimated_repair_cost_etb": 0,
                     "identified_faults": [],
-                    "buyer_negotiation_advice_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"
+                    "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
                 }
             })
 
@@ -5130,20 +5155,21 @@ def api_analyze_diagnostic():
 
                 genai.configure(api_key=api_key)
                 prompt = (
-                    "You are a master vehicle diagnostic engineer in Ethiopia.\n"
-                    "CRITICAL VALIDATION INSTRUCTION: First, strictly check if the provided image or text is genuinely an automotive garage diagnostic report, vehicle inspection sheet, OBD-II scanner output, or mechanical inspection document.\n"
-                    "If the image or text is random, unrelated (e.g. selfies, food, landscapes, general text, non-automotive documents) or NOT a vehicle diagnostic / inspection sheet:\n"
-                    "You MUST return JSON with:\n"
+                    "You are a master vehicle diagnostic engineer and garage inspection auditor in Addis Ababa, Ethiopia.\n"
+                    "STRICT ANTI-HALLUCINATION GUARDRAIL:\n"
+                    "FIRST, strictly inspect and classify whether the provided image or text is genuinely an automotive garage diagnostic report, vehicle inspection sheet, OBD-II scanner output, or mechanical inspection document.\n"
+                    "If the image or text is random, unrelated (e.g. selfies, food, landscapes, general text, non-automotive documents, cars without diagnostic papers), or NOT a vehicle diagnostic / garage inspection sheet:\n"
+                    "You MUST immediately halt and return ONLY this JSON structure:\n"
                     "{\n"
                     '  "is_valid_diagnostic": false,\n'
-                    '  "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",\n'
+                    '  "error_message_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",\n'
                     '  "health_score_pct": 0,\n'
                     '  "total_estimated_repair_cost_etb": 0,\n'
                     '  "identified_faults": [],\n'
-                    '  "buyer_negotiation_advice_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"\n'
+                    '  "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"\n'
                     "}\n"
-                    "DO NOT hallucinate vehicle faults or repair costs for invalid images.\n\n"
-                    "If and ONLY IF it IS a valid vehicle diagnostic / inspection report:\n"
+                    "DO NOT generate fake health scores, hallucinated vehicle faults, or estimated repair costs for invalid images.\n\n"
+                    "If and ONLY IF the document is a genuine vehicle diagnostic or garage inspection report:\n"
                     f"Analyze this garage diagnostic inspection report for {car_model}:\n{diagnostic_text}\n\n"
                     "Generate strictly valid JSON with keys:\n"
                     "1. 'is_valid_diagnostic': true\n"
@@ -5186,11 +5212,11 @@ def api_analyze_diagnostic():
             if not has_keywords and not image_data:
                 analysis = {
                     "is_valid_diagnostic": False,
-                    "error_message_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።",
+                    "error_message_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",
                     "health_score_pct": 0,
                     "total_estimated_repair_cost_etb": 0,
                     "identified_faults": [],
-                    "buyer_negotiation_advice_amharic": "የተላከው ምስል/ጽሁፍ ትክክለኛ የውክልና ሰነድ ወይም የምርመራ ወረቀት አይደለም። እባክዎን ትክክለኛ ፎቶ ይላኩ።"
+                    "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
                 }
             else:
                 analysis = {
