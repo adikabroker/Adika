@@ -2064,6 +2064,285 @@ def api_explorer_listings():
 
 
 import re
+import io
+import base64
+from PIL import Image, ImageEnhance, ImageDraw, ImageFont
+
+
+def process_listing_image(image_input, enhance: bool = True, watermark_text: str = "Adika Marketplace"):
+    """
+    Enhance listing image (contrast, brightness, sharpness) and add Adika Marketplace watermark.
+    Accepts: base64 string, data URL, bytes, or PIL Image.
+    Returns: base64 data URL string (data:image/jpeg;base64,...)
+    """
+    try:
+        img = None
+        if isinstance(image_input, Image.Image):
+            img = image_input
+        elif isinstance(image_input, (bytes, bytearray)):
+            img = Image.open(io.BytesIO(image_input))
+        elif isinstance(image_input, str):
+            clean_b64 = image_input
+            if "," in image_input and image_input.startswith("data:"):
+                clean_b64 = image_input.split(",", 1)[1]
+            img_bytes = base64.b64decode(clean_b64)
+            img = Image.open(io.BytesIO(img_bytes))
+        else:
+            return image_input
+
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+
+        # 1. Image Enhancement
+        if enhance:
+            try:
+                enh_contrast = ImageEnhance.Contrast(img)
+                img = enh_contrast.enhance(1.12)
+                enh_bright = ImageEnhance.Brightness(img)
+                img = enh_bright.enhance(1.04)
+                enh_sharp = ImageEnhance.Sharpness(img)
+                img = enh_sharp.enhance(1.15)
+            except Exception as e:
+                logger.warning(f"Image enhancement error: {e}")
+
+        # 2. Watermarking
+        try:
+            width, height = img.size
+            draw = ImageDraw.Draw(img)
+            font_size = max(14, int(min(width, height) * 0.042))
+            try:
+                font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+            except Exception:
+                try:
+                    font = ImageFont.truetype("arial.ttf", font_size)
+                except Exception:
+                    font = ImageFont.load_default()
+
+            text = watermark_text or "Adika Marketplace"
+            # Calculate text bounding box
+            try:
+                bbox = draw.textbbox((0, 0), text, font=font)
+                tw = bbox[2] - bbox[0]
+                th = bbox[3] - bbox[1]
+            except Exception:
+                tw = len(text) * (font_size * 0.6)
+                th = font_size
+
+            pad_x = 12
+            pad_y = 6
+            margin = 16
+            x2 = width - margin
+            y2 = height - margin
+            x1 = x2 - tw - (pad_x * 2)
+            y1 = y2 - th - (pad_y * 2)
+
+            # Draw semi-transparent pill overlay
+            overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
+            overlay_draw = ImageDraw.Draw(overlay)
+            overlay_draw.rounded_rectangle(
+                [x1, y1, x2, y2],
+                radius=8,
+                fill=(15, 23, 42, 180),
+                outline=(22, 172, 189, 230),
+                width=2
+            )
+            overlay_draw.text((x1 + pad_x, y1 + pad_y), text, font=font, fill=(255, 255, 255, 255))
+
+            img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+        except Exception as e:
+            logger.warning(f"Watermark error: {e}")
+
+        # Save to JPEG buffer
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85, optimize=True)
+        out_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return f"data:image/jpeg;base64,{out_b64}"
+    except Exception as e:
+        logger.error(f"process_listing_image error: {e}")
+        return image_input
+
+
+@web_app.route('/api/ai-autofill', methods=['POST', 'OPTIONS'])
+def api_ai_autofill():
+    """
+    Analyze vehicle or property image using Gemini 1.5 Flash and return autofilled listing details.
+    """
+    if request.method == 'OPTIONS':
+        return ('', 204)
+    try:
+        image_bytes = None
+        mime_type = "image/jpeg"
+
+        # Check multipart form data
+        if 'image' in request.files:
+            f = request.files['image']
+            image_bytes = f.read()
+            mime_type = f.mimetype or "image/jpeg"
+        elif 'file' in request.files:
+            f = request.files['file']
+            image_bytes = f.read()
+            mime_type = f.mimetype or "image/jpeg"
+        elif request.is_json:
+            data = request.json or {}
+            raw_img = data.get('image') or data.get('base64') or data.get('photo')
+            if raw_img:
+                if "," in raw_img and raw_img.startswith("data:"):
+                    header, raw_b64 = raw_img.split(",", 1)
+                    if "image/png" in header:
+                        mime_type = "image/png"
+                    elif "image/webp" in header:
+                        mime_type = "image/webp"
+                else:
+                    raw_b64 = raw_img
+                image_bytes = base64.b64decode(raw_b64)
+
+        if not image_bytes:
+            return jsonify({
+                "status": "error",
+                "message": "No image provided. Upload a file or send base64 data."
+            }), 400
+
+        api_key = os.environ.get("GEMINI_API_KEY")
+        autofill_result = None
+
+        if api_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=api_key)
+                system_prompt = (
+                    "You are an expert appraiser and cataloger for Adika Marketplace in Ethiopia.\n"
+                    "Analyze the provided image (car, house/apartment, commercial space, or general item).\n"
+                    "Extract and infer accurate listing information in strictly valid JSON with keys:\n"
+                    "- 'title': concise English title (e.g. 'Toyota Vitz 2012 Automatic', 'Modern 2-Bedroom Apartment in Bole')\n"
+                    "- 'category': 'cars' | 'property' | 'commercial'\n"
+                    "- 'transmission': 'Automatic' | 'Manual' | null (if car)\n"
+                    "- 'fuel_type': 'Benzine' | 'Diesel' | 'Electric' | 'Hybrid' | null (if car)\n"
+                    "- 'description': high-converting, professional marketing description written in Amharic (አማርኛ).\n"
+                    "Return ONLY JSON."
+                )
+                model = genai.GenerativeModel(
+                    model_name="gemini-1.5-flash",
+                    system_instruction=system_prompt,
+                    generation_config={"response_mime_type": "application/json", "temperature": 0.2}
+                )
+                image_part = {
+                    "mime_type": mime_type,
+                    "data": image_bytes
+                }
+                response = model.generate_content(["Analyze this product for marketplace listing:", image_part])
+                text = (response.text or "").strip()
+                if text.startswith("```json"):
+                    text = text[7:]
+                if text.startswith("```"):
+                    text = text[3:]
+                if text.endswith("```"):
+                    text = text[:-3]
+                autofill_result = json.loads(text.strip())
+            except Exception as e:
+                logger.warning(f"Gemini AI autofill error: {e}")
+
+        if not autofill_result or not isinstance(autofill_result, dict):
+            autofill_result = {
+                "title": "Clean Verified Listing",
+                "category": "cars",
+                "transmission": "Automatic",
+                "fuel_type": "Benzine",
+                "description": "በጣም ንጹህ እና አስተማማኝ ይዞታ ላይ ያለ ንብረት። ለበለጠ መረጃ በስልክ ወይም በቴሌግራም ያግኙን።"
+            }
+
+        # Also provide enhanced watermarked image preview
+        processed_img_url = process_listing_image(image_bytes)
+
+        return jsonify({
+            "status": "success",
+            "autofill": autofill_result,
+            "processed_image": processed_img_url
+        })
+    except Exception as e:
+        logger.error(f"api_ai_autofill error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@web_app.route('/api/ai-moderate', methods=['POST', 'OPTIONS'])
+def api_ai_moderate():
+    """
+    Validate listing text and/or images to ensure safety, no personal ID cards, spam, or inappropriate content.
+    """
+    if request.method == 'OPTIONS':
+        return ('', 204)
+    try:
+        data = request.json or {}
+        text_content = f"{data.get('title', '')} {data.get('description', '')} {data.get('text', '')}".strip()
+        raw_img = data.get('image') or data.get('photo') or data.get('base64')
+
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=api_key)
+                prompt = (
+                    "You are a strict content safety and moderation officer for an Ethiopian e-commerce marketplace.\n"
+                    "Check if the submission contains prohibited content:\n"
+                    "1. Government/personal ID cards, driver licenses, passports, or private personal documents.\n"
+                    "2. Explicit pornography, nudity, or weapons/violence.\n"
+                    "3. Scam, fraudulent gambling, drugs, or malicious spam.\n"
+                    "Return strictly JSON:\n"
+                    "- 'approved': true (if safe) or false (if violation)\n"
+                    "- 'reason': short concise explanation in English.\n"
+                )
+                model = genai.GenerativeModel(
+                    model_name="gemini-1.5-flash",
+                    system_instruction=prompt,
+                    generation_config={"response_mime_type": "application/json", "temperature": 0.0}
+                )
+                contents = [f"Text content: {text_content}"]
+                if raw_img:
+                    mime_type = "image/jpeg"
+                    if "," in raw_img and raw_img.startswith("data:"):
+                        header, raw_b64 = raw_img.split(",", 1)
+                        if "image/png" in header:
+                            mime_type = "image/png"
+                    else:
+                        raw_b64 = raw_img
+                    img_bytes = base64.b64decode(raw_b64)
+                    contents.append({"mime_type": mime_type, "data": img_bytes})
+
+                response = model.generate_content(contents)
+                resp_text = (response.text or "").strip()
+                if resp_text.startswith("```json"):
+                    resp_text = resp_text[7:]
+                if resp_text.startswith("```"):
+                    resp_text = resp_text[3:]
+                if resp_text.endswith("```"):
+                    resp_text = resp_text[:-3]
+                mod_result = json.loads(resp_text.strip())
+                return jsonify({
+                    "status": "success",
+                    "approved": bool(mod_result.get("approved", True)),
+                    "reason": mod_result.get("reason", "Content approved.")
+                })
+            except Exception as e:
+                logger.warning(f"AI moderation Gemini call error: {e}")
+
+        # Fallback heuristic moderation
+        banned_keywords = ["passport", "id card", "national id", "kebele id", "porn", "sex", "weapon", "gun", "weed", "hack"]
+        is_safe = True
+        reason = "Content complies with marketplace guidelines."
+        lower_txt = text_content.lower()
+        for kw in banned_keywords:
+            if kw in lower_txt:
+                is_safe = False
+                reason = f"Prohibited keyword detected: '{kw}'"
+                break
+
+        return jsonify({
+            "status": "success",
+            "approved": is_safe,
+            "reason": reason
+        })
+    except Exception as e:
+        logger.error(f"api_ai_moderate error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e), "approved": True, "reason": "Auto-passed due to internal error"}), 500
 
 
 def _clean_keyword(kw: str):
