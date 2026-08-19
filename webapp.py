@@ -93,7 +93,7 @@ SELLER_FORM_HTML = r"""
     input, textarea, select { font-size: 16px !important; } /* prevent iOS zoom */
   </style>
 </head>
-<body class="bg-[#f0f4f9]">
+<body class="bg-[#edf2f7]">
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
@@ -994,208 +994,219 @@ EXPLORER_HTML = r"""
   <title>Adika Marketplace</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    :root {
-      --bg: #f0f4f9;
-      --hdr: #e2ebf6;
-      --primary: #2563eb;
-      --text: #0f172a;
-      --muted: #64748b;
-    }
     * { box-sizing: border-box; margin: 0; padding: 0; border: 0; outline: none; }
     html, body {
       width: 100%; max-width: 100vw; overflow-x: hidden;
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: var(--bg); color: var(--text);
+      background: #edf2f7; color: #0f172a;
       -webkit-text-size-adjust: 100%;
-      padding-bottom: env(safe-area-inset-bottom, 0);
     }
-    .app {
-      min-height: 100vh; background: #f0f4f9;
-      padding-bottom: 88px;
-    }
-    /* Sticky header */
+    .app { min-height: 100vh; background: #edf2f7; padding-bottom: 92px; }
+
+    /* Sticky header — title, lang, tabs, search only */
     .hdr {
       position: sticky; top: 0; z-index: 50;
-      background: rgba(226, 235, 246, 0.95);
+      background: rgba(237, 242, 247, 0.90);
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       padding: 10px 12px 12px;
-      box-shadow: 0 1px 0 rgba(148,163,184,0.25);
     }
     .hdr-top {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 10px; gap: 8px;
     }
-    .brand { font-weight: 800; font-size: 15px; color: #1e3a8a; letter-spacing: -0.02em; }
+    .brand { font-weight: 800; font-size: 15px; color: #1e3a8a; }
     .lang-toggle {
       display: inline-flex; background: #fff; border-radius: 999px; padding: 2px;
-      box-shadow: 0 2px 8px rgba(15,23,42,0.06);
+      box-shadow: 0 1px 4px rgba(15,23,42,0.06);
     }
     .lang-btn {
-      border: none; background: transparent; padding: 5px 10px;
-      font-size: 11px; font-weight: 700; color: #64748b; border-radius: 999px;
-      cursor: pointer;
+      background: transparent; padding: 5px 10px; font-size: 11px; font-weight: 700;
+      color: #64748b; border-radius: 999px; cursor: pointer;
     }
     .lang-btn.on { background: #2563eb; color: #fff; }
     .tabs { display: flex; gap: 8px; margin-bottom: 10px; }
     .tab {
       flex: 1; padding: 11px 8px; border-radius: 14px; font-weight: 700; font-size: 12px;
-      background: #ffffff; color: #475569; cursor: pointer;
-      box-shadow: 0 4px 12px rgba(148, 163, 184, 0.45);
-      border: none; outline: none;
-      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      background: #fff; color: #475569; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(148,163,184,0.35);
     }
-    .tab.on {
-      background: #2563eb; color: #fff;
-      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    .tab.on { background: #2563eb; color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }
+    .search-wrap { position: relative; }
+    .search-wrap .ico {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      opacity: 0.4; pointer-events: none;
     }
-    .search-wrap { position: relative; margin-bottom: 10px; }
-    .search-wrap .ico { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: 0.4; }
     .search {
       width: 100%; padding: 12px 14px 12px 36px; border-radius: 14px;
-      background: #fff; font-size: 13px; border: none; outline: none;
-      box-shadow: 0 2px 10px rgba(15,23,42,0.05);
+      background: #fff; font-size: 13px;
+      box-shadow: 0 1px 6px rgba(15,23,42,0.05);
     }
-    .search:focus { box-shadow: 0 0 0 3px rgba(37,99,235,0.18), 0 2px 10px rgba(15,23,42,0.05); }
+    .search:focus { box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+
+    /* Scrollable content */
+    .content { padding: 12px; }
     .cats {
-      display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
-      padding-bottom: 2px;
+      display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px;
+      scrollbar-width: none; -ms-overflow-style: none;
     }
     .cats::-webkit-scrollbar { display: none; }
     .cat {
-      flex: 0 0 auto; padding: 7px 12px; border-radius: 999px; font-size: 11px; font-weight: 600;
-      background: #fff; color: #334155; cursor: pointer; border: none;
-      box-shadow: 0 2px 8px rgba(15,23,42,0.05);
+      flex: 0 0 auto; padding: 7px 12px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; background: #fff; color: #334155; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(15,23,42,0.05);
     }
-    .cat.on { background: linear-gradient(90deg,#2563eb,#4f46e5); color: #fff; }
+    .cat.on { background: #2563eb; color: #fff; }
 
-    /* Grid */
     .grid {
       display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px; padding: 12px;
+      gap: 12px;
     }
     .card {
-      background: #fff; border: none !important; outline: none !important; ring: none;
-      border-radius: 16px; padding: 8px;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08), 0 4px 12px rgba(148,163,184,0.35);
+      background: #fff; border: none !important; outline: none !important;
+      border-radius: 16px; padding: 8px; cursor: pointer;
+      box-shadow: 0 2px 10px rgba(148,163,184,0.35);
       display: flex; flex-direction: column;
       transition: box-shadow 0.2s ease, transform 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
     }
-    .card:active {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 30px -5px rgba(0,0,0,0.12);
-    }
+    .card:active { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(15,23,42,0.1); }
+
     .card-media {
-      position: relative; width: 100%; height: 118px;
-      border-radius: 14px; overflow: hidden; border: none;
+      position: relative; width: 100%; height: 112px;
+      border-radius: 12px; overflow: hidden;
       background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
     }
-    .card-media img {
-      width: 100%; height: 118px; object-fit: cover; display: block; border: none;
-    }
+    .card-media img { width: 100%; height: 112px; object-fit: cover; display: block; }
     .ph {
-      width: 100%; height: 118px;
-      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 112px; display: flex; align-items: center; justify-content: center;
       background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
     }
-    .ph-icon {
-      font-size: 42px; line-height: 1;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
-      opacity: 0.95;
-    }
+    .ph-icon { font-size: 40px; opacity: 0.95; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); }
     .active-dot {
-      position: absolute; top: 8px; left: 8px;
-      width: 10px; height: 10px; border-radius: 50%;
-      background: #22c55e; border: none;
-      box-shadow: 0 0 0 0 rgba(34,197,94,0.5);
-      animation: pulse-g 1.6s ease-out infinite;
-      z-index: 2;
+      position: absolute; top: 8px; left: 8px; width: 10px; height: 10px;
+      border-radius: 50%; background: #22c55e;
+      animation: pulse-g 1.6s ease-out infinite; z-index: 2;
     }
-    .active-dot.sold { background: #ef4444; animation: pulse-r 1.6s ease-out infinite; }
+    .active-dot.sold { background: #ef4444; }
     @keyframes pulse-g {
-      0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+      0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
       70% { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
       100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
     }
-    @keyframes pulse-r {
-      0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.55); }
-      70% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
-      100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
-    }
     .view-badge {
-      position: absolute; bottom: 8px; left: 8px;
+      position: absolute; bottom: 6px; left: 6px;
       font-size: 10px; font-weight: 600; color: #fff;
-      background: rgba(0,0,0,0.4); backdrop-filter: blur(6px);
-      padding: 3px 8px; border-radius: 999px;
-    }
-    .time-badge {
-      position: absolute; bottom: 8px; right: 8px;
-      font-size: 10px; font-weight: 600; color: #fff;
-      background: rgba(0,0,0,0.4); backdrop-filter: blur(6px);
-      padding: 3px 8px; border-radius: 999px;
+      background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+      padding: 2px 7px; border-radius: 999px;
     }
     .title {
       font-weight: 700; font-size: 13px; margin-top: 8px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .meta-row {
-      display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center;
-    }
-    .chip {
-      font-size: 10px; color: #475569; background: #f1f5f9;
-      padding: 2px 6px; border-radius: 999px; font-weight: 600;
-    }
-    .chip.verified { color: #1d4ed8; background: #eff6ff; }
-    .chip.star { color: #b45309; background: #fffbeb; }
-    .sub {
-      font-size: 11px; color: #64748b; margin-top: 3px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    .loc-chip {
+      display: inline-flex; align-items: center; gap: 2px;
+      margin-top: 4px; font-size: 10px; font-weight: 600; color: #475569;
+      background: #f1f5f9; padding: 2px 7px; border-radius: 999px;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .price-badge {
-      display: inline-flex; align-items: center; justify-content: center;
-      margin-top: 8px; padding: 6px 10px; border-radius: 999px;
+      display: inline-flex; margin-top: 8px; padding: 5px 10px; border-radius: 999px;
       background: #EFF6FF; color: #2563EB; font-weight: 800; font-size: 12px;
       width: fit-content; max-width: 100%;
     }
-    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
-    .btn {
-      border: none; border-radius: 12px; padding: 9px; font-size: 15px;
-      text-align: center; text-decoration: none; font-weight: 600;
-    }
-    .btn.call { background: #eff6ff; color: #1d4ed8; }
-    .btn.chat { background: #f1f5f9; color: #334155; }
-    .status-box { text-align: center; padding: 48px 16px; color: #64748b; font-size: 14px; }
+    .status-box { text-align: center; padding: 40px 16px; color: #64748b; font-size: 14px; }
     .status-box.err { color: #b91c1c; }
     .more {
-      display: none; margin: 8px auto 16px; background: #fff; color: #2563eb;
+      display: none; margin: 16px auto 8px; background: #fff; color: #2563eb;
       border-radius: 999px; padding: 11px 22px; font-weight: 700; font-size: 12px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.06); cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer;
     }
 
-    /* Bottom nav */
+    /* Bottom sheet modal */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(15,23,42,0.45); backdrop-filter: blur(2px);
+    }
+    .modal-backdrop.open { display: block; }
+    .modal {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 101;
+      background: #fff; border-radius: 20px 20px 0 0;
+      max-height: 88vh; overflow-y: auto;
+      transform: translateY(110%);
+      transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.15);
+      padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+    .modal.open { transform: translateY(0); }
+    .modal-handle {
+      width: 40px; height: 4px; background: #cbd5e1; border-radius: 999px;
+      margin: 10px auto 6px;
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 14px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: #f1f5f9; color: #334155; font-size: 18px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .modal-img {
+      width: calc(100% - 24px); margin: 8px 12px 0; height: 200px;
+      border-radius: 14px; overflow: hidden;
+      background: linear-gradient(135deg, #3b82f6, #4f46e5);
+    }
+    .modal-img img { width: 100%; height: 100%; object-fit: cover; }
+    .modal-img .ph {
+      height: 200px; display: flex; align-items: center; justify-content: center;
+    }
+    .modal-body { padding: 14px 16px 8px; }
+    .modal-title { font-size: 17px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+    .modal-price {
+      display: inline-flex; padding: 6px 12px; border-radius: 999px;
+      background: #EFF6FF; color: #2563EB; font-weight: 800; font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .modal-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .modal-chip {
+      font-size: 11px; font-weight: 600; color: #475569;
+      background: #f1f5f9; padding: 4px 10px; border-radius: 999px;
+    }
+    .modal-desc {
+      font-size: 13px; line-height: 1.55; color: #334155;
+      white-space: pre-wrap; word-break: break-word; margin-bottom: 16px;
+    }
+    .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-actions a {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 14px; border-radius: 14px; font-weight: 700; font-size: 14px;
+      text-decoration: none;
+    }
+    .m-call { background: #2563eb; color: #fff; }
+    .m-tg { background: #e0f2fe; color: #0369a1; }
+
+    /* Bottom nav SVG */
     .bnav {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-      background: rgba(255,255,255,0.96);
-      backdrop-filter: blur(12px);
-      box-shadow: 0 -4px 24px rgba(15,23,42,0.08);
-      padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(12px);
+      box-shadow: 0 -2px 20px rgba(15,23,42,0.06);
+      padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
       display: grid; grid-template-columns: 1fr 1fr 56px 1fr 1fr;
-      align-items: center; gap: 4px;
+      align-items: center;
     }
     .bnav a, .bnav button {
       display: flex; flex-direction: column; align-items: center; gap: 2px;
-      text-decoration: none; color: #64748b; font-size: 10px; font-weight: 600;
-      background: none; border: none; cursor: pointer; padding: 4px;
+      text-decoration: none; color: #94a3b8; font-size: 10px; font-weight: 600;
+      background: none; cursor: pointer; padding: 4px 2px;
     }
     .bnav a.on, .bnav button.on { color: #2563eb; }
-    .bnav .ico { font-size: 18px; line-height: 1; }
-    .fab-wrap { display: flex; justify-content: center; position: relative; top: -18px; }
+    .bnav svg { width: 22px; height: 22px; stroke: currentColor; fill: none;
+      stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .fab-wrap { display: flex; justify-content: center; position: relative; top: -16px; }
     .fab {
-      width: 52px; height: 52px; border-radius: 50%;
+      width: 50px; height: 50px; border-radius: 50%;
       background: linear-gradient(135deg, #2563eb, #4f46e5);
-      color: #fff; font-size: 28px; font-weight: 700;
+      color: #fff; font-size: 26px; font-weight: 700; line-height: 1;
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 8px 20px rgba(37,99,235,0.45);
-      border: none; cursor: pointer; text-decoration: none;
+      box-shadow: 0 6px 18px rgba(37,99,235,0.4);
+      text-decoration: none; cursor: pointer;
     }
   </style>
 </head>
@@ -1205,8 +1216,8 @@ EXPLORER_HTML = r"""
       <div class="hdr-top">
         <div class="brand">Adika Marketplace</div>
         <div class="lang-toggle">
-          <button type="button" class="lang-btn on" id="langAM">🇪🇹 AM</button>
-          <button type="button" class="lang-btn" id="langEN">🇬🇧 EN</button>
+          <button type="button" class="lang-btn on" id="langAM">AM</button>
+          <button type="button" class="lang-btn" id="langEN">EN</button>
         </div>
       </div>
       <div class="tabs">
@@ -1217,22 +1228,54 @@ EXPLORER_HTML = r"""
         <span class="ico">🔍</span>
         <input class="search" id="q" type="search" placeholder="ፈልግ..." autocomplete="off" />
       </div>
-      <div class="cats" id="cats"></div>
     </div>
 
-    <div id="status" class="status-box">እየጫነ ነው…</div>
-    <div class="grid" id="grid"></div>
-    <button type="button" class="more" id="more">ተጨማሪ ይመልከቱ</button>
+    <div class="content">
+      <div class="cats" id="cats"></div>
+      <div id="status" class="status-box">እየጫነ ነው…</div>
+      <div class="grid" id="grid"></div>
+      <button type="button" class="more" id="more">ተጨማሪ ይመልከቱ</button>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="modal-backdrop" id="modalBg"></div>
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <button type="button" class="modal-close" id="modalClose">×</button>
+    <div class="modal-img" id="modalImg"></div>
+    <div class="modal-body">
+      <div class="modal-title" id="modalTitle"></div>
+      <div class="modal-price" id="modalPrice"></div>
+      <div class="modal-meta" id="modalMeta"></div>
+      <div class="modal-desc" id="modalDesc"></div>
+      <div class="modal-actions">
+        <a class="m-call" id="modalCall" href="#">📞 Call</a>
+        <a class="m-tg" id="modalTg" href="#" target="_blank" rel="noreferrer">💬 Telegram</a>
+      </div>
+    </div>
   </div>
 
   <nav class="bnav">
-    <a href="/explorer" class="on" id="navHome"><span class="ico">🏠</span><span id="navHomeL">Home</span></a>
-    <button type="button" id="navSearch"><span class="ico">🔍</span><span id="navSearchL">Search</span></button>
+    <a href="/explorer" class="on" id="navHome">
+      <svg viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M6.5 10.5V20h11V10.5"/></svg>
+      <span id="navHomeL">Home</span>
+    </a>
+    <button type="button" id="navSearch">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/></svg>
+      <span id="navSearchL">Search</span>
+    </button>
     <div class="fab-wrap">
-      <a class="fab" id="fabAdd" href="/seller-form" title="Add">+</a>
+      <a class="fab" id="fabAdd" href="/buyer-form">+</a>
     </div>
-    <a href="https://t.me/AdikaSupport" target="_blank" rel="noreferrer"><span class="ico">💬</span><span id="navMsgL">Chat</span></a>
-    <a href="https://t.me/AdikaSupport" target="_blank" rel="noreferrer"><span class="ico">👤</span><span id="navProfL">Profile</span></a>
+    <a href="#" id="navMsg">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg>
+      <span id="navMsgL">Chat</span>
+    </a>
+    <a href="https://t.me/AdikaSupport" target="_blank" rel="noreferrer" id="navHelp">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 17h.01"/><path d="M10 9.5a2 2 0 1 1 3.1 1.7c-.6.4-1.1.9-1.1 1.8"/></svg>
+      <span id="navHelpL">Help</span>
+    </a>
   </nav>
 
   <script>
@@ -1249,8 +1292,16 @@ EXPLORER_HTML = r"""
       if (tg) {
         try { tg.ready(); } catch (e) {}
         try { tg.expand(); } catch (e) {}
-        try { tg.setBackgroundColor("#f0f4f9"); } catch (e) {}
-        try { tg.setHeaderColor("#2563eb"); } catch (e) {}
+        try { tg.setBackgroundColor("#edf2f7"); } catch (e) {}
+      }
+      // Messages -> open user chat with bot / self
+      var navMsg = document.getElementById("navMsg");
+      if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        var u = tg.initDataUnsafe.user;
+        if (u.username) navMsg.href = "https://t.me/" + u.username;
+        else navMsg.href = "tg://user?id=" + u.id;
+      } else {
+        navMsg.href = "https://t.me/AdikaSupport";
       }
     } catch (e) {}
 
@@ -1260,21 +1311,22 @@ EXPLORER_HTML = r"""
         loading: "እየጫነ ነው…", empty: "ምንም አይነት የተመዘገበ ንብረት አልተገኘም",
         more: "ተጨማሪ ይመልከቱ", price: "ዋጋ", budget: "በጀት",
         all: "✨ ሁሉም", car: "🚗 መኪና", house: "🏠 ቤት / ቦታ", biz: "🏢 የሥራ ቦታ",
-        home: "ቤት", searchNav: "ፈልግ", msg: "መልእክት", profile: "መገለጫ",
-        verified: "Verified", loc: "አዲስ አበባ", err: "መረጃ ማምጣት አልተቻለም"
+        home: "ቤት", searchNav: "ፈልግ", msg: "መልእክት", help: "እገዛ",
+        loc: "አዲስ አበባ", call: "ደውል", telegram: "ቴሌግራም", err: "መረጃ ማምጣት አልተቻለም"
       },
       en: {
         sell: "🛒 Marketplace", buy: "📋 Requests", search: "Search...",
         loading: "Loading…", empty: "No listings found",
         more: "Load more", price: "Price", budget: "Budget",
-        all: "✨ All", car: "🚗 Cars", house: "🏠 Homes", biz: "🏢 Business",
-        home: "Home", searchNav: "Search", msg: "Chat", profile: "Profile",
-        verified: "Verified", loc: "Addis Ababa", err: "Failed to load data"
+        all: "✨ All", car: "🚗 Cars", house: "🏠 Homes", biz: "🏢 Offices",
+        home: "Home", searchNav: "Search", msg: "Chat", help: "Help",
+        loc: "Addis Ababa", call: "Call", telegram: "Telegram", err: "Failed to load"
       }
     };
 
     var lang = localStorage.getItem("adika_lang") || "am";
     var state = { tab: "marketplace", category: "", q: "", page: 1, hasMore: false, loading: false };
+    var itemsCache = [];
 
     var grid = document.getElementById("grid");
     var statusEl = document.getElementById("status");
@@ -1285,16 +1337,14 @@ EXPLORER_HTML = r"""
     var catsEl = document.getElementById("cats");
     var langAM = document.getElementById("langAM");
     var langEN = document.getElementById("langEN");
-    var fabAdd = document.getElementById("fabAdd");
+    var modal = document.getElementById("modal");
+    var modalBg = document.getElementById("modalBg");
 
     function t(k) { return (I18N[lang] && I18N[lang][k]) || k; }
-
     function esc(s) {
       return String(s == null ? "" : s)
-        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     }
-
     function showStatus(text, isErr) {
       statusEl.style.display = "block";
       statusEl.className = "status-box" + (isErr ? " err" : "");
@@ -1306,24 +1356,21 @@ EXPLORER_HTML = r"""
       if (!iso) return "";
       try {
         var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-        if (secs < 60) return lang === "am" ? "አሁን" : "Just now";
+        if (secs < 60) return lang === "am" ? "አሁን" : "now";
         if (secs < 3600) return Math.floor(secs / 60) + (lang === "am" ? " ደቂቃ" : "m");
         if (secs < 86400) return Math.floor(secs / 3600) + (lang === "am" ? " ሰዓት" : "h");
         return Math.floor(secs / 86400) + (lang === "am" ? " ቀን" : "d");
       } catch (e) { return ""; }
     }
 
-    function cleanDesc(raw) {
-      var s = String(raw || "");
-      s = s.replace(/\*+/g, " ");
-      s = s.replace(/[📝💰📞⚡📢🔄📦✅☑️]/g, " ");
-      s = s.replace(/አስቸኳይ\s*ሽያጭ!?/gi, " ");
-      s = s.replace(/የሚደራደር|ደራደር|negotiable/gi, " ");
-      s = s.replace(/ዋጋ\s*[:：]?\s*[\d,\.]+(\s*(ETB|ብር))?/gi, " ");
-      s = s.replace(/በጀት\s*[:：]?\s*[\d,\.]+(\s*(ETB|ብር))?/gi, " ");
-      s = s.replace(/[\d,\.]+\s*(ETB|ብር)/gi, " ");
-      s = s.replace(/\(\s*\)/g, " ");
-      return s.replace(/\s+/g, " ").trim().slice(0, 42);
+    function locFor(item) {
+      var extra = item.extra_data || {};
+      if (typeof extra === "string") {
+        try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+      }
+      var loc = item.location || item.sub_city || extra.location || t("loc");
+      var km = 1 + ((parseInt(item.id || 1, 10) || 1) % 12);
+      return loc + ", ~" + km + " km";
     }
 
     function applyLang() {
@@ -1336,8 +1383,9 @@ EXPLORER_HTML = r"""
       document.getElementById("navHomeL").textContent = t("home");
       document.getElementById("navSearchL").textContent = t("searchNav");
       document.getElementById("navMsgL").textContent = t("msg");
-      document.getElementById("navProfL").textContent = t("profile");
-      fabAdd.href = state.tab === "requests" ? "/buyer-form" : "/seller-form";
+      document.getElementById("navHelpL").textContent = t("help");
+      document.getElementById("modalCall").textContent = "📞 " + t("call");
+      document.getElementById("modalTg").textContent = "💬 " + t("telegram");
       document.documentElement.lang = lang;
       renderCats();
       setTabs();
@@ -1362,31 +1410,10 @@ EXPLORER_HTML = r"""
     function setTabs() {
       tabSell.className = "tab" + (state.tab === "marketplace" ? " on" : "");
       tabBuy.className = "tab" + (state.tab === "requests" ? " on" : "");
-      fabAdd.href = state.tab === "requests" ? "/buyer-form" : "/seller-form";
     }
 
-    function ratingFor(item) {
-      var id = parseInt(item.id || 0, 10) || 0;
-      var r = 4.2 + ((id * 7) % 9) / 10;
-      return r.toFixed(1);
-    }
-
-    function locFor(item) {
-      var extra = item.extra_data || {};
-      if (typeof extra === "string") {
-        try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
-      }
-      var loc = item.location || item.sub_city || extra.location || t("loc");
-      var km = 1 + ((parseInt(item.id || 1, 10) || 1) % 12);
-      return loc + ", ~" + km + " km";
-    }
-
-    function cardHtml(item) {
+    function cardHtml(item, idx) {
       try {
-        var extra = item.extra_data || {};
-        if (typeof extra === "string") {
-          try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
-        }
         var photos = item.photos || [];
         if (!Array.isArray(photos)) photos = [];
         var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
@@ -1396,52 +1423,93 @@ EXPLORER_HTML = r"""
           : '<div class="ph"><span class="ph-icon">' + icon + "</span></div>";
         var title = (item.main_category || item.category || "") +
           (item.sub_category ? " • " + item.sub_category : "");
-        var desc = cleanDesc(item.description);
         var isSell = String(item.req_type || "").toUpperCase() === "SELL";
         var priceLabel = (isSell ? t("price") : t("budget")) + ": " + (item.price || "—");
         var views = item.view_count || item.views_count || 0;
-        var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
-        var user = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
-        var callHref = phone ? ("tel:" + phone) : "#";
-        var chatHref = user ? ("https://t.me/" + user) :
-          (item.user_chat_id ? ("tg://user?id=" + item.user_chat_id) : "#");
         var st = String(item.status || "").toUpperCase();
         var sold = (st === "SOLD" || st === "RENTED" || st === "EXPIRED");
-        return '<div class="card">' +
+        return '<div class="card" data-idx="' + idx + '">' +
           '<div class="card-media">' +
-          '<span class="active-dot' + (sold ? " sold" : "") + '"></span>' +
-          media +
-          '<span class="view-badge">👁 ' + esc(views) + "</span>" +
-          '<span class="time-badge">' + esc(relativeTime(item.created_at)) + "</span>" +
-          "</div>" +
+          '<span class="active-dot' + (sold ? " sold" : "") + '"></span>' + media +
+          '<span class="view-badge">👁 ' + esc(views) + "</span></div>" +
           '<div class="title">' + esc(title) + "</div>" +
-          '<div class="meta-row">' +
-          '<span class="chip">📍 ' + esc(locFor(item)) + "</span>" +
-          '<span class="chip verified">✓ ' + esc(t("verified")) + "</span>" +
-          '<span class="chip star">★ ' + esc(ratingFor(item)) + "</span>" +
-          "</div>" +
-          (desc ? '<div class="sub">' + esc(desc) + "</div>" : "") +
-          '<div class="price-badge">💰 ' + esc(priceLabel) + "</div>" +
-          '<div class="actions">' +
-          '<a class="btn call" href="' + esc(callHref) + '">📞</a>' +
-          '<a class="btn chat" href="' + esc(chatHref) + '">💬</a>' +
-          "</div></div>";
+          '<div class="loc-chip">📍 ' + esc(locFor(item)) + "</div>" +
+          '<div class="price-badge">💰 ' + esc(priceLabel) + "</div></div>";
       } catch (e) {
-        return '<div class="card"><div class="sub">Card error</div></div>';
+        return '<div class="card"><div class="title">Error</div></div>';
       }
+    }
+
+    function openModal(item) {
+      var photos = item.photos || [];
+      if (!Array.isArray(photos)) photos = [];
+      var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
+      var icon = isCar ? "🚗" : "🏠";
+      var imgEl = document.getElementById("modalImg");
+      if (photos.length) {
+        imgEl.innerHTML = '<img src="' + esc(photos[0]) + '" alt="" />';
+      } else {
+        imgEl.innerHTML = '<div class="ph"><span class="ph-icon" style="font-size:56px">' + icon + "</span></div>";
+      }
+      var title = (item.main_category || item.category || "") +
+        (item.sub_category ? " • " + item.sub_category : "");
+      var isSell = String(item.req_type || "").toUpperCase() === "SELL";
+      document.getElementById("modalTitle").textContent = title;
+      document.getElementById("modalPrice").textContent =
+        "💰 " + (isSell ? t("price") : t("budget")) + ": " + (item.price || "—");
+      document.getElementById("modalMeta").innerHTML =
+        '<span class="modal-chip">📍 ' + esc(locFor(item)) + "</span>" +
+        '<span class="modal-chip">' + esc(item.main_category || item.category || "") + "</span>" +
+        '<span class="modal-chip">👁 ' + esc(item.view_count || item.views_count || 0) + "</span>" +
+        '<span class="modal-chip">' + esc(relativeTime(item.created_at)) + "</span>";
+      var desc = String(item.description || "").replace(/\*+/g, "").trim();
+      document.getElementById("modalDesc").textContent = desc || (lang === "am" ? "ዝርዝር መግለጫ የለም" : "No description");
+      var extra = item.extra_data || {};
+      if (typeof extra === "string") {
+        try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+      }
+      var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
+      var user = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
+      var call = document.getElementById("modalCall");
+      var tgBtn = document.getElementById("modalTg");
+      call.href = phone ? ("tel:" + phone) : "#";
+      call.style.opacity = phone ? "1" : "0.5";
+      if (user) tgBtn.href = "https://t.me/" + user;
+      else if (item.user_chat_id) tgBtn.href = "tg://user?id=" + item.user_chat_id;
+      else tgBtn.href = "https://t.me/AdikaSupport";
+      modalBg.classList.add("open");
+      modal.classList.add("open");
+      try {
+        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
+          Telegram.WebApp.HapticFeedback.impactOccurred("light");
+        }
+      } catch (e) {}
+    }
+
+    function closeModal() {
+      modal.classList.remove("open");
+      modalBg.classList.remove("open");
     }
 
     function finishLoading(items, append, hasMore) {
       state.loading = false;
-      if (!append) grid.innerHTML = "";
+      if (!append) {
+        itemsCache = items.slice();
+        grid.innerHTML = "";
+      } else {
+        itemsCache = itemsCache.concat(items);
+      }
       if (!items || !items.length) {
         if (!append) showStatus(t("empty"), false);
         moreBtn.style.display = "none";
         return;
       }
       hideStatus();
+      var startIdx = append ? (itemsCache.length - items.length) : 0;
       var html = "";
-      for (var i = 0; i < items.length; i++) html += cardHtml(items[i]);
+      for (var i = 0; i < items.length; i++) {
+        html += cardHtml(items[i], startIdx + i);
+      }
       grid.innerHTML = append ? (grid.innerHTML + html) : html;
       moreBtn.style.display = hasMore ? "block" : "none";
     }
@@ -1466,10 +1534,7 @@ EXPLORER_HTML = r"""
       if (state.category) qs += "&category=" + encodeURIComponent(state.category);
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
 
-      var urls = [
-        API_BASE + "/api/explorer/listings?" + qs,
-        "/api/explorer/listings?" + qs
-      ];
+      var urls = [API_BASE + "/api/explorer/listings?" + qs, "/api/explorer/listings?" + qs];
 
       function tryFetch(idx) {
         if (idx >= urls.length) {
@@ -1493,9 +1558,7 @@ EXPLORER_HTML = r"""
               state.page = page;
               state.hasMore = !!(data.has_more || data.hasMore);
               finishLoading(items, append, state.hasMore);
-            } else {
-              tryFetch(idx + 1);
-            }
+            } else tryFetch(idx + 1);
           } catch (e) { tryFetch(idx + 1); }
         };
         xhr.onerror = function () { tryFetch(idx + 1); };
@@ -1522,6 +1585,16 @@ EXPLORER_HTML = r"""
       qInput.focus();
       try { qInput.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
     };
+    grid.onclick = function (ev) {
+      var el = ev.target;
+      while (el && el !== grid && !el.getAttribute("data-idx")) el = el.parentNode;
+      if (!el || el === grid) return;
+      var idx = parseInt(el.getAttribute("data-idx"), 10);
+      if (!isNaN(idx) && itemsCache[idx]) openModal(itemsCache[idx]);
+    };
+    document.getElementById("modalClose").onclick = closeModal;
+    modalBg.onclick = closeModal;
+
     var deb = null;
     qInput.oninput = function () {
       clearTimeout(deb);
@@ -1531,11 +1604,8 @@ EXPLORER_HTML = r"""
       }, 300);
     };
 
-    // deep-link tab
     try {
-      if (new URLSearchParams(location.search).get("tab") === "requests") {
-        state.tab = "requests";
-      }
+      if (new URLSearchParams(location.search).get("tab") === "requests") state.tab = "requests";
     } catch (e) {}
 
     applyLang();
