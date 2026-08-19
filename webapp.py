@@ -2066,7 +2066,16 @@ def api_explorer_listings():
 import re
 import io
 import base64
-from PIL import Image, ImageEnhance, ImageDraw, ImageFont
+
+try:
+    from PIL import Image, ImageEnhance, ImageDraw, ImageFont
+    PIL_AVAILABLE = True
+except ImportError:
+    Image = None
+    ImageEnhance = None
+    ImageDraw = None
+    ImageFont = None
+    PIL_AVAILABLE = False
 
 
 def process_listing_image(image_input, enhance: bool = True, watermark_text: str = "Adika Marketplace"):
@@ -2075,6 +2084,16 @@ def process_listing_image(image_input, enhance: bool = True, watermark_text: str
     Accepts: base64 string, data URL, bytes, or PIL Image.
     Returns: base64 data URL string (data:image/jpeg;base64,...)
     """
+    if not PIL_AVAILABLE or Image is None:
+        if isinstance(image_input, (bytes, bytearray)):
+            b64 = base64.b64encode(image_input).decode("utf-8")
+            return f"data:image/jpeg;base64,{b64}"
+        elif isinstance(image_input, str):
+            if image_input.startswith("data:image/"):
+                return image_input
+            return f"data:image/jpeg;base64,{image_input}"
+        return image_input
+
     try:
         img = None
         if isinstance(image_input, Image.Image):
