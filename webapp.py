@@ -1641,17 +1641,22 @@ EXPLORER_HTML = r"""
         aiApplyBtn.disabled = false;
         aiApplyBtn.innerHTML = '<span>✨ <span class="lang-am">አጣራ</span><span class="lang-en">Apply</span></span>';
         aiModalClose.onclick();
-        var parsed = data.parsed || {};
-        var tagParts = [];
-        if (parsed.keyword) tagParts.push(parsed.keyword);
-        if (parsed.category && parsed.category !== "all") {
-          tagParts.push(parsed.category === "cars" ? "🚗 Cars" : "🏠 Property");
+        var bannerText = data.banner_text;
+        if (!bannerText) {
+          var parsed = data.parsed || {};
+          var tagParts = [];
+          if (parsed.keyword) tagParts.push(parsed.keyword);
+          if (parsed.category && parsed.category !== "all") {
+            tagParts.push(parsed.category === "cars" ? "🚗 Cars" : "🏠 Property");
+          }
+          if (parsed.max_price) {
+            tagParts.push("< " + Number(parsed.max_price).toLocaleString() + " ETB");
+          }
+          bannerText = tagParts.length ? tagParts.join(" • ") : ("AI Filter: " + query);
         }
-        if (parsed.max_price) {
-          tagParts.push("< " + Number(parsed.max_price).toLocaleString() + " ETB");
-        }
-        filterText.textContent = tagParts.length ? tagParts.join(" • ") : ("AI Filter: " + query);
-        var items = data.items || [];
+        filterText.textContent = bannerText;
+        filterBanner.classList.remove("hidden");
+        var items = data.results || data.items || [];
         finishLoading(items, false, false);
       })
       .catch(function(err) {
@@ -2074,15 +2079,16 @@ def _clean_keyword(kw: str):
     for amh, eng in amharic_map.items():
         if amh in s:
             s = s.replace(amh, eng)
-    # Remove numbers and price patterns
-    s = re.sub(r'\b\d+(\.\d+)?\s*(m|million|k|ሚሊዮን|ሺህ|ብር|etb)?\b', '', s, flags=re.IGNORECASE)
-    # Remove comparison and filler symbols/words
-    s = re.sub(r'[<>=~+]', ' ', s)
-    tokens = [t.strip(",. ") for t in s.split()]
+    # Remove all numbers/digits (0-9)
+    s = re.sub(r'\d+', ' ', s)
+    # Remove comparison and special symbols
+    s = re.sub(r'[<>=~+&|/\\#*!?^$]', ' ', s)
+    tokens = [t.strip(",. \t\n\r:;!?'\"()[]{}") for t in s.split()]
     fillers = {
-        "under", "below", "less", "than", "price", "etb", "birr", "ብር", "በታች", "ከ",
-        "ለ", "የሚሆን", "ያነሰ", "ዋጋ", "around", "for", "in", "car", "cars", "vehicle",
-        "መኪና", "ቤት", "house", "property", "all", "buy", "sell"
+        "under", "below", "above", "more", "less", "than", "price", "etb", "birr", "ብር",
+        "በታች", "በላይ", "ከ", "ለ", "የሚሆን", "ያነሰ", "የበለጠ", "ዋጋ", "around", "for", "in",
+        "car", "cars", "vehicle", "መኪና", "ቤት", "house", "property", "all", "buy", "sell",
+        "million", "thousand", "ሚሊዮን", "ሺህ", "k", "m"
     }
     cleaned_tokens = [t for t in tokens if t.lower() not in fillers and len(t) > 1 and not t.isdigit()]
     res = " ".join(cleaned_tokens).strip()
@@ -2192,12 +2198,25 @@ def api_ai_search():
         data = request.json or {}
         prompt = (data.get('prompt') or '').strip()
         if not prompt:
-            return jsonify({"status": "success", "parsed": {}, "items": []})
+            return jsonify({"status": "success", "banner_text": "All listings", "parsed": {}, "items": [], "results": []})
 
         parsed = parse_search_with_gemini(prompt)
         category = parsed.get("category", "all")
         max_price = parsed.get("max_price")
-        keyword = parsed.get("keyword")
+        raw_keyword = parsed.get("keyword")
+        # Strict Python Regex Sanitization
+        keyword = _clean_keyword(raw_keyword) if raw_keyword else None
+        parsed["keyword"] = keyword
+
+        # Format clean banner text
+        banner_parts = []
+        if keyword:
+            banner_parts.append(keyword)
+        if category and category != "all":
+            banner_parts.append("🚗 Cars" if category == "cars" else "🏠 Property")
+        if max_price:
+            banner_parts.append(f"< {int(max_price):,} ETB")
+        banner_text = " • ".join(banner_parts) if banner_parts else "All listings"
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -2218,6 +2237,7 @@ def api_ai_search():
             where.append(f"(main_category = {p} OR category = {p})")
             params.extend(["ቤት", "ቤት"])
 
+        # If keyword becomes empty after cleaning, do NOT apply LIKE %keyword%
         if keyword:
             like = "ILIKE" if is_postgres() else "LIKE"
             where.append(f"(CAST(description AS TEXT) {like} {p} OR CAST(sub_category AS TEXT) {like} {p})")
@@ -2269,14 +2289,17 @@ def api_ai_search():
             items.append(item)
 
         conn.close()
+        safe_items = [_json_safe(it) for it in items[:30]]
         return jsonify({
             "status": "success",
+            "banner_text": banner_text,
             "parsed": parsed,
-            "items": [_json_safe(it) for it in items[:30]]
+            "items": safe_items,
+            "results": safe_items
         })
     except Exception as e:
         logger.error(f"api_ai_search error: {e}", exc_info=True)
-        return jsonify({"status": "error", "message": str(e), "items": []}), 500
+        return jsonify({"status": "error", "message": str(e), "banner_text": "Error", "items": [], "results": []}), 500
 
 
 @web_app.route('/api/views/<int:listing_id>', methods=['POST'])
