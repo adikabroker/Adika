@@ -1,13 +1,12 @@
 # ==============================================================================
 # webapp.py — Flask Mini App + REST API for Adika Marketplace
-# Fully upgraded with:
-# - Teal #16acbd Header with Segmented Tabs, Restored Quick Search Bar, & Category Pills
-# - Body #b5eff3 Background with pt-36 padding
-# - Clean Floating Cards with ❤️ Favorites & Verified Badges (No face buttons)
-# - Floating Translucent Bottom Navigation with AI Smart Filter & Dynamic "+" FAB
-# - Dedicated AI Smart Filter Modal with Natural Language search & Quick chips
-# - Bottom-Sheet Detail Modal with Call, Telegram, & Share (ማጋሪያ) action buttons
-# - Bilingual (English + Amharic) across all UI elements and forms
+# Upgraded with:
+# - Clean Single-Language UI with Dedicated AM | EN Language Switcher
+# - Dynamic category-specific listing card specs (Cars: Model + Trans + Fuel; Property: Type + Location)
+# - Favorite (❤️) Heart button in the Card Footer next to Price (NEVER over image)
+# - Perfectly aligned 3-row compact Teal Header with pt-40 main padding
+# - Telegram-native floating bottom navigation bar
+# - AI Smart Filter Modal & Bottom-Sheet Detail Modal with Call, Telegram, & Share
 # ==============================================================================
 import json
 import os
@@ -76,7 +75,7 @@ def _json_safe(obj):
 
 
 # ==============================================================================
-# SELLER FORM HTML (Bilingual English + Amharic)
+# SELLER FORM HTML (Dynamic Single-Language with AM | EN Switcher)
 # ==============================================================================
 SELLER_FORM_HTML = r"""
 <!DOCTYPE html>
@@ -112,6 +111,81 @@ SELLER_FORM_HTML = r"""
     const autoUsername = user.username ? '@' + user.username : '';
     const autoPhone = user.phone_number || '';
 
+    const I18N = {
+      am: {
+        title: "ማስታወቂያ ልቀቅ",
+        step: "ደረጃ",
+        steps: ["መረጃ", "ዋጋና ፎቶ", "አድራሻ"],
+        category: "ምድብ",
+        car: "መኪና",
+        property: "ቤት",
+        carModel: "የመኪና ስም / ሞዴል (ለምሳሌ፦ Toyota Vitz 2020)",
+        carType: "የመኪና አይነት",
+        fuel: "የነዳጅ አይነት",
+        transmission: "ማርሽ",
+        condition: "ሁኔታ",
+        mileage: "ኪሎሜትር (KM)",
+        propertyType: "የቤት አይነት",
+        locationArea: "አካባቢ / ቦታ (ለምሳሌ፦ ቦሌ፣ ሲኤምሲ)",
+        bedrooms: "መኝታ ክፍሎች",
+        bathrooms: "መታጠቢያ ክፍሎች",
+        parking: "የመኪና ማቆሚያ አለው",
+        desc: "ሙሉ ዝርዝር መግለጫ",
+        descPh: "ስለ ንብረቱ ተጨማሪ መረጃ፣ ሞዴል፣ ገፅታዎች ይግለጹ...",
+        price: "ዋጋ (ብር)",
+        negotiable: "የሚደራደር ዋጋ",
+        urgent: "አስቸኳይ ሽያጭ",
+        photos: "ፎቶዎች (እስከ 5)",
+        upload: "ፎቶ ይስቀሉ",
+        phone: "ስልክ ቁጥር",
+        telegram: "የቴሌግራም ስም",
+        back: "ተመለስ",
+        cancel: "ሰርዝ",
+        next: "ቀጣይ",
+        submit: "ማስታወቂያ መዝግብ",
+        submitting: "በመመዝገብ ላይ...",
+        successTitle: "ማስታወቂያዎ ተመዝግቧል!",
+        successMsg: "ንብረትዎ ለተረጋገጡ ደላሎችና ገዢዎች ተሰራጭቷል።",
+        closing: "ይዘጋል..."
+      },
+      en: {
+        title: "Post Listing",
+        step: "Step",
+        steps: ["Details", "Price & Media", "Contact"],
+        category: "Category",
+        car: "Vehicle",
+        property: "Property",
+        carModel: "Car Make / Model (e.g. Toyota Vitz 2020)",
+        carType: "Vehicle Type",
+        fuel: "Fuel Type",
+        transmission: "Transmission",
+        condition: "Condition",
+        mileage: "Mileage (KM)",
+        propertyType: "Property Type",
+        locationArea: "Location / Neighborhood (e.g. Bole, CMC)",
+        bedrooms: "Bedrooms",
+        bathrooms: "Bathrooms",
+        parking: "Dedicated Parking",
+        desc: "Full Description",
+        descPh: "Describe the item, location, key features, specs...",
+        price: "Price (ETB)",
+        negotiable: "Negotiable Price",
+        urgent: "Urgent Sale",
+        photos: "Photos (Up to 5)",
+        upload: "Upload Photos",
+        phone: "Phone Number",
+        telegram: "Telegram Username",
+        back: "Back",
+        cancel: "Cancel",
+        next: "Next",
+        submit: "Submit Listing",
+        submitting: "Submitting...",
+        successTitle: "Successfully Posted!",
+        successMsg: "Your listing has been submitted and broadcasted to verified brokers.",
+        closing: "Closing..."
+      }
+    };
+
     function formatPrice(val) {
       const digits = String(val).replace(/[^\d]/g, '');
       if (!digits) return '';
@@ -134,7 +208,7 @@ SELLER_FORM_HTML = r"""
       );
     }
 
-    function ToggleCard({ active, onToggle, icon, labelEn, labelAm, danger }) {
+    function ToggleCard({ active, onToggle, icon, label, danger }) {
       return (
         <button type="button" onClick={onToggle}
           className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left bg-white shadow-[0_4px_14px_rgba(15,23,42,0.06)] ${
@@ -144,10 +218,7 @@ SELLER_FORM_HTML = r"""
           }`}>
           <div className="flex items-center gap-2">
             <span className="text-base">{icon}</span>
-            <div>
-              <div className="text-xs font-bold text-slate-800">{labelEn}</div>
-              <div className="text-[11px] text-slate-500">{labelAm}</div>
-            </div>
+            <div className="text-xs font-bold text-slate-800">{label}</div>
           </div>
           <div className={`w-10 h-5 rounded-full relative transition-colors ${active ? (danger ? 'bg-rose-500' : 'bg-[#16acbd]') : 'bg-slate-300'}`}>
             <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${active ? 'translate-x-5' : 'translate-x-0.5'}`} />
@@ -157,13 +228,18 @@ SELLER_FORM_HTML = r"""
     }
 
     function SellerForm() {
+      const [lang, setLang] = useState('am');
+      const t = I18N[lang];
+
       const [step, setStep] = useState(1);
       const [category, setCategory] = useState('መኪና');
+      const [carModel, setCarModel] = useState('');
       const [fuel, setFuel] = useState('');
       const [transmission, setTransmission] = useState('');
       const [mileage, setMileage] = useState('');
       const [condition, setCondition] = useState('');
       const [carType, setCarType] = useState('');
+      const [locationArea, setLocationArea] = useState('');
       const [bedrooms, setBedrooms] = useState('');
       const [bathrooms, setBathrooms] = useState('');
       const [parking, setParking] = useState(false);
@@ -227,7 +303,7 @@ SELLER_FORM_HTML = r"""
       };
 
       const removePhoto = (i) => setPhotos(prev => prev.filter((_, idx) => idx !== i));
-      const canNext1 = category && (category === 'መኪና' ? (carType || condition) : (houseType || houseCondition));
+      const canNext1 = category && (category === 'መኪና' ? (carModel || carType || condition) : (houseType || locationArea));
       const canSubmit = Boolean(description && description.trim());
 
       const submit = async () => {
@@ -235,9 +311,11 @@ SELLER_FORM_HTML = r"""
         setSubmitting(true);
         setStatus('');
         const isCar = category === 'መኪና';
+        const subCat = isCar ? (carModel || carType) : (houseType ? `${houseType}${locationArea ? ` • ${locationArea}` : ''}` : locationArea);
         const data = {
           user_id: user.id || 'unknown',
           category,
+          sub_category: subCat,
           price: parsePrice(price),
           negotiable,
           urgent_sale: urgent,
@@ -245,6 +323,8 @@ SELLER_FORM_HTML = r"""
           phone,
           telegram_user: telegramUser,
           photos,
+          car_model: carModel,
+          location_area: locationArea,
           ...(isCar ? {
             fuel_type: fuel, transmission, mileage, condition, car_type: carType
           } : {
@@ -272,22 +352,16 @@ SELLER_FORM_HTML = r"""
         }
       };
 
-      const steps = [
-        { en: 'Details', am: 'መረጃ' },
-        { en: 'Price & Media', am: 'ዋጋና ፎቶ' },
-        { en: 'Contact', am: 'አድራሻ' }
-      ];
-
       if (status === 'ok') {
         return (
           <div className="min-h-screen flex items-center justify-center p-6 bg-[#b5eff3]">
             <div className="bg-white rounded-3xl p-6 text-center space-y-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/60 max-w-sm">
               <div className="w-16 h-16 rounded-full bg-[#16acbd]/15 text-[#16acbd] flex items-center justify-center text-3xl mx-auto">✓</div>
-              <h2 className="font-bold text-base text-slate-800">Successfully Posted! | ተሳክቷል!</h2>
+              <h2 className="font-bold text-base text-slate-800">{t.successTitle}</h2>
               <p className="font-medium text-xs text-slate-600 leading-relaxed px-2">
-                Your listing has been submitted and broadcasted to verified brokers.
+                {t.successMsg}
               </p>
-              <p className="text-[11px] text-[#16acbd] font-semibold">Closing mini-app…</p>
+              <p className="text-[11px] text-[#16acbd] font-semibold">{t.closing}</p>
             </div>
           </div>
         );
@@ -297,12 +371,18 @@ SELLER_FORM_HTML = r"""
         <div className="min-h-screen bg-[#b5eff3] pb-24">
           <div className="fixed top-0 left-0 right-0 z-40 bg-[#16acbd] shadow-md px-4 py-2.5 text-white">
             <div className="flex items-center justify-between max-w-xs mx-auto mb-1.5">
-              <div className="font-extrabold text-xs tracking-wide">Submit Listing | ማስታወቂያ ልቀቅ</div>
-              <div className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">Step {step}/3</div>
+              <div className="font-extrabold text-xs tracking-wide">{t.title}</div>
+              <div className="flex items-center gap-1.5">
+                <button type="button" onClick={() => setLang(lang === 'am' ? 'en' : 'am')}
+                  className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded-full text-[10px] font-extrabold">
+                  {lang === 'am' ? 'EN' : 'አማ'}
+                </button>
+                <div className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">{t.step} {step}/3</div>
+              </div>
             </div>
             <div className="flex items-center gap-1 max-w-xs mx-auto">
-              {steps.map((s, i) => (
-                <React.Fragment key={s.en}>
+              {t.steps.map((label, i) => (
+                <React.Fragment key={label}>
                   <div className="flex-1 text-center">
                     <div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                       step > i+1 ? 'bg-white text-[#16acbd]' : step === i+1 ? 'bg-white text-[#16acbd] ring-2 ring-white/50' : 'bg-white/30 text-white'
@@ -319,88 +399,100 @@ SELLER_FORM_HTML = r"""
               {step === 1 && (
                 <div className="space-y-3.5">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">📦 Category | ምድብ</label>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">📦 {t.category}</label>
                     <div className="flex gap-2">
-                      <Chip label="🚗 Car | መኪና" active={category==='መኪና'} onClick={() => setCategory('መኪና')} />
-                      <Chip label="🏠 Property | ቤት" active={category==='ቤት'} onClick={() => setCategory('ቤት')} />
+                      <Chip label={`🚗 ${t.car}`} active={category==='መኪና'} onClick={() => setCategory('መኪና')} />
+                      <Chip label={`🏠 ${t.property}`} active={category==='ቤት'} onClick={() => setCategory('ቤት')} />
                     </div>
                   </div>
 
                   {category === 'መኪና' ? (
                     <>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 mb-1 block">🚗 Vehicle Type | የመኪና አይነት</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">🚘 {t.carModel}</label>
+                        <input type="text" value={carModel} onChange={e => setCarModel(e.target.value)}
+                          placeholder="e.g. Toyota Vitz 2020 / Hyundai Tucson"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">🚗 {t.carType}</label>
                         <div className="flex gap-1.5 overflow-x-auto pb-1">
-                          {['Sedan / የቤት','SUV / 4WD','Commercial / የሥራ','Heavy / ከባድ'].map(t =>
-                            <Chip key={t} label={t} active={carType===t} onClick={() => setCarType(t)} />
+                          {['Sedan','SUV / 4WD','Commercial','Heavy Duty'].map(typeKey =>
+                            <Chip key={typeKey} label={typeKey} active={carType===typeKey} onClick={() => setCarType(typeKey)} />
                           )}
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 mb-1 block">⛽ Fuel Type | ነዳጅ</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">⛽ {t.fuel}</label>
                         <div className="flex gap-1.5 overflow-x-auto pb-1">
-                          {['Benzine / ቤንዚን','Diesel / ናፍጣ','Electric / ኤሌክትሪክ','Hybrid / ሀይብሪድ'].map(t =>
-                            <Chip key={t} label={t} active={fuel===t} onClick={() => setFuel(t)} />
+                          {['Petrol / ቤንዚን','Diesel / ናፍጣ','Electric / ኤሌክትሪክ','Hybrid / ሀይብሪድ'].map(f =>
+                            <Chip key={f} label={f} active={fuel===f} onClick={() => setFuel(f)} />
                           )}
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 mb-1 block">⚙️ Transmission | ማርሽ</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">⚙️ {t.transmission}</label>
                         <div className="flex gap-2">
-                          {['Automatic / ኦቶማቲክ','Manual / ማንዋል'].map(t =>
-                            <Chip key={t} label={t} active={transmission===t} onClick={() => setTransmission(t)} />
+                          {['Automatic','Manual'].map(tr =>
+                            <Chip key={tr} label={tr} active={transmission===tr} onClick={() => setTransmission(tr)} />
                           )}
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 mb-1 block">📊 Condition | ሁኔታ</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">📊 {t.condition}</label>
                         <div className="flex gap-1.5 overflow-x-auto pb-1">
-                          {['New / አዲስ','Used / ያገለገለ','Need Repair / ጥገና'].map(t =>
-                            <Chip key={t} label={t} active={condition===t} onClick={() => setCondition(t)} />
+                          {['Brand New','Clean Used','Need Repair'].map(c =>
+                            <Chip key={c} label={c} active={condition===c} onClick={() => setCondition(c)} />
                           )}
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 mb-1 block">🛣️ Mileage (KM) | ኪሎሜትር</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">🛣️ {t.mileage}</label>
                         <input type="number" value={mileage} onChange={e => setMileage(e.target.value)}
-                          placeholder="e.g. 45000"
+                          placeholder="45000"
                           className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs" />
                       </div>
                     </>
                   ) : (
                     <>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 mb-1 block">🏠 Property Type | የቤት አይነት</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">🏠 {t.propertyType}</label>
                         <div className="flex gap-1.5 overflow-x-auto pb-1">
-                          {['Villa / ቪላ','Apartment / አፓርታማ','Condo / ኮንዶ','Land / መሬት'].map(t =>
-                            <Chip key={t} label={t} active={houseType===t} onClick={() => setHouseType(t)} />
+                          {['Villa','Apartment','Condominium','Commercial','Land'].map(h =>
+                            <Chip key={h} label={h} active={houseType===h} onClick={() => setHouseType(h)} />
                           )}
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 mb-1 block">🛏️ Bedrooms | መኝታ</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">📍 {t.locationArea}</label>
+                        <input type="text" value={locationArea} onChange={e => setLocationArea(e.target.value)}
+                          placeholder="e.g. Bole Atlas, CMC, Kazanchis, 150m²"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">🛏️ {t.bedrooms}</label>
                         <div className="flex gap-1.5">
-                          {['1','2','3','4','5+'].map(t =>
-                            <Chip key={t} label={t} active={bedrooms===t} onClick={() => setBedrooms(t)} />
+                          {['1','2','3','4','5+'].map(b =>
+                            <Chip key={b} label={b} active={bedrooms===b} onClick={() => setBedrooms(b)} />
                           )}
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-slate-700 mb-1 block">🛁 Bathrooms | መታጠቢያ</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">🛁 {t.bathrooms}</label>
                         <div className="flex gap-1.5">
-                          {['1','2','3','4+'].map(t =>
-                            <Chip key={t} label={t} active={bathrooms===t} onClick={() => setBathrooms(t)} />
+                          {['1','2','3','4+'].map(ba =>
+                            <Chip key={ba} label={ba} active={bathrooms===ba} onClick={() => setBathrooms(ba)} />
                           )}
                         </div>
                       </div>
-                      <ToggleCard active={parking} onToggle={() => setParking(!parking)} icon="🚗" labelEn="Dedicated Parking" labelAm="የመኪና ማቆሚያ አለው" />
+                      <ToggleCard active={parking} onToggle={() => setParking(!parking)} icon="🚗" label={t.parking} />
                     </>
                   )}
 
                   <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1 block">📝 Description | መግለጫ</label>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">📝 {t.desc}</label>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
-                      placeholder="Enter property details, location, model, specs... | ሙሉ ዝርዝር መረጃ ያስገቡ..."
+                      placeholder={t.descPh}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
                   </div>
                 </div>
@@ -409,7 +501,7 @@ SELLER_FORM_HTML = r"""
               {step === 2 && (
                 <div className="space-y-3.5">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1 block">💰 Price (ETB) | ዋጋ (ብር)</label>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">💰 {t.price}</label>
                     <div className="relative">
                       <input type="text" inputMode="numeric" value={price}
                         onChange={e => setPrice(formatPrice(e.target.value))}
@@ -418,16 +510,15 @@ SELLER_FORM_HTML = r"""
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#16acbd]">ETB</span>
                     </div>
                   </div>
-                  <ToggleCard active={negotiable} onToggle={() => setNegotiable(!negotiable)} icon="🤝" labelEn="Negotiable Price" labelAm="ዋጋው የሚደራደር ነው" />
-                  <ToggleCard active={urgent} onToggle={() => setUrgent(!urgent)} icon="⚡" labelEn="Urgent Sale" labelAm="አስቸኳይ ሽያጭ" danger />
+                  <ToggleCard active={negotiable} onToggle={() => setNegotiable(!negotiable)} icon="🤝" label={t.negotiable} />
+                  <ToggleCard active={urgent} onToggle={() => setUrgent(!urgent)} icon="⚡" label={t.urgent} danger />
 
                   <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1 block">📸 Photos (Up to 5) | ፎቶዎች</label>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">📸 {t.photos}</label>
                     <div onClick={() => fileRef.current?.click()}
                       className="border-2 border-dashed border-slate-200 bg-slate-50/70 hover:bg-slate-50 rounded-2xl p-5 text-center cursor-pointer transition-all">
                       <div className="text-2xl mb-1">📷</div>
-                      <p className="text-xs font-bold text-slate-700">Upload Photos | ፎቶ ይስቀሉ</p>
-                      <p className="text-[10px] text-slate-400">Tap to browse files</p>
+                      <p className="text-xs font-bold text-slate-700">{t.upload}</p>
                       <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
                         onChange={e => { addFiles(e.target.files); e.target.value=''; }} />
                     </div>
@@ -451,13 +542,13 @@ SELLER_FORM_HTML = r"""
               {step === 3 && (
                 <div className="space-y-3.5">
                   <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1 block">📞 Phone Number | ስልክ ቁጥር</label>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">📞 {t.phone}</label>
                     <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                       placeholder="0911223344"
                       className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1 block">📱 Telegram Username | የቴሌግራም ስም</label>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">📱 {t.telegram}</label>
                     <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
                       placeholder="@username"
                       className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
@@ -473,21 +564,21 @@ SELLER_FORM_HTML = r"""
           <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex gap-2 z-40">
             {step > 1 ? (
               <button type="button" onClick={() => setStep(s => s-1)}
-                className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">Back | ተመለስ</button>
+                className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">{t.back}</button>
             ) : (
               <button type="button" onClick={() => tg.close()}
-                className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">Cancel | ሰርዝ</button>
+                className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">{t.cancel}</button>
             )}
             {step < 3 ? (
               <button type="button" onClick={() => { if (step===1 && !canNext1) return; setStep(s => s+1); }}
                 disabled={step===1 ? !canNext1 : photoBusy}
                 className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40">
-                Next | ቀጣይ →
+                {t.next} →
               </button>
             ) : (
               <button type="button" onClick={submit} disabled={!canSubmit || submitting}
                 className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1">
-                {submitting ? 'Submitting...' : '🚀 Submit Listing | መዝግብ'}
+                {submitting ? t.submitting : `🚀 ${t.submit}`}
               </button>
             )}
           </div>
@@ -503,7 +594,7 @@ SELLER_FORM_HTML = r"""
 
 
 # ==============================================================================
-# BUYER FORM HTML (Bilingual English + Amharic)
+# BUYER FORM HTML (Dynamic Single-Language with AM | EN Switcher)
 # ==============================================================================
 BUYER_FORM_HTML = r"""
 <!DOCTYPE html>
@@ -539,6 +630,47 @@ BUYER_FORM_HTML = r"""
     const autoUsername = user.username ? '@' + user.username : '';
     const autoPhone = user.phone_number || '';
 
+    const I18N = {
+      am: {
+        title: "የሚፈልጉትን ንብረት ይግለጹ",
+        category: "ምድብ",
+        car: "መኪና",
+        property: "ቤት",
+        budget: "የበጀት ክልል (ብር)",
+        alertTitle: "ፈጣን ማሳወቂያ",
+        alertSub: "ተመሳሳይ ንብረት ሲለቀቅ ማሳወቂያ ይድረሰኝ",
+        details: "ዝርዝር ፍላጎትና መስፈርቶች",
+        detailsPh: "ለምሳሌ፦ ቶዮታ ቪትዝ 2020፣ ነጭ ቀለም፣ ኦቶማቲክ፣ ንጹህ...",
+        phone: "ስልክ ቁጥር",
+        telegram: "ቴሌግራም",
+        cancel: "ሰርዝ",
+        submit: "ጥያቄውን ላክ",
+        submitting: "በመላክ ላይ...",
+        successTitle: "ጥያቄዎ ተመዝግቧል!",
+        successMsg: "የፍላጎት ጥያቄዎ ለተረጋገጡ ደላሎች ተሰራጭቷል።",
+        closing: "ይዘጋል..."
+      },
+      en: {
+        title: "Submit Buyer Request",
+        category: "Category",
+        car: "Vehicle",
+        property: "Property",
+        budget: "Budget Range (ETB)",
+        alertTitle: "Instant Match Alert",
+        alertSub: "Notify me when matching listings are posted",
+        details: "Specifications & Details",
+        detailsPh: "e.g. Looking for Toyota Vitz 2020, white, automatic, clean condition...",
+        phone: "Phone Number",
+        telegram: "Telegram",
+        cancel: "Cancel",
+        submit: "Broadcast Request",
+        submitting: "Broadcasting...",
+        successTitle: "Request Broadcasted!",
+        successMsg: "Your request has been saved and shared with certified brokers.",
+        closing: "Closing..."
+      }
+    };
+
     function formatPrice(val) {
       const digits = String(val).replace(/[^\d]/g, '');
       if (!digits) return '';
@@ -558,6 +690,9 @@ BUYER_FORM_HTML = r"""
     }
 
     function BuyerForm() {
+      const [lang, setLang] = useState('am');
+      const t = I18N[lang];
+
       const [category, setCategory] = useState('መኪና');
       const [budgetMin, setBudgetMin] = useState('');
       const [budgetMax, setBudgetMax] = useState('');
@@ -606,11 +741,11 @@ BUYER_FORM_HTML = r"""
           <div className="min-h-screen flex items-center justify-center p-6 bg-[#b5eff3]">
             <div className="bg-white rounded-3xl p-6 text-center space-y-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/60 max-w-sm">
               <div className="w-16 h-16 rounded-full bg-[#16acbd]/15 text-[#16acbd] flex items-center justify-center text-3xl mx-auto">✓</div>
-              <h2 className="font-bold text-base text-slate-800">Request Broadcasted! | ጥያቄዎ ተመዝግቧል!</h2>
+              <h2 className="font-bold text-base text-slate-800">{t.successTitle}</h2>
               <p className="font-medium text-xs text-slate-600 leading-relaxed px-2">
-                Your buying request has been saved and shared with certified brokers.
+                {t.successMsg}
               </p>
-              <p className="text-[11px] text-[#16acbd] font-semibold">Closing mini-app…</p>
+              <p className="text-[11px] text-[#16acbd] font-semibold">{t.closing}</p>
             </div>
           </div>
         );
@@ -618,22 +753,26 @@ BUYER_FORM_HTML = r"""
 
       return (
         <div className="min-h-screen bg-[#b5eff3] pb-24">
-          <div className="fixed top-0 left-0 right-0 z-40 bg-[#16acbd] shadow-md px-4 py-2.5 text-white">
-            <h1 className="text-center font-extrabold text-xs tracking-wide">Buyer Request | የሚፈልጉትን ንብረት ይግለጹ</h1>
+          <div className="fixed top-0 left-0 right-0 z-40 bg-[#16acbd] shadow-md px-4 py-2.5 text-white flex items-center justify-between">
+            <h1 className="font-extrabold text-xs tracking-wide">{t.title}</h1>
+            <button type="button" onClick={() => setLang(lang === 'am' ? 'en' : 'am')}
+              className="px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded-full text-[10px] font-extrabold">
+              {lang === 'am' ? 'EN' : 'አማ'}
+            </button>
           </div>
 
           <div className="pt-14 px-3.5">
             <div className="bg-white rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-slate-200/80 space-y-3.5">
               <div>
-                <label className="text-xs font-bold text-slate-700 mb-1 block">📦 Category | ምድብ</label>
+                <label className="text-xs font-bold text-slate-700 mb-1 block">📦 {t.category}</label>
                 <div className="flex gap-2">
-                  <Chip label="🚗 Car | መኪና" active={category==='መኪና'} onClick={() => setCategory('መኪና')} />
-                  <Chip label="🏠 Property | ቤት" active={category==='ቤት'} onClick={() => setCategory('ቤት')} />
+                  <Chip label={`🚗 ${t.car}`} active={category==='መኪና'} onClick={() => setCategory('መኪና')} />
+                  <Chip label={`🏠 ${t.property}`} active={category==='ቤት'} onClick={() => setCategory('ቤት')} />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 mb-1 block">💰 Budget Range (ETB) | የበጀት ክልል</label>
+                <label className="text-xs font-bold text-slate-700 mb-1 block">💰 {t.budget}</label>
                 <div className="flex gap-2 items-center">
                   <div className="flex-1 relative">
                     <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Min</span>
@@ -658,8 +797,8 @@ BUYER_FORM_HTML = r"""
                   createAlert ? 'bg-[#16acbd]/10 border-[#16acbd]/50 text-[#0e7490]' : 'bg-slate-50 border-slate-200 text-slate-700'
                 }`}>
                 <div className="text-xs font-semibold">
-                  <div>🔔 Instant Match Notification</div>
-                  <div className="text-[10px] text-slate-500">ተመሳሳይ ንብረት ሲለቀቅ ማሳወቂያ ይድረሰኝ</div>
+                  <div>🔔 {t.alertTitle}</div>
+                  <div className="text-[10px] text-slate-500">{t.alertSub}</div>
                 </div>
                 <div className={`w-9 h-5 rounded-full relative transition-colors shrink-0 ${createAlert ? 'bg-[#16acbd]' : 'bg-slate-300'}`}>
                   <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${createAlert ? 'translate-x-4' : 'translate-x-0.5'}`} />
@@ -667,21 +806,21 @@ BUYER_FORM_HTML = r"""
               </button>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 mb-1 block">📝 Details & Specifications | ዝርዝር ፍላጎት</label>
+                <label className="text-xs font-bold text-slate-700 mb-1 block">📝 {t.details}</label>
                 <textarea value={details} onChange={e => setDetails(e.target.value)} rows={3}
-                  placeholder="e.g. Looking for Toyota Vitz 2020, white, automatic, clean condition... | ለምሳሌ፦ ቶዮታ ቪትዝ 2020፣ ነጭ፣ ኦቶማቲክ..."
+                  placeholder={t.detailsPh}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 mb-1 block">📞 Phone | ስልክ</label>
+                  <label className="text-xs font-bold text-slate-700 mb-1 block">📞 {t.phone}</label>
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                     placeholder="0911223344"
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 mb-1 block">📱 Telegram | ቴሌግራም</label>
+                  <label className="text-xs font-bold text-slate-700 mb-1 block">📱 {t.telegram}</label>
                   <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
                     placeholder="@username"
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
@@ -696,10 +835,10 @@ BUYER_FORM_HTML = r"""
 
           <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex gap-2 z-40">
             <button type="button" onClick={() => tg.close()}
-              className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">Cancel | ሰርዝ</button>
+              className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">{t.cancel}</button>
             <button type="button" onClick={submit} disabled={!details || submitting}
               className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1">
-              {submitting ? 'Broadcasting...' : '📨 Send Request | ጥያቄውን ላክ'}
+              {submitting ? t.submitting : `📨 ${t.submit}`}
             </button>
           </div>
         </div>
@@ -714,7 +853,7 @@ BUYER_FORM_HTML = r"""
 
 
 # ==============================================================================
-# EXPLORER HTML (Marketplace + Quick Search Bar + AI Smart Filter + Favorites)
+# EXPLORER HTML (Marketplace + Pure Single-Language AM|EN + Dynamic Cards)
 # ==============================================================================
 EXPLORER_HTML = r"""
 <!DOCTYPE html>
@@ -757,57 +896,69 @@ EXPLORER_HTML = r"""
 <body class="bg-[#b5eff3] min-h-screen">
 
   <!-- ================================================================= -->
-  <!-- 1. FIXED STICKY TEAL HEADER WITH TABS, SEARCH BAR & PILLS         -->
+  <!-- 1. FIXED STICKY TEAL HEADER WITH AM | EN TOGGLE, SEARCH & PILLS   -->
   <!-- ================================================================= -->
-  <header class="fixed top-0 left-0 right-0 z-50 bg-[#16acbd] text-white shadow-md p-2 flex flex-col gap-1.5">
-    <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
-      <!-- Segmented Tab Switcher (Marketplace / Buyers) -->
-      <div class="grid grid-cols-2 gap-1 p-1 bg-black/15 rounded-xl">
-        <button id="tabSell" type="button"
-          class="py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1">
-          <span>🛒</span> <span>Marketplace / ገበያ</span>
-        </button>
-        <button id="tabBuy" type="button"
-          class="py-1.5 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1">
-          <span>📋</span> <span>Buyers / ፈላጊዎች</span>
-        </button>
+  <header class="fixed top-0 left-0 right-0 z-50 bg-[#16acbd] text-white shadow-md p-2 flex flex-col gap-2">
+    <div class="w-full max-w-md mx-auto flex flex-col gap-2">
+      <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
+      <div class="flex items-center gap-2">
+        <div class="flex-1 grid grid-cols-2 gap-1 p-1 bg-black/15 rounded-xl">
+          <button id="tabSell" type="button"
+            class="py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1">
+            <span>🛒</span> <span id="txtTabSell">ገበያ</span>
+          </button>
+          <button id="tabBuy" type="button"
+            class="py-1.5 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1">
+            <span>📋</span> <span id="txtTabBuy">ፈላጊዎች</span>
+          </button>
+        </div>
+
+        <!-- Language Toggle Switcher (AM | EN) -->
+        <div class="flex items-center bg-black/20 p-1 rounded-xl shrink-0">
+          <button id="langAmBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm">
+            AM
+          </button>
+          <button id="langEnBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white">
+            EN
+          </button>
+        </div>
       </div>
 
-      <!-- Restored Quick Search Input Bar -->
+      <!-- Second Row: Sleek Quick Search Input Bar -->
       <div class="relative">
-        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
-        <input id="q" type="search" placeholder="በፍለጋ... / Search listings..." autocomplete="off"
-          class="w-full pl-7 pr-3 py-1.5 rounded-xl bg-white text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
+        <input id="q" type="search" placeholder="ንብረት ይፈልጉ..." autocomplete="off"
+          class="w-full pl-8 pr-3 py-2 rounded-xl bg-white text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
       </div>
 
-      <!-- Category Pills (Horizontal Scroll) -->
+      <!-- Third Row: Category Pills (Horizontal Scroll) -->
       <div id="cats" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5"></div>
     </div>
   </header>
 
   <!-- ================================================================= -->
-  <!-- 2. MAIN CONTENT AREA (pt-36 to avoid overlapping sticky header)   -->
+  <!-- 2. MAIN CONTENT AREA (pt-40 to prevent header clipping)           -->
   <!-- ================================================================= -->
-  <main class="w-full max-w-md mx-auto pt-36 pb-28 px-2.5">
+  <main class="w-full max-w-md mx-auto pt-40 pb-28 px-2.5">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
-      <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">Clear ✕</button>
+      <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
     <div id="status" class="text-center py-12 text-slate-600 font-semibold text-xs">
       <div class="inline-block animate-spin w-6 h-6 border-2 border-[#16acbd] border-t-transparent rounded-full mb-2"></div>
-      <div>Loading listings / እየጫነ ነው…</div>
+      <div id="txtLoading">እየጫነ ነው…</div>
     </div>
 
-    <!-- 2-Column Responsive Elevated Cards Grid (No call/message buttons on face) -->
+    <!-- 2-Column Responsive Elevated Cards Grid -->
     <div id="grid" class="grid grid-cols-2 gap-2"></div>
 
     <!-- Load More -->
     <div class="text-center mt-4 mb-2">
       <button id="more" type="button"
         class="hidden px-5 py-2 rounded-full bg-white text-[#16acbd] font-extrabold text-xs shadow-md border border-white/60 active:scale-95 transition-all">
-        Load More / ተጨማሪ ↓
+        <span id="txtLoadMore">ተጨማሪ ↓</span>
       </button>
     </div>
   </main>
@@ -821,7 +972,7 @@ EXPLORER_HTML = r"""
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
       </svg>
-      <span class="text-[9px] font-bold mt-0.5">Home / መነሻ</span>
+      <span id="txtNavHome" class="text-[9px] font-bold mt-0.5">መነሻ</span>
     </button>
 
     <!-- AI Smart Filter Tab -->
@@ -832,7 +983,7 @@ EXPLORER_HTML = r"""
         </svg>
         <span class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
       </div>
-      <span class="text-[9px] font-semibold mt-0.5 text-[#0e7490]">AI ፍለጋ ✨</span>
+      <span id="txtNavAi" class="text-[9px] font-semibold mt-0.5 text-[#0e7490]">AI ፍለጋ ✨</span>
     </button>
 
     <!-- Central Dynamic "+" FAB -->
@@ -848,7 +999,7 @@ EXPLORER_HTML = r"""
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
       </svg>
-      <span class="text-[9px] font-semibold mt-0.5">መልእክቶች</span>
+      <span id="txtNavMsg" class="text-[9px] font-semibold mt-0.5">መልእክት</span>
     </button>
 
     <!-- Help Tab -->
@@ -856,7 +1007,7 @@ EXPLORER_HTML = r"""
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
       </svg>
-      <span class="text-[9px] font-semibold mt-0.5">እርዳታ</span>
+      <span id="txtNavHelp" class="text-[9px] font-semibold mt-0.5">እርዳታ</span>
     </button>
   </nav>
 
@@ -869,8 +1020,8 @@ EXPLORER_HTML = r"""
         <div class="flex items-center gap-2">
           <span class="text-lg">✨</span>
           <div>
-            <h3 class="font-extrabold text-xs tracking-wide">AI Smart Filter & Search</h3>
-            <p class="text-[10px] text-white/80">በተፈጥሮአዊ ቋንቋ ወይም በቅንብሮች ይፈልጉ</p>
+            <h3 id="txtAiTitle" class="font-extrabold text-xs tracking-wide">AI Smart Filter</h3>
+            <p id="txtAiSubtitle" class="text-[10px] text-white/80">በተፈጥሮአዊ ቋንቋ ወይም በቅንብሮች ይፈልጉ</p>
           </div>
         </div>
         <button id="aiModalClose" type="button" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold flex items-center justify-center text-sm">✕</button>
@@ -878,27 +1029,19 @@ EXPLORER_HTML = r"""
 
       <div class="overflow-y-auto flex-1 p-4 space-y-4">
         <div>
-          <label class="text-xs font-bold text-slate-700 mb-1 block">💬 Ask AI / ምን አይነት ንብረት ይፈልጋሉ?</label>
+          <label id="txtAiPromptLabel" class="text-xs font-bold text-slate-700 mb-1 block">ምን አይነት ንብረት ይፈልጋሉ?</label>
           <textarea id="aiPrompt" rows="2"
-            placeholder="e.g. Automatic car in Addis under 1.5M ETB... | ለምሳሌ፦ ቶዮታ መኪና ከ1.5 ሚሊየን ብር በታች..."
+            placeholder="ለምሳሌ፦ ቶዮታ መኪና ከ1.5 ሚሊየን ብር በታች..."
             class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none"></textarea>
         </div>
 
         <div>
-          <label class="text-xs font-bold text-slate-700 mb-1.5 block">⚡ Quick AI Filters / ፈጣን አማራጮች</label>
-          <div class="flex flex-wrap gap-1.5">
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10 hover:text-[#0e7490]" data-q="መኪና">🚗 Cars / መኪኖች</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10 hover:text-[#0e7490]" data-q="ቤት">🏠 Properties / ቤቶች</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10 hover:text-[#0e7490]" data-q="ኦቶማቲክ">⚙️ Automatic</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10 hover:text-[#0e7490]" data-q="አዲስ">✨ New / አዲስ</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10 hover:text-[#0e7490]" data-q="አስቸኳይ">⚡ Urgent Sale / አስቸኳይ</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10 hover:text-[#0e7490]" data-q="ቪላ">🏡 Villa / ቪላ</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10 hover:text-[#0e7490]" data-q="ቶዮታ">🚘 Toyota</button>
-          </div>
+          <label id="txtAiQuickLabel" class="text-xs font-bold text-slate-700 mb-1.5 block">ፈጣን አማራጮች</label>
+          <div class="flex flex-wrap gap-1.5" id="aiQuickChips"></div>
         </div>
 
         <div>
-          <label class="text-xs font-bold text-slate-700 mb-1.5 block">💰 Price Range / የበጀት መጠን</label>
+          <label id="txtAiPriceLabel" class="text-xs font-bold text-slate-700 mb-1.5 block">የበጀት መጠን</label>
           <div class="grid grid-cols-3 gap-1.5 text-xs">
             <button type="button" class="price-chip py-1.5 px-2 rounded-lg border border-slate-200 text-slate-700 font-semibold text-center hover:border-[#16acbd]" data-price="< 1M">&lt; 1M ETB</button>
             <button type="button" class="price-chip py-1.5 px-2 rounded-lg border border-slate-200 text-slate-700 font-semibold text-center hover:border-[#16acbd]" data-price="1M - 3M">1M - 3M ETB</button>
@@ -908,9 +1051,9 @@ EXPLORER_HTML = r"""
       </div>
 
       <div class="p-3 bg-white border-t border-slate-100 shrink-0 flex gap-2">
-        <button id="aiResetBtn" type="button" class="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Reset / አጽዳ</button>
+        <button id="aiResetBtn" type="button" class="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">አጽዳ</button>
         <button id="aiApplyBtn" type="button" class="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 flex items-center justify-center gap-1.5">
-          <span>✨ Apply AI Filter / አጣራ</span>
+          <span>✨ አጣራ</span>
         </button>
       </div>
     </div>
@@ -951,7 +1094,7 @@ EXPLORER_HTML = r"""
         <div id="modalSpecs" class="grid grid-cols-2 gap-2 text-xs font-medium text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100"></div>
 
         <div>
-          <h4 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Details | ዝርዝር መግለጫ</h4>
+          <h4 id="modalDescHeading" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">ዝርዝር መግለጫ</h4>
           <p id="modalDesc" class="text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50/50 p-2.5 rounded-xl border border-slate-100"></p>
         </div>
       </div>
@@ -960,7 +1103,7 @@ EXPLORER_HTML = r"""
       <div class="p-2.5 bg-white border-t border-slate-100 shrink-0 grid grid-cols-3 gap-2">
         <a id="modalCallBtn" href="#"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
-          <span>📞</span> <span>Call / ደውል</span>
+          <span>📞</span> <span id="txtModalCall">ደውል</span>
         </a>
         <a id="modalChatBtn" href="#"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
@@ -968,14 +1111,14 @@ EXPLORER_HTML = r"""
         </a>
         <button id="modalShareBtn" type="button"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
-          <span>🔗</span> <span>Share / አጋራ</span>
+          <span>🔗</span> <span id="txtModalShare">አጋራ</span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- ================================================================= -->
-  <!-- 6. JAVASCRIPT LOGIC                                               -->
+  <!-- 6. JAVASCRIPT LOGIC WITH DYNAMIC SINGLE-LANGUAGE SWITCHER         -->
   <!-- ================================================================= -->
   <script>
   (function () {
@@ -983,6 +1126,103 @@ EXPLORER_HTML = r"""
     if (tg) {
       try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
     }
+
+    var currentLang = localStorage.getItem('adika_lang') || 'am';
+
+    var DICT = {
+      am: {
+        tabSell: "ገበያ",
+        tabBuy: "ፈላጊዎች",
+        searchPh: "ንብረት ይፈልጉ...",
+        loading: "እየጫነ ነው…",
+        noListings: "ምንም ንብረት አልተገኘም",
+        loadMore: "ተጨማሪ ↓",
+        navHome: "መነሻ",
+        navAi: "AI ፍለጋ ✨",
+        navMsg: "መልእክት",
+        navHelp: "እርዳታ",
+        aiTitle: "AI Smart Filter",
+        aiSubtitle: "በተፈጥሮአዊ ቋንቋ ወይም በቅንብሮች ይፈልጉ",
+        aiPromptLabel: "ምን አይነት ንብረት ይፈልጋሉ?",
+        aiPromptPh: "ለምሳሌ፦ ቶዮታ መኪና ከ1.5 ሚሊየን ብር በታች...",
+        aiQuickLabel: "ፈጣን አማራጮች",
+        aiPriceLabel: "የበጀት መጠን",
+        aiReset: "አጽዳ",
+        aiApply: "✨ አጣራ",
+        modalDescHeading: "ዝርዝር መግለጫ",
+        modalCall: "ደውል",
+        modalShare: "አጋራ",
+        priceTag: "ዋጋ: ",
+        budgetTag: "በጀት: ",
+        forSale: "ሽያጭ",
+        looking: "ፈላጊ",
+        justNow: "አሁን",
+        noDesc: "ምንም ዝርዝር መግለጫ አልተሰጠም።",
+        copied: "ሊንኩ ተገልብጧል!",
+        helpAlert: "አዲካ የገበያ መድረክ • የደንበኞች እርዳታ\nለእርዳታ በ @AdikaMarketplaceBot ያግኙን ወይም በ 0911000000 ይደውሉ።",
+        cats: [
+          { id: "", label: "✨ ሁሉም" },
+          { id: "መኪና", label: "🚗 መኪኖች" },
+          { id: "ቤት", label: "🏠 ቤቶች" },
+          { id: "ንግድ", label: "🏢 ንግድ" }
+        ],
+        quickChips: [
+          { label: "🚗 መኪኖች", q: "መኪና" },
+          { label: "🏠 ቤቶች", q: "ቤት" },
+          { label: "⚙️ ኦቶማቲክ", q: "ኦቶማቲክ" },
+          { label: "✨ አዲስ", q: "አዲስ" },
+          { label: "⚡ አስቸኳይ", q: "አስቸኳይ" },
+          { label: "🏡 ቪላ", q: "ቪላ" },
+          { label: "🚘 ቶዮታ", q: "ቶዮታ" }
+        ]
+      },
+      en: {
+        tabSell: "Marketplace",
+        tabBuy: "Buyers",
+        searchPh: "Search listings...",
+        loading: "Loading listings…",
+        noListings: "No listings found",
+        loadMore: "Load More ↓",
+        navHome: "Home",
+        navAi: "AI Smart ✨",
+        navMsg: "Inbox",
+        navHelp: "Help",
+        aiTitle: "AI Smart Filter",
+        aiSubtitle: "Search in natural language or smart tags",
+        aiPromptLabel: "What are you looking for?",
+        aiPromptPh: "e.g. Toyota car in Addis under 1.5M ETB...",
+        aiQuickLabel: "Quick Smart Tags",
+        aiPriceLabel: "Budget Range",
+        aiReset: "Reset",
+        aiApply: "✨ Apply Filter",
+        modalDescHeading: "Full Description",
+        modalCall: "Call",
+        modalShare: "Share",
+        priceTag: "Price: ",
+        budgetTag: "Budget: ",
+        forSale: "For Sale",
+        looking: "Looking",
+        justNow: "Just now",
+        noDesc: "No further description provided.",
+        copied: "Link copied to clipboard!",
+        helpAlert: "Adika Marketplace • Help Center\nFor support, contact @AdikaMarketplaceBot or call 0911000000.",
+        cats: [
+          { id: "", label: "✨ All" },
+          { id: "መኪና", label: "🚗 Cars" },
+          { id: "ቤት", label: "🏠 Property" },
+          { id: "ንግድ", label: "🏢 Commercial" }
+        ],
+        quickChips: [
+          { label: "🚗 Cars", q: "መኪና" },
+          { label: "🏠 Property", q: "ቤት" },
+          { label: "⚙️ Automatic", q: "Automatic" },
+          { label: "✨ Brand New", q: "New" },
+          { label: "⚡ Urgent", q: "Urgent" },
+          { label: "🏡 Villa", q: "Villa" },
+          { label: "🚘 Toyota", q: "Toyota" }
+        ]
+      }
+    };
 
     var favorites = {};
     try {
@@ -1022,6 +1262,9 @@ EXPLORER_HTML = r"""
     var filterText = document.getElementById("filterText");
     var clearFilterBtn = document.getElementById("clearFilterBtn");
 
+    var langAmBtn = document.getElementById("langAmBtn");
+    var langEnBtn = document.getElementById("langEnBtn");
+
     // Modal elements
     var modalOverlay = document.getElementById("modalOverlay");
     var modalClose = document.getElementById("modalClose");
@@ -1044,13 +1287,53 @@ EXPLORER_HTML = r"""
     var aiPrompt = document.getElementById("aiPrompt");
     var aiApplyBtn = document.getElementById("aiApplyBtn");
     var aiResetBtn = document.getElementById("aiResetBtn");
+    var aiQuickChipsEl = document.getElementById("aiQuickChips");
 
-    var CAT_LIST = [
-      { id: "", label: "✨ All / ሁሉም" },
-      { id: "መኪና", label: "🚗 Cars / መኪኖች" },
-      { id: "ቤት", label: "🏠 Property / ቤቶች" },
-      { id: "ንግድ", label: "🏢 Commercial / ንግድ" }
-    ];
+    function applyLanguage(l) {
+      currentLang = l;
+      localStorage.setItem('adika_lang', l);
+      var t = DICT[l];
+
+      document.getElementById("txtTabSell").textContent = t.tabSell;
+      document.getElementById("txtTabBuy").textContent = t.tabBuy;
+      qInput.placeholder = t.searchPh;
+      document.getElementById("txtLoading").textContent = t.loading;
+      document.getElementById("txtLoadMore").textContent = t.loadMore;
+      document.getElementById("txtNavHome").textContent = t.navHome;
+      document.getElementById("txtNavAi").textContent = t.navAi;
+      document.getElementById("txtNavMsg").textContent = t.navMsg;
+      document.getElementById("txtNavHelp").textContent = t.navHelp;
+
+      document.getElementById("txtAiTitle").textContent = t.aiTitle;
+      document.getElementById("txtAiSubtitle").textContent = t.aiSubtitle;
+      document.getElementById("txtAiPromptLabel").textContent = t.aiPromptLabel;
+      aiPrompt.placeholder = t.aiPromptPh;
+      document.getElementById("txtAiQuickLabel").textContent = t.aiQuickLabel;
+      document.getElementById("txtAiPriceLabel").textContent = t.aiPriceLabel;
+      aiResetBtn.textContent = t.aiReset;
+      aiApplyBtn.innerHTML = t.aiApply;
+
+      document.getElementById("modalDescHeading").textContent = t.modalDescHeading;
+      document.getElementById("txtModalCall").textContent = t.modalCall;
+      document.getElementById("txtModalShare").textContent = t.modalShare;
+
+      if (l === 'am') {
+        langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
+        langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
+      } else {
+        langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
+        langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
+      }
+
+      renderCats();
+      renderAiQuickChips();
+      if (state.items && state.items.length) {
+        finishLoading(state.items, false, state.hasMore);
+      }
+    }
+
+    langAmBtn.onclick = function() { applyLanguage('am'); };
+    langEnBtn.onclick = function() { applyLanguage('en'); };
 
     function esc(s) {
       return String(s == null ? "" : s)
@@ -1062,32 +1345,41 @@ EXPLORER_HTML = r"""
       if (!iso) return "";
       try {
         var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-        if (secs < 60) return "Just now / አሁን";
-        if (secs < 3600) return Math.floor(secs / 60) + "m ago";
-        if (secs < 86400) return Math.floor(secs / 3600) + "h ago";
-        return Math.floor(secs / 86400) + "d ago";
+        var t = DICT[currentLang];
+        if (secs < 60) return t.justNow;
+        if (secs < 3600) return Math.floor(secs / 60) + "m";
+        if (secs < 86400) return Math.floor(secs / 3600) + "h";
+        return Math.floor(secs / 86400) + "d";
       } catch (e) { return ""; }
     }
 
-    function cleanDesc(raw) {
-      var s = String(raw || "").replace(/\*+/g, " ");
-      s = s.replace(/[📝💰📞⚡📢🔄📦✅☑️]/g, " ");
-      s = s.replace(/አስቸኳይ\s*ሽያጭ!?/gi, " ");
-      s = s.replace(/የሚደራደር|ደራደር|negotiable/gi, " ");
-      s = s.replace(/ዋጋ\s*[:：]?\s*[\d,\.]+(\s*(ETB|ብር))?/gi, " ");
-      return s.replace(/\s+/g, " ").trim().slice(0, 45);
-    }
-
     function renderCats() {
+      var catList = DICT[currentLang].cats;
       var html = "";
-      for (var i = 0; i < CAT_LIST.length; i++) {
-        var c = CAT_LIST[i];
+      for (var i = 0; i < catList.length; i++) {
+        var c = catList[i];
         var on = (state.category === c.id);
         html += '<button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ' +
           (on ? 'bg-white text-[#16acbd] shadow-sm' : 'bg-white/20 text-white hover:bg-white/30') +
           '" data-id="' + esc(c.id) + '">' + esc(c.label) + '</button>';
       }
       catsEl.innerHTML = html;
+    }
+
+    function renderAiQuickChips() {
+      var chips = DICT[currentLang].quickChips;
+      var html = "";
+      for (var i = 0; i < chips.length; i++) {
+        var ch = chips[i];
+        html += '<button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10 hover:text-[#0e7490]" data-q="' + esc(ch.q) + '">' + esc(ch.label) + '</button>';
+      }
+      aiQuickChipsEl.innerHTML = html;
+      aiQuickChipsEl.querySelectorAll(".ai-chip").forEach(function(btn) {
+        btn.onclick = function() {
+          var query = btn.getAttribute("data-q");
+          aiPrompt.value = (aiPrompt.value ? aiPrompt.value + " " : "") + query;
+        };
+      });
     }
 
     function setTabs() {
@@ -1120,6 +1412,28 @@ EXPLORER_HTML = r"""
       if (!Array.isArray(photos)) photos = [];
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
       var icon = isCar ? "🚗" : "🏠";
+      var t = DICT[currentLang];
+
+      var extra = item.extra_data || {};
+      if (typeof extra === "string") {
+        try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+      }
+
+      // Dynamic Title & Specs based on Category
+      var cardTitle = "";
+      var subBadge1 = "";
+      var subBadge2 = "";
+
+      if (isCar) {
+        cardTitle = extra.car_model || item.sub_category || (currentLang === 'am' ? 'መኪና' : 'Vehicle');
+        if (extra.transmission) subBadge1 = extra.transmission.split('/')[0].trim();
+        if (extra.fuel_type) subBadge2 = extra.fuel_type.split('/')[0].trim();
+      } else {
+        cardTitle = item.sub_category || extra.house_type || (currentLang === 'am' ? 'ቤት / ንብረት' : 'Property');
+        if (extra.bedrooms) subBadge1 = extra.bedrooms + " " + (currentLang === 'am' ? 'መኝታ' : 'Beds');
+        if (extra.location_area) subBadge2 = extra.location_area;
+      }
+
       var media;
       if (photos.length > 0) {
         media = '<img src="' + esc(photos[0]) + '" alt="" class="w-full h-full object-cover" loading="lazy" />';
@@ -1130,8 +1444,6 @@ EXPLORER_HTML = r"""
           '</div>';
       }
 
-      var title = (item.main_category || item.category || "") + (item.sub_category ? " • " + item.sub_category : "");
-      var desc = cleanDesc(item.description);
       var isSell = String(item.req_type || "").toUpperCase() === "SELL";
       var priceNum = item.price || "—";
       var priceLabel = priceNum + " ETB";
@@ -1142,25 +1454,28 @@ EXPLORER_HTML = r"""
       card.className = "adika-card cursor-pointer";
       card.innerHTML =
         '<div class="relative w-full h-24 bg-slate-100 overflow-hidden">' +
-          '<button type="button" class="card-fav-btn absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-xs z-20 transition-transform active:scale-75" data-id="' + esc(item.id) + '">' +
-            (isFav ? '❤️' : '🤍') +
-          '</button>' +
           media +
           '<div class="absolute bottom-1 left-1 right-1 flex justify-between items-center text-[8px] text-white font-bold">' +
-            '<span class="bg-black/60 backdrop-blur-sm px-1 py-0.5 rounded">👁️ ' + esc(views) + '</span>' +
-            '<span class="bg-black/60 backdrop-blur-sm px-1 py-0.5 rounded">' + esc(relativeTime(item.created_at)) + '</span>' +
+            '<span class="bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">👁️ ' + esc(views) + '</span>' +
+            '<span class="bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">' + esc(relativeTime(item.created_at)) + '</span>' +
           '</div>' +
         '</div>' +
         '<div class="p-2 flex-1 flex flex-col justify-between">' +
           '<div>' +
             '<div class="font-extrabold text-xs text-slate-800 truncate flex items-center gap-0.5">' +
-              '<span>' + esc(title) + '</span>' +
-              '<span class="text-emerald-600 text-[10px]" title="Verified Seller">✔</span>' +
+              '<span class="truncate">' + esc(cardTitle) + '</span>' +
+              '<span class="text-emerald-600 text-[10px] shrink-0" title="Verified">✔</span>' +
             '</div>' +
-            (desc ? '<div class="text-[9px] text-slate-500 truncate mt-0.5">' + esc(desc) + '</div>' : '') +
+            '<div class="flex items-center gap-1 mt-1 overflow-hidden">' +
+              (subBadge1 ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[8px] truncate">' + esc(subBadge1) + '</span>' : '') +
+              (subBadge2 ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[8px] truncate">' + esc(subBadge2) + '</span>' : '') +
+            '</div>' +
           '</div>' +
-          '<div class="mt-1.5">' +
-            '<div class="inline-block px-1.5 py-0.5 rounded bg-[#16acbd]/10 text-[#0e7490] font-black text-[10px] truncate max-w-full">💰 ' + esc(priceLabel) + '</div>' +
+          '<div class="mt-2 flex items-center justify-between gap-1">' +
+            '<div class="inline-block px-1.5 py-0.5 rounded bg-[#16acbd]/10 text-[#0e7490] font-black text-[10px] truncate max-w-[80%]">💰 ' + esc(priceLabel) + '</div>' +
+            '<button type="button" class="card-fav-btn text-sm p-0.5 transition-transform active:scale-75" data-id="' + esc(item.id) + '">' +
+              (isFav ? '❤️' : '🤍') +
+            '</button>' +
           '</div>' +
         '</div>';
 
@@ -1186,15 +1501,19 @@ EXPLORER_HTML = r"""
       var photos = item.photos || [];
       if (!Array.isArray(photos)) photos = [];
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
+      var t = DICT[currentLang];
 
-      modalCategoryBadge.textContent = (item.main_category || item.category || "Property") + " • Verified ✔";
+      var catBadge = isCar ? (currentLang === 'am' ? 'መኪና' : 'Vehicle') : (currentLang === 'am' ? 'ቤት / ንብረት' : 'Property');
+      modalCategoryBadge.textContent = catBadge + " • Verified ✔";
       modalIdBadge.textContent = "#ADK-" + (item.id || "001");
-      modalTitle.textContent = (item.main_category || item.category || "") + (item.sub_category ? " • " + item.sub_category : "");
+
+      var modalTitleText = isCar ? (extra.car_model || item.sub_category || catBadge) : (item.sub_category || extra.house_type || catBadge);
+      modalTitle.textContent = modalTitleText;
 
       var isSell = String(item.req_type || "").toUpperCase() === "SELL";
-      modalPrice.textContent = (isSell ? "💰 Price: " : "💰 Budget: ") + (item.price || "Contact") + " ETB";
+      modalPrice.textContent = (isSell ? t.priceTag : t.budgetTag) + (item.price || "Contact") + " ETB";
       modalTime.textContent = "⏱️ " + relativeTime(item.created_at);
-      modalDesc.textContent = item.description || "No further description provided.";
+      modalDesc.textContent = item.description || t.noDesc;
 
       if (photos.length > 0) {
         modalMediaContainer.innerHTML = '<img src="' + esc(photos[0]) + '" alt="" class="w-full h-full object-cover" />';
@@ -1239,7 +1558,7 @@ EXPLORER_HTML = r"""
           tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareText));
         } else {
           navigator.clipboard.writeText(shareText);
-          alert("Link copied to clipboard! | ሊንኩ ተገልብጧል!");
+          alert(t.copied);
         }
       };
 
@@ -1262,11 +1581,16 @@ EXPLORER_HTML = r"""
 
     function finishLoading(items, append, hasMore) {
       state.loading = false;
-      if (!append) grid.innerHTML = "";
+      if (!append) {
+        grid.innerHTML = "";
+        state.items = items;
+      } else {
+        state.items = state.items.concat(items);
+      }
       if (!items || !items.length) {
         if (!append) {
           statusEl.style.display = "block";
-          statusEl.innerHTML = '<div class="text-2xl mb-1">📭</div><div class="text-slate-600 font-bold text-xs">No listings found / ምንም ንብረት አልተገኘም</div>';
+          statusEl.innerHTML = '<div class="text-2xl mb-1">📭</div><div class="text-slate-600 font-bold text-xs">' + DICT[currentLang].noListings + '</div>';
         }
         moreBtn.classList.add("hidden");
         return;
@@ -1287,7 +1611,7 @@ EXPLORER_HTML = r"""
       state.loading = true;
       if (!append) {
         statusEl.style.display = "block";
-        statusEl.innerHTML = '<div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div><div>Loading / እየጫነ ነው…</div>';
+        statusEl.innerHTML = '<div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div><div>' + DICT[currentLang].loading + '</div>';
         grid.innerHTML = "";
       }
 
@@ -1364,13 +1688,6 @@ EXPLORER_HTML = r"""
       if (e.target === aiModal) aiModalClose.onclick();
     };
 
-    document.querySelectorAll(".ai-chip").forEach(function(btn) {
-      btn.onclick = function() {
-        var query = btn.getAttribute("data-q");
-        aiPrompt.value = (aiPrompt.value ? aiPrompt.value + " " : "") + query;
-      };
-    });
-
     document.querySelectorAll(".price-chip").forEach(function(btn) {
       btn.onclick = function() {
         var p = btn.getAttribute("data-price");
@@ -1419,14 +1736,15 @@ EXPLORER_HTML = r"""
       }
     };
     document.getElementById("navHelp").onclick = function () {
+      var t = DICT[currentLang];
       if (tg && tg.showAlert) {
-        tg.showAlert("Adika Marketplace • Help Center\nFor support, contact @AdikaMarketplaceBot or call 0911000000.");
+        tg.showAlert(t.helpAlert);
       } else {
-        alert("Adika Marketplace • Help Center\nFor support, contact @AdikaMarketplaceBot.");
+        alert(t.helpAlert);
       }
     };
 
-    renderCats();
+    applyLanguage(currentLang);
     setTabs();
     load(false);
   })();
@@ -1442,7 +1760,7 @@ def home():
         "<html><body style='font-family:sans-serif;padding:24px;background:#b5eff3'>"
         "<div style='background:#fff;padding:20px;border-radius:16px;box-shadow:0 12px 28px rgba(15,23,42,0.12);max-width:500px;margin:auto'>"
         "<h2 style='color:#16acbd;margin-top:0'>Adika Marketplace Server</h2>"
-        "<p>Bilingual AI-powered Mini App running on Teal/Cyan & Ice-Blue UI.</p>"
+        "<p>Single-Language AI-powered Mini App with AM | EN Language Switcher.</p>"
         f"<p>WEBAPP_URL: <code>{WEBAPP_URL}</code></p>"
         "<ul>"
         "<li><a href='/explorer'>/explorer (Main Mini App)</a></li>"
@@ -1510,6 +1828,9 @@ def submit_listing():
         data = request.json or {}
         user_id = data.get('user_id')
         category = data.get('category', 'መኪና')
+        sub_category = data.get('sub_category', '')
+        car_model = data.get('car_model', '')
+        location_area = data.get('location_area', '')
         price = data.get('price', '')
         negotiable = data.get('negotiable', True)
         urgent_sale = data.get('urgent_sale', False)
@@ -1533,15 +1854,17 @@ def submit_listing():
         negotiable_text = "✅ Negotiable / የሚደራደር" if negotiable else "❌ Fixed / የማይደራደር"
         urgent_text = "⚡ **URGENT SALE / አስቸኳይ ሽያጭ!** " if urgent_sale else ""
         full_desc = f"{urgent_text}"
-        full_desc += f"💰 Price / ዋጋ: {price} ETB ({negotiable_text})\n"
+        full_desc += f"💰 Price: {price} ETB ({negotiable_text})\n"
         if category == 'መኪና':
-            if car_type: full_desc += f"🚗 Type: {car_type}\n"
+            if car_model: full_desc += f"🚘 Model: {car_model}\n"
+            elif car_type: full_desc += f"🚗 Type: {car_type}\n"
             if fuel_type: full_desc += f"⛽ Fuel: {fuel_type}\n"
             if transmission: full_desc += f"⚙️ Transmission: {transmission}\n"
             if mileage: full_desc += f"🛣️ Mileage: {mileage} KM\n"
             if condition: full_desc += f"📊 Condition: {condition}\n"
         else:
             if house_type: full_desc += f"🏠 Type: {house_type}\n"
+            if location_area: full_desc += f"📍 Location: {location_area}\n"
             if bedrooms: full_desc += f"🛏️ Bedrooms: {bedrooms}\n"
             if bathrooms: full_desc += f"🛁 Bathrooms: {bathrooms}\n"
             if parking: full_desc += f"🚗 Parking: {parking}\n"
@@ -1554,7 +1877,8 @@ def submit_listing():
             'fuel_type': fuel_type, 'transmission': transmission, 'mileage': mileage,
             'condition': condition or house_condition, 'bedrooms': bedrooms,
             'bathrooms': bathrooms, 'parking': parking, 'house_type': house_type,
-            'car_type': car_type, 'negotiable': negotiable, 'urgent_sale': urgent_sale,
+            'car_type': car_type, 'car_model': car_model, 'location_area': location_area,
+            'negotiable': negotiable, 'urgent_sale': urgent_sale,
             'telegram_user': telegram_user
         }
         safe_photos = []
@@ -1564,12 +1888,13 @@ def submit_listing():
                 if len(s) > 350000:
                     s = s[:350000]
                 safe_photos.append(s)
+        resolved_sub = sub_category or (car_model if category == 'መኪና' else (f"{house_type} • {location_area}" if house_type and location_area else (house_type or location_area)))
         req_id = add_listing(
             user_chat_id=uid,
             user_name="WebApp User",
             req_type="SELL",
-            main_category=(category or car_type or house_type or "መኪና"),
-            sub_category=car_type if category == 'መኪና' else house_type,
+            main_category=(category or "መኪና"),
+            sub_category=resolved_sub,
             action_type="መሸጥ",
             property_type="",
             description=full_desc,
@@ -1583,8 +1908,8 @@ def submit_listing():
                 user_chat_id=uid,
                 user_name="WebApp User",
                 req_type="SELL",
-                main_category=(category or car_type or house_type or "መኪና"),
-                sub_category=car_type if category == 'መኪና' else house_type,
+                main_category=(category or "መኪና"),
+                sub_category=resolved_sub,
                 action_type="መሸጥ",
                 property_type="",
                 description=full_desc,
@@ -1594,7 +1919,7 @@ def submit_listing():
                 photos=[]
             )
         if req_id:
-            notification_text = f"🛍️ **New Listing / አዲስ ማስታወቂያ (#ADK-{req_id})**\n\n{full_desc}"
+            notification_text = f"🛍️ **New Listing (#ADK-{req_id})**\n\n{full_desc}"
             _send_notification_safe(notification_text, req_id, int(user_id))
             return jsonify({"status": "success", "req_id": req_id})
         else:
@@ -1620,9 +1945,9 @@ def submit_request():
             return jsonify({"status": "error", "message": "User ID not found"}), 400
         budget_range = f"{budget_min} - {budget_max}" if budget_min and budget_max else (budget_min or budget_max or "Not specified")
         full_desc = (
-            f"💰 Budget / በጀት: {budget_range} ETB\n"
-            f"📝 Details / ዝርዝር: {details}\n"
-            f"📞 Phone / ስልክ: {phone}\n"
+            f"💰 Budget: {budget_range} ETB\n"
+            f"📝 Details: {details}\n"
+            f"📞 Phone: {phone}\n"
         )
         if telegram_user: full_desc += f"📱 Telegram: {telegram_user}\n"
         req_id = add_listing(
@@ -1642,7 +1967,7 @@ def submit_request():
             }
         )
         if req_id:
-            notification_text = f"🔔 **New Buyer Request / አዲስ የፍላጎት ጥያቄ (#ADK-{req_id})**\n\n{full_desc}"
+            notification_text = f"🔔 **New Buyer Request (#ADK-{req_id})**\n\n{full_desc}"
             _send_notification_safe(notification_text, req_id, int(user_id))
             if create_alert and str(user_id).isdigit():
                 save_search_alert(int(user_id), category, budget_min, budget_max)
@@ -1706,8 +2031,8 @@ def api_explorer_listings():
                 params.extend([category, category])
             if search:
                 like = "ILIKE" if is_postgres() else "LIKE"
-                where.append(f"(CAST(description AS TEXT) {like} {p} OR CAST(price AS TEXT) {like} {p})")
-                params.extend([f"%{search}%", f"%{search}%"])
+                where.append(f"(CAST(description AS TEXT) {like} {p} OR CAST(price AS TEXT) {like} {p} OR CAST(sub_category AS TEXT) {like} {p})")
+                params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
 
             where_sql = " AND ".join(where)
             total = 0
