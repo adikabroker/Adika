@@ -998,18 +998,19 @@ EXPLORER_HTML = r"""
     html, body {
       width: 100%; max-width: 100vw; overflow-x: hidden;
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: #b8d8ec; color: #0f172a;
+      background: #dffaff; color: #0f172a;
       -webkit-text-size-adjust: 100%;
     }
-    .app { min-height: 100vh; background: #b8d8ec; padding-bottom: 92px; }
+    .app { min-height: 100vh; background: #dffaff; padding-bottom: 92px; }
 
     /* Sticky header — darker than body, includes search */
     .hdr {
       position: sticky; top: 0; z-index: 50;
-      background: rgba(184, 236, 230, 0.95);
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      background: linear-gradient(90deg, rgba(223,250,255,0.80), rgba(184,236,230,0.80), rgba(223,250,255,0.80));
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.60);
       padding: 10px 12px 12px;
-      box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
+      box-shadow: 0 1px 8px rgba(15, 23, 42, 0.04);
     }
     .hdr-top {
       display: flex; align-items: center; justify-content: space-between;
@@ -1066,28 +1067,37 @@ EXPLORER_HTML = r"""
       gap: 12px;
     }
     .card {
-      background: #ffffff !important;
-      border: 0 !important; outline: none !important;
+      background: rgba(255, 255, 255, 0.60) !important;
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.80) !important;
+      outline: none !important;
       border-radius: 16px; padding: 8px; cursor: pointer;
-      box-shadow: none !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
       display: flex; flex-direction: column;
-      transition: transform 0.15s ease;
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
       -webkit-tap-highlight-color: transparent;
     }
     .card:active {
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px -5px rgba(0, 0, 0, 0.08) !important;
     }
     .card-media {
       position: relative; width: 100%; height: 112px;
       border-radius: 12px; overflow: hidden;
-      background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+      background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.35) 100%);
+      border: 1px solid rgba(255,255,255,0.90);
+      box-shadow: inset 0 1px 8px rgba(15,23,42,0.04);
     }
     .card-media img { width: 100%; height: 112px; object-fit: cover; display: block; border: 0; }
     .ph {
       width: 100%; height: 112px; display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
+      background: linear-gradient(145deg, rgba(255,255,255,0.90) 0%, rgba(186,230,253,0.55) 50%, rgba(165,180,252,0.45) 100%);
+      backdrop-filter: blur(8px);
     }
-    .ph-icon { font-size: 40px; opacity: 0.95; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); }
+    .ph-icon {
+      font-size: 42px; opacity: 0.95;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.12));
+    }
     .active-dot {
       position: absolute; top: 8px; left: 8px; width: 10px; height: 10px;
       border-radius: 50%; background: #22c55e; z-index: 2;
@@ -1174,7 +1184,7 @@ EXPLORER_HTML = r"""
     .modal-img {
       width: 100%; height: 180px;
       border-radius: 14px; overflow: hidden;
-      background: linear-gradient(135deg, #3b82f6, #4f46e5);
+      background: linear-gradient(145deg, rgba(255,255,255,0.90), rgba(186,230,253,0.5), rgba(165,180,252,0.4));
       margin-bottom: 12px;
     }
     .modal-img img { width: 100%; height: 100%; object-fit: cover; }
@@ -1214,8 +1224,8 @@ EXPLORER_HTML = r"""
     .bnav {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
       background: rgba(255, 255, 255, 0.70);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid rgba(255, 255, 255, 0.40);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(255, 255, 255, 0.50);
       box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.08);
       padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
       display: grid; grid-template-columns: 1fr 1fr 56px 1fr 1fr;
@@ -1327,7 +1337,7 @@ EXPLORER_HTML = r"""
       if (tg) {
         try { tg.ready(); } catch (e) {}
         try { tg.expand(); } catch (e) {}
-        try { tg.setBackgroundColor("#b8d8ec"); } catch (e) {}
+        try { tg.setBackgroundColor("#dffaff"); } catch (e) {}
       }
       var navMsg = document.getElementById("navMsg");
       if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
