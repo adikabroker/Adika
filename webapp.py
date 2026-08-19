@@ -1006,7 +1006,7 @@ EXPLORER_HTML = r"""
     /* Sticky header — darker than body, includes search */
     .hdr {
       position: sticky; top: 0; z-index: 50;
-      background: rgba(226, 235, 246, 0.95);
+      background: rgba(219, 230, 243, 0.95);
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       padding: 10px 12px 12px;
       box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
@@ -1069,7 +1069,7 @@ EXPLORER_HTML = r"""
       background: #ffffff !important;
       border: 0 !important; outline: none !important;
       border-radius: 16px; padding: 8px; cursor: pointer;
-      box-shadow: 0 4px 14px rgba(148, 163, 184, 0.4);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
       display: flex; flex-direction: column;
       transition: box-shadow 0.2s ease, transform 0.15s ease;
       -webkit-tap-highlight-color: transparent;
@@ -1129,7 +1129,7 @@ EXPLORER_HTML = r"""
       box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer;
     }
 
-    /* Bottom sheet modal */
+    /* Bottom sheet modal — flex column, fixed footer actions */
     .modal-backdrop {
       display: none; position: fixed; inset: 0; z-index: 100;
       background: rgba(15,23,42,0.45); backdrop-filter: blur(2px);
@@ -1137,32 +1137,49 @@ EXPLORER_HTML = r"""
     .modal-backdrop.open { display: block; }
     .modal {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 101;
-      background: #fff; border-radius: 20px 20px 0 0;
-      max-height: 88vh; overflow-y: auto;
+      background: #fff;
+      border-radius: 24px 24px 0 0;
+      max-height: 85vh;
+      height: auto;
+      display: flex;
+      flex-direction: column;
       transform: translateY(110%);
       transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
       box-shadow: 0 -8px 40px rgba(0,0,0,0.15);
-      padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      overflow: hidden;
     }
     .modal.open { transform: translateY(0); }
+    .modal-top {
+      position: relative;
+      flex-shrink: 0;
+      padding: 8px 12px 0;
+    }
     .modal-handle {
       width: 40px; height: 4px; background: #cbd5e1; border-radius: 999px;
-      margin: 10px auto 6px;
+      margin: 4px auto 8px;
     }
     .modal-close {
-      position: absolute; top: 12px; right: 14px;
+      position: absolute; top: 10px; right: 12px;
       width: 32px; height: 32px; border-radius: 50%;
       background: #f1f5f9; color: #334155; font-size: 18px; font-weight: 700;
       display: flex; align-items: center; justify-content: center; cursor: pointer;
+      z-index: 2;
+    }
+    .modal-scroll {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 16px 12px;
+      min-height: 0;
     }
     .modal-img {
-      width: calc(100% - 24px); margin: 8px 12px 0; height: 200px;
+      width: 100%; height: 180px;
       border-radius: 14px; overflow: hidden;
       background: linear-gradient(135deg, #3b82f6, #4f46e5);
+      margin-bottom: 12px;
     }
     .modal-img img { width: 100%; height: 100%; object-fit: cover; }
-    .modal-img .ph { height: 200px; display: flex; align-items: center; justify-content: center; }
-    .modal-body { padding: 14px 16px 8px; }
+    .modal-img .ph { height: 180px; display: flex; align-items: center; justify-content: center; }
     .modal-title { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
     .modal-price {
       display: inline-flex; padding: 6px 12px; border-radius: 999px;
@@ -1176,7 +1193,14 @@ EXPLORER_HTML = r"""
     }
     .modal-desc {
       font-size: 13px; line-height: 1.55; color: #334155;
-      white-space: pre-wrap; word-break: break-word; margin-bottom: 16px;
+      white-space: pre-wrap; word-break: break-word; margin-bottom: 8px;
+    }
+    .modal-footer {
+      flex-shrink: 0;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+      background: #fff;
+      border-top: 1px solid #f1f5f9;
+      box-shadow: 0 -4px 12px rgba(15,23,42,0.04);
     }
     .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .modal-actions a {
@@ -1247,14 +1271,18 @@ EXPLORER_HTML = r"""
 
   <div class="modal-backdrop" id="modalBg"></div>
   <div class="modal" id="modal">
-    <div class="modal-handle"></div>
-    <button type="button" class="modal-close" id="modalClose">×</button>
-    <div class="modal-img" id="modalImg"></div>
-    <div class="modal-body">
+    <div class="modal-top">
+      <div class="modal-handle"></div>
+      <button type="button" class="modal-close" id="modalClose">×</button>
+    </div>
+    <div class="modal-scroll">
+      <div class="modal-img" id="modalImg"></div>
       <div class="modal-title" id="modalTitle"></div>
       <div class="modal-price" id="modalPrice"></div>
       <div class="modal-meta" id="modalMeta"></div>
       <div class="modal-desc" id="modalDesc"></div>
+    </div>
+    <div class="modal-footer">
       <div class="modal-actions">
         <a class="m-call" id="modalCall" href="#">Call</a>
         <a class="m-tg" id="modalTg" href="#" target="_blank" rel="noreferrer">Telegram</a>
