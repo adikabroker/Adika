@@ -998,17 +998,18 @@ EXPLORER_HTML = r"""
     html, body {
       width: 100%; max-width: 100vw; overflow-x: hidden;
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-      background: #edf2f7; color: #0f172a;
+      background: #f0f4f9; color: #0f172a;
       -webkit-text-size-adjust: 100%;
     }
-    .app { min-height: 100vh; background: #edf2f7; padding-bottom: 92px; }
+    .app { min-height: 100vh; background: #f0f4f9; padding-bottom: 92px; }
 
-    /* Sticky header — title, lang, tabs, search only */
+    /* Sticky header — darker than body, includes search */
     .hdr {
       position: sticky; top: 0; z-index: 50;
-      background: rgba(237, 242, 247, 0.90);
+      background: rgba(226, 235, 246, 0.95);
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       padding: 10px 12px 12px;
+      box-shadow: 0 1px 8px rgba(15, 23, 42, 0.06);
     }
     .hdr-top {
       display: flex; align-items: center; justify-content: space-between;
@@ -1028,22 +1029,25 @@ EXPLORER_HTML = r"""
     .tab {
       flex: 1; padding: 11px 8px; border-radius: 14px; font-weight: 700; font-size: 12px;
       background: #fff; color: #475569; cursor: pointer;
-      box-shadow: 0 2px 8px rgba(148,163,184,0.35);
+      box-shadow: 0 2px 8px rgba(148,163,184,0.3);
     }
     .tab.on { background: #2563eb; color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }
     .search-wrap { position: relative; }
     .search-wrap .ico {
       position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-      opacity: 0.4; pointer-events: none;
+      width: 18px; height: 18px; opacity: 0.4; pointer-events: none;
+    }
+    .search-wrap .ico svg {
+      width: 18px; height: 18px; stroke: #64748b; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     }
     .search {
-      width: 100%; padding: 12px 14px 12px 36px; border-radius: 14px;
+      width: 100%; padding: 12px 14px 12px 38px; border-radius: 14px;
       background: #fff; font-size: 13px;
       box-shadow: 0 1px 6px rgba(15,23,42,0.05);
     }
     .search:focus { box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
 
-    /* Scrollable content */
     .content { padding: 12px; }
     .cats {
       display: flex; gap: 6px; overflow-x: auto; margin-bottom: 12px;
@@ -1062,21 +1066,24 @@ EXPLORER_HTML = r"""
       gap: 12px;
     }
     .card {
-      background: #fff; border: none !important; outline: none !important;
+      background: #ffffff !important;
+      border: 0 !important; outline: none !important;
       border-radius: 16px; padding: 8px; cursor: pointer;
-      box-shadow: 0 2px 10px rgba(148,163,184,0.35);
+      box-shadow: 0 4px 14px rgba(148, 163, 184, 0.4);
       display: flex; flex-direction: column;
       transition: box-shadow 0.2s ease, transform 0.15s ease;
       -webkit-tap-highlight-color: transparent;
     }
-    .card:active { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(15,23,42,0.1); }
-
+    .card:active {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(15,23,42,0.12);
+    }
     .card-media {
       position: relative; width: 100%; height: 112px;
       border-radius: 12px; overflow: hidden;
       background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
     }
-    .card-media img { width: 100%; height: 112px; object-fit: cover; display: block; }
+    .card-media img { width: 100%; height: 112px; object-fit: cover; display: block; border: 0; }
     .ph {
       width: 100%; height: 112px; display: flex; align-items: center; justify-content: center;
       background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%);
@@ -1084,8 +1091,8 @@ EXPLORER_HTML = r"""
     .ph-icon { font-size: 40px; opacity: 0.95; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15)); }
     .active-dot {
       position: absolute; top: 8px; left: 8px; width: 10px; height: 10px;
-      border-radius: 50%; background: #22c55e;
-      animation: pulse-g 1.6s ease-out infinite; z-index: 2;
+      border-radius: 50%; background: #22c55e; z-index: 2;
+      animation: pulse-g 1.6s ease-out infinite;
     }
     .active-dot.sold { background: #ef4444; }
     @keyframes pulse-g {
@@ -1154,11 +1161,9 @@ EXPLORER_HTML = r"""
       background: linear-gradient(135deg, #3b82f6, #4f46e5);
     }
     .modal-img img { width: 100%; height: 100%; object-fit: cover; }
-    .modal-img .ph {
-      height: 200px; display: flex; align-items: center; justify-content: center;
-    }
+    .modal-img .ph { height: 200px; display: flex; align-items: center; justify-content: center; }
     .modal-body { padding: 14px 16px 8px; }
-    .modal-title { font-size: 17px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+    .modal-title { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
     .modal-price {
       display: inline-flex; padding: 6px 12px; border-radius: 999px;
       background: #EFF6FF; color: #2563EB; font-weight: 800; font-size: 14px;
@@ -1182,31 +1187,33 @@ EXPLORER_HTML = r"""
     .m-call { background: #2563eb; color: #fff; }
     .m-tg { background: #e0f2fe; color: #0369a1; }
 
-    /* Bottom nav SVG */
+    /* Bottom nav — English labels, SVG only */
     .bnav {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
-      background: rgba(255,255,255,0.96); backdrop-filter: blur(12px);
+      background: rgba(255,255,255,0.97); backdrop-filter: blur(12px);
       box-shadow: 0 -2px 20px rgba(15,23,42,0.06);
       padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
       display: grid; grid-template-columns: 1fr 1fr 56px 1fr 1fr;
       align-items: center;
     }
     .bnav a, .bnav button {
-      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
       text-decoration: none; color: #94a3b8; font-size: 10px; font-weight: 600;
       background: none; cursor: pointer; padding: 4px 2px;
     }
     .bnav a.on, .bnav button.on { color: #2563eb; }
-    .bnav svg { width: 22px; height: 22px; stroke: currentColor; fill: none;
-      stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .bnav svg {
+      width: 22px; height: 22px; stroke: currentColor; fill: none;
+      stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    }
     .fab-wrap { display: flex; justify-content: center; position: relative; top: -16px; }
     .fab {
       width: 50px; height: 50px; border-radius: 50%;
       background: linear-gradient(135deg, #2563eb, #4f46e5);
-      color: #fff; font-size: 26px; font-weight: 700; line-height: 1;
+      color: #fff; font-size: 28px; font-weight: 300; line-height: 1;
       display: flex; align-items: center; justify-content: center;
       box-shadow: 0 6px 18px rgba(37,99,235,0.4);
-      text-decoration: none; cursor: pointer;
+      text-decoration: none; cursor: pointer; border: none;
     }
   </style>
 </head>
@@ -1225,7 +1232,7 @@ EXPLORER_HTML = r"""
         <button type="button" class="tab" id="tabBuy">📋 የፈላጊዎች</button>
       </div>
       <div class="search-wrap">
-        <span class="ico">🔍</span>
+        <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/></svg></span>
         <input class="search" id="q" type="search" placeholder="ፈልግ..." autocomplete="off" />
       </div>
     </div>
@@ -1238,7 +1245,6 @@ EXPLORER_HTML = r"""
     </div>
   </div>
 
-  <!-- Detail Modal -->
   <div class="modal-backdrop" id="modalBg"></div>
   <div class="modal" id="modal">
     <div class="modal-handle"></div>
@@ -1250,8 +1256,8 @@ EXPLORER_HTML = r"""
       <div class="modal-meta" id="modalMeta"></div>
       <div class="modal-desc" id="modalDesc"></div>
       <div class="modal-actions">
-        <a class="m-call" id="modalCall" href="#">📞 Call</a>
-        <a class="m-tg" id="modalTg" href="#" target="_blank" rel="noreferrer">💬 Telegram</a>
+        <a class="m-call" id="modalCall" href="#">Call</a>
+        <a class="m-tg" id="modalTg" href="#" target="_blank" rel="noreferrer">Telegram</a>
       </div>
     </div>
   </div>
@@ -1259,22 +1265,22 @@ EXPLORER_HTML = r"""
   <nav class="bnav">
     <a href="/explorer" class="on" id="navHome">
       <svg viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M6.5 10.5V20h11V10.5"/></svg>
-      <span id="navHomeL">Home</span>
+      <span>Home</span>
     </a>
     <button type="button" id="navSearch">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16.5 16.5L21 21"/></svg>
-      <span id="navSearchL">Search</span>
+      <span>Search</span>
     </button>
     <div class="fab-wrap">
-      <a class="fab" id="fabAdd" href="/buyer-form">+</a>
+      <a class="fab" id="fabAdd" href="/seller-form" title="Add">+</a>
     </div>
     <a href="#" id="navMsg">
       <svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/></svg>
-      <span id="navMsgL">Chat</span>
+      <span>Messages</span>
     </a>
     <a href="https://t.me/AdikaSupport" target="_blank" rel="noreferrer" id="navHelp">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 17h.01"/><path d="M10 9.5a2 2 0 1 1 3.1 1.7c-.6.4-1.1.9-1.1 1.8"/></svg>
-      <span id="navHelpL">Help</span>
+      <span>Help</span>
     </a>
   </nav>
 
@@ -1292,9 +1298,8 @@ EXPLORER_HTML = r"""
       if (tg) {
         try { tg.ready(); } catch (e) {}
         try { tg.expand(); } catch (e) {}
-        try { tg.setBackgroundColor("#edf2f7"); } catch (e) {}
+        try { tg.setBackgroundColor("#f0f4f9"); } catch (e) {}
       }
-      // Messages -> open user chat with bot / self
       var navMsg = document.getElementById("navMsg");
       if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
         var u = tg.initDataUnsafe.user;
@@ -1311,15 +1316,13 @@ EXPLORER_HTML = r"""
         loading: "እየጫነ ነው…", empty: "ምንም አይነት የተመዘገበ ንብረት አልተገኘም",
         more: "ተጨማሪ ይመልከቱ", price: "ዋጋ", budget: "በጀት",
         all: "✨ ሁሉም", car: "🚗 መኪና", house: "🏠 ቤት / ቦታ", biz: "🏢 የሥራ ቦታ",
-        home: "ቤት", searchNav: "ፈልግ", msg: "መልእክት", help: "እገዛ",
-        loc: "አዲስ አበባ", call: "ደውል", telegram: "ቴሌግራም", err: "መረጃ ማምጣት አልተቻለም"
+        loc: "አዲስ አበባ", call: "Call", telegram: "Telegram", err: "መረጃ ማምጣት አልተቻለም"
       },
       en: {
         sell: "🛒 Marketplace", buy: "📋 Requests", search: "Search...",
         loading: "Loading…", empty: "No listings found",
         more: "Load more", price: "Price", budget: "Budget",
         all: "✨ All", car: "🚗 Cars", house: "🏠 Homes", biz: "🏢 Offices",
-        home: "Home", searchNav: "Search", msg: "Chat", help: "Help",
         loc: "Addis Ababa", call: "Call", telegram: "Telegram", err: "Failed to load"
       }
     };
@@ -1337,6 +1340,7 @@ EXPLORER_HTML = r"""
     var catsEl = document.getElementById("cats");
     var langAM = document.getElementById("langAM");
     var langEN = document.getElementById("langEN");
+    var fabAdd = document.getElementById("fabAdd");
     var modal = document.getElementById("modal");
     var modalBg = document.getElementById("modalBg");
 
@@ -1373,6 +1377,17 @@ EXPLORER_HTML = r"""
       return loc + ", ~" + km + " km";
     }
 
+    /** Dynamic + button: Marketplace → Seller form, Buyers → Request form */
+    function syncFab() {
+      if (state.tab === "requests") {
+        fabAdd.href = "/buyer-form";
+        fabAdd.title = "Submit Buyer Request";
+      } else {
+        fabAdd.href = "/seller-form";
+        fabAdd.title = "Submit New Listing";
+      }
+    }
+
     function applyLang() {
       langAM.className = "lang-btn" + (lang === "am" ? " on" : "");
       langEN.className = "lang-btn" + (lang === "en" ? " on" : "");
@@ -1380,15 +1395,12 @@ EXPLORER_HTML = r"""
       tabBuy.textContent = t("buy");
       qInput.placeholder = t("search");
       moreBtn.textContent = t("more");
-      document.getElementById("navHomeL").textContent = t("home");
-      document.getElementById("navSearchL").textContent = t("searchNav");
-      document.getElementById("navMsgL").textContent = t("msg");
-      document.getElementById("navHelpL").textContent = t("help");
-      document.getElementById("modalCall").textContent = "📞 " + t("call");
-      document.getElementById("modalTg").textContent = "💬 " + t("telegram");
+      document.getElementById("modalCall").textContent = t("call");
+      document.getElementById("modalTg").textContent = t("telegram");
       document.documentElement.lang = lang;
       renderCats();
       setTabs();
+      syncFab();
     }
 
     function renderCats() {
@@ -1410,6 +1422,7 @@ EXPLORER_HTML = r"""
     function setTabs() {
       tabSell.className = "tab" + (state.tab === "marketplace" ? " on" : "");
       tabBuy.className = "tab" + (state.tab === "requests" ? " on" : "");
+      syncFab();
     }
 
     function cardHtml(item, idx) {
@@ -1479,11 +1492,6 @@ EXPLORER_HTML = r"""
       else tgBtn.href = "https://t.me/AdikaSupport";
       modalBg.classList.add("open");
       modal.classList.add("open");
-      try {
-        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.HapticFeedback) {
-          Telegram.WebApp.HapticFeedback.impactOccurred("light");
-        }
-      } catch (e) {}
     }
 
     function closeModal() {
@@ -1507,9 +1515,7 @@ EXPLORER_HTML = r"""
       hideStatus();
       var startIdx = append ? (itemsCache.length - items.length) : 0;
       var html = "";
-      for (var i = 0; i < items.length; i++) {
-        html += cardHtml(items[i], startIdx + i);
-      }
+      for (var i = 0; i < items.length; i++) html += cardHtml(items[i], startIdx + i);
       grid.innerHTML = append ? (grid.innerHTML + html) : html;
       moreBtn.style.display = hasMore ? "block" : "none";
     }
