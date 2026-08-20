@@ -5413,13 +5413,27 @@ def api_verify_poa():
     if request.method == 'OPTIONS':
         return ('', 204)
     try:
-        data = request.json or {}
-        doc_id = (data.get('doc_id') or data.get('poa_number') or data.get('poa_text') or '').strip()
-        image_data = data.get('image_data')
+        data = request.get_json(silent=True) or {} if request.is_json else {}
+        doc_id = (
+            data.get('doc_id') or 
+            data.get('doc_number') or 
+            data.get('poa_number') or 
+            data.get('poa_text') or 
+            request.form.get('doc_number') or 
+            request.form.get('doc_id') or 
+            request.form.get('poa_number') or 
+            request.form.get('poa_text') or 
+            request.args.get('doc_number') or
+            request.args.get('doc_id') or
+            ''
+        ).strip()
+
+        uploaded_file = request.files.get('file') or request.files.get('image')
+        image_data = data.get('image_data') or request.form.get('image_data')
 
         dara_not_found_msg = "❌ የተላከው የውክልና ቁጥር ወይም ሰነድ በዳራ (DARA) ዳታቤዝ ውስጥ አልተገኘም። እባክዎ ትክክለኛ የውክልና ቁጥር ወይም ኦሪጅናል ሰነድ ያስገቡ።"
 
-        if not doc_id and not image_data:
+        if not doc_id and not image_data and not uploaded_file:
             return jsonify({
                 "status": "ERROR",
                 "is_valid": False,
@@ -5530,7 +5544,7 @@ def api_verify_poa():
                     }
 
         # CASE 2: IMAGE UPLOAD (PHOTO OR QR CODE) - VISION AI OCR & VERIFICATION
-        if image_data and not verification and api_key:
+        if (image_data or uploaded_file) and not verification and api_key:
             try:
                 import google.generativeai as genai
                 from PIL import Image
@@ -5613,9 +5627,12 @@ def api_verify_poa():
                     generation_config={"response_mime_type": "application/json", "temperature": 0.1}
                 )
 
-                raw_b64 = image_data.split(',', 1)[1] if ',' in image_data else image_data
-                img_bytes = base64.b64decode(raw_b64)
-                pil_img = Image.open(io.BytesIO(img_bytes))
+                if uploaded_file:
+                    pil_img = Image.open(uploaded_file.stream)
+                else:
+                    raw_b64 = image_data.split(',', 1)[1] if ',' in image_data else image_data
+                    img_bytes = base64.b64decode(raw_b64)
+                    pil_img = Image.open(io.BytesIO(img_bytes))
 
                 res = model.generate_content([prompt, pil_img])
                 txt = (res.text or "").strip()
