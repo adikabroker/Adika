@@ -2378,70 +2378,74 @@ EXPLORER_HTML = r"""
                   '</div>' +
                   (winner && car1.name && winner.toLowerCase().indexOf(car1.name.toLowerCase().split(" ")[0]) !== -1 ? '<span class="inline-block mt-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-[8px] border border-emerald-200">🏆 ተመራጭ</span>' : '') +
                   '<div class="mt-2 space-y-1 text-[10px] text-slate-600">' +
-                    '<div>⚙️ <b>ሞተር:</b> ' + esc(car1.engine || "1.3L Petrol") + '</div>' +
-                    '<div>⛽ <b>ፍጆታ:</b> <span class="text-emerald-600 font-bold">' + esc(car1.fuel_consumption_kml || "16 KM/L") + '</span></div>' +
-                    '<div>💵 <b>ወርሃዊ ነዳጅ:</b> ' + esc(car1.monthly_fuel_cost_etb || "5,000 ETB") + '</div>' +
-                    '<div>🛠️ <b>መለዋወጫ:</b> ' + esc(car1.parts_availability_rating || "5/5") + '</div>' +
-                    '<div>📈 <b>የመሸጫ እሴት:</b> ' + esc(car1.resale_retention_pct || "92%") + '</div>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="pt-1.5 border-t border-slate-100 text-[9px] space-y-1">' +
-                  '<div class="font-bold text-emerald-700">ጥንካሬዎች (Pros):</div>' +
-                  ((car1.pros || []).map(function(p){ return '<div class="text-slate-600 flex items-start gap-0.5 leading-tight"><span class="text-emerald-500">✔</span><span>' + esc(p) + '</span></div>'; }).join('')) +
-                  '<div class="font-bold text-rose-600 mt-1">ጉድለቶች (Cons):</div>' +
-                  ((car1.cons || []).map(function(c){ return '<div class="text-slate-600 flex items-start gap-0.5 leading-tight"><span class="text-rose-500">•</span><span>' + esc(c) + '</span></div>'; }).join('')) +
-                '</div>' +
-              '</div>' +
-              // Car 2 Card
-              '<div class="p-2.5 rounded-2xl bg-white border border-[#16acbd]/30 shadow-sm flex flex-col justify-between space-y-2">' +
-                '<div>' +
-                  '<div class="font-extrabold text-xs text-slate-900 truncate flex items-center gap-1">' +
-                    '<span>🚗</span>' +
-                    '<span class="truncate">' + esc(car2.name || c2) + '</span>' +
-                  '</div>' +
-                  (winner && car2.name && winner.toLowerCase().indexOf(car2.name.toLowerCase().split(" ")[0]) !== -1 ? '<span class="inline-block mt-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-[8px] border border-emerald-200">🏆 ተመራጭ</span>' : '') +
-                  '<div class="mt-2 space-y-1 text-[10px] text-slate-600">' +
-                    '<div>⚙️ <b>ሞተር:</b> ' + esc(car2.engine || "1.2L Petrol") + '</div>' +
-                    '<div>⛽ <b>ፍጆታ:</b> <span class="text-emerald-600 font-bold">' + esc(car2.fuel_consumption_kml || "20 KM/L") + '</span></div>' +
-                    '<div>💵 <b>ወርሃዊ ነዳጅ:</b> ' + esc(car2.monthly_fuel_cost_etb || "4,200 ETB") + '</div>' +
-                    '<div>🛠️ <b>መለዋወጫ:</b> ' + esc(car2.parts_availability_rating || "4.2/5") + '</div>' +
-                    '<div>📈 <b>የመሸጫ እሴት:</b> ' + esc(car2.resale_retention_pct || "88%") + '</div>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="pt-1.5 border-t border-slate-100 text-[9px] space-y-1">' +
-                  '<div class="font-bold text-emerald-700">ጥንካሬዎች (Pros):</div>' +
-                  ((car2.pros || []).map(function(p){ return '<div class="text-slate-600 flex items-start gap-0.5 leading-tight"><span class="text-emerald-500">✔</span><span>' + esc(p) + '</span></div>'; }).join('')) +
-                  '<div class="font-bold text-rose-600 mt-1">ጉድለቶች (Cons):</div>' +
-                  ((car2.cons || []).map(function(c){ return '<div class="text-slate-600 flex items-start gap-0.5 leading-tight"><span class="text-rose-500">•</span><span>' + esc(c) + '</span></div>'; }).join('')) +
-                '</div>' +
-              '</div>' +
-            '</div>' +
-            // Amharic Summary Card
-            (verdictAm ? 
-              '<div class="p-3 bg-[#b5eff3]/40 rounded-2xl border border-[#16acbd]/40 text-slate-800 text-[11px] leading-relaxed">' +
-                '<div class="font-extrabold text-[#0e7490] text-xs mb-1 flex items-center gap-1"><span>💡</span><span>የባለሙያ ውሳኔና ምክረ-ሀሳብ:</span></div>' +
-                '<p class="whitespace-pre-line">' + esc(verdictAm) + '</p>' +
-              '</div>' : '') +
-          '</div>';
-      })
-      .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ንጽጽሩን ማመንጨት አልተቻለም። እባክዎ እንደገና ይሞክሩ።</div>'; });
-    };
-
-    // Contract Generate Action
+      // Contract Generate Action
     document.getElementById("contractGenerateBtn").onclick = function() {
       var contractType = document.getElementById("contractType") ? document.getElementById("contractType").value : "vehicle";
-      var seller = document.getElementById("contractSeller").value || "አቶ ዮሐንስ ታደሰ";
-      var buyer = document.getElementById("contractBuyer").value || "ወ/ሮ ሰላም አየለ";
-      var price = document.getElementById("contractPrice").value || "2,000,000";
-      var advance = document.getElementById("contractAdvance").value || "500,000";
-      var docId = document.getElementById("contractDocId").value || "ኮድ 3 - A54321";
-      var chassis = document.getElementById("contractChassis") ? document.getElementById("contractChassis").value : "";
-      var engine = document.getElementById("contractEngine") ? document.getElementById("contractEngine").value : "";
-      var libre = document.getElementById("contractLibre") ? document.getElementById("contractLibre").value : "";
+      var seller = (document.getElementById("contractSeller").value || "").trim() || "አቶ ዮሐንስ ታደሰ";
+      var buyer = (document.getElementById("contractBuyer").value || "").trim() || "ወ/ሮ ሰላም አየለ";
+      var price = (document.getElementById("contractPrice").value || "").trim() || "2,000,000";
+      var advance = (document.getElementById("contractAdvance").value || "").trim() || "500,000";
+      var docId = (document.getElementById("contractDocId").value || "").trim() || "ኮድ 3 - A54321";
+      var chassis = (document.getElementById("contractChassis") ? document.getElementById("contractChassis").value : "").trim();
+      var engine = (document.getElementById("contractEngine") ? document.getElementById("contractEngine").value : "").trim();
+      var libre = (document.getElementById("contractLibre") ? document.getElementById("contractLibre").value : "").trim();
 
       var resEl = document.getElementById("contractResult");
       resEl.classList.remove("hidden");
-      resEl.innerHTML = "⏳ ህጋዊ ው�    // Helper: Read file to Base64
+
+      var isCar = (contractType === "vehicle");
+      var title = isCar ? "የተሽከርካሪ ሽያጭ ውል ስምምነት" : "የቤትና ይዞታ ሽያጭ ውል ስምምነት";
+      var docLabel = isCar ? "የሰሌዳ ቁጥር" : "የካርታ / የይዞታ ቁጥር";
+
+      var contractText = "====================================\n" +
+        title + "\n" +
+        "====================================\n\n" +
+        "1. የውል ተዋዋይ ወገኖች:\n" +
+        "   • ሻጭ: " + seller + "\n" +
+        "   • ገዢ: " + buyer + "\n\n" +
+        "2. የሽያጭ ሁኔታና የንብረት ዝርዝር:\n" +
+        "   • " + docLabel + ": " + docId + "\n" +
+        (chassis ? "   • የሻንሲ ቁጥር: " + chassis + "\n" : "") +
+        (engine ? "   • የሞተር ቁጥር: " + engine + "\n" : "") +
+        (libre ? "   • የሊብሬ/ሰነድ ቁጥር: " + libre + "\n" : "") +
+        "\n3. የክፍያ ስምምነት:\n" +
+        "   • ጠቅላላ ዋጋ: " + price + " የኢትዮጵያ ብር\n" +
+        "   • ቅድመ ክፍያ: " + advance + " የኢትዮጵያ ብር\n\n" +
+        "4. ግዴታዎች:\n" +
+        "   • ሻጭ ንብረቱን ከማንኛውም እዳና እገዳ ነፃ መሆኑን አረጋግጦ በውልና ማስረጃ ስም ለማዛወር ተስማምቷል።\n" +
+        "   • ገዢ ቀሪውን ክፍያ በስምምነቱ መሠረት ለመፈጸም ተስማምቷል።\n\n" +
+        "የሻጭ ፊርማ: ____________   ቀን: ____/____/20__ ዓ.ም\n" +
+        "የገዢ ፊርማ: ____________   ቀን: ____/____/20__ ዓ.ም\n" +
+        "የምስክሮች ፊርማ:\n1. __________________  2. __________________";
+
+      resEl.innerHTML =
+        '<div class="p-3 bg-white border border-[#16acbd]/30 rounded-2xl space-y-2 shadow-xs">' +
+          '<div class="flex items-center justify-between">' +
+            '<span class="font-extrabold text-slate-800 text-xs flex items-center gap-1"><span>📄</span><span>' + esc(title) + '</span></span>' +
+            '<span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200">ዝግጁ</span>' +
+          '</div>' +
+          '<pre class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px] text-slate-700 leading-relaxed font-mono whitespace-pre-wrap max-h-48 overflow-y-auto select-all">' +
+            esc(contractText) +
+          '</pre>' +
+          '<button id="copyContractBtn" type="button" class="w-full py-2 bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-xs rounded-xl shadow active:scale-95 transition flex items-center justify-center gap-1.5">' +
+            '<span>📋</span><span>ውሉን ኮፒ አድርግ (Copy Contract)</span>' +
+          '</button>' +
+        '</div>';
+
+      var copyBtn = document.getElementById("copyContractBtn");
+      if (copyBtn) {
+        copyBtn.onclick = function() {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(contractText).then(function() {
+              copyBtn.innerHTML = "<span>✔</span><span>ኮፒ ተደርጓል! (Copied)</span>";
+              setTimeout(function(){ copyBtn.innerHTML = "<span>📋</span><span>ውሉን ኮፒ አድርግ (Copy Contract)</span>"; }, 2500);
+            });
+          }
+        };
+      }
+    };
+
+    // Helper: Read file to Base64
     function readFileAsBase64(file, callback) {
       if (!file) { callback(null); return; }
       var reader = new FileReader();
@@ -2684,96 +2688,6 @@ EXPLORER_HTML = r"""
     if (stopCamBtn) {
       stopCamBtn.onclick = function() {
         stopPoaCamera();
-      };
-    }ar powers = ver.authorized_powers || [
-              "ተሽከርካሪን ወይም ንብረትን ለሶስተኛ ወገን ለመሸጥ፣ ለመለወጥና ለማስተላለፍ",
-              "በሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ (DARA) ቀርቦ ስም ለማዛወር",
-              "የሽያጭ ገንዘብ በባንክ ወይም በቼክ ለመቀበል"
-            ];
-            var conf = ver.confidence_score_pct || 98;
-            var recAm = ver.recommendation_amharic || "ይህ የውክልና ሰነድ በዳራ ማዕከላዊ ዳታቤዝ የተረጋገጠና ፀንቶ የሚገኝ ህጋዊ ሰነድ ነው።";
-
-            // Render Official DARA Verification Card
-            resEl.innerHTML =
-              '<div class="space-y-3 text-xs">' +
-                // Official DARA Card Container
-                '<div class="p-3.5 rounded-2xl bg-white border-2 border-emerald-500/40 shadow-md space-y-3 relative overflow-hidden">' +
-                  // Watermark / Seal Background
-                  '<div class="absolute -right-4 -bottom-4 text-7xl opacity-[0.04] pointer-events-none select-none">🏛️</div>' +
-                  
-                  // Top DARA Header & Status
-                  '<div class="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">' +
-                    '<div class="flex items-center gap-2">' +
-                      '<div class="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 text-sm font-bold">✔</div>' +
-                      '<div>' +
-                        '<div class="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">የሰነድ ማረጋገጫ ሁኔታ (Status)</div>' +
-                        '<div class="font-black text-xs text-emerald-700 flex items-center gap-1 mt-0.5">' +
-                          '<span>✅</span><span>' + esc(docStatus) + '</span>' +
-                        '</div>' +
-                      '</div>' +
-                    '</div>' +
-                    '<span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-black text-[9px] border border-emerald-200 shrink-0">DARA VERIFIED</span>' +
-                  '</div>' +
-
-                  // Official Details Grid
-                  '<div class="grid grid-cols-1 gap-2 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 text-[11px]">' +
-                    '<div class="flex items-center justify-between">' +
-                      '<span class="text-slate-500 font-medium">🔢 የሰነድ ቁጥር (Document ID):</span>' +
-                      '<span class="font-extrabold text-slate-900 font-mono">' + esc(docNum) + '</span>' +
-                    '</div>' +
-                    '<div class="flex items-center justify-between">' +
-                      '<span class="text-slate-500 font-medium">📅 የተመዘገበበት ቀን (Date):</span>' +
-                      '<span class="font-bold text-slate-800">' + esc(regDate) + '</span>' +
-                    '</div>' +
-                    '<div class="flex items-center justify-between pt-1 border-t border-slate-200/60">' +
-                      '<span class="text-slate-500 font-medium">👤 ውክልና ሰጪ (Grantor):</span>' +
-                      '<span class="font-extrabold text-slate-900">' + esc(grantor) + '</span>' +
-                    '</div>' +
-                    '<div class="flex items-center justify-between">' +
-                      '<span class="text-slate-500 font-medium">👤 ተወካይ (Attorney):</span>' +
-                      '<span class="font-extrabold text-[#0e7490]">' + esc(grantee) + '</span>' +
-                    '</div>' +
-                    (branch ? 
-                      '<div class="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-200/60">' +
-                        '<span>🏛️ ቅርንጫፍ መምሪያ:</span>' +
-                        '<span class="font-medium text-slate-700">' + esc(branch) + '</span>' +
-                      '</div>' : '') +
-                  '</div>' +
-
-                  // Itemized Authorized Powers List
-                  '<div class="space-y-1.5 pt-1">' +
-                    '<div class="font-black text-[10px] text-slate-700 uppercase tracking-wide flex items-center gap-1">' +
-                      '<span>📜</span><span>የተሰጡ ህጋዊ ስልጣኖች (Authorized Powers):</span>' +
-                    '</div>' +
-                    '<div class="space-y-1">' +
-                      powers.map(function(p){
-                        return '<div class="p-1.5 bg-emerald-50/70 rounded-lg border border-emerald-100 text-[10px] text-emerald-950 flex items-start gap-1.5 leading-tight">' +
-                          '<span class="text-emerald-600 font-bold shrink-0">✔</span>' +
-                          '<span>' + esc(p) + '</span>' +
-                        '</div>';
-                      }).join('') +
-                    '</div>' +
-                  '</div>' +
-
-                  // Advisory & Confidence Note
-                  '<div class="p-2.5 bg-slate-900 text-white rounded-xl text-[10px] leading-relaxed flex items-start gap-2">' +
-                    '<span class="text-base shrink-0">🛡️</span>' +
-                    '<div>' +
-                      '<div class="font-bold text-[#b5eff3] mb-0.5">የዳራ ኦፊሴላዊ የደህንነት ማረጋገጫ (' + conf + '% Confidence)</div>' +
-                      '<div class="text-slate-300">' + esc(recAm) + '</div>' +
-                    '</div>' +
-                  '</div>' +
-                '</div>' +
-              '</div>';
-          })
-          .catch(function(){
-            resEl.innerHTML =
-              '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs shadow-sm">' +
-                '<div class="font-black text-rose-900 mb-1">⚠️ የግንኙነት ስህተት</div>' +
-                '<div>ከ DARA ዳታቤዝ ጋር መገናኘት አልተቻለም። እባክዎ ጥቂት ቆይተው እንደገና ይሞክሩ።</div>' +
-              '</div>';
-          });
-        });
       };
     }
 
