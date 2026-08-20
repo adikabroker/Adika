@@ -891,6 +891,34 @@ EXPLORER_HTML = r"""
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Telegram-style Typing Indicator Animation */
+    .typing-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 4px;
+    }
+    .typing-dot {
+      width: 5px;
+      height: 5px;
+      background-color: #16acbd;
+      border-radius: 50%;
+      animation: telegramTyping 1.4s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    .typing-dot:nth-child(3) { animation-delay: 0s; }
+    @keyframes telegramTyping {
+      0%, 80%, 100% {
+        transform: scale(0.6);
+        opacity: 0.4;
+      }
+      40% {
+        transform: scale(1.2);
+        opacity: 1;
+      }
+    }
   </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
