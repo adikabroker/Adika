@@ -5498,7 +5498,7 @@ def api_verify_poa():
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
-                # Real browser User-Agent to reduce bot detection
+                # Real UA + ignore SSL errors (common on gov portals)
                 context = browser.new_context(
                     user_agent=(
                         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -5506,9 +5506,14 @@ def api_verify_poa():
                     ),
                     locale="am-ET",
                     viewport={"width": 1280, "height": 720},
+                    ignore_https_errors=True,
                 )
                 page = context.new_page()
-                page.goto("https://eservices.gov.et/verify", timeout=25000)
+                page.goto(
+                    "https://eservices.gov.et/verify",
+                    timeout=30000,
+                    wait_until="domcontentloaded",
+                )
                 page.wait_for_selector("input", timeout=10000)
                 # Prefer visible text inputs
                 try:
