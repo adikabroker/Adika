@@ -1507,13 +1507,13 @@ EXPLORER_HTML = r"""
             <div class="flex items-center justify-between">
               <label class="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
                 <span class="text-base">📸</span>
-                <span>የቀጥታ ካሜራ ስካነር (Live Camera Scanner)</span>
+                <span>የቀጥታ ካሜራ ምርመራ (Live Camera Verification)</span>
               </label>
               <span class="text-[9px] font-bold text-[#16acbd] bg-[#16acbd]/10 px-2 py-0.5 rounded-full">ምርጫ 1 (Choice 1)</span>
             </div>
             <button id="poaLiveCameraBtn" type="button" class="w-full py-2.5 bg-gradient-to-r from-[#0e7490] to-[#16acbd] hover:from-[#0c627a] hover:to-[#1394a3] text-white font-bold rounded-xl text-xs shadow flex items-center justify-center gap-2 active:scale-98 transition-all">
               <span>📷</span>
-              <span>ካሜራውን ይክፈቱና QR ኮድ ይቃኙ (Open Camera)</span>
+              <span>ካሜራውን ይክፈቱና ሰነዱን ያሳዩ (Open Camera)</span>
             </button>
             <input id="poaCameraInput" type="file" accept="image/*" capture="environment" class="hidden" />
           </div>
@@ -1528,7 +1528,7 @@ EXPLORER_HTML = r"""
               <div class="absolute inset-4 border-2 border-dashed border-cyan-400/60 rounded-xl pointer-events-none"></div>
             </div>
             <div class="flex items-center justify-between pt-1">
-              <span class="text-[10px] text-cyan-200 font-medium">📷 የ QR ኮዱን በማዕቀፉ ውስጥ ያሳዩ...</span>
+              <span class="text-[10px] text-cyan-200 font-medium">📷 የሰነዱን ማህተም በማዕቀፉ ውስጥ ያሳዩ...</span>
               <button id="poaStopCameraBtn" type="button" class="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-[10px] font-bold">ያቁሙ (Close Camera)</button>
             </div>
           </div>
@@ -1538,7 +1538,7 @@ EXPLORER_HTML = r"""
             <div class="flex items-center justify-between">
               <label class="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
                 <span class="text-base">📁</span>
-                <span>የሰነድ ወይም የ QR ኮድ ፎቶ ይጭኑ (Upload Photo)</span>
+                <span>የውክልና ሰነዱን ፎቶ ይጭኑ</span>
               </label>
               <span class="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">ምርጫ 2 (Choice 2)</span>
             </div>
@@ -1551,7 +1551,7 @@ EXPLORER_HTML = r"""
                 No file chosen
               </span>
             </div>
-            <p class="text-[11px] text-slate-400 leading-tight">የውክልና ሰነዱን ማህተም ወይም በሰነዱ ላይ ያለውን ዲጂታል QR ኮድ ያሳይሉ።</p>
+            <p class="text-[11px] text-slate-400 leading-tight">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
           </div>
         </div>
 
@@ -2489,8 +2489,8 @@ EXPLORER_HTML = r"""
         resEl.innerHTML =
           '<div class="p-4 bg-white border border-[#16acbd]/40 rounded-2xl text-center space-y-2 shadow-sm animate-pulse">' +
             '<div class="text-2xl">📷</div>' +
-            '<div class="font-extrabold text-slate-800 text-xs">የተመረጠውን የ QR ኮድ / ሰነድ በማንበብ ላይ...</div>' +
-            '<div class="text-[10px] text-slate-500">የዲጂታል QR ኮድ በመፈተሽ ላይ ነው...</div>' +
+            '<div class="font-extrabold text-slate-800 text-xs">የተመረጠውን የውክልና ሰነድ በመመርመር ላይ...</div>' +
+            '<div class="text-[10px] text-slate-500">በአዲካ ዲጂታል ሲስተም በመፈተሽ ላይ ነው...</div>' +
           '</div>';
       }
     }
@@ -2507,7 +2507,7 @@ EXPLORER_HTML = r"""
               '✓' +
             '</div>' +
             '<span class="text-xs font-bold text-emerald-800">' +
-              '✅ የውክልና ሰነዱ ዲጂታል ማረጋገጫ በስኬት ተነቧል!' +
+              '✅ የውክልና ሰነዱ በአዲካ ዲጂታል ሲስተም በስኬት ተመርምሯል!' +
             '</span>' +
           '</div>' +
           '<button id="openPoaDocLinkBtn" type="button" class="w-full bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-xs py-3 px-4 rounded-xl shadow flex items-center justify-center space-x-2 transition active:scale-95">' +
@@ -2534,7 +2534,7 @@ EXPLORER_HTML = r"""
           '<div class="flex items-start space-x-2">' +
             '<span class="text-base shrink-0">⚠️</span>' +
             '<p class="text-xs text-amber-900 leading-relaxed">' +
-              'ይህ ሰነድ በዲጂታል መንገድ ሊጣራ የሚችል QR ኮድ የለውም። የቆየ የውክልና ሰነድ በመሆኑ፣ እባክዎን በአካል በአቅራቢያዎ በሚገኝ የሰነዶች ማረጋገጫና ምዝገባ (ውልና ማስረጃ) ቢሮ በመሄድ ያጣሩ።' +
+              '⚠️ ይህ ሰነድ በአዲካ ዲጂታል ሲስተም ሊጣራ የሚችል የዲጂታል ምዝገባ መረጃ አልተገኘበትም። የቆየ የውክልና ሰነድ በመሆኑ፣ እባክዎን በአካል በአቅራቢያዎ በሚገኝ የሰነዶች ማረጋገጫና ምዝገባ (ውልና ማስረጃ) ቢሮ በመሄድ ያጣሩ።' +
             '</p>' +
           '</div>' +
         '</div>';
@@ -2550,7 +2550,7 @@ EXPLORER_HTML = r"""
           '<div class="flex items-start space-x-2">' +
             '<span class="text-base shrink-0">❌</span>' +
             '<p class="text-xs text-rose-800 leading-relaxed">' +
-              'የተላከው ፎቶ ሊነበብ አልቻለም። እባክዎን የውክልና ሰነዱን ማህተም እና QR ኮድ በግልጽ አድርገው እንደገና ይጭኑ።' +
+              '❌ በተላከው ፎቶ ላይ የሰነዱን ማረጋገጫ ማግኘት አልተቻለም። እባክዎን የሰነዱን ጽሁፍ እና ማህተም በግልጽ አድርገው ደግመው ይጭኑ።' +
             '</p>' +
           '</div>' +
         '</div>';
@@ -2603,7 +2603,7 @@ EXPLORER_HTML = r"""
             var code = null;
             if (typeof jsQR !== "undefined") {
               var imageData = context.getImageData(0, 0, width, height);
-              // 2. የ QR ኮዱን በአዲካ ዲጂታል ሲስተም ማቀናበሪያ በፍጥነት ማንበብ
+              // 2. የዲጂታል ሰነዱን በአዲካ ዲጂታል ሲስተም ማቀናበሪያ በፍጥነት መመርመር
               code = jsQR(imageData.data, imageData.width, imageData.height, {
                 inversionAttempts: "dontInvert"
               });
@@ -2621,10 +2621,10 @@ EXPLORER_HTML = r"""
               }
             } else {
               renderPoaNoQrState();
-              alert('⚠️ ይህ ሰነድ በዲጂታል መንገድ ሊጣራ የሚችል QR ኮድ የለውም። የቆየ የውክልና ሰነድ በመሆኑ፣ እባክዎን በአካል በአቅራቢያዎ በሚገኝ የሰነዶች ማረጋገጫና ምዝገባ (ውልና ማስረጃ) ቢሮ በመሄድ ያጣሩ።');
+              alert('⚠️ ይህ ሰነድ በአዲካ ዲጂታል ሲስተም ሊጣራ የሚችል የዲጂታል ምዝገባ መረጃ አልተገኘበትም። የቆየ የውክልና ሰነድ በመሆኑ፣ እባክዎን በአካል በአቅራቢያዎ በሚገኝ የሰነዶች ማረጋገጫና ምዝገባ (ውልና ማስረጃ) ቢሮ በመሄድ ያጣሩ።');
             }
           } catch(err) {
-            console.error("jsQR scan error:", err);
+            console.error("POA verification error:", err);
             renderPoaInvalidState();
           }
         };
