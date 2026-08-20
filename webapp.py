@@ -5498,32 +5498,49 @@ def api_verify_poa():
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
-                # Real UA + ignore SSL errors (common on gov portals)
+                # Human-like UA + ignore SSL errors
                 context = browser.new_context(
+                    ignore_https_errors=True,
                     user_agent=(
                         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                         "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     ),
                     locale="am-ET",
                     viewport={"width": 1280, "height": 720},
-                    ignore_https_errors=True,
                 )
                 page = context.new_page()
+                # Allow up to 60s for gov portal
                 page.goto(
                     "https://eservices.gov.et/verify",
-                    timeout=30000,
+                    timeout=60000,
                     wait_until="domcontentloaded",
                 )
-                page.wait_for_selector("input", timeout=10000)
-                # Prefer visible text inputs
+                # Let JS finish rendering
+                page.wait_for_timeout(5000)
                 try:
-                    page.locator('input[type="text"]').first.fill(clean_num)
+                    page.wait_for_selector("input", timeout=15000)
+                    try:
+                        page.locator('input[type="text"]').first.fill(clean_num)
+                    except Exception:
+                        page.locator("input").first.fill(clean_num)
                 except Exception:
-                    page.fill("input", clean_num)
+                    page_text = page.inner_text("body")
+                    try:
+                        context.close()
+                    except Exception:
+                        pass
+                    browser.close()
+                    raise Exception(
+                        f"የጽሁፍ ማስገቢያ ሳጥኑ አልተገኘም። ብራውዘሩ ያየው ጽሁፍ፦ {(page_text or '')[:150]}"
+                    )
                 page.keyboard.press("Enter")
                 page.wait_for_timeout(5000)
                 page_text = page.inner_text("body")
                 logger.info("=== DARA RESPONSE TEXT ===\n%s", (page_text or "")[:500])
+                try:
+                    context.close()
+                except Exception:
+                    pass
                 browser.close()
 
             neg = any(k in page_text for k in ["Not Found", "Invalid", "አልተገኘም", "ተሰርዟል", "Revoked"])
