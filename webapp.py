@@ -2564,7 +2564,23 @@ EXPLORER_HTML = r"""
             var ver = d.verification || d;
             var defaultNotFound = "❌ የተላከው የውክልና ቁጥር ወይም ሰነድ በዳራ (DARA) ዳታቤዝ ውስጥ አልተገኘም። እባክዎ ትክክለኛ የውክልና ቁጥር ወይም ኦሪጅናል ሰነድ ያስገቡ።";
 
-            // Prefer explicit success flags (photo upload + real DARA IDs)
+            // REDIRECT = official portal link; SUCCESS = verified
+            if (d.status === "REDIRECT" && d.data && d.data.redirect_url) {
+              var num = d.document_number || (d.data && d.data.document_number) || docId || "";
+              var link = d.data.redirect_url;
+              var instr = (d.data && d.data.instructions) || d.message || "";
+              resEl.innerHTML =
+                '<div class="p-3.5 rounded-2xl bg-white border border-[#16acbd]/40 shadow-sm space-y-3 text-xs">' +
+                  '<div class="font-black text-slate-800 text-sm flex items-center gap-1.5">' +
+                    '<span>🏛️</span><span>ወደ DARA ኦፊሴላዊ ገጽ</span></div>' +
+                  '<p class="text-slate-600 leading-relaxed">' + esc(instr) + '</p>' +
+                  (num ? '<div class="font-mono font-bold text-slate-900 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">📋 ' + esc(num) + '</div>' : '') +
+                  '<a href="' + esc(link) + '" target="_blank" rel="noopener" ' +
+                    'class="block text-center w-full py-2.5 rounded-xl bg-[#16acbd] text-white font-bold shadow-sm">' +
+                    '🔗 DARA ገጽ ክፈት (eservices.gov.et)</a>' +
+                '</div>';
+              return;
+            }
             var ok = (d.is_valid === true) || (d.status === "SUCCESS") || (ver.is_valid_format === true) || (ver.is_valid === true);
             if (!ok) {
               var errMsg = ver.error_message_amharic || d.message || ver.message || defaultNotFound;
@@ -5400,23 +5416,23 @@ DARA_REGISTRY_DATABASE = {
 @web_app.route('/api/verify-poa', methods=['POST', 'OPTIONS'])
 def api_verify_poa():
     """
-    DARA POA verification via Playwright on eservices.gov.et (+ OCR for images).
-    No hardcoded mock names.
+    DARA verification helper.
+    Text doc numbers → REDIRECT payload to official eservices.gov.et/verify
+      (gov portal blocks reliable headless scraping).
+    Image uploads → optional Gemini OCR extraction (no mock names).
     """
     if request.method == 'OPTIONS':
         return ('', 204)
 
+    DARA_URL = "https://eservices.gov.et/verify"
     AGENCY = "የፌደራል ሰነዶች ማረጋገጫና ምዝገባ አገልግሎት"
 
-    def _fail(msg, code=404):
+    def _fail(msg, code=400):
         return jsonify({
             "status": "FAILED" if code in (400, 404) else "ERROR",
             "is_valid": False,
             "message": msg,
             "document_number": None,
-            "grantor_name": None,
-            "attorney_name": None,
-            "registration_date": None,
             "data": None,
             "verification": {
                 "is_valid_format": False,
@@ -5424,144 +5440,6 @@ def api_verify_poa():
                 "confidence_score_pct": 0,
             },
         }), code
-
-    def _success(doc_number, grantor, attorney, reg_date, status_text, source, raw=None):
-        verification = {
-            "is_valid_format": True,
-            "document_status": status_text,
-            "agency": AGENCY,
-            "dara_registration_number": doc_number,
-            "document_number": doc_number,
-            "registration_date": reg_date,
-            "grantor_name": grantor,
-            "attorney_name": attorney,
-            "grantee_name": attorney,
-            "issuing_authority": AGENCY,
-            "verification_source": source,
-            "confidence_score_pct": 95,
-            "extracted_raw_text": (raw or "")[:500] if raw else None,
-            "recommendation_amharic": "ሰነዱ በኦፊሴላዊ ድህረ-ገጽ ተረጋግጧል።",
-        }
-        return jsonify({
-            "status": "SUCCESS",
-            "is_valid": True,
-            "message": "የDARA የውክልና ሰነድ በኦፊሴላዊ ድህረ-ገጽ ተረጋገጠ",
-            "document_number": doc_number,
-            "grantor_name": grantor,
-            "attorney_name": attorney,
-            "registration_date": reg_date,
-            "issuing_authority": AGENCY,
-            "data": {
-                "issuing_authority": AGENCY,
-                "document_number": doc_number,
-                "status_text": status_text,
-                "grantor": grantor,
-                "attorney": attorney,
-                "reg_date": reg_date,
-                "verification_source": source,
-                "extracted_raw_text": (raw or "")[:300] if raw else None,
-            },
-            "verification": verification,
-        })
-
-    def _extract_from_text(page_text):
-        grantor = attorney = reg_date = status_text = None
-        for line in (page_text or "").splitlines():
-            line = line.strip()
-            if not line or len(line) > 220:
-                continue
-            if not grantor:
-                m = re.search(r"(?:ወካይ|Grantor|Principal)\s*[:：\-–]?\s*(.+)", line, re.I)
-                if m:
-                    grantor = m.group(1).strip()
-            if not attorney:
-                m = re.search(r"(?:ተወካይ|Attorney|Agent)\s*[:：\-–]?\s*(.+)", line, re.I)
-                if m:
-                    attorney = m.group(1).strip()
-            if not reg_date:
-                m = re.search(r"(?:ቀን|Date|Registered)\s*[:：\-–]?\s*(.+)", line, re.I)
-                if m:
-                    reg_date = m.group(1).strip()
-            if not status_text:
-                m = re.search(r"(?:ሁኔታ|Status)\s*[:：\-–]?\s*(.+)", line, re.I)
-                if m:
-                    status_text = m.group(1).strip()
-        return grantor, attorney, reg_date, status_text
-
-    def _playwright_verify(clean_num):
-        try:
-            from playwright.sync_api import sync_playwright
-        except Exception as e:
-            logger.warning("Playwright missing: %s", e)
-            return None, f"Playwright አልተጫነም: {e}"
-
-        try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                # Human-like UA + ignore SSL errors
-                context = browser.new_context(
-                    ignore_https_errors=True,
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                    ),
-                    locale="am-ET",
-                    viewport={"width": 1280, "height": 720},
-                )
-                page = context.new_page()
-                # Allow up to 60s for gov portal
-                page.goto(
-                    "https://eservices.gov.et/verify",
-                    timeout=60000,
-                    wait_until="domcontentloaded",
-                )
-                # Let JS finish rendering
-                page.wait_for_timeout(5000)
-                try:
-                    page.wait_for_selector("input", timeout=15000)
-                    try:
-                        page.locator('input[type="text"]').first.fill(clean_num)
-                    except Exception:
-                        page.locator("input").first.fill(clean_num)
-                except Exception:
-                    page_text = page.inner_text("body")
-                    try:
-                        context.close()
-                    except Exception:
-                        pass
-                    browser.close()
-                    raise Exception(
-                        f"የጽሁፍ ማስገቢያ ሳጥኑ አልተገኘም። ብራውዘሩ ያየው ጽሁፍ፦ {(page_text or '')[:150]}"
-                    )
-                page.keyboard.press("Enter")
-                page.wait_for_timeout(5000)
-                page_text = page.inner_text("body")
-                logger.info("=== DARA RESPONSE TEXT ===\n%s", (page_text or "")[:500])
-                try:
-                    context.close()
-                except Exception:
-                    pass
-                browser.close()
-
-            neg = any(k in page_text for k in ["Not Found", "Invalid", "አልተገኘም", "ተሰርዟል", "Revoked"])
-            pos = any(k in page_text for k in ["Active", "Valid", "ህጋዊ", "የጸና", "ተረጋገጠ", "Registered"])
-            grantor, attorney, reg_date, status_text = _extract_from_text(page_text)
-
-            if neg and not pos and not grantor and not attorney:
-                return {"_not_found": True}, page_text
-            if pos or grantor or attorney:
-                return {
-                    "document_number": clean_num,
-                    "grantor": grantor,
-                    "attorney": attorney,
-                    "reg_date": reg_date,
-                    "status_text": status_text or ("ህጋዊ እና የጸና (Active)" if pos else None),
-                    "raw": page_text,
-                }, page_text
-            return {"_not_found": True}, page_text
-        except Exception as e:
-            logger.error("Playwright Exception: %s", e)
-            return None, str(e)
 
     def _ocr_image(uploaded_file, image_data):
         api_key = os.environ.get("GEMINI_API_KEY")
@@ -5586,7 +5464,7 @@ def api_verify_poa():
             prompt = (
                 "Extract Ethiopian DARA POA fields as JSON: "
                 "is_valid_format, document_number, registration_date, grantor, attorney, status_text. "
-                "null if unreadable. Never invent."
+                "null if unreadable. Never invent names."
             )
             model = genai.GenerativeModel(
                 model_name="gemini-1.5-flash",
@@ -5627,59 +5505,105 @@ def api_verify_poa():
         image_data = (data.get("image_data") if isinstance(data, dict) else None) or request.form.get("image_data")
         has_photo = bool(uploaded_file and getattr(uploaded_file, "filename", None)) or bool(image_data)
 
+        # ---- Text document number → official portal redirect ----
         if doc_number:
             clean_num = doc_number.strip()
-            result, detail = _playwright_verify(clean_num)
-
-            if result is None:
-                return _fail(f"ከDARA ዌብሳይት መረጃ ማውጣት አልተቻለም፦ {detail}", 500)
-            if result.get("_not_found"):
-                return _fail(
-                    f"የተላከው የሰነድ ቁጥር ({clean_num}) በDARA (eservices.gov.et) ዳታቤዝ ውስጥ አልተገኘም።",
-                    404,
-                )
-            return _success(
-                result.get("document_number") or clean_num,
-                result.get("grantor"),
-                result.get("attorney"),
-                result.get("reg_date"),
-                result.get("status_text") or "ህጋዊ እና የጸና (Active)",
-                "eservices.gov.et (Playwright)",
-                result.get("raw"),
+            msg = (
+                "የሰነድ ቁጥሩ ተዘጋጅቷል። በDARA ኦፊሴላዊ ገጽ ላይ ቀጥታ ለማረጋገጥ "
+                "ከታች ያለውን ሊንክ ይጫኑ።"
             )
+            instructions = (
+                f"የሰነድ ቁጥር ({clean_num}) ተኮፒ አድርገው ወደ DARA ገጽ ሲሄዱ "
+                "ፔስት (Paste) በማድረግ ማረጋገጥ ይችላሉ።"
+            )
+            verification = {
+                "is_valid_format": True,
+                "document_status": "Pending official portal check",
+                "agency": AGENCY,
+                "dara_registration_number": clean_num,
+                "document_number": clean_num,
+                "verification_source": "eservices.gov.et redirect",
+                "redirect_url": DARA_URL,
+                "recommendation_amharic": instructions,
+                "confidence_score_pct": 0,
+            }
+            return jsonify({
+                "status": "REDIRECT",
+                "is_valid": True,
+                "message": msg,
+                "document_number": clean_num,
+                "data": {
+                    "issuing_authority": AGENCY,
+                    "document_number": clean_num,
+                    "redirect_url": DARA_URL,
+                    "instructions": instructions,
+                },
+                "verification": verification,
+            })
 
+        # ---- Photo → OCR extract number, then same redirect helper ----
         if has_photo:
             parsed, st = _ocr_image(uploaded_file, image_data)
             if st == "no_key":
-                return _fail("ፎቶ ለማንበብ GEMINI_API_KEY ያስፈልጋል። የሰነድ ቁጥሩን በጽሁፍ ያስገቡ።", 400)
+                return _fail(
+                    "ፎቶ ለማንበብ GEMINI_API_KEY ያስፈልጋል። የሰነድ ቁጥሩን በጽሁፍ ያስገቡ።",
+                    400,
+                )
             if not parsed or parsed.get("is_valid_format") is False:
-                return _fail("የተላከው ሰነድ በDARA ዳታቤዝ ውስጥ አልተገኘም።", 404)
-            num = parsed.get("document_number")
+                return _fail("ከፎቶው የሰነድ ቁጥር ማንበብ አልተቻለም።", 400)
+
+            clean_num = (parsed.get("document_number") or "").strip()
             grantor = parsed.get("grantor")
             attorney = parsed.get("attorney")
             reg_date = parsed.get("registration_date")
             status_text = parsed.get("status_text")
 
-            if num:
-                result, _ = _playwright_verify(num)
-                if result and not result.get("_not_found"):
-                    return _success(
-                        result.get("document_number") or num,
-                        result.get("grantor") or grantor,
-                        result.get("attorney") or attorney,
-                        result.get("reg_date") or reg_date,
-                        result.get("status_text") or status_text or "ህጋዊ እና የጸና (Active)",
-                        "eservices.gov.et + AI Vision",
-                        result.get("raw"),
-                    )
-            if not num and not grantor and not attorney:
-                return _fail("ከፎቶው መረጃ ማንበብ አልተቻለም።", 400)
-            return _success(num, grantor, attorney, reg_date, status_text or "ከሰነድ ፎቶ የተነበበ", "AI Vision OCR")
+            if not clean_num and not grantor and not attorney:
+                return _fail("ከፎቶው መረጃ ማንበብ አልተቻለም። ግልጽ ፎቶ ይጫኑ።", 400)
+
+            instructions = (
+                f"ከፎቶ የተነበበ ቁጥር: {clean_num or '—'}። "
+                f"ኦፊሴላዊ ማረጋገጫ ለማድረግ {DARA_URL} ይክፈቱ።"
+            )
+            verification = {
+                "is_valid_format": True,
+                "document_status": status_text or "OCR extracted — confirm on official portal",
+                "agency": AGENCY,
+                "dara_registration_number": clean_num or None,
+                "document_number": clean_num or None,
+                "registration_date": reg_date,
+                "grantor_name": grantor,
+                "attorney_name": attorney,
+                "verification_source": "AI Vision OCR + portal redirect",
+                "redirect_url": DARA_URL,
+                "recommendation_amharic": instructions,
+                "confidence_score_pct": 70 if clean_num else 50,
+            }
+            return jsonify({
+                "status": "REDIRECT",
+                "is_valid": True,
+                "message": "ከፎቶ መረጃ ተነብቧል። ኦፊሴላዊ ማረጋገጫ በDARA ገጽ ያድርጉ።",
+                "document_number": clean_num or None,
+                "grantor_name": grantor,
+                "attorney_name": attorney,
+                "registration_date": reg_date,
+                "data": {
+                    "issuing_authority": AGENCY,
+                    "document_number": clean_num or None,
+                    "grantor": grantor,
+                    "attorney": attorney,
+                    "reg_date": reg_date,
+                    "status_text": status_text,
+                    "redirect_url": DARA_URL,
+                    "instructions": instructions,
+                },
+                "verification": verification,
+            })
 
         return _fail("እባክዎን ትክክለኛ የሰነድ ቁጥር ያስገቡ።", 400)
     except Exception as e:
         logger.error("api_verify_poa: %s", e, exc_info=True)
-        return _fail(f"ከDARA ዌብሳይት መረጃ ማውጣት አልተቻለም፦ {e}", 500)
+        return _fail(f"ስህተት አጋጥሟል፦ {e}", 500)
 
 
 @web_app.route('/api/analyze-diagnostic', methods=['POST', 'OPTIONS'])
