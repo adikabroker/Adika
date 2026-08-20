@@ -967,44 +967,24 @@ EXPLORER_HTML = r"""
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <!-- Space-Saving High-Prominence Hero Card for Adika Digital Investment Advisor -->
-    <div id="heroAdvisorCard" class="mb-3 relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0c6b78] via-[#16acbd] to-[#128b9a] text-white p-3.5 shadow-[0_8px_20px_rgba(22,172,189,0.25)] border border-teal-300/40 cursor-pointer active:scale-[0.99] transition-all duration-200">
-      <div class="space-y-2.5">
-        <div class="flex items-center justify-between">
-          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black tracking-wide border border-white/30">
-            <span>💡</span>
-            <span class="lang-am">አዲካ ዲጂታል አማካሪ</span>
-            <span class="lang-en">Adika Digital Advisor</span>
-          </div>
-          <span class="text-[10px] font-bold text-teal-100 bg-teal-900/40 px-2 py-0.5 rounded-md">
-            <span class="lang-am">ነፃ የገበያ ትንተና</span>
-            <span class="lang-en">Executive Advisory</span>
-          </span>
+    <!-- Ultra-Compact High-Impact Banner for Adika Digital Investment Advisor (Strict Height 70-80px) -->
+    <div id="heroAdvisorCard" class="mb-2.5 relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#0c6b78] via-[#16acbd] to-[#128b9a] text-white px-3.5 py-2.5 shadow-[0_4px_14px_rgba(22,172,189,0.22)] border border-teal-300/40 cursor-pointer active:scale-[0.99] transition-all duration-200 flex items-center justify-between gap-2.5 min-h-[68px] max-h-[80px]">
+      <div class="flex-1 min-w-0 pr-1">
+        <div class="flex items-center gap-1.5 text-xs font-black tracking-tight text-white truncate">
+          <span class="text-sm shrink-0">💡</span>
+          <span class="lang-am truncate font-black">አዲካ ዲጂታል አማካሪ</span>
+          <span class="lang-en truncate font-black">Adika Digital Advisor</span>
+          <span class="px-1.5 py-0.2 rounded-full bg-white/20 text-[9px] font-extrabold border border-white/30 shrink-0">PRO</span>
         </div>
-
-        <div>
-          <h2 class="text-xs font-black tracking-tight text-white leading-snug flex items-center gap-1.5">
-            <span class="lang-am">እጅዎ ላይ ባለው በጀት ትርፋማ የሚያደርጉዎትን የሀብት ማደራጃ ሀሳቦች ያማክሩ</span>
-            <span class="lang-en">Consult High-Yield Asset Allocation Strategies for Your Budget</span>
-          </h2>
-          <p class="text-[10px] text-teal-50/90 leading-relaxed font-medium mt-1">
-            <span class="lang-am">ለካፒታልዎ ከፍተኛ ተመላሽ የሚያስገኙ የተሽከርካሪ እና የሪል-እስቴት አማራጮች</span>
-            <span class="lang-en">Maximized ROI vehicle and real estate portfolio options for your capital</span>
-          </p>
-        </div>
-
-        <div class="flex items-center justify-between pt-1">
-          <div class="flex gap-1 text-[9px] font-bold text-teal-100">
-            <span class="px-1.5 py-0.5 rounded bg-black/20">🚗 መኪና</span>
-            <span class="px-1.5 py-0.5 rounded bg-black/20">🏠 ሪል-እስቴት</span>
-            <span class="px-1.5 py-0.5 rounded bg-black/20">📊 ቀረጥ</span>
-          </div>
-          <button type="button" class="px-3.5 py-1.5 rounded-xl bg-white text-[#0e7490] hover:bg-teal-50 font-black text-xs shadow-md flex items-center gap-1 active:scale-95 transition-all">
-            <span class="lang-am">📊 የኢንቨስትመንት አማራጮችን ይመልከቱ</span>
-            <span class="lang-en">📊 View Investment Portfolios</span>
-          </button>
-        </div>
+        <p class="text-[10px] text-teal-50/95 font-medium leading-tight truncate mt-0.5">
+          <span class="lang-am">ለካፒታልዎ ከፍተኛ ተመላሽ የሚያስገኙ የኢንቨስትመንት አማራጮችን ይተንትኑ</span>
+          <span class="lang-en">Analyze high-ROI vehicle & property portfolios for your capital</span>
+        </p>
       </div>
+      <button type="button" class="shrink-0 px-3 py-1.5 rounded-xl bg-white text-[#0e7490] hover:bg-teal-50 font-black text-[11px] shadow-sm flex items-center gap-1 whitespace-nowrap active:scale-95 transition-all">
+        <span class="lang-am">📊 ፖርትፎሊዮ ይተንትኑ</span>
+        <span class="lang-en">📊 Analyze Portfolio</span>
+      </button>
     </div>
 
     <div id="status" class="text-center py-8 text-slate-600 font-semibold text-xs">
@@ -2189,7 +2169,7 @@ EXPLORER_HTML = r"""
         var strat = rep.financial_strategy || {};
         var adviceAm = rep.expert_advice_amharic || "";
         var steps = rep.actionable_steps || [];
-        var chips = rep.follow_up_chips || ["የቀረጥ ክፍያ ስሌት", "የባንክ ቅድመ ክፍያ መርሃ-ግብር", "ከቀጥታ ወኪል ጋር ለመገናኘት", "ተስማሚ መኪናዎችን ፈልግ"];
+        var chips = ["የቀረጥ ስሌት አሳይ", "የባንክ ቅድመ ክፍያ መርሃ-ግብር", "ከቀጥታ ወኪል ጋር አገናኘኝ"];
 
         resEl.innerHTML =
           '<div class="space-y-3">' +
@@ -2302,42 +2282,146 @@ EXPLORER_HTML = r"""
                 steps.map(function(s){ return '<div class="flex items-start gap-1"><span class="text-[#16acbd] font-bold">✓</span><span>' + esc(s) + '</span></div>'; }).join('') +
               '</div>' : '') +
 
-            // Interactive Follow-up Question Chips
-            (chips.length > 0 ?
-              '<div class="pt-2 border-t border-slate-100 space-y-1.5">' +
-                '<div class="text-[10px] font-bold text-slate-500">ተጨማሪ የምክክርና የክትትል አማራጮች:</div>' +
-                '<div class="flex flex-wrap gap-1">' +
-                  chips.map(function(c){
-                    return '<button type="button" class="advisor-followup-chip px-2.5 py-1 rounded-xl bg-white hover:bg-teal-50 hover:text-[#0e7490] border border-teal-200 text-[10px] font-bold text-[#0e7490] active:scale-95 transition-all shadow-xs">' + esc(c) + '</button>';
-                  }).join('') +
+            // -------------------------------------------------------------
+            // INTERACTIVE ADVISOR CONSULTING CHAT INTERFACE & QUICK ACTION CHIPS
+            // -------------------------------------------------------------
+            '<div class="p-3 bg-gradient-to-br from-slate-50 to-teal-50/40 rounded-2xl border border-teal-200/80 space-y-2.5 shadow-xs">' +
+              '<div class="flex items-center justify-between">' +
+                '<div class="font-extrabold text-[#0e7490] text-xs flex items-center gap-1.5">' +
+                  '<span>💬</span>' +
+                  '<span>ከአዲካ ዲጂታል ኦፕሬተር ጋር የቀጥታ ምክክር (Live Advisor Chat)</span>' +
                 '</div>' +
-              '</div>' : '') +
+                '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>' +
+              '</div>' +
+
+              // 3 Quick Action Chips
+              '<div class="flex flex-wrap gap-1.5 pt-0.5">' +
+                chips.map(function(c){
+                  return '<button type="button" class="advisor-quick-chip px-2.5 py-1 rounded-xl bg-white hover:bg-[#16acbd] hover:text-white border border-[#16acbd]/40 text-[10px] font-extrabold text-[#0e7490] active:scale-95 transition-all shadow-xs flex items-center gap-1" data-query="' + esc(c) + '">' +
+                    '<span>⚡</span><span>' + esc(c) + '</span>' +
+                  '</button>';
+                }).join('') +
+              '</div>' +
+
+              // Chat Stream
+              '<div id="advisorChatStream" class="max-h-60 overflow-y-auto space-y-2 p-2 bg-white/90 rounded-xl border border-slate-200 text-xs">' +
+                '<div class="flex items-start gap-2">' +
+                  '<div class="w-6 h-6 rounded-full bg-[#16acbd] text-white flex items-center justify-center text-[10px] font-black shrink-0">AD</div>' +
+                  '<div class="bg-slate-100 text-slate-800 p-2 rounded-2xl rounded-tl-sm text-[11px] leading-relaxed font-medium">' +
+                    'ውድ ደንበኛችን፤ ስለተመረጡት ተሽከርካሪዎች፣ የቀረጥ ስሌት፣ የባንክ ቅድመ ክፍያ ወይም ሌላ ማንኛውንም ጥያቄ ይጠይቁኝ።' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+
+              // Chat Input Row
+              '<div class="flex items-center gap-1.5 pt-1">' +
+                '<input id="advisorChatInput" type="text" placeholder="ለአዲካ ኦፕሬተር ጥያቄዎን እዚህ ይጻፉ..." class="flex-1 px-3 py-1.5 bg-white rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-[#16acbd]" />' +
+                '<button id="advisorChatSendBtn" type="button" class="px-3 py-1.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-black text-xs shadow-sm active:scale-95 transition-all flex items-center gap-1">' +
+                  '<span>ላክ</span><span>➔</span>' +
+                '</button>' +
+              '</div>' +
+            '</div>' +
           '</div>';
 
-        // Bind interactive follow-up chips
-        document.querySelectorAll(".advisor-followup-chip").forEach(function(chip){
-          chip.onclick = function() {
-            var txt = chip.textContent.trim();
-            if (txt.indexOf("ቀረጥ") !== -1) {
-              aiModalClose.onclick();
-              openToolModal("dutyModal");
-            } else if (txt.indexOf("ማረጋገጫ") !== -1 || txt.indexOf("ውክልና") !== -1) {
-              aiModalClose.onclick();
-              openToolModal("poaModal");
-            } else if (txt.indexOf("ብድር") !== -1 || txt.indexOf("ቅድመ") !== -1) {
-              aiModalClose.onclick();
-              openToolModal("loanModal");
-            } else if (txt.indexOf("ወኪል") !== -1 || txt.indexOf("መገናኘት") !== -1) {
-              aiModalClose.onclick();
-              window.open("https://t.me/AdikaDigitalSupport", "_blank");
-            } else {
-              var searchInput = document.getElementById("search");
-              if (searchInput) {
-                searchInput.value = txt.replace("ፈልግ", "").replace("ተስማሚ", "").trim();
-                searchInput.dispatchEvent(new Event("input"));
-                aiModalClose.onclick();
-              }
+        // Function to send chat message to Advisor
+        function sendAdvisorChat(msgText) {
+          if (!msgText || !msgText.trim()) return;
+          var query = msgText.trim();
+          var chatStream = document.getElementById("advisorChatStream");
+          var inputEl = document.getElementById("advisorChatInput");
+          if (inputEl) inputEl.value = "";
+
+          // Append User Message
+          var userBubble = document.createElement("div");
+          userBubble.className = "flex items-start justify-end gap-2";
+          userBubble.innerHTML =
+            '<div class="bg-[#16acbd] text-white p-2 rounded-2xl rounded-tr-sm text-[11px] leading-relaxed font-medium max-w-[85%]">' +
+              esc(query) +
+            '</div>';
+          chatStream.appendChild(userBubble);
+
+          // Append Loading Bubble
+          var loadingBubble = document.createElement("div");
+          loadingBubble.className = "flex items-start gap-2";
+          loadingBubble.innerHTML =
+            '<div class="w-6 h-6 rounded-full bg-[#16acbd] text-white flex items-center justify-center text-[10px] font-black shrink-0">AD</div>' +
+            '<div class="bg-slate-100 text-slate-500 p-2 rounded-2xl rounded-tl-sm text-[11px] leading-relaxed font-medium flex items-center gap-1.5">' +
+              '<span class="inline-block animate-spin w-3 h-3 border-2 border-[#16acbd] border-t-transparent rounded-full"></span>' +
+              '<span>ኦፕሬተሩ መልስ በማዘጋጀት ላይ ነው...</span>' +
+            '</div>';
+          chatStream.appendChild(loadingBubble);
+          chatStream.scrollTop = chatStream.scrollHeight;
+
+          // Call /api/advisor-chat
+          fetch("/api/advisor-chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: query,
+              budget: budget,
+              purpose: selectedPurpose,
+              payment_strategy: selectedPay
+            })
+          })
+          .then(function(r){ return r.json(); })
+          .then(function(resData){
+            chatStream.removeChild(loadingBubble);
+            var reply = resData.reply || "ጥያቄዎን ተቀብለናል። ለተጨማሪ ዝርዝር ከቀጥታ የደንበኞች አገልግሎት ጋር መገናኘት ይችላሉ።";
+            var actionType = resData.quick_action;
+
+            var actionBtnHtml = "";
+            if (actionType === "duty" || query.indexOf("ቀረጥ") !== -1) {
+              actionBtnHtml = '<div class="mt-2 pt-1 border-t border-slate-200"><button type="button" class="chat-action-btn px-2.5 py-1 rounded-lg bg-[#16acbd] text-white text-[10px] font-bold shadow-xs active:scale-95" onclick="document.getElementById(\'aiModalClose\').click(); openToolModal(\'dutyModal\');">🧮 የቀረጥ ስሌት ማስያ ክፈት</button></div>';
+            } else if (actionType === "loan" || query.indexOf("ባንክ") !== -1 || query.indexOf("ብድር") !== -1 || query.indexOf("ቅድመ") !== -1) {
+              actionBtnHtml = '<div class="mt-2 pt-1 border-t border-slate-200"><button type="button" class="chat-action-btn px-2.5 py-1 rounded-lg bg-[#16acbd] text-white text-[10px] font-bold shadow-xs active:scale-95" onclick="document.getElementById(\'aiModalClose\').click(); openToolModal(\'loanModal\');">🏦 የባንክ ብድር ማስያ ክፈት</button></div>';
+            } else if (actionType === "agent" || query.indexOf("ወኪል") !== -1 || query.indexOf("አገናኘኝ") !== -1) {
+              actionBtnHtml = '<div class="mt-2 pt-1 border-t border-slate-200"><a href="https://t.me/AdikaDigitalSupport" target="_blank" class="inline-block px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[10px] font-bold shadow-xs active:scale-95">📱 በቴሌግራም ከወኪል ጋር ተነጋገር</a></div>';
             }
+
+            var opBubble = document.createElement("div");
+            opBubble.className = "flex items-start gap-2";
+            opBubble.innerHTML =
+              '<div class="w-6 h-6 rounded-full bg-[#16acbd] text-white flex items-center justify-center text-[10px] font-black shrink-0">AD</div>' +
+              '<div class="bg-slate-100 text-slate-800 p-2.5 rounded-2xl rounded-tl-sm text-[11px] leading-relaxed font-medium max-w-[85%] whitespace-pre-line">' +
+                esc(reply) +
+                actionBtnHtml +
+              '</div>';
+            chatStream.appendChild(opBubble);
+            chatStream.scrollTop = chatStream.scrollHeight;
+          })
+          .catch(function(err){
+            chatStream.removeChild(loadingBubble);
+            var errBubble = document.createElement("div");
+            errBubble.className = "flex items-start gap-2";
+            errBubble.innerHTML =
+              '<div class="w-6 h-6 rounded-full bg-[#16acbd] text-white flex items-center justify-center text-[10px] font-black shrink-0">AD</div>' +
+              '<div class="bg-rose-50 text-rose-700 p-2 rounded-2xl text-[11px] font-semibold">' +
+                'መልዕክቱን ማስተናገድ አልተቻለም። እባክዎ እንደገና ይሞክሩ።' +
+              '</div>';
+            chatStream.appendChild(errBubble);
+            chatStream.scrollTop = chatStream.scrollHeight;
+          });
+        }
+
+        // Bind Chat Send Button
+        var sendBtn = document.getElementById("advisorChatSendBtn");
+        var inputField = document.getElementById("advisorChatInput");
+        if (sendBtn && inputField) {
+          sendBtn.onclick = function(){
+            sendAdvisorChat(inputField.value);
+          };
+          inputField.onkeydown = function(e){
+            if (e.key === "Enter") {
+              sendAdvisorChat(inputField.value);
+            }
+          };
+        }
+
+        // Bind 3 Quick Action Chips
+        document.querySelectorAll(".advisor-quick-chip").forEach(function(chipBtn){
+          chipBtn.onclick = function(){
+            var q = chipBtn.getAttribute("data-query") || chipBtn.textContent.trim();
+            sendAdvisorChat(q);
           };
         });
       })
@@ -4604,9 +4688,9 @@ def api_ai_advisor():
                     "ከግዢ በፊት የጋራዥ የቴክኒክ ምርመራና የቀረጥ ሁኔታ በሲስተሙ የቀረጥ ማስያ ያረጋግጡ"
                 ],
                 "follow_up_chips": [
-                    "የቀረጥ ክፍያ ስሌት",
+                    "የቀረጥ ስሌት አሳይ",
                     "የባንክ ቅድመ ክፍያ መርሃ-ግብር",
-                    "ከቀጥታ ወኪል ጋር ለመገናኘት"
+                    "ከቀጥታ ወኪል ጋር አገናኘኝ"
                 ]
             }
 
@@ -4616,6 +4700,96 @@ def api_ai_advisor():
         })
     except Exception as e:
         logger.error(f"api_ai_advisor error: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@web_app.route('/api/advisor-chat', methods=['POST', 'OPTIONS'])
+def api_advisor_chat():
+    """
+    INTERACTIVE ADIKA DIGITAL WEALTH OPERATOR CHAT (/api/advisor-chat)
+    Provides real-time conversational financial, automotive, real-estate, and tax consulting in executive Amharic.
+    """
+    if request.method == 'OPTIONS':
+        return ('', 204)
+    try:
+        data = request.json or {}
+        message = str(data.get('message') or '').strip()
+        budget = float(data.get('budget') or 3000000.0)
+        purpose = str(data.get('purpose') or 'business').strip()
+        payment_strategy = str(data.get('payment_strategy') or 'cash').strip()
+
+        if not message:
+            return jsonify({"status": "error", "message": "መልእክት አልተገኘም"}), 400
+
+        api_key = os.environ.get("GEMINI_API_KEY")
+        response_text = None
+        quick_action = None
+
+        msg_lower = message.lower()
+        if "ቀረጥ" in msg_lower or "duty" in msg_lower or "tax" in msg_lower:
+            quick_action = "duty"
+        elif "ባንክ" in msg_lower or "ብድር" in msg_lower or "ቅድመ ክፍያ" in msg_lower or "loan" in msg_lower:
+            quick_action = "loan"
+        elif "ወኪል" in msg_lower or "ቴሌግራም" in msg_lower or "አገናኘኝ" in msg_lower or "agent" in msg_lower:
+            quick_action = "agent"
+
+        if api_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=api_key)
+                prompt = (
+                    "You are the Senior Lead Wealth & Investment Operator of 'አዲካ ዲጂታል ሲስተም' (Adika Digital System / አዲካ ዲጂታል አማካሪ) in Addis Ababa, Ethiopia.\n"
+                    "Deliver authoritative, warm, respectful, executive operator guidance ('እንደ አዲካ ዲጂታል ኦፕሬተር') in natural, polished Amharic.\n"
+                    f"Investor Profile Context: Budget = {budget:,.0f} ETB, Investment Purpose = {purpose}, Payment Method = {payment_strategy}.\n"
+                    f"Client Query: {message}\n\n"
+                    "Provide a thorough, highly structured response with concrete numbers (ETB), tax rules (4% deed transfer, customs/EV), automotive specs/resale values in Addis Ababa, and direct actionable advice. Return plain Amharic text."
+                )
+                model = genai.GenerativeModel(
+                    model_name="gemini-1.5-flash",
+                    generation_config={"temperature": 0.25}
+                )
+                res = model.generate_content(prompt)
+                response_text = (res.text or "").strip()
+            except Exception as e:
+                logger.warning(f"Advisor chat Gemini error: {e}")
+
+        if not response_text:
+            if quick_action == "duty":
+                response_text = (
+                    f"📌 **የቀረጥና የስም ማዛወሪያ ስሌት ማጠቃለያ:**\n\n"
+                    f"• **የስም ማዛወሪያ (Title Transfer Tax):** በአዲስ አበባ ከተማ አስተዳደር ህጋዊ የስም ማዛወሪያ 4% ይከፈላል።\n"
+                    f"• **የጉምሩክ ቀረጥ:** እንደ ሲሊንደር አቅም ከ35% እስከ 100%+ የሚደርስ ሲሆን፤ አዳዲስ የኤሌክትሪክ (EV) መኪኖች ከቀረጥ ነጻ በሆነ ማበረታቻ ገብተዋል።\n"
+                    f"• ዝርዝር የቀረጥ ማስያ ለመጠቀም 'የቀረጥ ስሌት' መሳሪያችንን መክፈት ይችላሉ።"
+                )
+            elif quick_action == "loan":
+                down_30 = budget * 0.30 if budget else 900000
+                response_text = (
+                    f"🏦 **የባንክ ቅድመ ክፍያና የብድር መርሃ-ግብር:**\n\n"
+                    f"• **አነስተኛ ቅድመ ክፍያ (Equity):** 30% ({down_30:,.0f} ETB) በባንክ ሒሳብዎ መያዝ አለበት።\n"
+                    f"• **ቀሪ የባንክ ብድር (70%):** እስከ 5-10 ዓመታት በሚደርስ የክፍያ ጊዜ በዓመታዊ ከ16% - 18.5% ወለድ ይፈቀዳል።\n"
+                    f"• **አስፈላጊ ሰነዶች:** የ6 ወር የባንክ ስቴትመንት፣ የታደሰ ንግድ ፈቃድ ወይም የስራ ደመወዝ ማረጋገጫ።"
+                )
+            elif quick_action == "agent":
+                response_text = (
+                    f"👔 **ከቀጥታ የህዝብ ግንኙነትና የሽያጭ ወኪላችን ጋር ይገናኙ:**\n\n"
+                    f"የአዲካ ዲጂታል ኦፕሬተር በቀጥታ በቴሌግራም ወይም በስልክ ዝግጁ ነው።\n"
+                    f"👉 ከቀጥታ ወኪል ጋር በቴሌግራም ለመነጋገር: https://t.me/AdikaDigitalSupport\n"
+                    f"📱 የደንበኞች አገልግሎት ስልክ፡ +251 911 000 000"
+                )
+            else:
+                response_text = (
+                    f"ውድ ደንበኛችን፤ የ{budget:,.0f} ብር ካፒታልዎን በኢትዮጵያ ገበያ ውስጥ በአስተማማኝ ሁኔታ ለማሳደግ "
+                    f"ፈጣን የዳግም ሽያጭ ያላቸውን የቶዮታ ወይም ሱዙኪ ተሽከርካሪዎችን መምረጥ እንዲሁም በአዲስ አበባ ቁልፍ አካባቢዎች "
+                    f"የሚገኙ አፓርትመንቶችን በቅድመ ክፍያ መያዝ ተመራጭ ነው። ለተጨማሪ ማብራሪያ ጥያቄዎን መላክ ይችላሉ።"
+                )
+
+        return jsonify({
+            "status": "success",
+            "reply": response_text,
+            "quick_action": quick_action
+        })
+    except Exception as e:
+        logger.error(f"api_advisor_chat error: {e}", exc_info=True)
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
