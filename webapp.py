@@ -2558,46 +2558,33 @@ EXPLORER_HTML = r"""
           try {
             var canvas = document.createElement("canvas");
             var context = canvas.getContext("2d");
-            // Image downscaling for faster QR decode
-            var MAX_WIDTH = 1000;
-            var MAX_HEIGHT = 1000;
+            // Keep up to 2500px so small paper QR codes stay readable
             var width = img.width;
             var height = img.height;
-            if (width > height) {
-              if (width > MAX_WIDTH) {
-                height = height * MAX_WIDTH / width;
-                width = MAX_WIDTH;
-              }
-            } else {
-              if (height > MAX_HEIGHT) {
-                width = width * MAX_HEIGHT / height;
-                height = MAX_HEIGHT;
+            var MAX_SIZE = 2500;
+            if (width > MAX_SIZE || height > MAX_SIZE) {
+              if (width > height) {
+                height = Math.round((height * MAX_SIZE) / width);
+                width = MAX_SIZE;
+              } else {
+                width = Math.round((width * MAX_SIZE) / height);
+                height = MAX_SIZE;
               }
             }
-            canvas.width = Math.max(1, Math.floor(width));
-            canvas.height = Math.max(1, Math.floor(height));
-            context.drawImage(img, 0, 0, canvas.width, canvas.height);
-            var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+            canvas.width = Math.max(1, width);
+            canvas.height = Math.max(1, height);
+            context.drawImage(img, 0, 0, width, height);
+            var imageData = context.getImageData(0, 0, width, height);
 
-            // Fast path: dontInvert for typical dark-on-light DARA QR
             var code = jsQR(imageData.data, imageData.width, imageData.height, {
-              inversionAttempts: "dontInvert"
+              inversionAttempts: "attemptBoth"
             });
-            // Retry with invert if first pass failed
-            if (!code) {
-              code = jsQR(imageData.data, imageData.width, imageData.height, {
-                inversionAttempts: "attemptBoth"
-              });
-            }
 
             if (busy) busy.classList.add("hidden");
 
             if (code && code.data && String(code.data).indexOf("http") !== -1) {
               var targetUrl = String(code.data).trim();
               if (resEl) showPoaStateA(targetUrl, resEl);
-            } else if (code && code.data) {
-              // QR present but not a URL
-              if (resEl) showPoaStateB(resEl);
             } else {
               if (resEl) showPoaStateB(resEl);
             }
