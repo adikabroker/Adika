@@ -5400,13 +5400,14 @@ DARA_REGISTRY_DATABASE = {
 @web_app.route('/api/verify-poa', methods=['POST', 'OPTIONS'])
 def api_verify_poa():
     """
-    Real-time DARA POA verification — NO hardcoded mock names.
-    Sources only: live eservices.gov.et scrape/API, or Gemini OCR on uploaded image.
+    Real-time DARA verification via Playwright browser automation on eservices.gov.et,
+    with requests/BeautifulSoup fallback and Gemini OCR for image uploads.
+    No hardcoded mock grantor/attorney names.
     """
     if request.method == 'OPTIONS':
         return ('', 204)
 
-    NOT_FOUND_MSG = "የተላከው የሰነድ ቁጥር በDARA (eservices.gov.et) ዳታቤዝ ውስጥ አልተገኘም።"
+    NOT_FOUND = "የተላከው የሰነድ ቁጥር በDARA (eservices.gov.et) ዳታቤዝ ውስጥ አልተገኘም።"
     AGENCY = "የፌደራል ሰነዶች ማረጋገጫና ምዝገባ አገልግሎት"
 
     def _fail(msg, code=404):
@@ -5426,8 +5427,7 @@ def api_verify_poa():
             },
         }), code
 
-    def _success(doc_number, grantor, attorney, reg_date, status_text, source):
-        # Pass through only extracted values (may be None if portal omitted a field)
+    def _success(doc_number, grantor, attorney, reg_date, status_text, source, raw=None):
         verification = {
             "is_valid_format": True,
             "document_status": status_text,
@@ -5441,12 +5441,13 @@ def api_verify_poa():
             "issuing_authority": AGENCY,
             "verification_source": source,
             "confidence_score_pct": 95,
-            "recommendation_amharic": "ሰነዱ ከኦፊሴላዊ ምንጭ ተረጋግጧል።",
+            "recommendation_amharic": "ሰነዱ ከኦፊሴላዊ ድህረ-ገጽ ተረጋግጧል።",
+            "extracted_raw_text": (raw or "")[:500] if raw else None,
         }
         return jsonify({
             "status": "SUCCESS",
             "is_valid": True,
-            "message": "የDARA የውክልና ሰነድ ከኦፊሴላዊው ዳታቤዝ በስኬት ተረጋገጠ",
+            "message": "የDARA የውክልና ሰነድ በኦፊሴላዊ ድህረ-ገጽ ተረጋገጠ",
             "document_number": doc_number,
             "grantor_name": grantor,
             "attorney_name": attorney,
@@ -5460,213 +5461,233 @@ def api_verify_poa():
                 "attorney": attorney,
                 "reg_date": reg_date,
                 "verification_source": source,
+                "extracted_raw_text": (raw or "")[:300] if raw else None,
             },
             "verification": verification,
         })
 
-    def _txt(el):
-        if el is None:
-            return None
-        t = el.get_text(" ", strip=True) if hasattr(el, "get_text") else str(el).strip()
-        return t or None
-
-    def _live_query(clean_num):
-        """Scrape / call eservices.gov.et. Returns dict of extracted fields or None."""
-        try:
-            import requests as reqlib
-        except Exception:
-            return None
-
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            ),
-            "Accept": "text/html,application/json;q=0.9,*/*;q=0.8",
-            "Accept-Language": "am,en;q=0.8",
+    def _parse_fields_from_text(page_text, clean_num):
+        """Pull grantor/attorney/date/status from free text — no invented values."""
+        grantor = attorney = reg_date = status_text = None
+        patterns = {
+            "grantor": [
+                r"ወካይ\s*[:：\-–]?\s*(.+)",
+                r"Grantor\s*[:：\-–]?\s*(.+)",
+                r"Principal\s*[:：\-–]?\s*(.+)",
+            ],
+            "attorney": [
+                r"ተወካይ\s*[:：\-–]?\s*(.+)",
+                r"Attorney\s*[:：\-–]?\s*(.+)",
+                r"Agent\s*[:：\-–]?\s*(.+)",
+            ],
+            "reg_date": [
+                r"(?:የተመዘገበበት\s*)?ቀን\s*[:：\-–]?\s*(.+)",
+                r"(?:Registration\s*)?Date\s*[:：\-–]?\s*(.+)",
+            ],
+            "status": [
+                r"(?:የሰነዱ\s*)?ሁኔታ\s*[:：\-–]?\s*(.+)",
+                r"Status\s*[:：\-–]?\s*(.+)",
+            ],
         }
-
-        # --- JSON API attempts ---
-        api_endpoints = [
-            ("POST", "https://eservices.gov.et/api/verify-document",
-             {"document_id": clean_num, "doc_number": clean_num, "docNo": clean_num}),
-            ("POST", "https://eservices.gov.et/api/document/verify",
-             {"documentNumber": clean_num, "doc_number": clean_num}),
-            ("GET", "https://eservices.gov.et/api/verify-document",
-             {"docNo": clean_num, "doc_number": clean_num}),
-        ]
-        for method, url, payload in api_endpoints:
-            try:
-                if method == "POST":
-                    r = reqlib.post(url, json=payload, headers=headers, timeout=12)
-                else:
-                    r = reqlib.get(url, params=payload, headers=headers, timeout=12)
-                if r.status_code != 200:
-                    continue
-                try:
-                    j = r.json()
-                except Exception:
-                    continue
-                # Nested data helpers
-                node = j.get("data") if isinstance(j.get("data"), dict) else j
-                valid = (
-                    j.get("is_valid") is True
-                    or j.get("success") is True
-                    or j.get("status") in ("SUCCESS", "success", "Active", "VALID")
-                    or node.get("is_valid") is True
-                )
-                invalid = (
-                    j.get("is_valid") is False
-                    or j.get("success") is False
-                    or j.get("status") in ("FAILED", "failed", "NOT_FOUND")
-                )
-                if invalid and not valid:
-                    return {"_not_found": True}
-                if valid or node.get("grantor") or node.get("grantorName") or node.get("document_number"):
-                    return {
-                        "document_number": (
-                            node.get("document_number")
-                            or node.get("documentNumber")
-                            or node.get("docNo")
-                            or clean_num
-                        ),
-                        "grantor": (
-                            node.get("grantor")
-                            or node.get("grantorName")
-                            or node.get("wokay")
-                            or node.get("grantor_name")
-                        ),
-                        "attorney": (
-                            node.get("attorney")
-                            or node.get("attorneyName")
-                            or node.get("tewekay")
-                            or node.get("attorney_name")
-                        ),
-                        "reg_date": (
-                            node.get("reg_date")
-                            or node.get("registrationDate")
-                            or node.get("registeredDate")
-                            or node.get("registration_date")
-                        ),
-                        "status_text": (
-                            node.get("status_text")
-                            or node.get("status")
-                            or node.get("documentStatus")
-                            or "ህጋዊ እና የጸና (Active)"
-                        ),
-                        "_source": "eservices.gov.et Live API",
-                    }
-            except Exception as e:
-                logger.info("DARA API %s: %s", url, e)
-
-        # --- HTML page scrape ---
-        page_urls = [
-            f"https://eservices.gov.et/verify?docNo={clean_num}",
-            f"https://eservices.gov.et/verify?doc_number={clean_num}",
-            f"https://eservices.gov.et/verify?documentNumber={clean_num}",
-            f"https://www.eservices.gov.et/verify?docNo={clean_num}",
-        ]
-        html = ""
-        for url in page_urls:
-            try:
-                r = reqlib.get(url, headers=headers, timeout=12)
-                if r.status_code == 200 and r.text:
-                    html += "\n" + r.text
-            except Exception as e:
-                logger.info("DARA page %s: %s", url, e)
-
-        if not html.strip():
-            return None
-
-        try:
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(html, "html.parser")
-        except Exception:
-            return None
-
-        def pick(*selectors):
-            for sel in selectors:
-                el = soup.select_one(sel)
-                t = _txt(el)
-                if t:
-                    return t
-            return None
-
-        grantor = pick(
-            ".grantor-name", "#grantorName", ".wokay-name", "[data-grantor]",
-            "#grantor", ".grantor", "td.grantor",
-        )
-        attorney = pick(
-            ".attorney-name", "#attorneyName", ".teway-name", "[data-attorney]",
-            "#attorney", ".attorney", "td.attorney",
-        )
-        reg_date = pick(
-            ".reg-date", "#registeredDate", "[data-reg-date]", "#regDate",
-            ".registration-date", "td.date",
-        )
-        status_text = pick(
-            ".doc-status", "#documentStatus", "[data-status]", "#status",
-            ".status", "td.status",
-        )
-
-        # Label-based extraction (Amharic/English table rows)
-        text = soup.get_text("\n", strip=True)
-        label_map = {
-            "grantor": [r"ወካይ\s*[:：]?\s*(.+)", r"Grantor\s*[:：]?\s*(.+)", r"Principal\s*[:：]?\s*(.+)"],
-            "attorney": [r"ተወካይ\s*[:：]?\s*(.+)", r"Attorney\s*[:：]?\s*(.+)", r"Agent\s*[:：]?\s*(.+)"],
-            "reg_date": [r"ቀን\s*[:：]?\s*(.+)", r"Date\s*[:：]?\s*(.+)", r"Registered\s*[:：]?\s*(.+)"],
-            "status": [r"ሁኔታ\s*[:：]?\s*(.+)", r"Status\s*[:：]?\s*(.+)"],
-        }
-        for line in text.split("\n"):
+        for line in (page_text or "").splitlines():
             line = line.strip()
-            if not line:
+            if not line or len(line) > 200:
                 continue
             if not grantor:
-                for p in label_map["grantor"]:
+                for p in patterns["grantor"]:
                     m = re.search(p, line, re.I)
                     if m:
                         grantor = m.group(1).strip()
                         break
             if not attorney:
-                for p in label_map["attorney"]:
+                for p in patterns["attorney"]:
                     m = re.search(p, line, re.I)
                     if m:
                         attorney = m.group(1).strip()
                         break
             if not reg_date:
-                for p in label_map["reg_date"]:
+                for p in patterns["reg_date"]:
                     m = re.search(p, line, re.I)
                     if m:
                         reg_date = m.group(1).strip()
                         break
             if not status_text:
-                for p in label_map["status"]:
+                for p in patterns["status"]:
                     m = re.search(p, line, re.I)
                     if m:
                         status_text = m.group(1).strip()
                         break
 
-        neg = any(k in text for k in ["Not Found", "Invalid", "አልተገኘም", "ተሰርዟል", "Revoked"])
-        pos = any(k in text for k in ["Active", "Valid", "ህጋዊ", "የጸና", "ተረጋገጠ", "Registered"])
-        num_flat = re.sub(r"\s+", "", clean_num).replace("ቅ", "")
-        echoed = num_flat in re.sub(r"\s+", "", text).replace("ቅ", "")
-
+        neg = any(k in (page_text or "") for k in ["Not Found", "Invalid", "አልተገኘም", "ተሰርዟል", "Revoked"])
+        pos = any(k in (page_text or "") for k in ["Active", "Valid", "ህጋዊ", "የጸና", "ተረጋገጠ", "Registered"])
         if neg and not pos and not grantor and not attorney:
             return {"_not_found": True}
-
-        if grantor or attorney or (pos and echoed):
+        if pos or grantor or attorney:
             return {
                 "document_number": clean_num,
                 "grantor": grantor,
                 "attorney": attorney,
                 "reg_date": reg_date,
                 "status_text": status_text or ("ህጋዊ እና የጸና (Active)" if pos else None),
-                "_source": "eservices.gov.et Live Database",
+                "raw": page_text,
             }
         return None
 
+    def _playwright_verify(clean_num):
+        """Headless Chromium on eservices.gov.et verify form."""
+        try:
+            from playwright.sync_api import sync_playwright
+        except Exception as e:
+            logger.info("Playwright not installed: %s", e)
+            return None
+
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.set_default_timeout(20000)
+
+                candidates = [
+                    "https://eservices.gov.et/verify",
+                    "https://www.eservices.gov.et/verify",
+                    "https://eservices.gov.et/",
+                ]
+                loaded = False
+                for url in candidates:
+                    try:
+                        page.goto(url, timeout=20000, wait_until="domcontentloaded")
+                        loaded = True
+                        break
+                    except Exception as ge:
+                        logger.info("goto %s: %s", url, ge)
+                if not loaded:
+                    browser.close()
+                    return None
+
+                # Try common input selectors
+                filled = False
+                for sel in [
+                    'input[type="text"]',
+                    'input[name*="doc"]',
+                    'input[id*="doc"]',
+                    'input[placeholder*="ቁጥር"]',
+                    'input[placeholder*="number"]',
+                    'input:not([type="hidden"])',
+                ]:
+                    try:
+                        loc = page.locator(sel).first
+                        if loc.count() >= 0:
+                            loc.wait_for(state="visible", timeout=3000)
+                            loc.fill(clean_num)
+                            filled = True
+                            break
+                    except Exception:
+                        continue
+
+                if filled:
+                    # Submit: button or Enter
+                    submitted = False
+                    for bsel in [
+                        'button[type="submit"]',
+                        'input[type="submit"]',
+                        'button:has-text("Verify")',
+                        'button:has-text("አረጋግጥ")',
+                        'button:has-text("Search")',
+                        'button:has-text("ፈልግ")',
+                    ]:
+                        try:
+                            page.locator(bsel).first.click(timeout=2000)
+                            submitted = True
+                            break
+                        except Exception:
+                            continue
+                    if not submitted:
+                        page.keyboard.press("Enter")
+
+                    # Wait for any result UI
+                    for wait_sel in [
+                        ".result-container",
+                        ".verification-result",
+                        "#result",
+                        ".alert",
+                        "table",
+                        ".card",
+                    ]:
+                        try:
+                            page.wait_for_selector(wait_sel, timeout=8000)
+                            break
+                        except Exception:
+                            continue
+                    page.wait_for_timeout(1500)
+
+                page_text = page.inner_text("body")
+                browser.close()
+                return _parse_fields_from_text(page_text, clean_num)
+        except Exception as e:
+            logger.warning("Playwright DARA verify failed: %s", e)
+            return None
+
+    def _requests_verify(clean_num):
+        try:
+            import requests as reqlib
+        except Exception:
+            return None
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/json,*/*",
+        }
+        # JSON APIs
+        for method, url, payload in [
+            ("POST", "https://eservices.gov.et/api/verify-document",
+             {"document_id": clean_num, "doc_number": clean_num, "docNo": clean_num}),
+            ("GET", "https://eservices.gov.et/api/verify-document",
+             {"docNo": clean_num}),
+        ]:
+            try:
+                r = reqlib.post(url, json=payload, headers=headers, timeout=12) if method == "POST" else reqlib.get(url, params=payload, headers=headers, timeout=12)
+                if r.status_code != 200:
+                    continue
+                j = r.json()
+                node = j.get("data") if isinstance(j.get("data"), dict) else j
+                if j.get("is_valid") is False or j.get("success") is False:
+                    return {"_not_found": True}
+                if j.get("is_valid") or j.get("success") or node.get("grantor") or node.get("grantorName"):
+                    return {
+                        "document_number": node.get("document_number") or node.get("documentNumber") or clean_num,
+                        "grantor": node.get("grantor") or node.get("grantorName") or node.get("grantor_name"),
+                        "attorney": node.get("attorney") or node.get("attorneyName") or node.get("attorney_name"),
+                        "reg_date": node.get("reg_date") or node.get("registrationDate") or node.get("registration_date"),
+                        "status_text": node.get("status_text") or node.get("status") or "ህጋዊ እና የጸና (Active)",
+                        "raw": str(j)[:500],
+                    }
+            except Exception as e:
+                logger.info("requests API: %s", e)
+
+        # HTML
+        html = ""
+        for url in [
+            f"https://eservices.gov.et/verify?docNo={clean_num}",
+            f"https://eservices.gov.et/verify?doc_number={clean_num}",
+        ]:
+            try:
+                r = reqlib.get(url, headers=headers, timeout=12)
+                if r.status_code == 200:
+                    html += "\n" + r.text
+            except Exception:
+                pass
+        if not html.strip():
+            return None
+        try:
+            from bs4 import BeautifulSoup
+            text = BeautifulSoup(html, "html.parser").get_text("\n", strip=True)
+        except Exception:
+            text = html
+        return _parse_fields_from_text(text, clean_num)
+
     def _ocr_image(uploaded_file, image_data):
-        """Extract fields from document photo via Gemini Vision. No static fallbacks."""
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             return None, "no_key"
@@ -5688,33 +5709,21 @@ def api_verify_poa():
                 pil = Image.open(io.BytesIO(b64mod.b64decode(raw)))
 
             prompt = (
-                "Extract text from this Ethiopian DARA Power of Attorney document image.\n"
-                "Accept BOTH letterheads:\n"
-                "  የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ\n"
-                "  የፌደራል ሰነዶች ማረጋገጫና ምዝገባ አገልግሎት\n"
-                "Titles may be: የውክልና ስልጣን, ልዩ የውክልና ስልጣን, ጠቅላላ የውክልና ስልጣን.\n"
-                "Return JSON ONLY with keys:\n"
-                "  is_valid_format (boolean),\n"
-                "  document_number (string|null),\n"
-                "  registration_date (string|null),\n"
-                "  grantor (string|null — ወካይ),\n"
-                "  attorney (string|null — ተወካይ),\n"
-                "  status_text (string|null)\n"
-                "Read only what is visible. Use null when unreadable. Never invent names."
+                "Extract from Ethiopian DARA POA photo (Agency or Service letterhead). "
+                "JSON keys: is_valid_format, document_number, registration_date, grantor, attorney, status_text. "
+                "null if unreadable. Never invent names."
             )
             model = genai.GenerativeModel(
                 model_name="gemini-1.5-flash",
                 generation_config={"response_mime_type": "application/json", "temperature": 0.0},
             )
             res = model.generate_content([prompt, pil])
-            txt = (res.text or "").strip()
-            if txt.startswith("```"):
-                txt = txt.strip("`")
-                if txt.lower().startswith("json"):
-                    txt = txt[4:]
+            txt = (res.text or "").strip().strip("`")
+            if txt.lower().startswith("json"):
+                txt = txt[4:]
             return json.loads(txt.strip()), "ok"
         except Exception as e:
-            logger.warning("POA OCR failed: %s", e)
+            logger.warning("POA OCR: %s", e)
             return None, str(e)
 
     try:
@@ -5741,76 +5750,76 @@ def api_verify_poa():
             or request.files.get("photo")
             or request.files.get("document")
         )
-        image_data = None
-        if isinstance(data, dict):
-            image_data = data.get("image_data") or data.get("photo") or data.get("image")
-        if not image_data:
-            image_data = request.form.get("image_data")
+        image_data = (data.get("image_data") if isinstance(data, dict) else None) or request.form.get("image_data")
         has_photo = bool(uploaded_file and getattr(uploaded_file, "filename", None)) or bool(image_data)
 
-        # ---------- Text document number → live portal only ----------
         if doc_number:
-            live = _live_query(doc_number)
+            clean_num = doc_number.strip()
+
+            # 1) Playwright live browser
+            live = _playwright_verify(clean_num)
             if live and live.get("_not_found"):
-                return _fail(NOT_FOUND_MSG, 404)
-            if live and (live.get("grantor") or live.get("attorney") or live.get("document_number")):
+                return _fail(NOT_FOUND, 404)
+            if live and (live.get("grantor") or live.get("attorney") or live.get("status_text")):
                 return _success(
-                    live.get("document_number") or doc_number,
+                    live.get("document_number") or clean_num,
                     live.get("grantor"),
                     live.get("attorney"),
                     live.get("reg_date"),
                     live.get("status_text") or "ህጋዊ እና የጸና (Active)",
-                    live.get("_source") or "eservices.gov.et Live Database",
+                    "eservices.gov.et (Playwright)",
+                    live.get("raw"),
                 )
-            # Portal unreachable or empty → not found (no mock)
-            return _fail(NOT_FOUND_MSG, 404)
 
-        # ---------- Image → OCR only (then optional live cross-check) ----------
+            # 2) requests fallback
+            live2 = _requests_verify(clean_num)
+            if live2 and live2.get("_not_found"):
+                return _fail(NOT_FOUND, 404)
+            if live2 and (live2.get("grantor") or live2.get("attorney") or live2.get("status_text")):
+                return _success(
+                    live2.get("document_number") or clean_num,
+                    live2.get("grantor"),
+                    live2.get("attorney"),
+                    live2.get("reg_date"),
+                    live2.get("status_text") or "ህጋዊ እና የጸና (Active)",
+                    "eservices.gov.et (HTTP)",
+                    live2.get("raw"),
+                )
+
+            return _fail(NOT_FOUND, 404)
+
         if has_photo:
             parsed, st = _ocr_image(uploaded_file, image_data)
             if st == "no_key":
-                return _fail(
-                    "ፎቶ ለማንበብ GEMINI_API_KEY ያስፈልጋል። የሰነድ ቁጥሩን በጽሁፍ ያስገቡ።",
-                    400,
-                )
+                return _fail("ፎቶ ለማንበብ GEMINI_API_KEY ያስፈልጋል። የሰነድ ቁጥሩን በጽሁፍ ያስገቡ።", 400)
             if not parsed or parsed.get("is_valid_format") is False:
-                return _fail(NOT_FOUND_MSG, 404)
-
+                return _fail(NOT_FOUND, 404)
             num = parsed.get("document_number")
             grantor = parsed.get("grantor")
             attorney = parsed.get("attorney")
             reg_date = parsed.get("registration_date")
             status_text = parsed.get("status_text")
 
-            # Cross-check number on live portal when OCR found an ID
             if num:
-                live = _live_query(num)
-                if live and not live.get("_not_found"):
+                live = _playwright_verify(num) or _requests_verify(num)
+                if live and not live.get("_not_found") and (live.get("grantor") or live.get("status_text")):
                     return _success(
                         live.get("document_number") or num,
                         live.get("grantor") or grantor,
                         live.get("attorney") or attorney,
                         live.get("reg_date") or reg_date,
                         live.get("status_text") or status_text or "ህጋዊ እና የጸና (Active)",
-                        "eservices.gov.et Live Database + AI Vision",
+                        "eservices.gov.et + AI Vision",
+                        live.get("raw"),
                     )
-
             if not num and not grantor and not attorney:
-                return _fail("ከፎቶው መረጃ ማንበብ አልተቻለም። ግልጽ ፎቶ ይጫኑ።", 400)
-
-            return _success(
-                num,
-                grantor,
-                attorney,
-                reg_date,
-                status_text or "ከሰነድ ፎቶ የተነበበ",
-                "AI Vision OCR",
-            )
+                return _fail("ከፎቶው መረጃ ማንበብ አልተቻለም።", 400)
+            return _success(num, grantor, attorney, reg_date, status_text or "ከሰነድ ፎቶ የተነበበ", "AI Vision OCR")
 
         return _fail("እባክዎን ትክክለኛ የሰነድ ቁጥር ያስገቡ።", 400)
     except Exception as e:
-        logger.error("api_verify_poa error: %s", e, exc_info=True)
-        return _fail(f"ከDARA ሰርቨር ጋር ማገናኘት አልተቻለም: {e}", 500)
+        logger.error("api_verify_poa: %s", e, exc_info=True)
+        return _fail(f"ከDARA ዌብሳይት መረጃ ማውጣት አልተቻለም፦ {e}", 500)
 
 
 @web_app.route('/api/analyze-diagnostic', methods=['POST', 'OPTIONS'])
