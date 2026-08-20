@@ -7,4 +7,3 @@ fastapi
 gunicorn
 google-generativeai
 supabase
-playwright
