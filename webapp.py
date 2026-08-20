@@ -5539,45 +5539,63 @@ def api_verify_poa():
 
                 genai.configure(api_key=api_key)
                 prompt = (
-                    "You are a Senior AI Vision Engineer & Legal Document Automation Specialist for the Ethiopian Federal Documents Authentication and Registration Agency (የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ - DARA).\n\n"
-                    "🎯 REAL ETHIOPIAN DARA DOCUMENT DETECTION & EXTRACTION RULES:\n"
-                    "Inspect the provided document image top-to-bottom for authentic Ethiopian DARA Power of Attorney features:\n"
-                    "1. HEADER TEXT: 'የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ' or 'Federal Documents Authentication and Registration Agency' or 'የሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ'.\n"
-                    "2. TITLE: 'የውክለና ስልጣን' or 'የውክልና ስልጣን' or 'የውክልና ማስረጃ'.\n"
-                    "3. DOCUMENT NUMBER (የሰነድ ቁጥር / ቅፅ/ቁጥር): e.g., 'ቅ2/011391/1/2012', 'ቅ2/0053691/1/2014', '2/0053691/2014', '2/011391/1/2012', or registration numbers.\n"
-                    "4. KEY ROLES & FIELDS:\n"
-                    "   - Grantor (ወካይ): Extract full name after 'ወካይ:- 1' or 'ወካይ:' (e.g., አቶ አለማየሁ ደበበ ወልደጻዲቅ or similar).\n"
-                    "   - Attorney (ተወካይ): Extract full name after 'ተወካይ:- 1' or 'ተወካይ:' (e.g., ወ/ሮ ሰላማዊት ታደሰ ረዳ or similar).\n"
-                    "   - Date (ቀን): Extract Ethiopian calendar date (e.g., 7/6/2012, 4/2/2014, or ሚያዝያ 18 ቀን 2014 ዓ.ም).\n"
-                    "5. VISUAL AUTHENTICITY MARKS: Official DARA round purple/blue agency stamp/seal, authorized registrar/grantor signatures, stamp boxes, or top-left QR code.\n\n"
-                    "STRICT REJECTION GUARDRAIL (ONLY FOR UNRELATED IMAGES):\n"
-                    "If and ONLY IF the image is completely unrelated to legal documents (e.g., a photo of a car, food, nature, a selfie, totally blank page, unrelated supermarket receipt):\n"
-                    "Return ONLY this JSON structure:\n"
+                    "You are a Senior AI Vision Engineer & Legal Document Automation Specialist for the Ethiopian Federal Documents Authentication and Registration Agency / Service (የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ / አገልግሎት - DARA).\n\n"
+                    "🎯 UNIVERSAL ETHIOPIAN DARA DOCUMENT DETECTION & EXTRACTION RULES:\n"
+                    "Inspect the provided document image top-to-bottom for authentic Ethiopian DARA Power of Attorney (የውክልና ሰነድ) features with MAXIMUM RESILIENCE to wording variations across historical & modern revisions:\n\n"
+                    "1. UNIVERSAL HEADER MATCHING:\n"
+                    "   Accept ANY of these header variations at the top:\n"
+                    "   - 'የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ' (Historical Agency Name)\n"
+                    "   - 'የፌደራል ሰነዶች ማረጋገጫና ምዝገባ አገልግሎት' (Current Service Name)\n"
+                    "   - Any header containing 'ሰነዶች ማረጋገጫና ምዝገባ' or 'Documents Authentication and Registration'\n"
+                    "   - English: 'Federal Documents Authentication and Registration Agency / Service' or 'DARA'\n\n"
+                    "2. UNIVERSAL TITLE MATCHING:\n"
+                    "   Accept ANY of these title variations:\n"
+                    "   - 'የውክልና ስልጣን' (General / Standard Power of Attorney)\n"
+                    "   - 'ልዩ የውክልና ስልጣን' (Special Power of Attorney)\n"
+                    "   - 'ጠቅላላ የውክልና ስልጣን' (General Power of Attorney)\n"
+                    "   - 'የውክለና ስልጣን' / 'የውክልና ማስረጃ' / 'የውክልና ስልጣን ማስረጃ'\n\n"
+                    "3. DOCUMENT NUMBER & IDENTIFIERS (የሰነድ ቁጥር / ቅፅ/ቁጥር / መለያ ቁጥር):\n"
+                    "   Extract the document sequence regardless of whether it uses 'የሰነድ ቁጥር:', 'ቅፅ/ቁጥር:', 'መለያ ቁጥር:', 'መ.ቁ:', or standalone number with slashes.\n"
+                    "   Common patterns: 'ቅ2/011391/1/2012', 'ቅ2/0053691/1/2014', '2/0053691/2014', '2/011391/1/2012', '12345/2015', or any registration sequence.\n\n"
+                    "4. UNIVERSAL ENTITY EXTRACTION:\n"
+                    "   - Grantor (ወካይ): Extract name following 'ወካይ', 'ወካዮች', 'የወካይ ስም', 'ወካይ:- 1', 'ወካይ፡- 1', etc.\n"
+                    "   - Attorney / Grantee (ተወካይ): Extract name following 'ተወካይ', 'ተወካዮች', 'የተወካይ ስም', 'ተወካይ:- 1', 'ተወካይ፡- 1', etc.\n"
+                    "   - Date (ቀን): Extract Ethiopian calendar date following 'ቀን:', 'የተሰጠበት ቀን:', e.g., '7/6/2012', '18/08/2014', 'ሚያዝያ 18 ቀን 2014 ዓ.ም', etc.\n\n"
+                    "5. VISUAL MARKS & POWERS:\n"
+                    "   - Check for official circular agency stamp (purple/blue ink), registrar signature, stamp boxes, or top-corner QR code.\n"
+                    "   - Identify powers granted: vehicle/property sale, bank cash collection, title transfer at DARA.\n\n"
+                    "STRICT REJECTION GUARDRAILS:\n"
+                    "- The AI MUST NOT reject (MUST NOT return is_valid_format: false) if at least a DARA Header OR a valid DARA Document ID Pattern OR 'የውክልና ስልጣን' / 'ውክልና' is detected.\n"
+                    "- ONLY return is_valid_format: false if and ONLY IF the image is completely unrelated (e.g., photo of a car, food, landscape, a selfie, totally blank page, unrelated supermarket receipt) with ZERO legal/DARA content.\n\n"
+                    "IF THE IMAGE IS UNRELATED (NO DARA / NO LEGAL POA TEXT):\n"
+                    "Return ONLY this JSON:\n"
                     "{\n"
                     '  "is_valid_format": false,\n'
+                    '  "status": "ERROR",\n'
                     f'  "error_message_amharic": "{dara_not_found_msg}",\n'
                     '  "confidence_score_pct": 0,\n'
                     f'  "recommendation_amharic": "{dara_not_found_msg}"\n'
                     "}\n\n"
-                    "IF THE IMAGE IS AN ETHIOPIAN DARA POWER OF ATTORNEY (የውክልና ሰነድ):\n"
-                    "Extract the real values accurately from the image and return ONLY this JSON structure:\n"
+                    "IF THE IMAGE IS AN AUTHENTIC ETHIOPIAN POA (የውክልና ሰነድ):\n"
+                    "Extract the real values accurately from the image and return ONLY this JSON:\n"
                     "{\n"
                     '  "is_valid_format": true,\n'
+                    '  "status": "SUCCESS",\n'
                     '  "document_status": "ህጋዊ እና ፀና ያለ (Active & Valid)",\n'
-                    '  "agency": "የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ (Federal Documents Authentication and Registration Agency)",\n'
+                    '  "agency": "የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ / አገልግሎት (DARA)",\n'
                     '  "dara_registration_number": "Extracted Document ID (e.g. ቅ2/011391/1/2012 or ቅ2/0053691/1/2014)",\n'
                     '  "registration_date": "Extracted Date (e.g. 7/6/2012 ዓ.ም or ሚያዝያ 18 ቀን 2014 ዓ.ም)",\n'
                     '  "grantor_name": "Full name of ወካይ",\n'
                     '  "grantee_name": "Full name of ተወካይ",\n'
                     '  "attorney_name": "Full name of ተወካይ",\n'
-                    '  "document_type": "የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ ህጋዊ የውክልና ስልጣን ማስረጃ",\n'
+                    '  "document_type": "ህጋዊ የውክልና ስልጣን ማስረጃ (Official DARA Registered POA)",\n'
                     '  "branch_office": "Extracted Branch Office (e.g. አዲስ አበባ - ዋናው መምሪያ)",\n'
-                    '  "issuing_authority": "የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ (DARA)",\n'
+                    '  "issuing_authority": "የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ / አገልግሎት (DARA)",\n'
                     '  "legal_powers": "የንግድ፣ የገንዘብ፣ የንብረትና የተሽከርካሪ ጉዳዮችን የማስፈጸም የውክልና ስልጣን",\n'
                     '  "verification_mark": "በDARA ዲጂታል QR ኮድ እና በኤጀንሲው ማህተም የተረጋገጠ",\n'
                     '  "authorized_powers": [\n'
                     '    "ተሽከርካሪን ወይም ንብረትን ለሶስተኛ ወገን ለመሸጥና ለማስተላለፍ",\n'
-                    '    "በሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ (DARA) ቀርቦ ስም ለማዛወር",\n'
+                    '    "በሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ/አገልግሎት (DARA) ቀርቦ ስም ለማዛወር",\n'
                     '    "የሽያጭ ገንዘብ በባንክ ለመቀበል"\n'
                     '  ],\n'
                     '  "has_selling_power": true,\n'
@@ -5585,7 +5603,7 @@ def api_verify_poa():
                     '  "has_qr_or_stamp": true,\n'
                     '  "confidence_score_pct": 98,\n'
                     '  "verification_method": "DARA AI Vision Document Authentication",\n'
-                    '  "recommendation_amharic": "ሰነዱ በፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ (DARA) ማዕከላዊ ዳታቤዝ የተረጋገጠና ፀንቶ የሚገኝ ህጋዊ ሰነድ ነው።"\n'
+                    '  "recommendation_amharic": "ሰነዱ በፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ/አገልግሎት (DARA) የተረጋገጠና ፀንቶ የሚገኝ ህጋዊ ሰነድ ነው።"\n'
                     "}\n"
                     "Return ONLY JSON."
                 )
@@ -5605,7 +5623,8 @@ def api_verify_poa():
                 if txt.startswith("```"): txt = txt[3:]
                 if txt.endswith("```"): txt = txt[:-3]
                 parsed = json.loads(txt.strip())
-                if parsed.get("is_valid_format") is True:
+                if parsed.get("is_valid_format") is True or parsed.get("is_valid") is True or parsed.get("status") == "SUCCESS":
+                    parsed["is_valid_format"] = True
                     verification = parsed
                 else:
                     verification = {
