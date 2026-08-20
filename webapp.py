@@ -88,7 +88,6 @@ SELLER_FORM_HTML = r"""
   <title>Post Listing | ማስታወቂያ ልቀቅ</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
@@ -1476,78 +1475,88 @@ EXPLORER_HTML = r"""
     </div>
   </div>
 
-  <!-- Modal: Power of Attorney Verification (DARA Official Engine) -->
+  <!-- Modal: Power of Attorney Verification (POA Digital Verification) -->
   <div id="poaModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-      <!-- DARA Official Branding Header -->
+      <!-- Header Section -->
       <div class="px-4 py-3.5 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0 shadow-sm">
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-base shadow-inner">🏛️</div>
+          <div class="w-8 h-8 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-base shadow-inner">📜</div>
           <div>
-            <div class="font-black text-xs tracking-tight flex items-center gap-1.5">
-              <span>የሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ</span>
-              <span class="px-1.5 py-0.2 bg-emerald-400/30 border border-emerald-300/40 text-[9px] text-emerald-100 rounded-full font-bold uppercase">DARA</span>
-            </div>
-            <div class="text-[10px] text-[#b5eff3] font-medium">ዲጂታል የውክልና ማረጋገጫ (Official Digital Verification)</div>
+            <h2 class="font-bold text-xs tracking-tight text-white">
+              የውክልና ሰነድ ማረጋገጫ (POA Digital Verification)
+            </h2>
+            <p class="text-[10px] text-[#b5eff3] font-medium">
+              በአዲካ ዲጂታል ሲስተም የቀረበ የውክልና ሰነድ ማጣሪያ
+            </p>
           </div>
         </div>
-        <button onclick="closeToolModal('poaModal')" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold text-sm transition-all flex items-center justify-center">✕</button>
+        <div class="flex items-center gap-2">
+          <span class="bg-[#16acbd] text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider border border-white/20 shadow-sm">
+            ADIKA
+          </span>
+          <button onclick="closeToolModal('poaModal')" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold text-sm transition-all flex items-center justify-center">✕</button>
+        </div>
       </div>
 
       <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs bg-[#f8fafc]">
-        <!-- Official Agency Notice / Badge -->
-        <div class="p-2.5 rounded-2xl bg-white border border-[#16acbd]/30 shadow-xs flex items-start gap-2.5 text-[11px] text-slate-600">
-          <span class="text-base shrink-0 mt-0.5">🛡️</span>
-          <div class="leading-snug">
-            የውክልና ሰነዶችንና ካርታዎችን ትክክለኛነት በፌደራል የሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ (DARA) ማዕከላዊ ዳታቤዝ በቀጥታ ያረጋግጡ።
-          </div>
-        </div>
-
-        <!-- Dual Input Interface -->
+        <!-- Document Inspection Section: Streamlined Choices -->
         <div class="space-y-3">
-          <!-- Option A: Text Input -->
-          <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-1.5">
+          <!-- Choice 1: Live Camera Scanner -->
+          <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
             <div class="flex items-center justify-between">
-              <label class="font-extrabold text-slate-800 text-xs flex items-center gap-1">
-                <span class="text-[#0e7490]">1️⃣</span>
-                <span>የውክልና ሰነድ ቁጥር (POA Document ID Number)</span>
+              <label class="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                <span class="text-base">📸</span>
+                <span>የቀጥታ ካሜራ ስካነር (Live Camera Scanner)</span>
               </label>
-              <span class="text-[9px] font-bold text-[#16acbd] bg-[#16acbd]/10 px-1.5 py-0.5 rounded-full">ምርጫ ሀ (Option A)</span>
+              <span class="text-[9px] font-bold text-[#16acbd] bg-[#16acbd]/10 px-2 py-0.5 rounded-full">ምርጫ 1 (Choice 1)</span>
             </div>
-            <div class="relative">
-              <input id="poaDocIdInput" type="text" placeholder="ለምሳሌ፡ DARA-2026-8891 ወይም 2026-XXXX" class="w-full pl-8 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:border-[#16acbd] text-xs font-semibold text-slate-900 outline-none transition-all placeholder:text-slate-400" />
-              <span class="absolute left-2.5 top-2.5 text-slate-400 text-xs">🔢</span>
+            <button id="poaLiveCameraBtn" type="button" class="w-full py-2.5 bg-gradient-to-r from-[#0e7490] to-[#16acbd] hover:from-[#0c627a] hover:to-[#1394a3] text-white font-bold rounded-xl text-xs shadow flex items-center justify-center gap-2 active:scale-98 transition-all">
+              <span>📷</span>
+              <span>ካሜራውን ይክፈቱና QR ኮድ ይቃኙ (Open Camera)</span>
+            </button>
+            <input id="poaCameraInput" type="file" accept="image/*" capture="environment" class="hidden" />
+          </div>
+
+          <!-- Video Viewport for Live Camera scanning (if active) -->
+          <div id="poaCameraContainer" class="hidden p-3 bg-slate-900 rounded-2xl text-white space-y-2 relative overflow-hidden">
+            <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden flex items-center justify-center">
+              <video id="poaVideo" class="w-full h-full object-cover" playsinline muted></video>
+              <canvas id="poaCanvas" class="hidden"></canvas>
+              <!-- Scanner overlay line -->
+              <div class="absolute inset-x-4 top-1/2 h-0.5 bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse pointer-events-none"></div>
+              <div class="absolute inset-4 border-2 border-dashed border-cyan-400/60 rounded-xl pointer-events-none"></div>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-[10px] text-cyan-200 font-medium">📷 የ QR ኮዱን በማዕቀፉ ውስጥ ያሳዩ...</span>
+              <button id="poaStopCameraBtn" type="button" class="px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded-lg text-[10px] font-bold">ያቁሙ (Close Camera)</button>
             </div>
           </div>
 
-          <!-- Divider -->
-          <div class="relative flex items-center justify-center">
-            <div class="border-t border-slate-200 w-full"></div>
-            <span class="bg-[#f8fafc] px-3 text-[10px] font-black text-slate-400 uppercase tracking-wider">ወይም (OR)</span>
-          </div>
-
-          <!-- Option B: Image / QR Code Upload -->
-          <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-1.5">
+          <!-- Choice 2: Upload Document Photo (Choose File) -->
+          <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
             <div class="flex items-center justify-between">
-              <label class="font-extrabold text-slate-800 text-xs flex items-center gap-1">
-                <span class="text-[#0e7490]">2️⃣</span>
-                <span>የሰነድ ወይም የ QR ኮድ ፎቶ ጫን (Upload Photo / QR)</span>
+              <label class="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                <span class="text-base">📁</span>
+                <span>የሰነድ ወይም የ QR ኮድ ፎቶ ይጭኑ (Upload Photo)</span>
               </label>
-              <span class="text-[9px] font-bold text-[#16acbd] bg-[#16acbd]/10 px-1.5 py-0.5 rounded-full">ምርጫ ለ (Option B)</span>
+              <span class="text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">ምርጫ 2 (Choice 2)</span>
             </div>
-            <input id="qr-input" name="poaImageFile" type="file" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-[#16acbd] file:text-white hover:file:bg-[#1394a3] cursor-pointer bg-slate-50 p-1.5 rounded-xl border border-slate-200 transition-all" />
-            <p class="text-[10px] text-slate-400 leading-tight">የውክልና ሰነዱን ማህተም ወይም በሰነዱ ላይ ያለውን የዲጂታል QR ኮድ ፎቶ ያንሱ።</p>
+            <div class="flex items-center space-x-2 border border-slate-200 rounded-xl p-1.5 bg-slate-50">
+              <label class="bg-[#16acbd] hover:bg-[#1394a3] text-white text-xs font-bold py-2 px-3.5 rounded-lg cursor-pointer transition shrink-0">
+                Choose File
+                <input id="qr-input" name="poaImageFile" type="file" accept="image/*" class="hidden" />
+              </label>
+              <span id="poaFileNameDisplay" class="text-xs text-slate-500 truncate flex-1 font-medium">
+                No file chosen
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-tight">የውክልና ሰነዱን ማህተም ወይም በሰነዱ ላይ ያለውን ዲጂታል QR ኮድ ያሳይሉ።</p>
           </div>
         </div>
-
-        <!-- Verify Action Button -->
-        <button id="poaVerifyBtn" type="button" class="w-full py-3 bg-gradient-to-r from-[#0e7490] to-[#16acbd] hover:from-[#0c627a] hover:to-[#1394a3] text-white font-black rounded-2xl shadow-md active:scale-98 transition-all flex items-center justify-center gap-2 text-xs">
-          <span>🔍</span>
-          <span>በ DARA ዳታቤዝ አጣራ (Verify with DARA)</span>
-        </button>
 
         <!-- Result Container -->
-        <div id="poaResult" class="hidden font-medium"></div>
+        <div id="poaResult" class="hidden font-medium space-y-3"></div>
       </div>
     </div>
   </div>
@@ -2432,91 +2441,7 @@ EXPLORER_HTML = r"""
 
       var resEl = document.getElementById("contractResult");
       resEl.classList.remove("hidden");
-      resEl.innerHTML = "⏳ ህጋዊ ውል እየተዘጋጀ ነው...";
-
-      fetch("/api/generate-contract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contract_type: contractType,
-          seller_name: seller,
-          buyer_name: buyer,
-          agreed_price: price,
-          total_price: price,
-          advance_payment: advance,
-          item_identifier: docId,
-          plate_number: docId,
-          chassis_number: chassis,
-          engine_number: engine,
-          libre_number: libre
-        })
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var contractObj = d.contract || {};
-        var contractText = contractObj.contract_text_amharic || contractObj.print_ready_text || d.contract_text || (typeof d.contract === "string" ? d.contract : "ውል ተዘጋጅቷል");
-        var contractTitle = contractObj.contract_title || "ህጋዊ የሽያጭ ውል ስምምነት";
-        var clauses = contractObj.key_clauses_summary || [];
-
-        resEl.innerHTML =
-          '<div class="space-y-2.5 text-xs">' +
-            '<div class="font-extrabold text-slate-800 flex items-center justify-between pb-1 border-b border-slate-100">' +
-              '<span class="flex items-center gap-1"><span>📜</span><span>' + esc(contractTitle) + '</span></span>' +
-              '<span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">✔ ዝግጁ ነው</span>' +
-            '</div>' +
-            (clauses.length > 0 ?
-              '<div class="flex flex-wrap gap-1">' +
-                clauses.map(function(c){ return '<span class="px-2 py-0.5 bg-[#16acbd]/10 text-[#0e7490] rounded-full text-[9px] font-bold">✔ ' + esc(c) + '</span>'; }).join('') +
-              '</div>' : '') +
-            '<div id="contractGeneratedText" class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] font-mono whitespace-pre-wrap leading-relaxed max-h-72 overflow-y-auto text-slate-800 shadow-inner select-all">' + esc(contractText) + '</div>' +
-            '<div class="grid grid-cols-2 gap-2">' +
-              '<button id="copyContractBtn" type="button" class="py-2.5 bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold rounded-xl text-xs active:scale-95 shadow transition-all flex items-center justify-center gap-1.5">' +
-                '<span>📋</span><span>ኮፒ አድርግ (Copy)</span>' +
-              '</button>' +
-              '<button id="printContractBtn" type="button" class="py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs active:scale-95 shadow transition-all flex items-center justify-center gap-1.5">' +
-                '<span>🖨️</span><span>ፕሪንት / አጋራ (Print)</span>' +
-              '</button>' +
-            '</div>' +
-            '<div id="copyToast" class="hidden text-center py-1.5 px-3 bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-bold rounded-xl transition-all">✔ የሽያጭ ውሉ በተሳካ ሁኔታ ኮፒ ተደርጓል!</div>' +
-          '</div>';
-
-        document.getElementById("copyContractBtn").onclick = function() {
-          var t = document.getElementById("contractGeneratedText").innerText;
-          var toast = document.getElementById("copyToast");
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(t).then(function(){
-              if (toast) {
-                toast.classList.remove("hidden");
-                setTimeout(function(){ toast.classList.add("hidden"); }, 3000);
-              }
-            }).catch(function(){
-              alert("ውሉ ኮፒ ተደርጓል!");
-            });
-          } else {
-            alert("ጽሑፉን ይምረጡና ኮፒ ያድርጉ።");
-          }
-        };
-
-        var printBtn = document.getElementById("printContractBtn");
-        if (printBtn) {
-          printBtn.onclick = function() {
-            var t = document.getElementById("contractGeneratedText").innerText;
-            var w = window.open('', '_blank');
-            if (w) {
-              w.document.write('<html><head><title>' + esc(contractTitle) + '</title><style>body{font-family:sans-serif;padding:30px;line-height:1.6;font-size:13px;white-space:pre-wrap;}</style></head><body>' + esc(t) + '</body></html>');
-              w.document.close();
-              w.focus();
-              setTimeout(function(){ w.print(); }, 250);
-            } else {
-              window.print();
-            }
-          };
-        }
-      })
-      .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ውሉን ማዘጋጀት አልተቻለም። እባክዎ እንደገና ይሞክሩ።</div>'; });
-    };
-
-    // Helper: Read file to Base64
+      resEl.innerHTML = "⏳ ህጋዊ ው�    // Helper: Read file to Base64
     function readFileAsBase64(file, callback) {
       if (!file) { callback(null); return; }
       var reader = new FileReader();
@@ -2525,28 +2450,127 @@ EXPLORER_HTML = r"""
       reader.readAsDataURL(file);
     }
 
-    // QR Code Scanning on File Upload using jsQR
-    var qrInputEl = document.getElementById("qr-input") || document.getElementById("poaImageFile");
-    if (qrInputEl) {
-      qrInputEl.addEventListener("change", function(e) {
-        var file = (e.target && e.target.files && e.target.files[0]) || (qrInputEl.files && qrInputEl.files[0]);
-        if (!file) return;
+    // POA Digital Verification - Client-Side jsQR Engine
+    var poaCameraStream = null;
+    var poaCameraAnimationId = null;
 
-        var resEl = document.getElementById("poaResult");
-        if (resEl) {
-          resEl.classList.remove("hidden");
-          resEl.innerHTML =
-            '<div class="p-3.5 bg-white border border-[#16acbd]/40 rounded-2xl text-center space-y-2 shadow-sm animate-pulse">' +
-              '<div class="text-2xl">📷</div>' +
-              '<div class="font-extrabold text-slate-800 text-xs">የተመረጠውን የ QR ኮድ / ሰነድ በማንበብ ላይ...</div>' +
-              '<div class="text-[10px] text-slate-500">QR ኮድ እና የዳራ የህጋዊ ስልጣን ዝርዝሮች በመፈተሽ ላይ ናቸው</div>' +
-            '</div>';
-        }
+    function openDocumentLink(url) {
+      if (!url) return;
+      if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+        window.Telegram.WebApp.openLink(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    }
 
-        var reader = new FileReader();
-        reader.onload = function(event) {
-          var img = new Image();
-          img.onload = function() {
+    function stopPoaCamera() {
+      if (poaCameraAnimationId) {
+        cancelAnimationFrame(poaCameraAnimationId);
+        poaCameraAnimationId = null;
+      }
+      if (poaCameraStream) {
+        try {
+          poaCameraStream.getTracks().forEach(function(t) { t.stop(); });
+        } catch(e) {}
+        poaCameraStream = null;
+      }
+      var cont = document.getElementById("poaCameraContainer");
+      if (cont) cont.classList.add("hidden");
+    }
+
+    function showPoaScanningState() {
+      var resEl = document.getElementById("poaResult");
+      if (resEl) {
+        resEl.classList.remove("hidden");
+        resEl.innerHTML =
+          '<div class="p-4 bg-white border border-[#16acbd]/40 rounded-2xl text-center space-y-2 shadow-sm animate-pulse">' +
+            '<div class="text-2xl">📷</div>' +
+            '<div class="font-extrabold text-slate-800 text-xs">የተመረጠውን የ QR ኮድ / ሰነድ በማንበብ ላይ...</div>' +
+            '<div class="text-[10px] text-slate-500">የዲጂታል QR ኮድ በመፈተሽ ላይ ነው...</div>' +
+          '</div>';
+      }
+    }
+
+    function renderPoaSuccessState(extractedUrl) {
+      stopPoaCamera();
+      var resEl = document.getElementById("poaResult");
+      if (!resEl) return;
+      resEl.classList.remove("hidden");
+      resEl.innerHTML =
+        '<div class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-3 shadow-sm">' +
+          '<div class="flex items-center space-x-2">' +
+            '<div class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0">' +
+              '✓' +
+            '</div>' +
+            '<span class="text-xs font-bold text-emerald-800">' +
+              '✅ የውክልና ሰነዱ ዲጂታል ማረጋገጫ በስኬት ተነቧል!' +
+            '</span>' +
+          '</div>' +
+          '<button id="openPoaDocLinkBtn" type="button" class="w-full bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-xs py-3 px-4 rounded-xl shadow flex items-center justify-center space-x-2 transition active:scale-95">' +
+            '<span>🔗</span>' +
+            '<span>በአዲካ ዲጂታል ሲስተም የውክልና መረጃውን ይክፈቱ</span>' +
+          '</button>' +
+        '</div>';
+
+      var openBtn = document.getElementById("openPoaDocLinkBtn");
+      if (openBtn) {
+        openBtn.onclick = function() {
+          openDocumentLink(extractedUrl);
+        };
+      }
+    }
+
+    function renderPoaNoQrState() {
+      stopPoaCamera();
+      var resEl = document.getElementById("poaResult");
+      if (!resEl) return;
+      resEl.classList.remove("hidden");
+      resEl.innerHTML =
+        '<div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2 shadow-xs">' +
+          '<div class="flex items-start space-x-2">' +
+            '<span class="text-base shrink-0">⚠️</span>' +
+            '<p class="text-xs text-amber-900 leading-relaxed">' +
+              'ይህ ሰነድ በዲጂታል መንገድ ሊጣራ የሚችል QR ኮድ የለውም። የቆየ የውክልና ሰነድ በመሆኑ፣ እባክዎን በአካል በአቅራቢያዎ በሚገኝ የሰነዶች ማረጋገጫና ምዝገባ (ውልና ማስረጃ) ቢሮ በመሄድ ያጣሩ።' +
+            '</p>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function renderPoaInvalidState() {
+      stopPoaCamera();
+      var resEl = document.getElementById("poaResult");
+      if (!resEl) return;
+      resEl.classList.remove("hidden");
+      resEl.innerHTML =
+        '<div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl space-y-2 shadow-xs">' +
+          '<div class="flex items-start space-x-2">' +
+            '<span class="text-base shrink-0">❌</span>' +
+            '<p class="text-xs text-rose-800 leading-relaxed">' +
+              'የተላከው ፎቶ ሊነበብ አልቻለም። እባክዎን የውክልና ሰነዱን ማህተም እና QR ኮድ በግልጽ አድርገው እንደገና ይጭኑ።' +
+            '</p>' +
+          '</div>' +
+        '</div>';
+    }
+
+    function processPoaImageFile(file) {
+      if (!file) return;
+      var nameDisplay = document.getElementById("poaFileNameDisplay");
+      if (nameDisplay) {
+        nameDisplay.textContent = file.name || "የተመረጠ ፎቶ";
+      }
+      showPoaScanningState();
+
+      var reader = new FileReader();
+      reader.onerror = function() {
+        renderPoaInvalidState();
+      };
+      reader.onload = function(event) {
+        var img = new Image();
+        img.onerror = function() {
+          renderPoaInvalidState();
+        };
+        img.onload = function() {
+          try {
             var canvas = document.createElement("canvas");
             var context = canvas.getContext("2d");
             canvas.width = img.width;
@@ -2555,142 +2579,113 @@ EXPLORER_HTML = r"""
 
             var code = null;
             if (typeof jsQR !== "undefined") {
-              try {
-                var imageData = context.getImageData(0, 0, img.width, img.height);
-                code = jsQR(imageData.data, imageData.width, imageData.height);
-              } catch(err) {
-                console.warn("jsQR scan warning:", err);
-              }
+              var imageData = context.getImageData(0, 0, img.width, img.height);
+              code = jsQR(imageData.data, imageData.width, imageData.height);
             }
 
             if (code && code.data) {
-              var targetUrl = code.data; // በ QR ኮዱ ውስጥ ያለው የDARA ሰነድ ቀጥታ ሊንክ ወይም ቁጥር
-              var docInput = document.getElementById("poaDocIdInput") || document.getElementById("poaInput");
-              if (docInput) {
-                docInput.value = targetUrl;
-              }
-
-              if (resEl) {
-                var isHttpLink = targetUrl.indexOf("http://") === 0 || targetUrl.indexOf("https://") === 0;
-                resEl.innerHTML =
-                  '<div class="p-3.5 bg-white border-2 border-emerald-500/40 rounded-2xl shadow-md space-y-3 text-xs">' +
-                    '<div class="flex items-center justify-between pb-2 border-b border-slate-100">' +
-                      '<div class="flex items-center gap-2">' +
-                        '<div class="w-8 h-8 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 font-bold text-sm">✔</div>' +
-                        '<div>' +
-                          '<div class="text-[9px] text-slate-400 font-extrabold uppercase">የዲጂታል QR ኮድ ውጤት</div>' +
-                          '<div class="font-extrabold text-xs text-emerald-700">የ DARA QR ኮድ በተሳካ ሁኔታ ተገኝቷል!</div>' +
-                        '</div>' +
-                      '</div>' +
-                      '<span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[9px] border border-emerald-200">QR SCANNED</span>' +
-                    '</div>' +
-                    '<div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-[11px] break-all font-mono text-slate-700">' +
-                      '<div class="font-bold text-slate-900 mb-1">🔗 የሰነድ ሊንክ / መረጃ (Payload):</div>' +
-                      esc(targetUrl) +
-                    '</div>' +
-                    '<div class="grid grid-cols-1 gap-2">' +
-                      (isHttpLink ?
-                        '<button id="openDaraQrLinkBtn" type="button" class="w-full py-2.5 bg-gradient-to-r from-[#0e7490] to-[#16acbd] text-white font-bold rounded-xl text-xs shadow flex items-center justify-center gap-1.5 active:scale-95 transition-all">' +
-                          '<span>🌐</span><span>ኦፊሴላዊውን የ DARA ገጽ ክፈት (Open Official Link)</span>' +
-                        '</button>' : '') +
-                      '<button id="verifyExtractedQrBtn" type="button" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs shadow flex items-center justify-center gap-1.5 active:scale-95 transition-all">' +
-                        '<span>🏛️</span><span>ሙሉ የውክልና ስልጣን በዳራ ዳታቤዝ አጣራ (Full Verification)</span>' +
-                      '</button>' +
-                    '</div>' +
-                  '</div>';
-
-                var openBtn = document.getElementById("openDaraQrLinkBtn");
-                if (openBtn) {
-                  openBtn.onclick = function() {
-                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
-                      window.Telegram.WebApp.openLink(targetUrl);
-                    } else {
-                      window.open(targetUrl, '_blank');
-                    }
-                  };
-                }
-
-                var verifyExtBtn = document.getElementById("verifyExtractedQrBtn");
-                if (verifyExtBtn && poaVerifyBtnEl) {
-                  verifyExtBtn.onclick = function() {
-                    poaVerifyBtnEl.click();
-                  };
-                }
+              if (code.data.indexOf("http") !== -1) {
+                renderPoaSuccessState(code.data);
+              } else {
+                renderPoaInvalidState();
               }
             } else {
-              // If QR code is not detected, auto-trigger AI Vision OCR verification
-              if (poaVerifyBtnEl) {
-                poaVerifyBtnEl.click();
-              }
+              renderPoaNoQrState();
             }
-          };
-          img.src = event.target.result;
+          } catch(err) {
+            console.error("jsQR scan error:", err);
+            renderPoaInvalidState();
+          }
         };
-        reader.readAsDataURL(file);
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Bind file picker input
+    var qrInputEl = document.getElementById("qr-input");
+    if (qrInputEl) {
+      qrInputEl.addEventListener("change", function(e) {
+        var file = (e.target && e.target.files && e.target.files[0]) || (qrInputEl.files && qrInputEl.files[0]);
+        if (file) {
+          processPoaImageFile(file);
+        }
       });
     }
 
-    // DARA POA Verify Action
-    var poaVerifyBtnEl = document.getElementById("poaVerifyBtn");
-    if (poaVerifyBtnEl) {
-      poaVerifyBtnEl.onclick = function() {
-        var docIdInput = document.getElementById("poaDocIdInput") || document.getElementById("poaInput");
-        var docId = docIdInput ? (docIdInput.value || "").trim() : "";
-        var fileInput = document.getElementById("qr-input") || document.getElementById("poaImageFile");
-        var file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-        var resEl = document.getElementById("poaResult");
-        if (!resEl) return;
-
-        if (!docId && !file) {
-          resEl.classList.remove("hidden");
-          resEl.innerHTML =
-            '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs shadow-sm">' +
-              '<div class="font-black text-rose-900 mb-1 flex items-center gap-1"><span>⚠️</span><span>ግቤት አልተገኘም</span></div>' +
-              '<div>እባክዎ የውክልና ሰነድ ቁጥር ያስገቡ ወይም የሰነዱን / የQR ኮድ ፎቶ ይጫኑ።</div>' +
-            '</div>';
-          return;
+    // Camera input fallback
+    var cameraInputEl = document.getElementById("poaCameraInput");
+    if (cameraInputEl) {
+      cameraInputEl.addEventListener("change", function(e) {
+        var file = (e.target && e.target.files && e.target.files[0]) || (cameraInputEl.files && cameraInputEl.files[0]);
+        if (file) {
+          processPoaImageFile(file);
         }
+      });
+    }
 
-        resEl.classList.remove("hidden");
-        resEl.innerHTML =
-          '<div class="p-4 bg-white border border-[#16acbd]/30 rounded-2xl text-center space-y-2 shadow-sm animate-pulse">' +
-            '<div class="text-2xl">🏛️</div>' +
-            '<div class="font-extrabold text-slate-800 text-xs">በ DARA ማዕከላዊ ዳታቤዝ እየተጣራ ነው...</div>' +
-            '<div class="text-[10px] text-slate-500">የሰነዱ ማህተም፣ QR ኮድ እና የህጋዊ ስልጣን ዝርዝሮች በመረጋገጥ ላይ ናቸው</div>' +
-          '</div>';
+    // Live Camera Scanner Button
+    var liveCamBtn = document.getElementById("poaLiveCameraBtn");
+    if (liveCamBtn) {
+      liveCamBtn.onclick = function() {
+        var cameraContainer = document.getElementById("poaCameraContainer");
+        var videoEl = document.getElementById("poaVideo");
+        var canvasEl = document.getElementById("poaCanvas");
 
-        readFileAsBase64(file, function(base64Img) {
-          fetch("/api/verify-poa", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ doc_id: docId, poa_number: docId, poa_text: docId, image_data: base64Img })
-          })
-          .then(function(r){ return r.json(); })
-          .then(function(d){
-            var ver = d.verification || d;
-            var defaultNotFound = "❌ የተላከው የውክልና ቁጥር ወይም ሰነድ በዳራ (DARA) ዳታቤዝ ውስጥ አልተገኘም። እባክዎ ትክክለኛ የውክልና ቁጥር ወይም ኦሪጅናል ሰነድ ያስገቡ።";
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia && videoEl && canvasEl && cameraContainer) {
+          stopPoaCamera();
+          cameraContainer.classList.remove("hidden");
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) {
+              poaCameraStream = stream;
+              videoEl.srcObject = stream;
+              videoEl.setAttribute("playsinline", "true");
+              videoEl.play();
 
-            // Strict DARA Verification & Anti-Fraud Check
-            if (ver.is_valid_format === false || ver.error_message_amharic || ver.status === 'error' || d.status === 'error') {
-              var errMsg = ver.error_message_amharic || ver.message || defaultNotFound;
-              resEl.innerHTML =
-                '<div class="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs shadow-sm space-y-1.5">' +
-                  '<div class="font-black text-rose-900 text-xs flex items-center gap-1.5">' +
-                    '<span>🏛️❌</span><span>የ DARA ማረጋገጫ አልተሳካም (Verification Failed)</span>' +
-                  '</div>' +
-                  '<p class="leading-relaxed text-[11px] font-medium">' + esc(errMsg) + '</p>' +
-                '</div>';
-              return;
-            }
+              function scanFrame() {
+                if (!poaCameraStream) return;
+                if (videoEl.readyState === videoEl.HAVE_ENOUGH_DATA) {
+                  var ctx = canvasEl.getContext("2d");
+                  canvasEl.width = videoEl.videoWidth;
+                  canvasEl.height = videoEl.videoHeight;
+                  ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+                  
+                  if (typeof jsQR !== "undefined") {
+                    try {
+                      var imgData = ctx.getImageData(0, 0, canvasEl.width, canvasEl.height);
+                      var code = jsQR(imgData.data, imgData.width, imgData.height);
+                      if (code && code.data) {
+                        if (code.data.indexOf("http") !== -1) {
+                          renderPoaSuccessState(code.data);
+                          return;
+                        }
+                      }
+                    } catch(e) {}
+                  }
+                }
+                poaCameraAnimationId = requestAnimationFrame(scanFrame);
+              }
+              poaCameraAnimationId = requestAnimationFrame(scanFrame);
+            })
+            .catch(function(err) {
+              console.warn("getUserMedia failed or not permitted, falling back to camera file input:", err);
+              cameraContainer.classList.add("hidden");
+              if (cameraInputEl) {
+                cameraInputEl.click();
+              }
+            });
+        } else if (cameraInputEl) {
+          cameraInputEl.click();
+        }
+      };
+    }
 
-            var docNum = ver.dara_registration_number || ver.poa_document_number || (docId ? docId : "DARA-2026-8891");
-            var docStatus = ver.document_status || "ህጋዊ እና ፀና ያለ (Active & Valid)";
-            var grantor = ver.grantor_name || "አቶ ዮሐንስ ተስፋዬ ገብሬ";
-            var grantee = ver.grantee_name || "ወ/ሮ ቤተልሔም አለሙ በቀለ";
-            var regDate = ver.registration_date || "ሐምሌ 12 ቀን 2016 ዓ.ም";
-            var docType = ver.document_type || "አጠቃላይ የንብረትና የተሽከርካሪ ሽያጭ ውክልና";
-            var branch = ver.branch_office || "የሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ (DARA)";
-            var powers = ver.authorized_powers || [
+    var stopCamBtn = document.getElementById("poaStopCameraBtn");
+    if (stopCamBtn) {
+      stopCamBtn.onclick = function() {
+        stopPoaCamera();
+      };
+    }ar powers = ver.authorized_powers || [
               "ተሽከርካሪን ወይም ንብረትን ለሶስተኛ ወገን ለመሸጥ፣ ለመለወጥና ለማስተላለፍ",
               "በሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ (DARA) ቀርቦ ስም ለማዛወር",
               "የሽያጭ ገንዘብ በባንክ ወይም በቼክ ለመቀበል"
