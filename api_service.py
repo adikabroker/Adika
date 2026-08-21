@@ -63,7 +63,12 @@ def _gemini_generate(prompt, *, api_key=None, system=None, json_mode=False, temp
         for model_name in _GEMINI_MODEL_CANDIDATES:
             try:
                 # Build config per-call; older/newer SDKs differ on key names
-                config = {"temperature": temperature}
+                config = {
+                    "temperature": temperature,
+                    # Disable automatic function calling to avoid AFC warning on generate_content
+                    "tools": None,
+                    "automatic_function_calling": {"disable": True},
+                }
                 if json_mode:
                     config["response_mime_type"] = "application/json"
                 if system:
@@ -124,6 +129,75 @@ def _gemini_generate(prompt, *, api_key=None, system=None, json_mode=False, temp
 
     logger.error("Gemini generate failed after all models: %s", last_err)
     raise RuntimeError(f"Gemini generate failed: {last_err}")
+
+
+
+def _gemini_chat(user_message, *, api_key=None, system=None, temperature=0.4, model=None):
+    """Chat via client.chats.create + send_message (avoids AFC generate_content warning)."""
+    api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set")
+    if not user_message or not str(user_message).strip():
+        raise ValueError("empty chat message")
+
+    system_instruction = system or (
+        "You are Adika Senior Financial Advisor in Addis Ababa. "
+        "Speak as a human advisor in polite Amharic. Use እኔ/እኛ. "
+        "Never mention AI, bot, LLM, or language model."
+    )
+    last_err = None
+    models = [model] if model else list(_GEMINI_MODEL_CANDIDATES)
+    models = [m for m in models if m] + [m for m in _GEMINI_MODEL_CANDIDATES if m not in models]
+
+    try:
+        from google import genai as genai_new
+        client = genai_new.Client(api_key=api_key)
+        for model_name in models:
+            try:
+                config = {
+                    "temperature": temperature,
+                    "system_instruction": system_instruction,
+                }
+                # Prefer Chat API (recommended over Models.generate_content for conversational turns)
+                try:
+                    chat = client.chats.create(model=model_name, config=config)
+                except TypeError:
+                    try:
+                        chat = client.chats.create(model=model_name)
+                    except Exception as e:
+                        last_err = e
+                        continue
+                response = chat.send_message(str(user_message).strip())
+                text = getattr(response, "text", None)
+                if not text and getattr(response, "candidates", None):
+                    try:
+                        text = response.candidates[0].content.parts[0].text
+                    except Exception:
+                        text = None
+                if text and str(text).strip():
+                    return str(text).strip()
+            except Exception as e:
+                last_err = e
+                logger.warning("Gemini chat model %s failed: %s", model_name, e)
+                continue
+    except Exception as e:
+        last_err = e
+        logger.warning("google.genai chats API unavailable: %s", e)
+
+    # Fallback: plain generate without tools/AFC
+    try:
+        return _gemini_generate(
+            str(user_message).strip(),
+            api_key=api_key,
+            system=system_instruction,
+            temperature=temperature,
+            json_mode=False,
+        )
+    except Exception as e:
+        last_err = e
+        logger.error("Gemini chat fallback failed: %s", e)
+        raise RuntimeError(f"Gemini chat failed: {last_err}")
+
 
 
 class _AdikaGeminiModel:
@@ -1436,19 +1510,22 @@ def register_api_routes(web_app):
                 chat_reply = None
                 if api_key:
                     try:
-                        # Gemini routed through _AdikaGeminiModel (google.genai Client)
-                        cprompt = (
+                        system_chat = (
                             "You are Adika Senior Financial Advisor in Addis Ababa. "
                             "Speak as a human advisor in polite Amharic. Use እኔ/እኛ. "
-                            "Never mention AI, bot, LLM, or language model.\n"
-                            f"Client budget: {budget:,.0f} ETB. Max purchase allocation (70%): {purchase_cap:,.0f} ETB.\n"
-                            f"Client message: {chat_message}\n"
+                            "Never mention AI, bot, LLM, or language model. "
+                            f"Client total budget: {budget:,.0f} ETB. "
+                            f"Max purchase allocation (70%): {purchase_cap:,.0f} ETB. "
                             "Reply in 2-5 short Amharic sentences. Stay within the purchase allocation. "
                             "Return ONLY plain Amharic text (no JSON)."
                         )
-                        model = _AdikaGeminiModel(model_name="gemini-3.6-flash", generation_config={"temperature": 0.4})
-                        res = model.generate_content(cprompt)
-                        chat_reply = (res.text or "").strip()
+                        chat_reply = _gemini_chat(
+                            chat_message,
+                            api_key=api_key,
+                            system=system_chat,
+                            temperature=0.4,
+                            model="gemini-2.5-flash",
+                        )
                     except Exception as e:
                         logger.warning("advisor chat Gemini: %s", e)
                 if not chat_reply:
