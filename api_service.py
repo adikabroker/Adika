@@ -31,34 +31,49 @@ _GEMINI_MODEL_CANDIDATES = (
 
 
 # ---------------------------------------------------------------------------
-# Groq LLM (preferred for chat when GROQ_API_KEY is set)
+# Groq LLM (preferred for chat) + Gemini fallback
 # ---------------------------------------------------------------------------
 _GROQ_MODELS = (
-    "llama-3.3-70b-versatile",
     "llama-3.1-70b-versatile",
+    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
     "llama-3.1-8b-instant",
-    "mixtral-8x7b-32768",
 )
 
 _ADIKA_SYSTEM = (
-    "You are Adika Senior Financial Advisor in Addis Ababa, Ethiopia. "
-    "Speak as a human advisor in polite, warm Amharic. Use እኔ/እኛ. "
-    "Never mention AI, bot, LLM, or language model. "
-    "Answer conversationally and directly. "
-    "Only give detailed budget breakdowns if the user explicitly asks."
+    "You are Adika's Senior Financial & Vehicle Advisor in Ethiopia. "
+    "Answer warmly, conversationally, and directly in Amharic. "
+    "Use እኔ/እኛ. Never mention AI, bot, LLM, or language model. "
+    "Do NOT provide budget breakdowns unless explicitly asked."
 )
+
+_groq_client = None
+
+
+def _get_groq_client():
+    """Lazy Groq client (None if GROQ_API_KEY missing)."""
+    global _groq_client
+    if _groq_client is not None:
+        return _groq_client
+    key = os.environ.get("GROQ_API_KEY")
+    if not key:
+        return None
+    try:
+        from groq import Groq
+        _groq_client = Groq(api_key=key)
+        return _groq_client
+    except Exception as e:
+        logger.warning("Groq client init failed: %s", e)
+        return None
 
 
 def get_groq_response(prompt, chat_history=None, system=None, temperature=0.7, max_tokens=1024):
-    """Chat completion via Groq. Returns assistant text or raises on hard failure."""
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        raise RuntimeError("GROQ_API_KEY is not set")
-    from groq import Groq
-    client = Groq(api_key=api_key)
-    messages = [
-        {"role": "system", "content": system or _ADIKA_SYSTEM},
-    ]
+    """Groq chat completion. Raises if Groq unavailable or all models fail."""
+    client = _get_groq_client()
+    if client is None:
+        raise RuntimeError("GROQ_API_KEY is not set or Groq client unavailable")
+    messages = [{"role": "system", "content": system or _ADIKA_SYSTEM}]
     if chat_history:
         for msg in chat_history:
             if isinstance(msg, dict) and msg.get("role") and msg.get("content") is not None:
@@ -82,34 +97,60 @@ def get_groq_response(prompt, chat_history=None, system=None, temperature=0.7, m
     raise RuntimeError(f"Groq API failed: {last_err}")
 
 
-def _advisor_chat_reply(user_message, *, system=None, temperature=0.4):
-    """Prefer Groq for conversational advisor chat; fall back to Gemini."""
-    system = system or _ADIKA_SYSTEM
-    # 1) Groq
-    if os.environ.get("GROQ_API_KEY"):
+def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.7):
+    """
+    Try Groq first (fast); if it fails, fall back to Gemini.
+    Returns plain assistant text, or a safe Amharic error string.
+    """
+    system_instruction = system or _ADIKA_SYSTEM
+    chat_history = chat_history or []
+
+    if _get_groq_client():
         try:
             return get_groq_response(
-                user_message,
-                chat_history=[],
-                system=system,
+                prompt,
+                chat_history=chat_history,
+                system=system_instruction,
                 temperature=temperature,
                 max_tokens=1024,
             )
         except Exception as e:
-            logger.warning("Groq advisor chat failed, trying Gemini: %s", e)
-    # 2) Gemini
+            logger.warning("Groq failed, switching to Gemini fallback: %s", e)
+
     if os.environ.get("GEMINI_API_KEY"):
         try:
             return _gemini_chat(
-                user_message,
+                prompt,
                 api_key=os.environ.get("GEMINI_API_KEY"),
-                system=system,
+                system=system_instruction,
                 temperature=temperature,
                 model="gemini-1.5-flash",
             )
         except Exception as e:
-            logger.warning("Gemini advisor chat failed: %s", e)
-    return None
+            logger.warning("Gemini fallback failed: %s", e)
+            try:
+                return _gemini_generate(
+                    prompt,
+                    api_key=os.environ.get("GEMINI_API_KEY"),
+                    system=system_instruction,
+                    temperature=temperature,
+                    json_mode=False,
+                )
+            except Exception as e2:
+                logger.warning("Gemini generate also failed: %s", e2)
+
+    return "ይቅርታ፣ አገልግሎቱን ማግኘት አልተቻለም። እባክዎ እንደገና ይሞክሩ።"
+
+
+def _advisor_chat_reply(user_message, *, system=None, temperature=0.4):
+    """Advisor chat wrapper used by /api/ai-advisor."""
+    return generate_ai_response(
+        user_message,
+        chat_history=[],
+        system=system,
+        temperature=temperature,
+    )
+
 
 
 def _gemini_generate(prompt, *, api_key=None, system=None, json_mode=False, temperature=0.3, image_bytes=None, mime_type="image/jpeg"):
