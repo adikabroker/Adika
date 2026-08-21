@@ -260,7 +260,20 @@ def generate_advisor_response(prompt, history=None, budget=0):
             "• **ጥንቃቄ፦** ክፍያ የሚፈጸመው በውልና ማስረጃ ፊት በባንክ ሂሳብ ብቻ መሆን አለበት።"
         )
 
-    # 6. የባንክ ብድርና ፋይናንሲንግ
+    # 6. ጥልቅ የህግ እና የታክስ ጥያቄዎች ሲመጡ
+    elif any(k in prompt_clean for k in ["አዋጅ", "ታክስ", "ቀረጥ", "ካፒታል", "አረጋጋጭ"]):
+        return (
+            f"⚖️ **የ Adika Senior Legal & Tax Compliance Brief ({budget_fmt})**\n\n"
+            f"1. **የቴምብር ቀረጥና ታክስ (15% Allocation)፦** {tax_legal_alloc:,.0f} ETB\n"
+            "2. **አግባብነት ያላቸው ህጎች፦**\n"
+            "   • የገቢ ታክስ አዋጅ ቁጥር 979/2008 (Capital Gains Tax - 15%)\n"
+            "   • የቴምብር ቀረጥ አዋጅ ቁጥር 110/1998 (Stamp Duty - 1%)\n"
+            "3. **የመያዣና የውል ስጋት (Legal Risks)፦**\n"
+            "   • የፍትሐ ብሔር ሕግ ቁጥር 1723/1724 ውል ማረጋገጫ መስፈርቶች።\n"
+            "   • በህግ እገዳ ወይም በባንክ እዳ (Mortgage/Lien) ስር አለመሆኑን ማረጋገጥ።"
+        )
+
+    # 7. የባንክ ብድርና ፋይናንሲንግ
     elif any(k in prompt_clean for k in ["ብድር", "ባንክ", "ወለድ", "ባንክ ብድር", "loan"]):
         est_loan = budget_val * 0.50
         return (
@@ -270,7 +283,7 @@ def generate_advisor_response(prompt, history=None, budget=0):
             "• **ምክር፦** የወርሃዊ የብድር ክፍያዎ ከወርሃዊ የተጣራ ገቢዎ ከ 30% በላይ መሆን የለበትም።"
         )
 
-    # 7. Default መልስ
+    # 8. Default መልስ
     else:
         return (
             f"🎯 **የ Adika Senior Advisor ጥልቅ ትንተና፦**\n\n"
