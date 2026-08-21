@@ -24,7 +24,6 @@ _json_safe = None
 _GEMINI_MODEL_CANDIDATES = (
     "gemini-3.6-flash",
     "gemini-3.6-pro",
-    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-1.5-flash",
 )
@@ -129,6 +128,40 @@ def _gemini_generate(prompt, *, api_key=None, system=None, json_mode=False, temp
 
     logger.error("Gemini generate failed after all models: %s", last_err)
     raise RuntimeError(f"Gemini generate failed: {last_err}")
+
+
+def generate_advisor_response(prompt, history=None, budget=0):
+    """
+    ከ Gemini API ጋር ተገናኝቶ ለቻቱ በሰውኛ የተዘጋጀ ሙያዊ መልስ የሚያመጣ Function
+    """
+    try:
+        budget_num = float(budget or 0)
+    except Exception:
+        budget_num = 0.0
+
+    system_instruction = (
+        "You are a human Senior Financial Advisor at Adika Digital. "
+        "Speak politely and naturally in Amharic like an expert advisor. "
+        "NEVER mention you are an AI, bot, or language model. "
+        "Always refer to Adika as 'እኛ' or 'እኔ'. "
+        f"Context: The user's total budget is {budget_num:,.0f} ETB. "
+        "Strictly analyze options respecting this budget framework."
+    )
+    
+    # የቻት ታሪክ እና አዲስ ጥያቄ አቀናጅቶ መላክ
+    full_prompt = f"የተጠቃሚ በጀት: {budget_num:,.0f} ETB\nየተጠቃሚ ጥያቄ: {prompt}"
+    
+    try:
+        # በፋይልህ ውስጥ ያለውን _gemini_generate ጥሪ መጠቀም
+        response_text = _gemini_generate(
+            prompt=full_prompt, 
+            system=system_instruction
+        )
+        if response_text:
+            return response_text
+        return "ይቅርታ፣ አሁን ላይ መረጃውን ማካሄድ አልተቻለም። እባክዎ ጥቂት ቆይተው እንደገና ይሞክሩ።"
+    except Exception as e:
+        return "ይቅርታ፣ ከኦፕሬተራችን ጋር ማገናኘት አልተቻለም። እባክዎ መስመርዎን አረጋግጠው ድጋሚ ይሞክሩ።"
 
 
 
@@ -1524,7 +1557,7 @@ def register_api_routes(web_app):
                             api_key=api_key,
                             system=system_chat,
                             temperature=0.4,
-                            model="gemini-2.5-flash",
+                            model="gemini-3.6-flash",
                         )
                     except Exception as e:
                         logger.warning("advisor chat Gemini: %s", e)
