@@ -146,11 +146,26 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
     raise RuntimeError(f"Gemini generate failed: {last_err}")
 
 
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+try:
+    from supabase import create_client, Client
+except ImportError:
+    create_client = None
+    Client = None
+
+
+def get_supabase_client():
+    if SUPABASE_URL and SUPABASE_KEY and create_client:
+        try:
+            return create_client(SUPABASE_URL, SUPABASE_KEY)
+        except Exception as e:
+            print(f"Supabase Client Error: {e}")
+    return None
+
+
 def generate_advisor_response(prompt, history=None, budget=0):
-    """
-    ለ Adika Digital ፋይናንስ አማካሪ የተዘጋጀ ያለ ኤፒአይ (Rule/Logic-Based) የሚሰራ
-    የውጭ አማካሪዎችን (MECE Framework) የመተንተን ዘዴ የተከተለ ኮድ።
-    """
     try:
         budget_val = float(budget or 0)
     except Exception:
@@ -159,30 +174,84 @@ def generate_advisor_response(prompt, history=None, budget=0):
     prompt_clean = str(prompt or "").lower().strip()
     budget_fmt = f"{budget_val:,.0f} ETB"
     
-    # 1. MECE የበጀት ስሌት ማዕቀፍ (70% ንብረት፣ 15% ታክስ/ስምምነት፣ 15% የአደጋ ጊዜ)
+    # 70/15/15 የበጀት ስሌት
     property_alloc = budget_val * 0.70
     tax_legal_alloc = budget_val * 0.15
     reserve_alloc = budget_val * 0.15
 
-    # --- INTENT 1: ሰላምታ እና መግቢያ ---
-    if any(k in prompt_clean for k in ["ሰላም", "ሰላምታ", "hello", "hi", "ሀይ"]):
+    # 1. ከ Supabase ዳታ ለማምጣት መሞከር (SDK or REST)
+    supabase = get_supabase_client()
+    if supabase:
+        try:
+            res = supabase.table("financial_knowledge").select("*").execute()
+            if getattr(res, "data", None):
+                for row in res.data:
+                    kw = str(row.get("keyword", "")).strip().lower()
+                    if kw and kw in prompt_clean:
+                        tmpl = row.get("response_template", "")
+                        return tmpl.format(
+                            budget=budget_fmt,
+                            property_alloc=f"{property_alloc:,.0f} ETB",
+                            tax_legal_alloc=f"{tax_legal_alloc:,.0f} ETB",
+                            reserve_alloc=f"{reserve_alloc:,.0f} ETB"
+                        )
+        except Exception as e:
+            print(f"Supabase Query Error: {e}")
+    elif SUPABASE_URL and SUPABASE_KEY:
+        try:
+            headers = {
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json"
+            }
+            rest_url = f"{SUPABASE_URL.rstrip('/')}/rest/v1/financial_knowledge?select=*"
+            resp = requests.get(rest_url, headers=headers, timeout=5)
+            if resp.status_code == 200:
+                rows = resp.json()
+                if isinstance(rows, list):
+                    for row in rows:
+                        kw = str(row.get("keyword", "")).strip().lower()
+                        if kw and kw in prompt_clean:
+                            tmpl = row.get("response_template", "")
+                            return tmpl.format(
+                                budget=budget_fmt,
+                                property_alloc=f"{property_alloc:,.0f} ETB",
+                                tax_legal_alloc=f"{tax_legal_alloc:,.0f} ETB",
+                                reserve_alloc=f"{reserve_alloc:,.0f} ETB"
+                            )
+        except Exception as e:
+            print(f"Supabase REST Query Error: {e}")
+
+    # 2. የቤት / ንብረት ግዢ ጥያቄዎች (Fallback Logic)
+    if any(k in prompt_clean for k in ["ቤት", "ንብረት", "ግዢ", "መሬት", "ቦታ", "house"]):
+        return (
+            f"🏠 **የ Adika የቤትና ንብረት ግዢ ትንተና ({budget_fmt})**\n\n"
+            f"• **ለቤት/ንብረት ግዢ የተመደበ (70%)፦** {property_alloc:,.0f} ETB\n"
+            f"• **ለስም ዝውውርና የህግ ክፍያ (15%)፦** {tax_legal_alloc:,.0f} ETB\n"
+            f"• **ለተዘዋዋሪ/አደጋ ጊዜ ወጪ (15%)፦** {reserve_alloc:,.0f} ETB\n\n"
+            "📌 **የህግ ጥንቃቄዎች፦**\n"
+            "1. የካርታው ትክክለኛነት በክፍለ ከተማ ማረጋገጫ መረጋገጥ አለበት።\n"
+            "2. ክፍያ በባንክ ሂሳብ ብቻ መፈጸም አለበት።"
+        )
+
+    # 3. የበጀት ክፍፍል ጥያቄዎች
+    elif any(k in prompt_clean for k in ["በጀት", "ክፍፍል", "ስሌት", "ገንዘብ", "budget"]):
+        return (
+            f"📊 **የ Adika MECE የበጀት ትንተና ({budget_fmt})**\n\n"
+            f"1. **ለዋና ንብረት ግዢ (70%)፦** {property_alloc:,.0f} ETB\n"
+            f"2. **ለታክስና ህግ ክፍያዎች (15%)፦** {tax_legal_alloc:,.0f} ETB\n"
+            f"3. **የአደጋ ጊዜ እና ተዘዋዋሪ ወጪ (15%)፦** {reserve_alloc:,.0f} ETB"
+        )
+
+    # 4. ሰላምታ እና መግቢያ
+    elif any(k in prompt_clean for k in ["ሰላም", "ሰላምታ", "hello", "hi", "ሀይ"]):
         return (
             f"ሰላም! እኔ የ Adika Digital የፋይናንስና የህግ አማካሪ ነኝ። "
             f"ለተመደበው **{budget_fmt}** በጀት የተሟላ የበጀት ትንተና እና የህግ ምክር አዘጋጅቼልዎታለሁ። "
             "ስለ ንብረት ግዢ፣ የታክስ/የውል ክፍያዎች ወይም የባንክ ብድር ምን ማወቅ ይፈልጋሉ?"
         )
 
-    # --- INTENT 2: የበጀት ክፍፍል እና ስሌት (MECE Analysis) ---
-    elif any(k in prompt_clean for k in ["በጀት", "ክፍፍል", "ስሌት", "ገንዘብ", "budget", "calculation"]):
-        return (
-            f"📊 **የ Adika MECE የበጀት ትንተና ({budget_fmt})**\n\n"
-            f"1. **ለዋና ንብረት ግዢ (70%)፦** {property_alloc:,.0f} ETB\n"
-            f"2. **ለታክስ፣ ስምምነትና የህግ ክፍያዎች (15%)፦** {tax_legal_alloc:,.0f} ETB\n"
-            f"3. **የአደጋ ጊዜ እና ተዘዋዋሪ ወጪ (15%)፦** {reserve_alloc:,.0f} ETB\n\n"
-            "💡 **የአማካሪ አስተያየት፦** ይህ አሰራር ያልታሰቡ የህግ እና የፈቃድ ወጪዎች ቢመጡ እንኳ የንብረት ግዢዎ እንዳይስተካከል ያደርጋል።"
-        )
-
-    # --- INTENT 3: ህግ፣ ውል እና ሰነዶች (Legal Framework) ---
+    # 5. ህግ፣ ውል እና ሰነዶች
     elif any(k in prompt_clean for k in ["ህግ", "ውል", "ስምምነት", "ካርታ", "ሰነድ", "ህጋዊ"]):
         return (
             "⚖️ **የንብረት ዝውውርና የውል ማረጋገጫ የህግ መመሪያ፦**\n\n"
@@ -191,7 +260,7 @@ def generate_advisor_response(prompt, history=None, budget=0):
             "• **ጥንቃቄ፦** ክፍያ የሚፈጸመው በውልና ማስረጃ ፊት በባንክ ሂሳብ ብቻ መሆን አለበት።"
         )
 
-    # --- INTENT 4: የባንክ ብድርና ፋይናንሲንግ (Loan Strategy) ---
+    # 6. የባንክ ብድርና ፋይናንሲንግ
     elif any(k in prompt_clean for k in ["ብድር", "ባንክ", "ወለድ", "ባንክ ብድር", "loan"]):
         est_loan = budget_val * 0.50
         return (
@@ -201,25 +270,14 @@ def generate_advisor_response(prompt, history=None, budget=0):
             "• **ምክር፦** የወርሃዊ የብድር ክፍያዎ ከወርሃዊ የተጣራ ገቢዎ ከ 30% በላይ መሆን የለበትም።"
         )
 
-    # --- INTENT 5: ስጋትና ጥንቃቄ (Risk Assessment) ---
-    elif any(k in prompt_clean for k in ["ስጋት", "አደጋ", "ችግር", "risk", "ጉዳት"]):
-        return (
-            "🛡️ **የስጋት መከላከያ (Risk Management) ማዕቀፍ፦**\n\n"
-            f"• **የገበያ መዛባት፦** ለድንገተኛ የዋጋ ጭማሪ ከተያዘው **{reserve_alloc:,.0f} ETB** ውጭ ዋናውን ካፒታል አይንኩ።\n"
-            "• **የህግ ስጋት፦** ያልተረጋገጡ የሶስተኛ ወገን እዳዎች በንብረቱ ላይ አለመኖራቸውን ማረጋገጥ።"
-        )
-
-    # --- DEFAULT RESPONSE: በጥልቅ መረጃ የተደራጀ പൊതു መልስ ---
+    # 7. Default መልስ
     else:
         return (
             f"🎯 **የ Adika Senior Advisor ጥልቅ ትንተና፦**\n\n"
             f"በያዙት **{budget_fmt}** በጀት መሰረት የተመረጡ የፋይናንስ አማራጮች፦\n"
             f"• **ለንብረት ግዢ የተመደበ፦** {property_alloc:,.0f} ETB\n"
             f"• **ለህግና ታክስ የተያዘ፦** {tax_legal_alloc:,.0f} ETB\n\n"
-            "የተወሰነ ርዕስ መምረጥ ይችላሉ፦\n"
-            "1. **በጀት** - ዝርዝር የበጀት ክፍፍል ለማየት\n"
-            "2. **ህግ** - የውልና የሰነድ ጥንቃቄዎችን ለማየት\n"
-            "3. **ብድር** - የባንክ አማራጮችን ለማሰላሰል"
+            "ስለ **'ቤት ግዢ'**፣ **'በጀት'**፣ **'ህግ'** ወይም **'ብድር'** መጠየቅ ይችላሉ።"
         )
 
 
