@@ -975,8 +975,8 @@ EXPLORER_HTML = r"""
           <div class="flex items-center gap-2">
             <span class="text-lg">✨</span>
             <h3 class="font-extrabold text-xs tracking-wide">
-              <span class="lang-am">አዲካ AI አማካሪ & መሳሪያዎች</span>
-              <span class="lang-en">Adika AI Advisor & Tools Hub</span>
+              <span class="lang-am">አዲካ ዲጂታል አማካሪ & መሳሪያዎች</span>
+              <span class="lang-en">Adika Digital Advisor & Tools Hub</span>
             </h3>
           </div>
           <button id="aiModalClose" type="button" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold flex items-center justify-center text-sm">✕</button>
@@ -984,8 +984,8 @@ EXPLORER_HTML = r"""
         <!-- Sub-tabs for AI Hub -->
         <div class="grid grid-cols-2 gap-1 bg-black/20 p-0.5 rounded-xl text-xs font-bold">
           <button id="aiTabTools" type="button" class="py-1 rounded-lg bg-white text-[#16acbd] shadow-sm transition-all text-center">
-            <span class="lang-am">🛠️ የAI መሳሪያዎች</span>
-            <span class="lang-en">🛠️ AI Tools Hub</span>
+            <span class="lang-am">🛠️ መሳሪያዎች</span>
+            <span class="lang-en">🛠️ Tools Hub</span>
           </button>
           <button id="aiTabSearch" type="button" class="py-1 rounded-lg text-white/80 hover:text-white transition-all text-center">
             <span class="lang-am">🔍 ፈጣን ፍለጋ</span>
@@ -1001,10 +1001,10 @@ EXPLORER_HTML = r"""
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5 text-[#0e7490] font-extrabold text-xs">
               <span>💡</span>
-              <span class="lang-am">የግዢና የበጀት አማካሪ (AI Smart Advisor)</span>
-              <span class="lang-en">Smart Financial & Purchase Advisor</span>
+              <span class="lang-am">የግዢና የበጀት አማካሪ</span>
+              <span class="lang-en">Purchase & Budget Advisor</span>
             </div>
-            <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#16acbd]/20 text-[#0e7490]">Pro Advisor</span>
+            <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#16acbd]/20 text-[#0e7490] whitespace-nowrap shrink-0">Adika Advisor</span>
           </div>
 
           <!-- 1. Budget Input & Quick Chips -->
@@ -1023,50 +1023,48 @@ EXPLORER_HTML = r"""
             </div>
           </div>
 
-          <!-- 2. Purpose Selector (ለስራ/ንግድ vs ለቤት/ቤተሰብ) -->
-          <div>
-            <label class="text-[10px] font-bold text-slate-700 block mb-1">የግዢ አላማ (Purchase Purpose)</label>
-            <div class="grid grid-cols-2 gap-1 bg-white/80 p-1 rounded-xl border border-slate-200">
-              <button id="advisorPurposeBiz" type="button" class="advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1" data-purpose="business">
-                <span>🚕</span>
-                <span>ለስራ / ንግድ (Ride/Cargo)</span>
-              </button>
-              <button id="advisorPurposeFam" type="button" class="advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1" data-purpose="personal">
-                <span>🏠</span>
-                <span>ለግል / ቤተሰብ (Personal)</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- 3. Payment Strategy Selector (ጥሬ ገንዘብ vs በባንክ ብድር) -->
-          <div>
-            <label class="text-[10px] font-bold text-slate-700 block mb-1">የግዢ መንገድ (Payment Strategy)</label>
-            <div class="grid grid-cols-2 gap-1 bg-white/80 p-1 rounded-xl border border-slate-200">
-              <button id="advisorPayCash" type="button" class="advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1" data-pay="cash">
-                <span>💵</span>
-                <span>ባለኝ በጀት (Cash Buy)</span>
-              </button>
-              <button id="advisorPayLoan" type="button" class="advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1" data-pay="loan">
-                <span>🏦</span>
-                <span>በባንክ ብድር (Down Payment)</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Optional Monthly Income row (Dynamic) -->
-          <div id="advisorIncomeRow" class="hidden">
-            <label class="text-[10px] font-bold text-slate-700 block mb-1">ወርሃዊ የተጣራ ገቢ (Monthly Net Income in ETB)</label>
-            <input id="advisorIncome" type="number" placeholder="80,000" value="80000" class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 outline-none" />
-          </div>
-
-          <!-- Action Button -->
+          <!-- Action: Generate first (progressive disclosure) -->
           <button id="advisorBtn" type="button" class="w-full py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5">
             <span>✨</span>
-            <span>ብልህ የገበያና የበጀት ምክር አፍልቅ (Generate AI Advice)</span>
+            <span>የአዲካ ዲጂታል ትንተና አፍልቅ (Generate Analysis)</span>
           </button>
 
           <!-- Result Container -->
           <div id="advisorResult" class="hidden p-3 bg-white rounded-2xl border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium shadow-sm space-y-3"></div>
+
+          <!-- Extra filters: shown only AFTER analysis -->
+          <div id="advisorExtraFilters" class="hidden space-y-2.5 pt-1">
+            <div>
+              <label class="text-[10px] font-bold text-slate-700 block mb-1">የግዢ አላማ (Purchase Purpose)</label>
+              <div class="grid grid-cols-2 gap-1 bg-white/80 p-1 rounded-xl border border-slate-200">
+                <button id="advisorPurposeBiz" type="button" class="advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1" data-purpose="business">
+                  <span>🚕</span>
+                  <span>ለስራ / ንግድ (Ride/Cargo)</span>
+                </button>
+                <button id="advisorPurposeFam" type="button" class="advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1" data-purpose="personal">
+                  <span>🏠</span>
+                  <span>ለግል / ቤተሰብ (Personal)</span>
+                </button>
+              </div>
+            </div>
+            <div>
+              <label class="text-[10px] font-bold text-slate-700 block mb-1">የግዢ መንገድ (Payment Strategy)</label>
+              <div class="grid grid-cols-2 gap-1 bg-white/80 p-1 rounded-xl border border-slate-200">
+                <button id="advisorPayCash" type="button" class="advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1" data-pay="cash">
+                  <span>💵</span>
+                  <span>ባለኝ በጀት (Cash Buy)</span>
+                </button>
+                <button id="advisorPayLoan" type="button" class="advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1" data-pay="loan">
+                  <span>🏦</span>
+                  <span>በባንክ ብድር (Down Payment)</span>
+                </button>
+              </div>
+            </div>
+            <div id="advisorIncomeRow" class="hidden">
+              <label class="text-[10px] font-bold text-slate-700 block mb-1">ወርሃዊ የተጣራ ገቢ (Monthly Net Income in ETB)</label>
+              <input id="advisorIncome" type="number" placeholder="80,000" value="80000" class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 outline-none" />
+            </div>
+          </div>
         </div>
 
         <!-- Tools Grid -->
@@ -2017,103 +2015,92 @@ EXPLORER_HTML = r"""
       };
     }
 
-    // Advisor Button Action (/api/ai-advisor)
+    // Advisor Button Action (/api/ai-advisor) — progressive disclosure
     document.getElementById("advisorBtn").onclick = function() {
-      var budget = Number(document.getElementById("advisorBudget").value) || 2000000;
-      var income = document.getElementById("advisorIncome") ? (Number(document.getElementById("advisorIncome").value) || 80000) : 80000;
+      var budget = document.getElementById("advisorBudget").value || 2000000;
+      var purposeBtn = document.querySelector(".advisor-purpose-btn.bg-\\[\\#16acbd\\], .advisor-purpose-btn[data-active='1']");
+      // purpose/pay may be hidden initially — use defaults until revealed
+      var purpose = "personal";
+      var purposeEls = document.querySelectorAll(".advisor-purpose-btn");
+      purposeEls.forEach(function(b) {
+        if (b.className.indexOf("bg-[#16acbd]") >= 0 || b.getAttribute("data-active") === "1") {
+          purpose = b.getAttribute("data-purpose") || purpose;
+        }
+      });
+      var pay = "cash";
+      document.querySelectorAll(".advisor-pay-btn").forEach(function(b) {
+        if (b.className.indexOf("bg-[#16acbd]") >= 0) pay = b.getAttribute("data-pay") || pay;
+      });
+      var incomeEl = document.getElementById("advisorIncome");
+      var income = incomeEl ? incomeEl.value : "";
       var resEl = document.getElementById("advisorResult");
+      var extra = document.getElementById("advisorExtraFilters");
       resEl.classList.remove("hidden");
-      resEl.innerHTML = '<div class="text-center py-3 text-slate-600"><div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div><div>⏳ AI የኢትዮጵያ ገበያንና የበጀት አማራጮችን እየተነተነ ነው...</div></div>';
+      // Human operator typing indicator (no AI wording)
+      resEl.innerHTML =
+        '<div class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100">' +
+          '<span class="inline-flex gap-0.5">' +
+            '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:0ms"></span>' +
+            '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:150ms"></span>' +
+            '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:300ms"></span>' +
+          '</span>' +
+          '<span class="text-[11px] font-bold text-slate-600">ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...</span>' +
+        '</div>';
 
       fetch("/api/ai-advisor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          budget: budget,
-          purpose: selectedPurpose,
-          payment_strategy: selectedPay,
-          monthly_income: income
+          budget: Number(budget),
+          purpose: purpose,
+          payment_strategy: pay,
+          monthly_income: income ? Number(income) : undefined
         })
       })
       .then(function(r){ return r.json(); })
       .then(function(d){
-        var rep = d.advisor_report || d;
-        var title = rep.verdict_title_amharic || ("የ" + budget.toLocaleString() + " ብር በጀት ትንተና");
-        var tier = rep.budget_tier || "የተገመገመ";
-        var options = rep.recommended_options || [];
-        var strat = rep.financial_strategy || {};
-        var adviceAm = rep.expert_advice_amharic || "";
-        var steps = rep.actionable_steps || [];
+        if (extra) extra.classList.remove("hidden");
+        var advice = d.advice || d;
+        var title = advice.title || advice.summary_title || "የበጀት ትንተና";
+        var body = advice.advice_amharic || advice.advice_am || advice.message || advice.summary || "";
+        var steps = advice.next_steps || advice.steps || [];
+        var tier = advice.budget_tier || "";
+        var options = advice.options || advice.recommendations || [];
+        // Strip AI/bot wording from displayed text if present
+        body = String(body).replace(/\\bAI\\b/gi, "እኛ").replace(/language model/gi, "እኛ").replace(/\\bbot\\b/gi, "እኛ");
+
+        var cards = "";
+        if (options && options.length) {
+          cards = '<div class="space-y-1.5">' + options.slice(0, 6).map(function(o) {
+            var name = o.name || o.title || o.asset || "አማራጭ";
+            var price = o.estimated_price_range_etb || o.price || o.range || "";
+            return '<div class="p-2 rounded-xl bg-slate-50 border border-slate-100">' +
+              '<div class="font-extrabold text-slate-800 text-[11px]">' + esc(String(name)) + '</div>' +
+              (price ? '<div class="text-[10px] text-[#0e7490] font-bold mt-0.5">' + esc(String(price)) + '</div>' : '') +
+            '</div>';
+          }).join('') + '</div>';
+        }
 
         resEl.innerHTML =
-          '<div class="space-y-3">' +
-            // Header Banner
-            '<div class="p-3 rounded-2xl bg-gradient-to-r from-[#0e7490] to-[#16acbd] text-white shadow-sm flex items-center justify-between">' +
+          '<div class="space-y-2.5">' +
+            '<div class="flex items-start justify-between gap-2">' +
               '<div>' +
-                '<div class="text-[9px] uppercase tracking-wider text-cyan-200 font-extrabold">የአማካሪ ውሳኔ (AI Assessment)</div>' +
-                '<div class="text-xs font-black mt-0.5">' + esc(title) + '</div>' +
+                '<div class="text-[9px] uppercase tracking-wider text-cyan-700 font-extrabold">Adika Senior Financial Advisor</div>' +
+                '<div class="font-black text-slate-900 text-[12px] mt-0.5">' + esc(String(title)) + '</div>' +
+                (tier ? '<div class="text-[10px] text-slate-500 mt-0.5">በጀት ደረጃ፦ ' + esc(String(tier)) + '</div>' : '') +
               '</div>' +
-              '<span class="px-2.5 py-1 rounded-full bg-white/20 text-white font-extrabold text-[10px] shrink-0 border border-white/30">' + esc(tier) + '</span>' +
             '</div>' +
-
-            // Recommended Options Cards
-            (options.length > 0 ?
-              '<div class="space-y-2">' +
-                '<div class="font-extrabold text-slate-800 text-xs flex items-center gap-1.5"><span>🏆</span><span>ተመራጭ የገበያ አማራጮች (Recommended Options):</span></div>' +
-                options.map(function(opt){
-                  var optName = opt.name || "ተመራጭ ንብረት";
-                  var optCat = opt.category || "Car";
-                  var optPrice = opt.estimated_price_range_etb || "";
-                  var optPros = opt.pros || [];
-                  var optWhy = opt.why_it_fits_amharic || "";
-                  return '<div class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5 shadow-sm">' +
-                    '<div class="flex items-center justify-between">' +
-                      '<div class="font-extrabold text-xs text-slate-900 flex items-center gap-1">' +
-                        '<span>' + (optCat.toLowerCase().indexOf("prop") !== -1 ? "🏠" : "🚗") + '</span>' +
-                        '<span>' + esc(optName) + '</span>' +
-                      '</div>' +
-                      (optPrice ? '<span class="text-[10px] font-black text-[#0e7490] bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200">' + esc(optPrice) + '</span>' : '') +
-                    '</div>' +
-                    (optPros.length > 0 ?
-                      '<div class="flex flex-wrap gap-1">' +
-                        optPros.map(function(p){ return '<span class="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 rounded-md font-bold">✔ ' + esc(p) + '</span>'; }).join('') +
-                      '</div>' : '') +
-                    (optWhy ? '<div class="text-[10px] text-slate-600 leading-snug pt-0.5">• ' + esc(optWhy) + '</div>' : '') +
-                  '</div>';
-                }).join('') +
-              '</div>' : '') +
-
-            // Financial & Payment Strategy Breakdown
-            (strat.strategy_type ?
-              '<div class="p-3 bg-cyan-50/60 rounded-2xl border border-cyan-200 space-y-1.5 text-slate-800">' +
-                '<div class="font-extrabold text-[#0e7490] text-xs flex items-center gap-1"><span>📊</span><span>የፋይናንስና ክፍያ ስትራቴጂ:</span></div>' +
-                '<div class="font-bold text-[11px] text-slate-900">' + esc(strat.strategy_type) + '</div>' +
-                '<div class="grid grid-cols-2 gap-1.5 text-[10px] pt-1 border-t border-cyan-200/60">' +
-                  (strat.down_payment_etb ? '<div>• ቅድመ ክፍያ: <b>' + Number(strat.down_payment_etb).toLocaleString() + ' ETB</b></div>' : '') +
-                  (strat.monthly_bank_payment_etb ? '<div>• ወርሃዊ የባንክ ክፍያ: <b>' + Number(strat.monthly_bank_payment_etb).toLocaleString() + ' ETB</b></div>' : '') +
-                  (strat.monthly_estimated_income_etb ? '<div>• የሚጠበቅ ወርሃዊ ገቢ: <b class="text-emerald-700">' + Number(strat.monthly_estimated_income_etb).toLocaleString() + ' ETB</b></div>' : '') +
-                  (strat.payback_period_months ? '<div>• የካፒታል መመለሻ: <b>~' + strat.payback_period_months + ' ወራት</b></div>' : '') +
-                '</div>' +
-                (strat.summary_amharic ? '<div class="text-[10px] text-slate-600 italic pt-1">' + esc(strat.summary_amharic) + '</div>' : '') +
-              '</div>' : '') +
-
-            // Expert Advice in Amharic
-            (adviceAm ?
-              '<div class="p-3 bg-amber-50/80 rounded-2xl border border-amber-200 text-slate-800 text-[11px] leading-relaxed space-y-1">' +
-                '<div class="font-extrabold text-amber-900 text-xs flex items-center gap-1"><span>💡</span><span>የባለሙያ ገበያ ምክር (Expert Advice):</span></div>' +
-                '<p class="whitespace-pre-line">' + esc(adviceAm) + '</p>' +
-              '</div>' : '') +
-
-            // Actionable Steps
-            (steps.length > 0 ?
-              '<div class="p-2.5 bg-slate-50 rounded-2xl border border-slate-200 text-[10px] text-slate-700 space-y-1">' +
+            '<div class="text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap">' + esc(String(body)) + '</div>' +
+            cards +
+            (steps && steps.length ?
+              '<div class="text-[10px] text-slate-700 space-y-1">' +
                 '<div class="font-extrabold text-slate-900 text-[11px]">📌 ቀጣይ ተግባራዊ እርምጃዎች:</div>' +
-                steps.map(function(s){ return '<div class="flex items-start gap-1"><span class="text-[#16acbd] font-bold">✓</span><span>' + esc(s) + '</span></div>'; }).join('') +
+                steps.map(function(s){ return '<div class="flex items-start gap-1"><span class="text-[#16acbd] font-bold">✓</span><span>' + esc(String(s)) + '</span></div>'; }).join('') +
               '</div>' : '') +
           '</div>';
       })
       .catch(function(err){
-        resEl.innerHTML = '<div class="p-3 bg-rose-50 text-rose-700 rounded-2xl text-xs font-bold">ምክረ-ሃሳቡን ማመንጨት አልተቻለም። እባክዎ በጀቱን አስተካክለው እንደገና ይሞክሩ።</div>';
+        resEl.innerHTML = '<div class="p-3 bg-rose-50 text-rose-700 rounded-2xl text-xs font-bold">ምክረ-ሃሳቡን ማግኘት አልተቻለም። እባክዎ በጀቱን አስተካክለው እንደገና ይሞክሩ።</div>';
       });
     };
 
