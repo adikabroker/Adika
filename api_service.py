@@ -22,14 +22,14 @@ _json_safe = None
 # Gemini (new google-genai SDK + multi-model fallback)
 # ---------------------------------------------------------------------------
 _GEMINI_MODEL_CANDIDATES = [
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-pro-latest",
-    "gemini-1.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash-8b",
     "gemini-1.5-pro",
 ]
 
 
-def _gemini_generate(prompt, *, api_key=None, system=None, json_mode=False, temperature=0.3, image_bytes=None, mime_type="image/jpeg"):
+def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temperature=0.3, image_bytes=None, mime_type="image/jpeg"):
     """Generate text via new `google.genai` Client; fall back to legacy package."""
     api_key = api_key or os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -91,10 +91,13 @@ def _gemini_generate(prompt, *, api_key=None, system=None, json_mode=False, temp
                         config=config,
                     )
                 except TypeError:
-                    # SDK without config= kwarg
+                    # Fallback for SDK signatures without config kwarg
+                    full_text = prompt
+                    if system and not image_bytes:
+                        full_text = f"System Instruction: {system}\n\nUser Prompt: {prompt}"
                     response = client.models.generate_content(
                         model=model_name,
-                        contents=contents,
+                        contents=contents if image_bytes else full_text,
                     )
                 text = getattr(response, "text", None)
                 if not text and getattr(response, "candidates", None):
@@ -768,7 +771,7 @@ def register_api_routes(web_app):
                         "Speak as a human Adika Senior Financial Advisor in polite Amharic. Never mention AI, bot, or language model. Use እኛ/እኔ. Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-1.5-flash-latest",
+                        model_name="gemini-2.0-flash",
                         system_instruction=system_prompt,
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
@@ -837,7 +840,7 @@ def register_api_routes(web_app):
                         "- 'reason': short concise explanation in English.\n"
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-1.5-flash-latest",
+                        model_name="gemini-2.0-flash",
                         system_instruction=prompt,
                         generation_config={"response_mime_type": "application/json", "temperature": 0.0}
                     )
@@ -960,7 +963,7 @@ def register_api_routes(web_app):
                     "Respond ONLY with valid JSON."
                 )
                 model = _AdikaGeminiModel(
-                    model_name="gemini-1.5-flash-latest",
+                    model_name="gemini-2.0-flash",
                     system_instruction=system_instruction,
                     generation_config={"response_mime_type": "application/json", "temperature": 0.0}
                 )
@@ -1569,7 +1572,7 @@ def register_api_routes(web_app):
                             api_key=api_key,
                             system=system_chat,
                             temperature=0.4,
-                            model="gemini-1.5-flash-latest",
+                            model="gemini-2.0-flash",
                         )
                     except Exception as e:
                         logger.warning("advisor chat Gemini: %s", e)
@@ -1624,7 +1627,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-1.5-flash-latest",
+                        model_name="gemini-2.0-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
                     res = model.generate_content(prompt)
@@ -2135,7 +2138,7 @@ def register_api_routes(web_app):
     def api_generate_social_post():
         """
         3. CROSS-PLATFORM PROMOTIONAL POST GENERATOR (/api/generate-social-post):
-        - Use gemini-1.5-flash-latest to format listing details into high-converting promotional text
+        - Use gemini-2.0-flash to format listing details into high-converting promotional text
           and banner layouts for Telegram Channels and Social Media.
         """
         if request.method == 'OPTIONS':
@@ -2167,7 +2170,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-1.5-flash-latest",
+                        model_name="gemini-2.0-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.3}
                     )
                     res = model.generate_content(prompt)
@@ -2251,7 +2254,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-1.5-flash-latest",
+                        model_name="gemini-2.0-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
                     res = model.generate_content(prompt)
@@ -2352,7 +2355,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON with keys: 'contract_title', 'contract_text_amharic', 'key_clauses_summary', 'print_ready_text'."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-1.5-flash-latest",
+                        model_name="gemini-2.0-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
                     res = model.generate_content(prompt)
@@ -2467,7 +2470,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-1.5-flash-latest",
+                        model_name="gemini-2.0-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
                     res = model.generate_content(prompt)
@@ -2859,7 +2862,7 @@ def register_api_routes(web_app):
                     "null if unreadable. Never invent names."
                 )
                 model = _AdikaGeminiModel(
-                    model_name="gemini-1.5-flash-latest",
+                    model_name="gemini-2.0-flash",
                     generation_config={"response_mime_type": "application/json", "temperature": 0.0},
                 )
                 res = model.generate_content([prompt, pil])
@@ -3066,7 +3069,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-1.5-flash-latest",
+                        model_name="gemini-2.0-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
                 
