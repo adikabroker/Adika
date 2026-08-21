@@ -5,7 +5,7 @@ import os
 import random
 from flask import request, jsonify, Response
 
-from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY
+from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, OPENROUTER_MODEL
 from models import (
     LAST_DB_ERROR,
     get_db_connection, get_placeholder, add_listing, get_listing_by_id,
@@ -31,51 +31,37 @@ _GEMINI_MODEL_CANDIDATES = (
 
 
 # ---------------------------------------------------------------------------
-# OpenRouter ONLY (openai/gpt-4o-mini) — primary AI chat
+# OpenRouter via requests (google/gemini-2.0-flash-001 default)
 # ---------------------------------------------------------------------------
 _ADIKA_SYSTEM = (
     "You are Adika's Senior Financial & Vehicle Advisor in Ethiopia. "
     "You must respond ONLY in clear, natural, and grammatically correct Amharic. "
     "STRICT RULES: "
-    "1. Answer ONLY what the user asks. Do NOT provide extra unrequested information, lists, or numeric breakdowns. "
+    "1. Answer ONLY what the user asks. Do NOT provide extra unrequested information or lists. "
     "2. NEVER repeat words, sentences, or phrases redundantly. "
     "3. Be highly concise, direct, and professional. "
-    "4. Avoid mechanical AI filler words; sound like a real, expert human advisor. "
-    "5. Use እኔ/እኛ. Never mention AI, bot, LLM, or language model."
+    "4. Use እኔ/እኛ. Never mention AI, bot, LLM, or language model."
 )
-
-_openrouter_client = None
-
-
-def _get_openrouter_client():
-    """Lazy OpenRouter client (OpenAI SDK + OpenRouter base URL)."""
-    global _openrouter_client
-    if _openrouter_client is not None:
-        return _openrouter_client
-    key = (OPENROUTER_API_KEY if OPENROUTER_API_KEY else None) or os.environ.get("OPENROUTER_API_KEY")
-    if not key:
-        return None
-    try:
-        from openai import OpenAI
-        _openrouter_client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=key,
-        )
-        return _openrouter_client
-    except Exception as e:
-        logger.warning("OpenRouter client init failed: %s", e)
-        return None
 
 
 def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.3):
     """
-    OpenRouter (openai/gpt-4o-mini) only — concise Amharic advisor replies.
+    OpenRouter HTTP API — default model google/gemini-2.0-flash-001.
     """
-    system_instruction = system or _ADIKA_SYSTEM
-    client = _get_openrouter_client()
-    if not client:
-        return "ይቅርታ፣ የ AI አገልግሎት አልተዋቀረም።"
+    import requests as _requests
 
+    api_key = (OPENROUTER_API_KEY if OPENROUTER_API_KEY else None) or os.environ.get("OPENROUTER_API_KEY")
+    model_name = (
+        (OPENROUTER_MODEL if OPENROUTER_MODEL else None)
+        or os.environ.get("OPENROUTER_MODEL")
+        or "google/gemini-2.0-flash-001"
+    )
+    api_url = "https://openrouter.ai/api/v1/chat/completions"
+
+    if not api_key:
+        return "ይቅርታ፣ የ OpenRouter API ቁልፍ አልተዋቀረም።"
+
+    system_instruction = system or _ADIKA_SYSTEM
     messages = [{"role": "system", "content": system_instruction}]
     if chat_history:
         for msg in chat_history:
@@ -83,23 +69,36 @@ def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.3
                 messages.append({"role": msg["role"], "content": str(msg["content"])})
     messages.append({"role": "user", "content": str(prompt)})
 
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://adika-marketplace.app",
+        "X-Title": "Adika Bot",
+    }
+    payload = {
+        "model": model_name,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": 600,
+    }
+
     try:
-        response = client.chat.completions.create(
-            model="openai/gpt-4o-mini",
-            messages=messages,
-            temperature=temperature,
-            frequency_penalty=0.6,
-            presence_penalty=0.5,
-            max_tokens=600,
-        )
-        return (response.choices[0].message.content or "").strip()
+        response = _requests.post(api_url, headers=headers, json=payload, timeout=30)
+        res_data = response.json() if response.content else {}
+        if response.status_code == 200:
+            choices = res_data.get("choices") or []
+            if choices:
+                return (choices[0].get("message", {}).get("content") or "").strip()
+            return "ይቅርታ፣ ባዶ መልስ ተመልሷል።"
+        error_msg = (res_data.get("error") or {}).get("message") or response.text[:200] or "Unknown error"
+        logger.warning("OpenRouter API Error %s: %s", response.status_code, error_msg)
+        return f"ይቅርታ፣ የቴክኒክ ችግር አጋጥሟል: {error_msg}"
     except Exception as e:
-        logger.warning("OpenRouter API Error: %s", e)
-        return "ይቅርታ፣ አሁን መልስ ማዘጋጀት አልተቻለም። እባክዎ ትንሽ ቆይተው እንደገና ይሞክሩ።"
+        logger.warning("OpenRouter connection error: %s", e)
+        return "ይቅርታ፣ ሰርቨሩን ማግኘት አልተቻለም።"
 
 
 def get_openrouter_response(prompt, chat_history=None, system=None, temperature=0.3, max_tokens=600):
-    """Alias for internal callers."""
     return generate_ai_response(prompt, chat_history=chat_history, system=system, temperature=temperature)
 
 
