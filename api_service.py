@@ -184,7 +184,7 @@ def generate_advisor_response(prompt, history=None, budget=0):
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "Qwen/Qwen2.5-72B-Instruct",
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
         "messages": messages,
         "max_tokens": 500,
         "temperature": 0.7
