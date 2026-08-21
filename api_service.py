@@ -147,58 +147,80 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
 
 
 def generate_advisor_response(prompt, history=None, budget=0):
-    hf_token = os.getenv("HF_TOKEN")
-    if not hf_token:
-        return "ይቅርታ፣ የ HF_TOKEN ኤፒአይ ቁልፍ በ Render/Environment ላይ አልተጫነም።"
-
+    """
+    ለ Adika Digital ፋይናንስ አማካሪ የተዘጋጀ ያለ ኤፒአይ (Rule/Logic-Based) የሚሰራ
+    የውጭ አማካሪዎችን (MECE Framework) የመተንተን ዘዴ የተከተለ ኮድ።
+    """
     try:
         budget_val = float(budget or 0)
     except Exception:
         budget_val = 0.0
 
-    system_instruction = (
-        "You are a human Senior Financial Advisor at Adika Digital. "
-        "Speak politely and naturally in Amharic using 'እኛ' or 'እኔ'. "
-        "NEVER mention you are an AI, bot, or language model. "
-        f"Context: Total user budget is {budget_val:,.0f} ETB. "
-        "Strictly analyze options respecting this budget framework."
-    )
-
-    messages = [{"role": "system", "content": system_instruction}]
-    if history:
-        for msg in history[-4:]:
-            if isinstance(msg, dict):
-                role = "assistant" if msg.get("role") == "assistant" else "user"
-                content = msg.get("content") or msg.get("text") or msg.get("message") or ""
-                messages.append({"role": role, "content": content})
-            elif isinstance(msg, str):
-                messages.append({"role": "user", "content": msg})
+    prompt_clean = str(prompt or "").lower().strip()
+    budget_fmt = f"{budget_val:,.0f} ETB"
     
-    messages.append({"role": "user", "content": f"የተጠቃሚ በጀት: {budget_val:,.0f} ETB\nጥያቄ: {prompt}"})
+    # 1. MECE የበጀት ስሌት ማዕቀፍ (70% ንብረት፣ 15% ታክስ/ስምምነት፣ 15% የአደጋ ጊዜ)
+    property_alloc = budget_val * 0.70
+    tax_legal_alloc = budget_val * 0.15
+    reserve_alloc = budget_val * 0.15
 
-    API_URL = "https://router.huggingface.co/hf-inference/v1/chat/completions"
-    
-    headers = {
-        "Authorization": f"Bearer {hf_token}",
-        "Content-Type": "application/json"
-    }
-    # በ Hugging Face Router በነጻ እና በቋሚነት የሚሰራ ሞዴል
-    payload = {
-        "model": "meta-llama/Llama-3.2-3B-Instruct",
-        "messages": messages,
-        "max_tokens": 500,
-        "temperature": 0.7
-    }
+    # --- INTENT 1: ሰላምታ እና መግቢያ ---
+    if any(k in prompt_clean for k in ["ሰላም", "ሰላምታ", "hello", "hi", "ሀይ"]):
+        return (
+            f"ሰላም! እኔ የ Adika Digital የፋይናንስና የህግ አማካሪ ነኝ። "
+            f"ለተመደበው **{budget_fmt}** በጀት የተሟላ የበጀት ትንተና እና የህግ ምክር አዘጋጅቼልዎታለሁ። "
+            "ስለ ንብረት ግዢ፣ የታክስ/የውል ክፍያዎች ወይም የባንክ ብድር ምን ማወቅ ይፈልጋሉ?"
+        )
 
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=25)
-        if response.status_code == 200:
-            result = response.json()
-            return result["choices"][0]["message"]["content"].strip()
-        else:
-            return f"የኤፒአይ ስህተት፦ {response.status_code} - {response.text}"
-    except Exception as e:
-        return f"የውስጥ ስህተት ተፈጠረ፦ {str(e)}"
+    # --- INTENT 2: የበጀት ክፍፍል እና ስሌት (MECE Analysis) ---
+    elif any(k in prompt_clean for k in ["በጀት", "ክፍፍል", "ስሌት", "ገንዘብ", "budget", "calculation"]):
+        return (
+            f"📊 **የ Adika MECE የበጀት ትንተና ({budget_fmt})**\n\n"
+            f"1. **ለዋና ንብረት ግዢ (70%)፦** {property_alloc:,.0f} ETB\n"
+            f"2. **ለታክስ፣ ስምምነትና የህግ ክፍያዎች (15%)፦** {tax_legal_alloc:,.0f} ETB\n"
+            f"3. **የአደጋ ጊዜ እና ተዘዋዋሪ ወጪ (15%)፦** {reserve_alloc:,.0f} ETB\n\n"
+            "💡 **የአማካሪ አስተያየት፦** ይህ አሰራር ያልታሰቡ የህግ እና የፈቃድ ወጪዎች ቢመጡ እንኳ የንብረት ግዢዎ እንዳይስተካከል ያደርጋል።"
+        )
+
+    # --- INTENT 3: ህግ፣ ውል እና ሰነዶች (Legal Framework) ---
+    elif any(k in prompt_clean for k in ["ህግ", "ውል", "ስምምነት", "ካርታ", "ሰነድ", "ህጋዊ"]):
+        return (
+            "⚖️ **የንብረት ዝውውርና የውል ማረጋገጫ የህግ መመሪያ፦**\n\n"
+            "• **የባለቤትነት ማረጋገጫ፦** ከመክፈልዎ በፊት የካርታው/የሊዝ ሰነዱ ትክክለኛነት በክፍለ ከተማው ሰነዶች ማረጋገጫ መረጋገጥ አለበት።\n"
+            f"• **የውል ወጪ፦** ለህጋዊ ክፍያዎችና ለቴምብር ቀረጥ ከተመደበው **{tax_legal_alloc:,.0f} ETB** አይብለጥ።\n"
+            "• **ጥንቃቄ፦** ክፍያ የሚፈጸመው በውልና ማስረጃ ፊት በባንክ ሂሳብ ብቻ መሆን አለበት።"
+        )
+
+    # --- INTENT 4: የባንክ ብድርና ፋይናንሲንግ (Loan Strategy) ---
+    elif any(k in prompt_clean for k in ["ብድር", "ባንክ", "ወለድ", "ባንክ ብድር", "loan"]):
+        est_loan = budget_val * 0.50
+        return (
+            "🏦 **የባንክ ብድርና የሌቨሬጅ (Leverage) ስትራቴጂ፦**\n\n"
+            f"• **የመያዣ አቅም፦** በያዙት **{budget_fmt}** ካፒታል ተጨማሪ እስከ **{est_loan:,.0f} ETB** የባንክ ብድር መጠየቅ የሚያስችል አቅም ይፈጥራል።\n"
+            "• **የባንክ መስፈርት፦** የ 6 ወር የባንክ እንቅስቃሴ (Statement) እና የንግድ ፈቃድ ማቅረብ ይጠይቃል።\n"
+            "• **ምክር፦** የወርሃዊ የብድር ክፍያዎ ከወርሃዊ የተጣራ ገቢዎ ከ 30% በላይ መሆን የለበትም።"
+        )
+
+    # --- INTENT 5: ስጋትና ጥንቃቄ (Risk Assessment) ---
+    elif any(k in prompt_clean for k in ["ስጋት", "አደጋ", "ችግር", "risk", "ጉዳት"]):
+        return (
+            "🛡️ **የስጋት መከላከያ (Risk Management) ማዕቀፍ፦**\n\n"
+            f"• **የገበያ መዛባት፦** ለድንገተኛ የዋጋ ጭማሪ ከተያዘው **{reserve_alloc:,.0f} ETB** ውጭ ዋናውን ካፒታል አይንኩ።\n"
+            "• **የህግ ስጋት፦** ያልተረጋገጡ የሶስተኛ ወገን እዳዎች በንብረቱ ላይ አለመኖራቸውን ማረጋገጥ።"
+        )
+
+    # --- DEFAULT RESPONSE: በጥልቅ መረጃ የተደራጀ പൊതു መልስ ---
+    else:
+        return (
+            f"🎯 **የ Adika Senior Advisor ጥልቅ ትንተና፦**\n\n"
+            f"በያዙት **{budget_fmt}** በጀት መሰረት የተመረጡ የፋይናንስ አማራጮች፦\n"
+            f"• **ለንብረት ግዢ የተመደበ፦** {property_alloc:,.0f} ETB\n"
+            f"• **ለህግና ታክስ የተያዘ፦** {tax_legal_alloc:,.0f} ETB\n\n"
+            "የተወሰነ ርዕስ መምረጥ ይችላሉ፦\n"
+            "1. **በጀት** - ዝርዝር የበጀት ክፍፍል ለማየት\n"
+            "2. **ህግ** - የውልና የሰነድ ጥንቃቄዎችን ለማየት\n"
+            "3. **ብድር** - የባንክ አማራጮችን ለማሰላሰል"
+        )
 
 
 
