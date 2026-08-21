@@ -182,8 +182,9 @@ def generate_advisor_response(prompt, history=None, budget=0):
         "Authorization": f"Bearer {hf_token}",
         "Content-Type": "application/json"
     }
+    # በ hf-inference አቅራቢ በነጻ የሚሰራ ሞዴል
     payload = {
-        "model": "Qwen/Qwen2.5-72B-Instruct",
+        "model": "Qwen/Qwen2.5-Coder-32B-Instruct",
         "messages": messages,
         "max_tokens": 500,
         "temperature": 0.7
