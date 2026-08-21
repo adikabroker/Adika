@@ -31,19 +31,8 @@ _GEMINI_MODEL_CANDIDATES = (
 
 
 # ---------------------------------------------------------------------------
-# OpenRouter (primary) + Groq + Gemini fallbacks
+# OpenRouter ONLY (openai/gpt-4o-mini) — primary AI chat
 # ---------------------------------------------------------------------------
-_OPENROUTER_MODELS = (
-    "openai/gpt-4o-mini",
-    "openai/gpt-4o",
-    "google/gemini-2.0-flash-001",
-)
-
-_GROQ_MODELS = (
-    "llama-3.1-8b-instant",
-    "mixtral-8x7b-32768",
-)
-
 _ADIKA_SYSTEM = (
     "You are Adika's Senior Financial & Vehicle Advisor in Ethiopia. "
     "You must respond ONLY in clear, natural, and grammatically correct Amharic. "
@@ -56,10 +45,10 @@ _ADIKA_SYSTEM = (
 )
 
 _openrouter_client = None
-_groq_client = None
 
 
 def _get_openrouter_client():
+    """Lazy OpenRouter client (OpenAI SDK + OpenRouter base URL)."""
     global _openrouter_client
     if _openrouter_client is not None:
         return _openrouter_client
@@ -78,136 +67,40 @@ def _get_openrouter_client():
         return None
 
 
-def _get_groq_client():
-    global _groq_client
-    if _groq_client is not None:
-        return _groq_client
-    key = (GROQ_API_KEY if GROQ_API_KEY else None) or os.environ.get("GROQ_API_KEY")
-    if not key:
-        return None
-    try:
-        from groq import Groq
-        _groq_client = Groq(api_key=key)
-        return _groq_client
-    except Exception as e:
-        logger.warning("Groq client init failed: %s", e)
-        return None
+def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.3):
+    """
+    OpenRouter (openai/gpt-4o-mini) only — concise Amharic advisor replies.
+    """
+    system_instruction = system or _ADIKA_SYSTEM
+    client = _get_openrouter_client()
+    if not client:
+        return "ይቅርታ፣ የ AI አገልግሎት አልተዋቀረም።"
 
-
-def _build_messages(prompt, chat_history, system_instruction):
     messages = [{"role": "system", "content": system_instruction}]
     if chat_history:
         for msg in chat_history:
             if isinstance(msg, dict) and msg.get("role") and msg.get("content") is not None:
                 messages.append({"role": msg["role"], "content": str(msg["content"])})
     messages.append({"role": "user", "content": str(prompt)})
-    return messages
+
+    try:
+        response = client.chat.completions.create(
+            model="openai/gpt-4o-mini",
+            messages=messages,
+            temperature=temperature,
+            frequency_penalty=0.6,
+            presence_penalty=0.5,
+            max_tokens=600,
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception as e:
+        logger.warning("OpenRouter API Error: %s", e)
+        return "ይቅርታ፣ አሁን መልስ ማዘጋጀት አልተቻለም። እባክዎ ትንሽ ቆይተው እንደገና ይሞክሩ።"
 
 
 def get_openrouter_response(prompt, chat_history=None, system=None, temperature=0.3, max_tokens=600):
-    client = _get_openrouter_client()
-    if client is None:
-        raise RuntimeError("OPENROUTER_API_KEY is not set")
-    messages = _build_messages(prompt, chat_history, system or _ADIKA_SYSTEM)
-    last_err = None
-    for model_name in _OPENROUTER_MODELS:
-        try:
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                temperature=temperature,
-                frequency_penalty=0.6,
-                presence_penalty=0.5,
-                max_tokens=max_tokens,
-            )
-            text = (response.choices[0].message.content or "").strip()
-            if text:
-                return text
-        except Exception as e:
-            last_err = e
-            logger.warning("OpenRouter model %s failed: %s", model_name, e)
-    raise RuntimeError(f"OpenRouter failed: {last_err}")
-
-
-def get_groq_response(prompt, chat_history=None, system=None, temperature=0.6, max_tokens=800):
-    client = _get_groq_client()
-    if client is None:
-        raise RuntimeError("GROQ_API_KEY is not set")
-    messages = _build_messages(prompt, chat_history, system or _ADIKA_SYSTEM)
-    last_err = None
-    for model_name in _GROQ_MODELS:
-        try:
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                presence_penalty=0.5,
-            )
-            text = (response.choices[0].message.content or "").strip()
-            if text:
-                return text
-        except Exception as e:
-            last_err = e
-            logger.warning("Groq model %s failed: %s", model_name, e)
-    raise RuntimeError(f"Groq failed: {last_err}")
-
-
-def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.3):
-    """
-    OpenRouter first (gpt-4o-mini), then Groq, then Gemini.
-    """
-    system_instruction = system or _ADIKA_SYSTEM
-    chat_history = chat_history or []
-
-    if _get_openrouter_client():
-        try:
-            return get_openrouter_response(
-                prompt,
-                chat_history=chat_history,
-                system=system_instruction,
-                temperature=temperature,
-                max_tokens=600,
-            )
-        except Exception as e:
-            logger.warning("OpenRouter failed, trying Groq: %s", e)
-
-    if _get_groq_client():
-        try:
-            return get_groq_response(
-                prompt,
-                chat_history=chat_history,
-                system=system_instruction,
-                temperature=0.6,
-                max_tokens=800,
-            )
-        except Exception as e:
-            logger.warning("Groq failed, trying Gemini: %s", e)
-
-    gemini_key = os.environ.get("GEMINI_API_KEY") or (GEMINI_API_KEY or None)
-    if gemini_key:
-        try:
-            return _gemini_chat(
-                prompt,
-                api_key=gemini_key,
-                system=system_instruction,
-                temperature=temperature,
-                model="gemini-1.5-flash",
-            )
-        except Exception as e:
-            logger.warning("Gemini chat failed: %s", e)
-            try:
-                return _gemini_generate(
-                    prompt,
-                    api_key=gemini_key,
-                    system=system_instruction,
-                    temperature=temperature,
-                    json_mode=False,
-                )
-            except Exception as e2:
-                logger.warning("Gemini generate failed: %s", e2)
-
-    return "ይቅርታ፣ አሁን መልስ ማዘጋጀት አልተቻለም። እባክዎ ትንሽ ቆይተው እንደገና ይሞክሩ።"
+    """Alias for internal callers."""
+    return generate_ai_response(prompt, chat_history=chat_history, system=system, temperature=temperature)
 
 
 def _advisor_chat_reply(user_message, *, system=None, temperature=0.3):
