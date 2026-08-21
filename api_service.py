@@ -176,29 +176,29 @@ def generate_advisor_response(prompt, history=None, budget=0):
     
     messages.append({"role": "user", "content": f"የተጠቃሚ በጀት: {budget_val:,.0f} ETB\nጥያቄ: {prompt}"})
 
-    # አዲሱ ትክክለኛ HuggingFace Router Endpoint
-    API_URL = "https://router.huggingface.co/hf-inference/v1/chat/completions"
+    # 100% ነጻ እና አፕሩቫል የማይጠይቀው የቀጥታ Qwen ሞዴል Endpoint
+    API_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions"
     
     headers = {
         "Authorization": f"Bearer {hf_token}",
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "model": "Qwen/Qwen2.5-72B-Instruct",
         "messages": messages,
         "max_tokens": 500,
         "temperature": 0.7
     }
 
     try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=20)
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=25)
         if response.status_code == 200:
             result = response.json()
             return result["choices"][0]["message"]["content"].strip()
         else:
             return f"የኤፒአይ ጥሪ አልተሳካም። (Code: {response.status_code})"
     except Exception as e:
-        return "ይቅርታ፣ ከኦፕሬተራችን ጋር ማገናኘት አልተቻለም። እባክዎ ትንሽ ቆይተው ይሞክሩ።"
+        return "ይቅርታ፣ ከኦፕሬተራችን ጋር ማገናኘት አልተቻለም።"
 
 
 
