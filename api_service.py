@@ -176,8 +176,7 @@ def generate_advisor_response(prompt, history=None, budget=0):
     
     messages.append({"role": "user", "content": f"የተጠቃሚ በጀት: {budget_val:,.0f} ETB\nጥያቄ: {prompt}"})
 
-    # 100% ነጻ እና አፕሩቫል የማይጠይቀው የቀጥታ Qwen ሞዴል Endpoint
-    API_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions"
+    API_URL = "https://router.huggingface.co/hf-inference/v1/chat/completions"
     
     headers = {
         "Authorization": f"Bearer {hf_token}",
@@ -196,9 +195,9 @@ def generate_advisor_response(prompt, history=None, budget=0):
             result = response.json()
             return result["choices"][0]["message"]["content"].strip()
         else:
-            return f"የኤፒአይ ጥሪ አልተሳካም። (Code: {response.status_code})"
+            return f"የኤፒአይ ስህተት፦ {response.status_code} - {response.text}"
     except Exception as e:
-        return "ይቅርታ፣ ከኦፕሬተራችን ጋር ማገናኘት አልተቻለም።"
+        return f"የውስጥ ስህተት ተፈጠረ፦ {str(e)}"
 
 
 
