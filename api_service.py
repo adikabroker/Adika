@@ -182,9 +182,9 @@ def generate_advisor_response(prompt, history=None, budget=0):
         "Authorization": f"Bearer {hf_token}",
         "Content-Type": "application/json"
     }
-    # በ hf-inference አቅራቢ በነጻ የሚሰራ ሞዴል
+    # በ Hugging Face Router በነጻ እና በቋሚነት የሚሰራ ሞዴል
     payload = {
-        "model": "Qwen/Qwen2.5-Coder-32B-Instruct",
+        "model": "meta-llama/Llama-3.2-3B-Instruct",
         "messages": messages,
         "max_tokens": 500,
         "temperature": 0.7
