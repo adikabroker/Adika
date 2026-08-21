@@ -188,7 +188,7 @@ def generate_advisor_response(prompt, history=None, budget=0):
                 for row in res.data:
                     kw = str(row.get("keyword", "")).strip().lower()
                     if kw and kw in prompt_clean:
-                        tmpl = row.get("response_template", "")
+                        tmpl = row.get("response_template", "").replace("\\n", "\n")
                         return tmpl.format(
                             budget=budget_fmt,
                             property_alloc=f"{property_alloc:,.0f} ETB",
@@ -212,7 +212,7 @@ def generate_advisor_response(prompt, history=None, budget=0):
                     for row in rows:
                         kw = str(row.get("keyword", "")).strip().lower()
                         if kw and kw in prompt_clean:
-                            tmpl = row.get("response_template", "")
+                            tmpl = row.get("response_template", "").replace("\\n", "\n")
                             return tmpl.format(
                                 budget=budget_fmt,
                                 property_alloc=f"{property_alloc:,.0f} ETB",
