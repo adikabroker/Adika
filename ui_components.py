@@ -881,6 +881,30 @@ EXPLORER_HTML = r"""
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
+    <!-- HOME HERO: Document Verify + Digital Advisor (compact dual cards) -->
+    <div id="homeHero" class="grid grid-cols-2 gap-2 mb-2.5">
+      <button id="heroAdvisorBtn" type="button"
+        class="relative overflow-hidden rounded-2xl p-2.5 text-left border border-white/70 shadow-[0_8px_20px_rgba(15,23,42,0.10)] active:scale-[0.98] transition-all"
+        style="background:linear-gradient(135deg,rgba(22,172,189,0.92),rgba(14,116,144,0.95));">
+        <div class="text-white space-y-1.5">
+          <div class="text-base leading-none">💡</div>
+          <div class="font-black text-[11px] leading-tight">አዲካ ዲጂታል አማካሪ</div>
+          <div class="text-[9px] text-white/85 leading-snug">በጀትዎን ትክክለኛ ግምት</div>
+          <span class="inline-flex mt-0.5 px-2 py-0.5 rounded-full bg-white/20 text-[9px] font-bold">ነጻ የገበያ ትንተና →</span>
+        </div>
+      </button>
+      <button id="heroPoaBtn" type="button"
+        class="relative overflow-hidden rounded-2xl p-2.5 text-left border border-white/70 shadow-[0_8px_20px_rgba(15,23,42,0.10)] active:scale-[0.98] transition-all"
+        style="background:linear-gradient(135deg,rgba(15,23,42,0.92),rgba(30,58,138,0.95));">
+        <div class="text-white space-y-1.5">
+          <div class="text-base leading-none">📄</div>
+          <div class="font-black text-[11px] leading-tight">የሰነድ ማረጋገጫ</div>
+          <div class="text-[9px] text-white/85 leading-snug">የውክልና ሰነድ ዲጂታል ማጣሪያ</div>
+          <span class="inline-flex mt-0.5 px-2 py-0.5 rounded-full bg-white/20 text-[9px] font-bold">አሁን ያረጋግጡ →</span>
+        </div>
+      </button>
+    </div>
+
     <div id="status" class="text-center py-8 text-slate-600 font-semibold text-xs">
       <div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div>
       <div>
@@ -963,6 +987,47 @@ EXPLORER_HTML = r"""
       </button>
     </div>
   </nav>
+
+
+  <!-- DEDICATED ANALYSIS DASHBOARD (full-screen view state) -->
+  <div id="analysisView" class="fixed inset-0 z-[60] bg-[#b5eff3] hidden flex-col max-w-md mx-auto">
+    <div class="shrink-0 px-3 py-2.5 bg-[#16acbd] text-white flex items-center gap-2 shadow-md">
+      <button id="analysisBackBtn" type="button" class="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-bold">← ወደ ዋና ገጽ</button>
+      <div class="min-w-0 flex-1">
+        <div class="font-black text-xs truncate">Adika Senior Financial Advisor</div>
+        <div class="text-[10px] text-white/85 truncate">የበጀት ትንተናና ምክር</div>
+      </div>
+    </div>
+    <div class="flex-1 overflow-y-auto p-3 space-y-3 pb-28">
+      <div id="analysisBudgetBar" class="bg-white rounded-2xl p-3 shadow-sm border border-white/80 space-y-2">
+        <div class="flex justify-between items-center text-[11px] font-bold text-slate-700">
+          <span>የበጀት ክፍፍል</span>
+          <span id="analysisBudgetTotal" class="text-[#0e7490]">—</span>
+        </div>
+        <div class="h-2.5 rounded-full bg-slate-100 overflow-hidden flex">
+          <div id="barPurchase" class="h-full bg-[#16acbd]" style="width:70%"></div>
+          <div id="barFees" class="h-full bg-amber-400" style="width:15%"></div>
+          <div id="barReserve" class="h-full bg-emerald-400" style="width:15%"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-1 text-[9px] font-semibold text-slate-600">
+          <div><span class="inline-block w-2 h-2 rounded-full bg-[#16acbd] mr-1"></span>ግዢ <b id="pctPurchase">70%</b></div>
+          <div><span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1"></span>ክፍያ/ታክስ <b id="pctFees">15%</b></div>
+          <div><span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>ሪዘርቭ <b id="pctReserve">15%</b></div>
+        </div>
+      </div>
+      <div id="analysisCards" class="space-y-2"></div>
+      <div id="analysisAdvice" class="bg-white rounded-2xl p-3 shadow-sm text-[11px] text-slate-700 leading-relaxed"></div>
+      <!-- Live advisor chat -->
+      <div class="bg-white rounded-2xl shadow-sm border border-white/80 overflow-hidden flex flex-col min-h-[220px]">
+        <div class="px-3 py-2 border-b border-slate-100 text-[11px] font-black text-slate-800">💬 ከአማካሪ ጋር ውይይት</div>
+        <div id="advisorChatLog" class="flex-1 overflow-y-auto p-3 space-y-2 max-h-52 text-[11px]"></div>
+        <div class="p-2 border-t border-slate-100 flex gap-1.5">
+          <input id="advisorChatInput" type="text" placeholder="ጥያቄዎን ይጻፉ..." class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-[#16acbd]" />
+          <button id="advisorChatSend" type="button" class="px-3 py-2 rounded-xl bg-[#16acbd] text-white font-bold text-xs">ላክ</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ================================================================= -->
   <!-- 4. DEDICATED AI HUB & SMART FILTER MODAL                          -->
@@ -2015,17 +2080,133 @@ EXPLORER_HTML = r"""
       };
     }
 
-    // Advisor Button Action (/api/ai-advisor) — progressive disclosure
+
+    // Home hero CTAs
+    (function(){
+      var ha = document.getElementById("heroAdvisorBtn");
+      var hp = document.getElementById("heroPoaBtn");
+      if (ha) ha.onclick = function() {
+        if (typeof openToolModal === "function") openToolModal("aiModal");
+        else {
+          var m = document.getElementById("aiModal");
+          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
+        }
+      };
+      if (hp) hp.onclick = function() {
+        if (typeof openToolModal === "function") openToolModal("poaModal");
+        else {
+          var m = document.getElementById("poaModal");
+          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
+        }
+      };
+    })();
+
+    function showAnalysisView(show) {
+      var v = document.getElementById("analysisView");
+      if (!v) return;
+      if (show) {
+        v.classList.remove("hidden");
+        v.classList.add("flex");
+        document.body.style.overflow = "hidden";
+      } else {
+        v.classList.add("hidden");
+        v.classList.remove("flex");
+        document.body.style.overflow = "";
+      }
+    }
+    var analysisBackBtn = document.getElementById("analysisBackBtn");
+    if (analysisBackBtn) analysisBackBtn.onclick = function() { showAnalysisView(false); };
+
+    function appendAdvisorChat(role, text) {
+      var log = document.getElementById("advisorChatLog");
+      if (!log) return;
+      var row = document.createElement("div");
+      row.className = role === "user"
+        ? "ml-6 p-2 rounded-xl bg-[#16acbd]/15 text-slate-800"
+        : "mr-6 p-2 rounded-xl bg-slate-50 text-slate-700 border border-slate-100";
+      row.innerHTML = "<div class=\"text-[9px] font-bold text-slate-500 mb-0.5\">" +
+        (role === "user" ? "እርስዎ" : "Adika Advisor") + "</div><div>" + esc(String(text || "")) + "</div>";
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderBudgetBar(budget) {
+      var b = Math.max(0, Number(budget) || 0);
+      var purchase = Math.round(b * 0.70);
+      var fees = Math.round(b * 0.15);
+      var reserve = b - purchase - fees;
+      var el = document.getElementById("analysisBudgetTotal");
+      if (el) el.textContent = b.toLocaleString() + " ETB";
+      var set = function(id, pct) { var n = document.getElementById(id); if (n) n.textContent = pct + "%"; };
+      set("pctPurchase", 70); set("pctFees", 15); set("pctReserve", 15);
+      var bp = document.getElementById("barPurchase");
+      var bf = document.getElementById("barFees");
+      var br = document.getElementById("barReserve");
+      if (bp) bp.style.width = "70%";
+      if (bf) bf.style.width = "15%";
+      if (br) br.style.width = "15%";
+    }
+
+    function renderAnalysisDashboard(d, budget) {
+      var advice = d.advice || d;
+      var body = advice.advice_amharic || advice.advice_am || advice.message || advice.summary || "";
+      body = String(body).replace(/\\bAI\\b/gi, "እኛ").replace(/language model/gi, "እኛ").replace(/\\bbot\\b/gi, "እኛ");
+      var title = advice.title || advice.summary_title || "የበጀት ትንተና";
+      var options = advice.options || advice.recommendations || [];
+      var steps = advice.next_steps || advice.steps || [];
+      var budgetNum = Number(budget) || 0;
+
+      renderBudgetBar(budgetNum);
+
+      var cardsEl = document.getElementById("analysisCards");
+      if (cardsEl) {
+        var filtered = (options || []).filter(function(o) {
+          var p = o.estimated_price_etb || o.max_price || o.price_etb;
+          if (p == null) return true;
+          return Number(p) <= budgetNum * 1.02;
+        }).slice(0, 6);
+        if (!filtered.length && options && options.length) filtered = options.slice(0, 3);
+        cardsEl.innerHTML = filtered.map(function(o) {
+          var name = o.name || o.title || o.asset || "አማራጭ";
+          var price = o.estimated_price_range_etb || o.price || o.range || "";
+          var fuel = o.fuel_or_maintenance || o.maintenance || "";
+          return '<div class="bg-white rounded-2xl p-3 shadow-sm border border-white/80">' +
+            '<div class="font-black text-slate-900 text-[12px]">' + esc(String(name)) + '</div>' +
+            (price ? '<div class="text-[#0e7490] font-bold text-[11px] mt-1">💰 ' + esc(String(price)) + '</div>' : '') +
+            (fuel ? '<div class="text-[10px] text-slate-500 mt-0.5">' + esc(String(fuel)) + '</div>' : '') +
+            '<div class="text-[9px] text-emerald-700 font-bold mt-1">✓ በበጀትዎ ወሰን ውስጥ</div>' +
+          '</div>';
+        }).join("") || '<div class="text-[11px] text-slate-500 p-2">በበጀትዎ የሚገጥሙ አማራጮች እየተዘጋጁ ነው…</div>';
+      }
+
+      var advEl = document.getElementById("analysisAdvice");
+      if (advEl) {
+        advEl.innerHTML =
+          '<div class="text-[9px] font-extrabold text-[#0e7490] uppercase tracking-wide mb-1">ከአማካሪ</div>' +
+          '<div class="font-black text-slate-900 text-[12px] mb-1">' + esc(String(title)) + '</div>' +
+          '<div class="whitespace-pre-wrap">' + esc(String(body)) + '</div>' +
+          (steps && steps.length
+            ? '<div class="mt-2 space-y-1">' + steps.map(function(s){
+                return '<div class="flex gap-1"><span class="text-[#16acbd]">✓</span><span>' + esc(String(s)) + '</span></div>';
+              }).join("") + '</div>'
+            : '');
+      }
+
+      var log = document.getElementById("advisorChatLog");
+      if (log && !log.dataset.seeded) {
+        log.innerHTML = "";
+        appendAdvisorChat("advisor", "ሰላም፣ እኔ የ Adika Senior Financial Advisor ነኝ። በበጀትዎ (" + Number(budgetNum).toLocaleString() + " ብር) ላይ ትንተና አቅርቤሎታለሁ። ጥያቄ ካለዎት እዚህ ይጻፉ።");
+        log.dataset.seeded = "1";
+      }
+    }
+
+
+        // Advisor Button Action (/api/ai-advisor) — progressive disclosure
     document.getElementById("advisorBtn").onclick = function() {
       var budget = document.getElementById("advisorBudget").value || 2000000;
-      var purposeBtn = document.querySelector(".advisor-purpose-btn.bg-\\[\\#16acbd\\], .advisor-purpose-btn[data-active='1']");
-      // purpose/pay may be hidden initially — use defaults until revealed
       var purpose = "personal";
-      var purposeEls = document.querySelectorAll(".advisor-purpose-btn");
-      purposeEls.forEach(function(b) {
-        if (b.className.indexOf("bg-[#16acbd]") >= 0 || b.getAttribute("data-active") === "1") {
-          purpose = b.getAttribute("data-purpose") || purpose;
-        }
+      document.querySelectorAll(".advisor-purpose-btn").forEach(function(b) {
+        if (b.className.indexOf("bg-[#16acbd]") >= 0) purpose = b.getAttribute("data-purpose") || purpose;
       });
       var pay = "cash";
       document.querySelectorAll(".advisor-pay-btn").forEach(function(b) {
@@ -2033,19 +2214,30 @@ EXPLORER_HTML = r"""
       });
       var incomeEl = document.getElementById("advisorIncome");
       var income = incomeEl ? incomeEl.value : "";
-      var resEl = document.getElementById("advisorResult");
-      var extra = document.getElementById("advisorExtraFilters");
-      resEl.classList.remove("hidden");
-      // Human operator typing indicator (no AI wording)
-      resEl.innerHTML =
-        '<div class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100">' +
-          '<span class="inline-flex gap-0.5">' +
-            '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:0ms"></span>' +
-            '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:150ms"></span>' +
-            '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:300ms"></span>' +
-          '</span>' +
-          '<span class="text-[11px] font-bold text-slate-600">ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...</span>' +
-        '</div>';
+
+      // Close input modal → open dedicated analysis page
+      try {
+        var aiModal = document.getElementById("aiModal");
+        if (aiModal) { aiModal.classList.add("hidden"); aiModal.classList.remove("flex"); }
+      } catch (e) {}
+      showAnalysisView(true);
+      var cardsEl = document.getElementById("analysisCards");
+      var advEl = document.getElementById("analysisAdvice");
+      var log = document.getElementById("advisorChatLog");
+      if (log) { log.innerHTML = ""; log.dataset.seeded = ""; }
+      renderBudgetBar(budget);
+      if (advEl) {
+        advEl.innerHTML =
+          '<div class="flex items-center gap-2 text-slate-600">' +
+            '<span class="inline-flex gap-0.5">' +
+              '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce"></span>' +
+              '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:150ms"></span>' +
+              '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:300ms"></span>' +
+            '</span>' +
+            '<span class="font-bold text-[11px]">ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...</span>' +
+          '</div>';
+      }
+      if (cardsEl) cardsEl.innerHTML = "";
 
       fetch("/api/ai-advisor", {
         method: "POST",
@@ -2054,55 +2246,56 @@ EXPLORER_HTML = r"""
           budget: Number(budget),
           purpose: purpose,
           payment_strategy: pay,
-          monthly_income: income ? Number(income) : undefined
+          monthly_income: income ? Number(income) : undefined,
+          strict_budget_cap: true
         })
       })
       .then(function(r){ return r.json(); })
       .then(function(d){
+        renderAnalysisDashboard(d, budget);
+        var extra = document.getElementById("advisorExtraFilters");
         if (extra) extra.classList.remove("hidden");
-        var advice = d.advice || d;
-        var title = advice.title || advice.summary_title || "የበጀት ትንተና";
-        var body = advice.advice_amharic || advice.advice_am || advice.message || advice.summary || "";
-        var steps = advice.next_steps || advice.steps || [];
-        var tier = advice.budget_tier || "";
-        var options = advice.options || advice.recommendations || [];
-        // Strip AI/bot wording from displayed text if present
-        body = String(body).replace(/\\bAI\\b/gi, "እኛ").replace(/language model/gi, "እኛ").replace(/\\bbot\\b/gi, "እኛ");
-
-        var cards = "";
-        if (options && options.length) {
-          cards = '<div class="space-y-1.5">' + options.slice(0, 6).map(function(o) {
-            var name = o.name || o.title || o.asset || "አማራጭ";
-            var price = o.estimated_price_range_etb || o.price || o.range || "";
-            return '<div class="p-2 rounded-xl bg-slate-50 border border-slate-100">' +
-              '<div class="font-extrabold text-slate-800 text-[11px]">' + esc(String(name)) + '</div>' +
-              (price ? '<div class="text-[10px] text-[#0e7490] font-bold mt-0.5">' + esc(String(price)) + '</div>' : '') +
-            '</div>';
-          }).join('') + '</div>';
-        }
-
-        resEl.innerHTML =
-          '<div class="space-y-2.5">' +
-            '<div class="flex items-start justify-between gap-2">' +
-              '<div>' +
-                '<div class="text-[9px] uppercase tracking-wider text-cyan-700 font-extrabold">Adika Senior Financial Advisor</div>' +
-                '<div class="font-black text-slate-900 text-[12px] mt-0.5">' + esc(String(title)) + '</div>' +
-                (tier ? '<div class="text-[10px] text-slate-500 mt-0.5">በጀት ደረጃ፦ ' + esc(String(tier)) + '</div>' : '') +
-              '</div>' +
-            '</div>' +
-            '<div class="text-[11px] text-slate-700 leading-relaxed whitespace-pre-wrap">' + esc(String(body)) + '</div>' +
-            cards +
-            (steps && steps.length ?
-              '<div class="text-[10px] text-slate-700 space-y-1">' +
-                '<div class="font-extrabold text-slate-900 text-[11px]">📌 ቀጣይ ተግባራዊ እርምጃዎች:</div>' +
-                steps.map(function(s){ return '<div class="flex items-start gap-1"><span class="text-[#16acbd] font-bold">✓</span><span>' + esc(String(s)) + '</span></div>'; }).join('') +
-              '</div>' : '') +
-          '</div>';
       })
-      .catch(function(err){
-        resEl.innerHTML = '<div class="p-3 bg-rose-50 text-rose-700 rounded-2xl text-xs font-bold">ምክረ-ሃሳቡን ማግኘት አልተቻለም። እባክዎ በጀቱን አስተካክለው እንደገና ይሞክሩ።</div>';
+      .catch(function(){
+        if (advEl) advEl.innerHTML = '<div class="text-rose-700 font-bold text-xs">ትንተና ማግኘት አልተቻለም። እንደገና ይሞክሩ።</div>';
       });
     };
+
+
+    (function(){
+      var sendBtn = document.getElementById("advisorChatSend");
+      var input = document.getElementById("advisorChatInput");
+      if (!sendBtn || !input) return;
+      function sendChat() {
+        var text = (input.value || "").trim();
+        if (!text) return;
+        appendAdvisorChat("user", text);
+        input.value = "";
+        appendAdvisorChat("advisor", "ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...");
+        var budget = document.getElementById("advisorBudget") ? document.getElementById("advisorBudget").value : 2000000;
+        fetch("/api/ai-advisor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ budget: Number(budget), chat_message: text, strict_budget_cap: true })
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var advice = d.advice || d;
+          var msg = advice.advice_amharic || advice.advice_am || advice.message || advice.reply || "ጥያቄዎን ተረድተናል። በበጀትዎ ወሰን ውስጥ እንመክራለን።";
+          msg = String(msg).replace(/\\bAI\\b/gi, "እኛ").replace(/\\bbot\\b/gi, "እኛ");
+          var log = document.getElementById("advisorChatLog");
+          if (log && log.lastChild) log.removeChild(log.lastChild);
+          appendAdvisorChat("advisor", msg);
+        })
+        .catch(function(){
+          var log = document.getElementById("advisorChatLog");
+          if (log && log.lastChild) log.removeChild(log.lastChild);
+          appendAdvisorChat("advisor", "አሁን መልስ ማግኘት አልተቻለም። ትንሽ ቆይተው ይሞክሩ።");
+        });
+      }
+      sendBtn.onclick = sendChat;
+      input.addEventListener("keydown", function(ev){ if (ev.key === "Enter") sendChat(); });
+    })();
 
     // Duty Calculator Action
     document.getElementById("dutyCalculateBtn").onclick = function() {
