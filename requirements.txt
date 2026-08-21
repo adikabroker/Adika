@@ -7,3 +7,5 @@ fastapi
 gunicorn
 google-genai
 supabase
+google-generativeai
+streamlit
