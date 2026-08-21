@@ -6,5 +6,6 @@ uvicorn
 fastapi
 gunicorn
 groq
+google-generativeai
 supabase
 streamlit
