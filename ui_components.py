@@ -2949,42 +2949,16 @@ except ImportError:
     st = None
 
 
-def generate_advisor_response(prompt, history=None, budget=None, system_prompt=None):
-    """
-    Calls Gemini or fallback to generate Senior Financial Advisor response in Amharic.
-    """
-    import os
-    system_instruction = system_prompt or (
-        "You are a human Senior Financial Advisor at Adika Digital. "
-        "Speak politely and naturally in Amharic like an expert advisor. "
-        "NEVER mention you are an AI, bot, or language model. "
-        "Always refer to Adika as 'እኛ' or 'እኔ'. Strictly respect the user's budget context."
-    )
-    
-    try:
-        from api_service import _gemini_generate
-        budget_val = float(budget or 0)
-        budget_ctx = f"\n[User Total Budget: {budget_val:,.0f} ETB (70% Purchase Cap: {budget_val*0.7:,.0f} ETB)]" if budget_val else ""
-        full_prompt = f"{system_instruction}{budget_ctx}\n\nUser Question: {prompt}"
-        res = _gemini_generate(full_prompt, system=system_instruction, temperature=0.3)
-        if res:
-            cleaned = str(res).replace("AI", "እኛ").replace("language model", "እኛ").replace("bot", "እኛ")
-            return cleaned
-    except Exception:
-        pass
-
-    # Robust Fallback
-    budget_val = float(budget or 2500000)
-    purchase_cap = budget_val * 0.70
-    fees_cap = budget_val * 0.15
-    reserve_cap = budget_val * 0.15
-    return (
-        f"በጠየቁት መሰረት፣ በአጠቃላይ በያዙት {budget_val:,.0f} ብር በጀት ላይ የእኛ ምክረ ሃሳብ የሚከተለው ነው፡\n"
-        f"1. 70% ({purchase_cap:,.0f} ብር) ለዋናው ንብረት ግዢ እንዲመድቡ፤\n"
-        f"2. 15% ({fees_cap:,.0f} ብር) ለሰነድ ማረጋገጫና ለስም ዝውውር ታክስ ክፍያ፤\n"
-        f"3. 15% ({reserve_cap:,.0f} ብር) ለአደጋ መከላከያና ለጥገና ሪዘርቭ እንዲያስቀምጡ እንመክራለን።\n"
-        f"ተጨማሪ ማብራሪያ የሚፈልጉት ነጥብ ካለ እባክዎን ይጠይቁን።"
-    )
+try:
+    from api_service import generate_advisor_response
+except Exception:
+    def generate_advisor_response(prompt, history=None, budget=None, system_prompt=None):
+        full_prompt = f"System Context: {system_prompt}\nUser Budget: {budget} ETB\nUser Question: {prompt}"
+        try:
+            from api_service import _gemini_generate
+            return _gemini_generate(prompt=full_prompt, api_key=None, system=system_prompt)
+        except Exception:
+            return "ይቅርታ፣ አሁን ላይ ከኦፕሬተራችን ጋር ማገናኘት አልተቻለም። እባክዎ ጥቂት ቆይተው እንደገና ይሞክሩ።"
 
 
 def render_chat_interface(user_budget):
@@ -3022,8 +2996,7 @@ def render_chat_interface(user_budget):
                 response = generate_advisor_response(
                     prompt=prompt, 
                     history=st.session_state.messages, 
-                    budget=user_budget,
-                    system_prompt=system_instruction
+                    budget=user_budget
                 )
                 st.write(response)
                 
