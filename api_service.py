@@ -22,11 +22,10 @@ _json_safe = None
 # Gemini (new google-genai SDK + multi-model fallback)
 # ---------------------------------------------------------------------------
 _GEMINI_MODEL_CANDIDATES = (
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-001",
     "gemini-1.5-flash",
     "gemini-1.5-flash-latest",
-    "gemini-1.5-flash-8b",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-001",
 )
 
 
@@ -60,18 +59,26 @@ def _gemini_generate(prompt, *, api_key=None, system=None, json_mode=False, temp
             contents.extend([p for p in prompt if isinstance(p, str)])
         else:
             contents.append(prompt)
-        config = {"temperature": temperature}
-        if json_mode:
-            config["response_mime_type"] = "application/json"
-        if system:
-            config["system_instruction"] = system
         for model_name in _GEMINI_MODEL_CANDIDATES:
             try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=contents,
-                    config=config,
-                )
+                # Build config per-call; older/newer SDKs differ on key names
+                config = {"temperature": temperature}
+                if json_mode:
+                    config["response_mime_type"] = "application/json"
+                if system:
+                    config["system_instruction"] = system
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=config,
+                    )
+                except TypeError:
+                    # SDK without config= kwarg
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                    )
                 text = getattr(response, "text", None)
                 if not text and getattr(response, "candidates", None):
                     try:
