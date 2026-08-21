@@ -483,7 +483,7 @@ def register_api_routes(web_app):
                         "- 'transmission': 'Automatic' | 'Manual' | null (if car)\n"
                         "- 'fuel_type': 'Benzine' | 'Diesel' | 'Electric' | 'Hybrid' | null (if car)\n"
                         "- 'description': high-converting, professional marketing description written in Amharic (አማርኛ).\n"
-                        "Return ONLY JSON."
+                        "Speak as a human Adika Senior Financial Advisor in polite Amharic. Never mention AI, bot, or language model. Use እኛ/እኔ. Return ONLY JSON."
                     )
                     model = genai.GenerativeModel(
                         model_name="gemini-1.5-flash",
@@ -1263,9 +1263,58 @@ def register_api_routes(web_app):
             purpose = str(data.get('purpose') or 'business').lower().strip()
             payment_strategy = str(data.get('payment_strategy') or data.get('payment') or 'cash').lower().strip()
             monthly_income = float(data.get('monthly_income') or (budget * 0.05 if payment_strategy == 'loan' else 0.0))
+            chat_message = str(data.get('chat_message') or data.get('message') or '').strip()
+            strict_cap = bool(data.get('strict_budget_cap'))
+            purchase_cap = float(data.get('purchase_allocation_etb') or (budget * 0.70))
 
             api_key = os.environ.get("GEMINI_API_KEY")
             advice_result = None
+
+            # Follow-up chat from Analysis View
+            if chat_message:
+                chat_reply = None
+                if api_key:
+                    try:
+                        import google.generativeai as genai
+                        genai.configure(api_key=api_key)
+                        cprompt = (
+                            "You are Adika Senior Financial Advisor in Addis Ababa. "
+                            "Speak as a human advisor in polite Amharic. Use እኔ/እኛ. "
+                            "Never mention AI, bot, LLM, or language model.\n"
+                            f"Client budget: {budget:,.0f} ETB. Max purchase allocation (70%): {purchase_cap:,.0f} ETB.\n"
+                            f"Client message: {chat_message}\n"
+                            "Reply in 2-5 short Amharic sentences. Stay within the purchase allocation. "
+                            "Return ONLY plain Amharic text (no JSON)."
+                        )
+                        model = genai.GenerativeModel(model_name="gemini-1.5-flash", generation_config={"temperature": 0.4})
+                        res = model.generate_content(cprompt)
+                        chat_reply = (res.text or "").strip()
+                    except Exception as e:
+                        logger.warning("advisor chat Gemini: %s", e)
+                if not chat_reply:
+                    chat_reply = (
+                        f"ጥያቄዎን ተረድተናል። እኛ በጠቅላላ {budget:,.0f} ብር በጀትዎ ውስጥ "
+                        f"ለግዢ እስከ {purchase_cap:,.0f} ብር (70%) እንመክራለን። "
+                        "የቀረው 15% ለታክስ/ክፍያ እና 15% እንደ ሪዘርቭ ይቆይ። ተጨማሪ ዝርዝር ከፈለጉ ይንገሩን።"
+                    )
+                chat_reply = re.sub(r'\bAI\b', 'እኛ', chat_reply, flags=re.I)
+                chat_reply = re.sub(r'\bbot\b', 'እኛ', chat_reply, flags=re.I)
+                return jsonify({
+                    "status": "success",
+                    "advice": {
+                        "chat_reply": chat_reply,
+                        "advice_amharic": chat_reply,
+                        "message": chat_reply,
+                    },
+                    "budget": budget,
+                    "purchase_allocation_etb": purchase_cap,
+                    "allocation": {
+                        "purchase_pct": 70, "fees_pct": 15, "reserve_pct": 15,
+                        "purchase_etb": purchase_cap,
+                        "fees_etb": round(budget * 0.15),
+                        "reserve_etb": round(budget * 0.15),
+                    },
+                })
 
             if api_key:
                 try:
