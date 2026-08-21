@@ -3,6 +3,7 @@ import json
 import re
 import os
 import random
+import requests
 from flask import request, jsonify, Response
 
 from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL
@@ -147,63 +148,62 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
 
 def generate_advisor_response(prompt, history=None, budget=0):
     """
-    gemini-1.5-flash ሞዴልን ብቻ በጥብቅ የሚጠቀም አሰራር
+    HuggingFace Inference API (Qwen2.5-72B) በመጠቀም በአማርኛ መልስ የሚያመጣ አሰራር
     """
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return "ይቅርታ፣ የ GEMINI_API_KEY በ Render/Environment ላይ አልተዋቀረም።"
-        
+    hf_token = os.getenv("HF_TOKEN")
+    if not hf_token:
+        return "ይቅርታ፣ የ HF_TOKEN ኤፒአይ ቁልፍ በ Render/Environment ላይ አልተጫነም።"
+
     try:
         budget_val = float(budget or 0)
     except Exception:
         budget_val = 0.0
 
+    # የአማርኛ Persona እና የበጀት መመሪያ
     system_instruction = (
         "You are a human Senior Financial Advisor at Adika Digital. "
         "Speak politely and naturally in Amharic using 'እኛ' or 'እኔ'. "
         "NEVER mention you are an AI, bot, or language model. "
         f"Context: Total user budget is {budget_val:,.0f} ETB. "
-        "Answer the user's specific query dynamically without repeating generic template text."
+        "Strictly analyze options respecting this budget framework."
     )
-    
-    # የቻት ታሪክ ማቀናጃ
-    context_text = f"System Context: {system_instruction}\n"
+
+    # የቻት ታሪክ እና አዲስ ጥያቄ አቀናጅቶ መላክ
+    messages = [{"role": "system", "content": system_instruction}]
     if history:
         for msg in history[-4:]:
             if isinstance(msg, dict):
-                role_label = "የተጠቃሚ ጥያቄ" if msg.get("role") in ["user", "client"] else "የእርስዎ መልስ"
+                role = "user" if msg.get("role") in ["user", "client"] else "assistant"
                 content = msg.get("content") or msg.get("text") or msg.get("message") or ""
-                context_text += f"{role_label}: {content}\n"
+                messages.append({"role": role, "content": content})
             elif isinstance(msg, str):
-                context_text += f"{msg}\n"
-        
-    context_text += f"የተጠቃሚ አዲስ ጥያቄ: {prompt}"
+                messages.append({"role": "user", "content": msg})
+    messages.append({"role": "user", "content": prompt})
+
+    api_url = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {hf_token}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "Qwen/Qwen2.5-72B-Instruct",
+        "messages": messages,
+        "max_tokens": 1024,
+        "temperature": 0.4
+    }
 
     try:
-        # gemini-1.5-flash ብቻ ቀጥታ መጠቀም
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(context_text)
-        
-        if response and response.text:
-            cleaned = re.sub(r'\bAI\b', 'እኛ', response.text.strip(), flags=re.I)
-            cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.I)
-            cleaned = re.sub(r'\blanguage model\b', 'የአማካሪ ቡድናችን', cleaned, flags=re.I)
-            return cleaned
-        return "ይቅርታ፣ መረጃውን ማካሄድ አልተቻለም። እባክዎ ድጋሚ ይሞክሩ።"
-        
-    except Exception as e:
-        # Fallback to _gemini_generate if direct legacy module has issues
-        try:
-            resp = _gemini_generate(prompt=context_text, system=system_instruction)
-            if resp:
-                cleaned = re.sub(r'\bAI\b', 'እኛ', resp.strip(), flags=re.I)
+        response = requests.post(api_url, headers=headers, json=payload, timeout=35)
+        if response.status_code == 200:
+            result = response.json()
+            if "choices" in result and len(result["choices"]) > 0:
+                answer = result["choices"][0]["message"]["content"].strip()
+                cleaned = re.sub(r'\bAI\b', 'እኛ', answer, flags=re.I)
                 cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.I)
                 cleaned = re.sub(r'\blanguage model\b', 'የአማካሪ ቡድናችን', cleaned, flags=re.I)
                 return cleaned
-        except Exception:
-            pass
+        return f"ይቅርታ፣ ከአገልግሎቱ ምላሽ ማግኘት አልተቻለም (Status: {response.status_code})።"
+    except Exception as e:
         return f"የግንኙነት ስህተት ተፈጠረ፦ {str(e)}"
 
 
