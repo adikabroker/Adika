@@ -147,7 +147,7 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
 
 def generate_advisor_response(prompt, history=None, budget=0):
     """
-    ከ Gemini API ጋር ተገናኝቶ ለቻቱ በሰውኛ የተዘጋጀ ሙያዊ መልስ የሚያመጣ Function
+    ከ Gemini API ጋር ተገናኝቶ ለቻቱ በሰውኛ የተዘጋጀ ሙያዊና ተለዋዋጭ መልስ የሚያመጣ Function
     """
     try:
         budget_num = float(budget or 0)
@@ -155,28 +155,60 @@ def generate_advisor_response(prompt, history=None, budget=0):
         budget_num = 0.0
 
     system_instruction = (
-        "You are a human Senior Financial Advisor at Adika Digital. "
-        "Speak politely and naturally in Amharic like an expert advisor. "
-        "NEVER mention you are an AI, bot, or language model. "
-        "Always refer to Adika as 'እኛ' or 'እኔ'. "
-        f"Context: The user's total budget is {budget_num:,.0f} ETB. "
-        "Strictly analyze options respecting this budget framework."
+        "You are a human Senior Financial & Investment Advisor at Adika Digital in Addis Ababa, Ethiopia. "
+        "You provide bespoke, highly practical, and context-aware advice for car purchases, real estate/property acquisitions, and business investments. "
+        "COMMUNICATION RULES:\n"
+        "1. Speak politely, warmly, and naturally in Amharic like a seasoned Ethiopian investment expert.\n"
+        "2. NEVER mention that you are an AI, bot, virtual assistant, algorithm, or language model.\n"
+        "3. Always refer to yourself and Adika as 'እኔ' or 'እኛ'.\n"
+        f"4. Budget Framework: The client's total budget is {budget_num:,.0f} ETB. The 70/15/15 rule applies (70% max for purchase, 15% for title transfer/taxes/duties, 15% emergency/maintenance reserve).\n"
+        "5. DYNAMIC & CONTEXTUAL ANSWERS: Avoid repeating generic template definitions of the 70% rule on every turn. Directly answer the user's specific question (e.g. comparing specific car models, tax/duty implications, bank loan down payment vs cash, ROI, maintenance costs, condominium vs apartment) while keeping financial feasibility in mind within the client's budget."
     )
-    
-    # የቻት ታሪክ እና አዲስ ጥያቄ አቀናጅቶ መላክ
-    full_prompt = f"የተጠቃሚ በጀት: {budget_num:,.0f} ETB\nየተጠቃሚ ጥያቄ: {prompt}"
-    
+
+    # Format chat history if provided
+    formatted_history = ""
+    if history:
+        if isinstance(history, list):
+            history_lines = []
+            for item in history:
+                if isinstance(item, dict):
+                    role_label = "ተጠቃሚ" if item.get("role") in ["user", "client", "human"] else "አማካሪ (እኛ)"
+                    content = item.get("content") or item.get("text") or item.get("message") or ""
+                    if content:
+                        history_lines.append(f"{role_label}: {content}")
+                elif isinstance(item, str) and item.strip():
+                    history_lines.append(item.strip())
+            if history_lines:
+                formatted_history = "የቀደመው የውይይት ታሪክ:\n" + "\n".join(history_lines) + "\n\n"
+        elif isinstance(history, str) and history.strip():
+            formatted_history = f"የቀደመው የውይይት ታሪክ:\n{history.strip()}\n\n"
+
+    # Assemble full prompt with context
+    budget_ctx = f"የተጠቃሚ ጠቅላላ በጀት: {budget_num:,.0f} ETB (ለግዢ የሚመደበው 70%: {budget_num * 0.7:,.0f} ETB)\n" if budget_num > 0 else ""
+    full_prompt = f"{formatted_history}{budget_ctx}የተጠቃሚ አዲስ ጥያቄ: {prompt}\n\nእባክዎ ለዚህ ጥያቄ ቀጥተኛ፣ ሙያዊ እና ዝርዝር ምላሽ በአማርኛ ይስጡ:"
+
     try:
-        # በፋይልህ ውስጥ ያለውን _gemini_generate ጥሪ መጠቀም
         response_text = _gemini_generate(
             prompt=full_prompt, 
             system=system_instruction
         )
         if response_text:
-            return response_text
-        return "ይቅርታ፣ አሁን ላይ መረጃውን ማካሄድ አልተቻለም። እባክዎ ጥቂት ቆይተው እንደገና ይሞክሩ።"
+            cleaned = re.sub(r'\bAI\b', 'እኛ', response_text, flags=re.I)
+            cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.I)
+            cleaned = re.sub(r'\blanguage model\b', 'የአማካሪ ቡድናችን', cleaned, flags=re.I)
+            return cleaned.strip()
+        return "ጥያቄዎን ተመልክተናል። በበጀትዎ ማዕቀፍ ውስጥ ተገቢውን ንብረት ለመምረጥ ተጨማሪ ማብራሪያዎችን መስጠት እንችላለን።"
     except Exception as e:
-        return "ይቅርታ፣ ከኦፕሬተራችን ጋር ማገናኘት አልተቻለም። እባክዎ መስመርዎን አረጋግጠው ድጋሚ ይሞክሩ።"
+        logger.warning("generate_advisor_response fallback due to: %s", e)
+        # Fallback contextual response based on keywords
+        p_lower = prompt.lower()
+        if "መኪና" in prompt or "car" in p_lower or "vitz" in p_lower or "dzire" in p_lower:
+            return f"በበጀትዎ ({budget_num:,.0f} ብር) ውስጥ 70% የሚሆነውን ({budget_num * 0.7:,.0f} ብር) ለንብረት ግዢ በመመደብ፣ አነስተኛ የነዳጅ እና የጥገና ወጪ ያላቸውን እንደ Suzuki Dzire ወይም Toyota Vitz የመሳሰሉ ተሽከርካሪዎችን መምረጥ ይችላሉ።"
+        elif "ቤት" in prompt or "house" in p_lower or "አፓርታማ" in prompt:
+            return f"ለቤት እና ንብረት ኢንቨስትመንት በ {budget_num:,.0f} ብር በጀትዎ፣ የባለቤትነት ማረጋገጫ (ካርታ) እና ህጋዊ የውክልና ሰነዶችን ቅድሚያ በመፈተሽ ደህንነቱ የተጠበቀ ግዢ እንዲፈጽሙ እንመክራለን።"
+        elif "ብድር" in prompt or "loan" in p_lower or "ባንክ" in prompt:
+            return f"ለባንክ ብድር የ 30% የቅድመ ክፍያ ካፒታል በማዘጋጀት ቀሪውን የ 70% ድርሻ በባንክ በኩል ማመቻቸት ይቻላል።"
+        return f"ጥያቄዎን ተመልክተናል። በ {budget_num:,.0f} ብር የበጀት ማዕቀፍዎ ውስጥ ተገቢውን የኢንቨስትመንትና የግዢ ምርጫዎችን ለማመቻቸት ዝግጁ ነን።"
 
 
 
@@ -1555,37 +1587,15 @@ def register_api_routes(web_app):
 
             # Follow-up chat from Analysis View
             if chat_message:
-                chat_reply = None
-                if api_key:
-                    try:
-                        system_chat = (
-                            "You are Adika Senior Financial Advisor in Addis Ababa. "
-                            "Speak as a human advisor in polite Amharic. Use እኔ/እኛ. "
-                            "Never mention AI, bot, LLM, or language model. "
-                            f"Client total budget: {budget:,.0f} ETB. "
-                            f"Max purchase allocation (70%): {purchase_cap:,.0f} ETB. "
-                            "Reply in 2-5 short Amharic sentences. Stay within the purchase allocation. "
-                            "Return ONLY plain Amharic text (no JSON)."
-                        )
-                        chat_reply = _gemini_chat(
-                            chat_message,
-                            api_key=api_key,
-                            system=system_chat,
-                            temperature=0.4,
-                            model="gemini-2.0-flash",
-                        )
-                    except Exception as e:
-                        logger.warning("advisor chat Gemini: %s", e)
-                if not chat_reply:
-                    chat_reply = (
-                        f"ጥያቄዎን ተረድተናል። እኛ በጠቅላላ {budget:,.0f} ብር በጀትዎ ውስጥ "
-                        f"ለግዢ እስከ {purchase_cap:,.0f} ብር (70%) እንመክራለን። "
-                        "የቀረው 15% ለታክስ/ክፍያ እና 15% እንደ ሪዘርቭ ይቆይ። ተጨማሪ ዝርዝር ከፈለጉ ይንገሩን።"
-                    )
-                chat_reply = re.sub(r'\bAI\b', 'እኛ', chat_reply, flags=re.I)
-                chat_reply = re.sub(r'\bbot\b', 'እኛ', chat_reply, flags=re.I)
+                history = data.get('history') or data.get('messages') or []
+                chat_reply = generate_advisor_response(
+                    prompt=chat_message,
+                    history=history,
+                    budget=budget
+                )
                 return jsonify({
                     "status": "success",
+                    "reply": chat_reply,
                     "advice": {
                         "chat_reply": chat_reply,
                         "advice_amharic": chat_reply,
@@ -1826,6 +1836,37 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_ai_advisor error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
+
+
+    @web_app.route('/api/advisor/chat', methods=['POST', 'OPTIONS'])
+    def api_advisor_chat():
+        """
+        Chat endpoint for Advisor with conversational history support.
+        """
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            message = str(data.get('message') or data.get('prompt') or data.get('chat_message') or '').strip()
+            budget = float(data.get('budget_etb') or data.get('budget') or 2000000.0)
+            history = data.get('history') or data.get('messages') or []
+            reply = generate_advisor_response(prompt=message, history=history, budget=budget)
+            return jsonify({
+                "status": "success",
+                "reply": reply,
+                "message": reply
+            })
+        except Exception as e:
+            logger.error(f"api_advisor_chat error: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+
+    @web_app.route('/api/advisor/analyze', methods=['POST', 'OPTIONS'])
+    def api_advisor_analyze():
+        """
+        Analysis endpoint for Advisor allocating 70/15/15 capital budget.
+        """
+        return api_ai_advisor()
 
 
     @web_app.route('/api/financial-insights', methods=['GET', 'POST', 'OPTIONS'])
