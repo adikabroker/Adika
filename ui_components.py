@@ -2121,11 +2121,13 @@ EXPLORER_HTML = r"""
       var log = document.getElementById("advisorChatLog");
       if (!log) return;
       var row = document.createElement("div");
-      row.className = role === "user"
-        ? "ml-6 p-2 rounded-xl bg-[#16acbd]/15 text-slate-800"
-        : "mr-6 p-2 rounded-xl bg-slate-50 text-slate-700 border border-slate-100";
-      row.innerHTML = "<div class=\"text-[9px] font-bold text-slate-500 mb-0.5\">" +
-        (role === "user" ? "እርስዎ" : "Adika Advisor") + "</div><div>" + esc(String(text || "")) + "</div>";
+      if (role === "user") {
+        row.className = "ml-8 p-2.5 rounded-2xl bg-[#16acbd] text-white shadow-sm text-right";
+        row.innerHTML = '<div class="text-[9px] font-bold text-white/80 mb-0.5">እርስዎ</div><div class="text-xs font-semibold whitespace-pre-wrap leading-relaxed text-left">' + esc(String(text || "")) + '</div>';
+      } else {
+        row.className = "mr-8 p-2.5 rounded-2xl bg-white text-slate-800 border border-slate-200/80 shadow-sm leading-relaxed text-left";
+        row.innerHTML = '<div class="text-[9px] font-black text-[#0e7490] mb-0.5 flex items-center gap-1"><span>💼</span><span>Adika Senior Financial Advisor</span></div><div class="text-xs text-slate-700 whitespace-pre-wrap">' + esc(String(text || "")) + '</div>';
+      }
       log.appendChild(row);
       log.scrollTop = log.scrollHeight;
     }
@@ -2153,7 +2155,7 @@ EXPLORER_HTML = r"""
     function renderAnalysisDashboard(d, budget) {
       var advice = d.advice || d;
       var body = advice.advice_amharic || advice.advice_am || advice.message || advice.summary || "";
-      body = String(body).replace(/\\bAI\\b/gi, "እኛ").replace(/language model/gi, "እኛ").replace(/\\bbot\\b/gi, "እኛ");
+      body = String(body).replace(/\bAI\b/gi, "እኛ").replace(/language model/gi, "እኛ").replace(/\bbot\b/gi, "እኛ");
       var title = advice.title || advice.summary_title || "የበጀት ትንተና";
       var options = advice.options || advice.recommendations || [];
       var steps = advice.next_steps || advice.steps || [];
@@ -2182,7 +2184,7 @@ EXPLORER_HTML = r"""
             '<div class="font-black text-slate-900 text-[12px]">' + esc(String(name)) + '</div>' +
             (price ? '<div class="text-[#0e7490] font-bold text-[11px] mt-1">💰 ' + esc(String(price)) + '</div>' : '') +
             (fuel ? '<div class="text-[10px] text-slate-500 mt-0.5">' + esc(String(fuel)) + '</div>' : '') +
-            '<div class="text-[9px] text-emerald-700 font-bold mt-1">✓ በበጀትዎ ወሰን ውስጥ</div>' +
+            '<div class="text-[9px] text-emerald-700 font-bold mt-1">✓ በ70% የግዢ በጀት ወሰን ውስጥ</div>' +
           '</div>';
         }).join("") || '<div class="text-[11px] text-slate-500 p-2">በበጀትዎ የሚገጥሙ አማራጮች እየተዘጋጁ ነው…</div>';
       }
@@ -2192,7 +2194,7 @@ EXPLORER_HTML = r"""
         advEl.innerHTML =
           '<div class="text-[9px] font-extrabold text-[#0e7490] uppercase tracking-wide mb-1">ከአማካሪ</div>' +
           '<div class="font-black text-slate-900 text-[12px] mb-1">' + esc(String(title)) + '</div>' +
-          '<div class="whitespace-pre-wrap">' + esc(String(body)) + '</div>' +
+          '<div class="whitespace-pre-wrap leading-relaxed">' + esc(String(body)) + '</div>' +
           (steps && steps.length
             ? '<div class="mt-2 space-y-1">' + steps.map(function(s){
                 return '<div class="flex gap-1"><span class="text-[#16acbd]">✓</span><span>' + esc(String(s)) + '</span></div>';
@@ -2203,7 +2205,7 @@ EXPLORER_HTML = r"""
       var log = document.getElementById("advisorChatLog");
       if (log && !log.dataset.seeded) {
         log.innerHTML = "";
-        appendAdvisorChat("advisor", "ሰላም፣ እኔ የ Adika Senior Financial Advisor ነኝ። በበጀትዎ (" + Number(budgetNum).toLocaleString() + " ብር) ላይ ትንተና አቅርቤሎታለሁ። ጥያቄ ካለዎት እዚህ ይጻፉ።");
+        appendAdvisorChat("advisor", "ሰላም፣ እኔ የ Adika Senior Financial Advisor ነኝ። በበጀትዎ (" + Number(budgetNum).toLocaleString() + " ብር) ላይ የ70% ግዢ፣ 15% ክፍያ/ታክስ እና 15% ሪዘርቭ ክፍፍል ትንተና አዘጋጅተናል። ጥያቄ ካለዎት እዚህ ይጻፉልን።");
         log.dataset.seeded = "1";
       }
     }
@@ -2236,13 +2238,13 @@ EXPLORER_HTML = r"""
       renderBudgetBar(budget);
       if (advEl) {
         advEl.innerHTML =
-          '<div class="flex items-center gap-2 text-slate-600">' +
-            '<span class="inline-flex gap-0.5">' +
-              '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce"></span>' +
-              '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:150ms"></span>' +
-              '<span class="w-1.5 h-1.5 rounded-full bg-[#16acbd] animate-bounce" style="animation-delay:300ms"></span>' +
+          '<div class="flex items-center gap-2 text-slate-600 p-2 bg-white rounded-xl border border-slate-100">' +
+            '<span class="inline-flex gap-1 items-center">' +
+              '<span class="w-2 h-2 rounded-full bg-[#16acbd] animate-pulse"></span>' +
+              '<span class="w-2 h-2 rounded-full bg-[#16acbd] animate-pulse" style="animation-delay:200ms"></span>' +
+              '<span class="w-2 h-2 rounded-full bg-[#16acbd] animate-pulse" style="animation-delay:400ms"></span>' +
             '</span>' +
-            '<span class="font-bold text-[11px]">ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...</span>' +
+            '<span class="font-bold text-xs">ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...</span>' +
           '</div>';
       }
       if (cardsEl) cardsEl.innerHTML = "";
@@ -2265,7 +2267,7 @@ EXPLORER_HTML = r"""
         if (extra) extra.classList.remove("hidden");
       })
       .catch(function(){
-        if (advEl) advEl.innerHTML = '<div class="text-rose-700 font-bold text-xs">ትንተና ማግኘት አልተቻለም። እንደገና ይሞክሩ።</div>';
+        if (advEl) advEl.innerHTML = '<div class="text-rose-700 font-bold text-xs p-2">ትንተና ማግኘት አልተቻለም። እንደገና ይሞክሩ።</div>';
       });
     };
 
@@ -2288,8 +2290,8 @@ EXPLORER_HTML = r"""
           removeTyping();
           var row = document.createElement("div");
           row.setAttribute("data-typing", "1");
-          row.className = "mr-6 p-2 rounded-xl bg-slate-50 text-slate-600 border border-slate-100 text-[11px] font-bold";
-          row.textContent = "ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...";
+          row.className = "mr-8 p-2.5 rounded-2xl bg-white text-slate-600 border border-slate-200/80 shadow-sm text-xs font-bold flex items-center gap-2";
+          row.innerHTML = '<span class="inline-flex gap-1 items-center"><span class="w-2 h-2 rounded-full bg-[#16acbd] animate-pulse"></span><span class="w-2 h-2 rounded-full bg-[#16acbd] animate-pulse" style="animation-delay:200ms"></span><span class="w-2 h-2 rounded-full bg-[#16acbd] animate-pulse" style="animation-delay:400ms"></span></span><span>ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...</span>';
           log.appendChild(row);
           log.scrollTop = log.scrollHeight;
         }
@@ -2936,3 +2938,94 @@ EXPLORER_HTML = r"""
 </body>
 </html>
 """
+
+
+# ---------------------------------------------------------------------------
+# Streamlit & Python Chat Interface Helper
+# ---------------------------------------------------------------------------
+try:
+    import streamlit as st
+except ImportError:
+    st = None
+
+
+def generate_advisor_response(prompt, history=None, budget=None, system_prompt=None):
+    """
+    Calls Gemini or fallback to generate Senior Financial Advisor response in Amharic.
+    """
+    import os
+    system_instruction = system_prompt or (
+        "You are a human Senior Financial Advisor at Adika Digital. "
+        "Speak politely and naturally in Amharic like an expert advisor. "
+        "NEVER mention you are an AI, bot, or language model. "
+        "Always refer to Adika as 'እኛ' or 'እኔ'. Strictly respect the user's budget context."
+    )
+    
+    try:
+        from api_service import _gemini_generate
+        budget_val = float(budget or 0)
+        budget_ctx = f"\n[User Total Budget: {budget_val:,.0f} ETB (70% Purchase Cap: {budget_val*0.7:,.0f} ETB)]" if budget_val else ""
+        full_prompt = f"{system_instruction}{budget_ctx}\n\nUser Question: {prompt}"
+        res = _gemini_generate(full_prompt, system=system_instruction, temperature=0.3)
+        if res:
+            cleaned = str(res).replace("AI", "እኛ").replace("language model", "እኛ").replace("bot", "እኛ")
+            return cleaned
+    except Exception:
+        pass
+
+    # Robust Fallback
+    budget_val = float(budget or 2500000)
+    purchase_cap = budget_val * 0.70
+    fees_cap = budget_val * 0.15
+    reserve_cap = budget_val * 0.15
+    return (
+        f"በጠየቁት መሰረት፣ በአጠቃላይ በያዙት {budget_val:,.0f} ብር በጀት ላይ የእኛ ምክረ ሃሳብ የሚከተለው ነው፡\n"
+        f"1. 70% ({purchase_cap:,.0f} ብር) ለዋናው ንብረት ግዢ እንዲመድቡ፤\n"
+        f"2. 15% ({fees_cap:,.0f} ብር) ለሰነድ ማረጋገጫና ለስም ዝውውር ታክስ ክፍያ፤\n"
+        f"3. 15% ({reserve_cap:,.0f} ብር) ለአደጋ መከላከያና ለጥገና ሪዘርቭ እንዲያስቀምጡ እንመክራለን።\n"
+        f"ተጨማሪ ማብራሪያ የሚፈልጉት ነጥብ ካለ እባክዎን ይጠይቁን።"
+    )
+
+
+def render_chat_interface(user_budget):
+    if st is None:
+        return
+    st.markdown("### 💬 ከአዲካ የፋይናንስ ኦፕሬተር ጋር ይወያዩ")
+    
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "assistant", "content": f"ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። በያዙት {user_budget:,.0f} ETB በጀት ዙሪያ የሚፈልጉትን ማንኛውንም የፋይናንስ እና የገበያ ጥያቄ መጠየቅ ይችላሉ።"}
+        ]
+
+    # የቀደሙ መልእክቶችን ማሳየት
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    # የተጠቃሚ አዲስ ጥያቄ
+    if prompt := st.chat_input("ጥያቄዎን እዚህ ያስገቡ..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.write(prompt)
+
+        # Typing Indicator & Real API Call
+        with st.chat_message("assistant"):
+            with st.spinner("ኦፕሬተሩ መልስ በመጻፍ ላይ ነው..."):
+                system_instruction = (
+                    "You are a human Senior Financial Advisor at Adika Digital. "
+                    "Speak politely and naturally in Amharic like an expert advisor. "
+                    "NEVER mention you are an AI, bot, or language model. "
+                    "Always refer to Adika as 'እኛ' or 'እኔ'. Strictly respect the user's budget context."
+                )
+                
+                # api_service.py ላይ ያለውን ጥሪ ማገናኘት
+                response = generate_advisor_response(
+                    prompt=prompt, 
+                    history=st.session_state.messages, 
+                    budget=user_budget,
+                    system_prompt=system_instruction
+                )
+                st.write(response)
+                
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
