@@ -147,9 +147,6 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
 
 
 def generate_advisor_response(prompt, history=None, budget=0):
-    """
-    HuggingFace Inference API (Qwen2.5-72B) በመጠቀም በአማርኛ መልስ የሚያመጣ አሰራር
-    """
     hf_token = os.getenv("HF_TOKEN")
     if not hf_token:
         return "ይቅርታ፣ የ HF_TOKEN ኤፒአይ ቁልፍ በ Render/Environment ላይ አልተጫነም።"
@@ -159,7 +156,6 @@ def generate_advisor_response(prompt, history=None, budget=0):
     except Exception:
         budget_val = 0.0
 
-    # የአማርኛ Persona እና የበጀት መመሪያ
     system_instruction = (
         "You are a human Senior Financial Advisor at Adika Digital. "
         "Speak politely and naturally in Amharic using 'እኛ' or 'እኔ'. "
@@ -168,19 +164,21 @@ def generate_advisor_response(prompt, history=None, budget=0):
         "Strictly analyze options respecting this budget framework."
     )
 
-    # የቻት ታሪክ እና አዲስ ጥያቄ አቀናጅቶ መላክ
     messages = [{"role": "system", "content": system_instruction}]
     if history:
         for msg in history[-4:]:
             if isinstance(msg, dict):
-                role = "user" if msg.get("role") in ["user", "client"] else "assistant"
+                role = "assistant" if msg.get("role") == "assistant" else "user"
                 content = msg.get("content") or msg.get("text") or msg.get("message") or ""
                 messages.append({"role": role, "content": content})
             elif isinstance(msg, str):
                 messages.append({"role": "user", "content": msg})
-    messages.append({"role": "user", "content": prompt})
+    
+    messages.append({"role": "user", "content": f"የተጠቃሚ በጀት: {budget_val:,.0f} ETB\nጥያቄ: {prompt}"})
 
-    api_url = "https://api-inference.huggingface.co/models/Qwen/Qwen2.5-72B-Instruct/v1/chat/completions"
+    # አዲሱ ትክክለኛ HuggingFace Router Endpoint
+    API_URL = "https://router.huggingface.co/hf-inference/v1/chat/completions"
+    
     headers = {
         "Authorization": f"Bearer {hf_token}",
         "Content-Type": "application/json"
@@ -188,23 +186,19 @@ def generate_advisor_response(prompt, history=None, budget=0):
     payload = {
         "model": "Qwen/Qwen2.5-72B-Instruct",
         "messages": messages,
-        "max_tokens": 1024,
-        "temperature": 0.4
+        "max_tokens": 500,
+        "temperature": 0.7
     }
 
     try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=35)
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=20)
         if response.status_code == 200:
             result = response.json()
-            if "choices" in result and len(result["choices"]) > 0:
-                answer = result["choices"][0]["message"]["content"].strip()
-                cleaned = re.sub(r'\bAI\b', 'እኛ', answer, flags=re.I)
-                cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.I)
-                cleaned = re.sub(r'\blanguage model\b', 'የአማካሪ ቡድናችን', cleaned, flags=re.I)
-                return cleaned
-        return f"ይቅርታ፣ ከአገልግሎቱ ምላሽ ማግኘት አልተቻለም (Status: {response.status_code})።"
+            return result["choices"][0]["message"]["content"].strip()
+        else:
+            return f"የኤፒአይ ጥሪ አልተሳካም። (Code: {response.status_code})"
     except Exception as e:
-        return f"የግንኙነት ስህተት ተፈጠረ፦ {str(e)}"
+        return "ይቅርታ፣ ከኦፕሬተራችን ጋር ማገናኘት አልተቻለም። እባክዎ ትንሽ ቆይተው ይሞክሩ።"
 
 
 
