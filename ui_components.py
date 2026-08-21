@@ -1018,12 +1018,18 @@ EXPLORER_HTML = r"""
       <div id="analysisCards" class="space-y-2"></div>
       <div id="analysisAdvice" class="bg-white rounded-2xl p-3 shadow-sm text-[11px] text-slate-700 leading-relaxed"></div>
       <!-- Live advisor chat -->
-      <div class="bg-white rounded-2xl shadow-sm border border-white/80 overflow-hidden flex flex-col min-h-[220px]">
-        <div class="px-3 py-2 border-b border-slate-100 text-[11px] font-black text-slate-800">💬 ከአማካሪ ጋር ውይይት</div>
-        <div id="advisorChatLog" class="flex-1 overflow-y-auto p-3 space-y-2 max-h-52 text-[11px]"></div>
-        <div class="p-2 border-t border-slate-100 flex gap-1.5">
-          <input id="advisorChatInput" type="text" placeholder="ጥያቄዎን ይጻፉ..." class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-[#16acbd]" />
-          <button id="advisorChatSend" type="button" class="px-3 py-2 rounded-xl bg-[#16acbd] text-white font-bold text-xs">ላክ</button>
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden flex flex-col min-h-[280px] max-h-[460px]">
+        <div class="px-3.5 py-2.5 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between shrink-0">
+          <div class="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
+            <span>💬</span>
+            <span>ከአማካሪ ጋር የቀጥታ ውይይት (Live Advisor)</span>
+          </div>
+          <span class="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">ዝግጁ</span>
+        </div>
+        <div id="advisorChatLog" class="flex-1 overflow-y-auto p-3.5 space-y-3 max-h-[360px] text-xs scroll-smooth"></div>
+        <div class="p-2.5 border-t border-slate-100 bg-white flex gap-1.5 shrink-0">
+          <input id="advisorChatInput" type="text" placeholder="ስለ ቀረጥ፣ ንጽጽር ወይም የባንክ ብድር ይጠይቁ..." class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-[#16acbd]" />
+          <button id="advisorChatSend" type="button" class="px-4 py-2 rounded-xl bg-[#16acbd] hover:bg-[#0e7490] text-white font-bold text-xs active:scale-95 transition-all shadow-sm">ላክ</button>
         </div>
       </div>
     </div>
@@ -2117,19 +2123,23 @@ EXPLORER_HTML = r"""
     var analysisBackBtn = document.getElementById("analysisBackBtn");
     if (analysisBackBtn) analysisBackBtn.onclick = function() { showAnalysisView(false); };
 
+    var advisorChatHistory = [];
+
     function appendAdvisorChat(role, text) {
       var log = document.getElementById("advisorChatLog");
       if (!log) return;
       var row = document.createElement("div");
       if (role === "user") {
-        row.className = "ml-8 p-2.5 rounded-2xl bg-[#16acbd] text-white shadow-sm text-right";
+        row.className = "ml-6 p-3 rounded-2xl bg-[#16acbd] text-white shadow-sm text-right animate-in fade-in duration-150";
         row.innerHTML = '<div class="text-[9px] font-bold text-white/80 mb-0.5">እርስዎ</div><div class="text-xs font-semibold whitespace-pre-wrap leading-relaxed text-left">' + esc(String(text || "")) + '</div>';
       } else {
-        row.className = "mr-8 p-2.5 rounded-2xl bg-white text-slate-800 border border-slate-200/80 shadow-sm leading-relaxed text-left";
-        row.innerHTML = '<div class="text-[9px] font-black text-[#0e7490] mb-0.5 flex items-center gap-1"><span>💼</span><span>Adika Senior Financial Advisor</span></div><div class="text-xs text-slate-700 whitespace-pre-wrap">' + esc(String(text || "")) + '</div>';
+        row.className = "mr-6 p-3 rounded-2xl bg-white text-slate-800 border border-slate-200/90 shadow-sm leading-relaxed text-left animate-in fade-in duration-150";
+        row.innerHTML = '<div class="text-[9px] font-black text-[#0e7490] mb-0.5 flex items-center gap-1"><span>💼</span><span>Adika Senior Financial Advisor</span></div><div class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">' + esc(String(text || "")) + '</div>';
       }
       log.appendChild(row);
-      log.scrollTop = log.scrollHeight;
+      setTimeout(function() {
+        log.scrollTop = log.scrollHeight;
+      }, 50);
     }
 
     function renderBudgetBar(budget) {
@@ -2205,7 +2215,10 @@ EXPLORER_HTML = r"""
       var log = document.getElementById("advisorChatLog");
       if (log && !log.dataset.seeded) {
         log.innerHTML = "";
-        appendAdvisorChat("advisor", "ሰላም፣ እኔ የ Adika Senior Financial Advisor ነኝ። በበጀትዎ (" + Number(budgetNum).toLocaleString() + " ብር) ላይ የ70% ግዢ፣ 15% ክፍያ/ታክስ እና 15% ሪዘርቭ ክፍፍል ትንተና አዘጋጅተናል። ጥያቄ ካለዎት እዚህ ይጻፉልን።");
+        advisorChatHistory = [];
+        var initMsg = "ሰላም፣ እኔ የ Adika Senior Financial Advisor ነኝ። በበጀትዎ (" + Number(budgetNum).toLocaleString() + " ብር) ላይ የ70% ግዢ፣ 15% ክፍያ/ታክስ እና 15% ሪዘርቭ ክፍፍል ትንተና አዘጋጅተናል። ጥያቄ ካለዎት እዚህ ይጻፉልን።";
+        appendAdvisorChat("advisor", initMsg);
+        advisorChatHistory.push({ role: "advisor", content: initMsg });
         log.dataset.seeded = "1";
       }
     }
@@ -2235,6 +2248,7 @@ EXPLORER_HTML = r"""
       var advEl = document.getElementById("analysisAdvice");
       var log = document.getElementById("advisorChatLog");
       if (log) { log.innerHTML = ""; log.dataset.seeded = ""; }
+      advisorChatHistory = [];
       renderBudgetBar(budget);
       if (advEl) {
         advEl.innerHTML =
@@ -2290,15 +2304,16 @@ EXPLORER_HTML = r"""
           removeTyping();
           var row = document.createElement("div");
           row.setAttribute("data-typing", "1");
-          row.className = "mr-8 p-2.5 rounded-2xl bg-white text-slate-600 border border-slate-200/80 shadow-sm text-xs font-bold flex items-center gap-2";
+          row.className = "mr-6 p-3 rounded-2xl bg-white text-slate-600 border border-slate-200/90 shadow-sm text-xs font-bold flex items-center gap-2 animate-in fade-in";
           row.innerHTML = '<span class="inline-flex gap-1 items-center"><span class="w-2 h-2 rounded-full bg-[#16acbd] animate-pulse"></span><span class="w-2 h-2 rounded-full bg-[#16acbd] animate-pulse" style="animation-delay:200ms"></span><span class="w-2 h-2 rounded-full bg-[#16acbd] animate-pulse" style="animation-delay:400ms"></span></span><span>ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...</span>';
           log.appendChild(row);
-          log.scrollTop = log.scrollHeight;
+          setTimeout(function() { log.scrollTop = log.scrollHeight; }, 30);
         }
         function sendChat() {
           var text = (input.value || "").trim();
           if (!text) return;
           if (typeof appendAdvisorChat === "function") appendAdvisorChat("user", text);
+          advisorChatHistory.push({ role: "user", content: text });
           input.value = "";
           showTyping();
           var budgetEl = document.getElementById("advisorBudget");
@@ -2310,6 +2325,7 @@ EXPLORER_HTML = r"""
             body: JSON.stringify({
               budget: budget,
               chat_message: text,
+              history: advisorChatHistory,
               strict_budget_cap: true,
               purchase_allocation_etb: purchaseCap
             })
@@ -2318,10 +2334,11 @@ EXPLORER_HTML = r"""
           .then(function(d){
             removeTyping();
             var advice = (d && d.advice) ? d.advice : (d || {});
-            var msg = advice.chat_reply || advice.advice_amharic || advice.advice_am || advice.message || advice.reply ||
+            var msg = d.reply || advice.chat_reply || advice.advice_amharic || advice.advice_am || advice.message || advice.reply ||
               ("ጥያቄዎን ተረድተናል። እኛ በ " + purchaseCap.toLocaleString() + " ብር (70% የግዢ ድርሻ) ወሰን ውስጥ እንመክራለን።");
             msg = String(msg).replace(/\bAI\b/gi, "እኛ").replace(/language model/gi, "እኛ").replace(/\bbot\b/gi, "እኛ");
             if (typeof appendAdvisorChat === "function") appendAdvisorChat("advisor", msg);
+            advisorChatHistory.push({ role: "advisor", content: msg });
           })
           .catch(function(){
             removeTyping();
