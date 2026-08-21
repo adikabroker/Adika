@@ -5,7 +5,7 @@ import os
 import random
 from flask import request, jsonify, Response
 
-from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, OPENROUTER_MODEL
+from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY, OPENROUTER_MODEL
 from models import (
     LAST_DB_ERROR,
     get_db_connection, get_placeholder, add_listing, get_listing_by_id,
@@ -31,7 +31,7 @@ _GEMINI_MODEL_CANDIDATES = (
 
 
 # ---------------------------------------------------------------------------
-# OpenRouter via requests (google/gemini-2.0-flash-001 default)
+# OpenRouter via requests (no OpenAI SDK required for chat)
 # ---------------------------------------------------------------------------
 _ADIKA_SYSTEM = (
     "You are Adika's Senior Financial & Vehicle Advisor in Ethiopia. "
@@ -50,12 +50,18 @@ def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.3
     """
     import requests as _requests
 
-    api_key = (OPENROUTER_API_KEY if OPENROUTER_API_KEY else None) or os.environ.get("OPENROUTER_API_KEY")
-    model_name = (
-        (OPENROUTER_MODEL if OPENROUTER_MODEL else None)
-        or os.environ.get("OPENROUTER_MODEL")
-        or "google/gemini-2.0-flash-001"
+    api_key = (OPENROUTER_API_KEY if OPENROUTER_API_KEY else None) or os.environ.get(
+        "OPENROUTER_API_KEY"
     )
+    try:
+        model_name = (
+            (OPENROUTER_MODEL if OPENROUTER_MODEL else None)
+            or os.environ.get("OPENROUTER_MODEL")
+            or "google/gemini-2.0-flash-001"
+        )
+    except NameError:
+        model_name = os.environ.get("OPENROUTER_MODEL") or "google/gemini-2.0-flash-001"
+
     api_url = "https://openrouter.ai/api/v1/chat/completions"
 
     if not api_key:
@@ -99,7 +105,9 @@ def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.3
 
 
 def get_openrouter_response(prompt, chat_history=None, system=None, temperature=0.3, max_tokens=600):
-    return generate_ai_response(prompt, chat_history=chat_history, system=system, temperature=temperature)
+    return generate_ai_response(
+        prompt, chat_history=chat_history, system=system, temperature=temperature
+    )
 
 
 def _advisor_chat_reply(user_message, *, system=None, temperature=0.3):
