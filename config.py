@@ -11,8 +11,8 @@ logging.basicConfig(
 logger = logging.getLogger("adika")
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
-GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "0")
 
 # Primary: PostgreSQL / Supabase (Session or Transaction pooler URL)
