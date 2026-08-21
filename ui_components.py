@@ -2134,17 +2134,20 @@ EXPLORER_HTML = r"""
       var b = Math.max(0, Number(budget) || 0);
       var purchase = Math.round(b * 0.70);
       var fees = Math.round(b * 0.15);
-      var reserve = b - purchase - fees;
+      var reserve = Math.max(0, b - purchase - fees);
       var el = document.getElementById("analysisBudgetTotal");
       if (el) el.textContent = b.toLocaleString() + " ETB";
-      var set = function(id, pct) { var n = document.getElementById(id); if (n) n.textContent = pct + "%"; };
-      set("pctPurchase", 70); set("pctFees", 15); set("pctReserve", 15);
+      var set = function(id, text) { var n = document.getElementById(id); if (n) n.textContent = text; };
+      set("pctPurchase", "70% · " + purchase.toLocaleString() + " ብር");
+      set("pctFees", "15% · " + fees.toLocaleString() + " ብር");
+      set("pctReserve", "15% · " + reserve.toLocaleString() + " ብር");
       var bp = document.getElementById("barPurchase");
       var bf = document.getElementById("barFees");
       var br = document.getElementById("barReserve");
       if (bp) bp.style.width = "70%";
       if (bf) bf.style.width = "15%";
       if (br) br.style.width = "15%";
+      return { budget: b, purchase: purchase, fees: fees, reserve: reserve };
     }
 
     function renderAnalysisDashboard(d, budget) {
@@ -2160,10 +2163,15 @@ EXPLORER_HTML = r"""
 
       var cardsEl = document.getElementById("analysisCards");
       if (cardsEl) {
+        var purchaseCap = Math.round(budgetNum * 0.70);
         var filtered = (options || []).filter(function(o) {
           var p = o.estimated_price_etb || o.max_price || o.price_etb;
-          if (p == null) return true;
-          return Number(p) <= budgetNum * 1.02;
+          if (p == null && o.estimated_price_range_etb) {
+            var m = String(o.estimated_price_range_etb).replace(/,/g, "").match(/(\d+)/g);
+            if (m && m.length) p = Number(m[m.length - 1]);
+          }
+          if (p == null || isNaN(Number(p))) return true;
+          return Number(p) <= purchaseCap * 1.05;
         }).slice(0, 6);
         if (!filtered.length && options && options.length) filtered = options.slice(0, 3);
         cardsEl.innerHTML = filtered.map(function(o) {
@@ -2263,38 +2271,68 @@ EXPLORER_HTML = r"""
 
 
     (function(){
-      var sendBtn = document.getElementById("advisorChatSend");
-      var input = document.getElementById("advisorChatInput");
-      if (!sendBtn || !input) return;
-      function sendChat() {
-        var text = (input.value || "").trim();
-        if (!text) return;
-        appendAdvisorChat("user", text);
-        input.value = "";
-        appendAdvisorChat("advisor", "ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...");
-        var budget = document.getElementById("advisorBudget") ? document.getElementById("advisorBudget").value : 2000000;
-        fetch("/api/ai-advisor", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ budget: Number(budget), chat_message: text, strict_budget_cap: true })
-        })
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          var advice = d.advice || d;
-          var msg = advice.advice_amharic || advice.advice_am || advice.message || advice.reply || "ጥያቄዎን ተረድተናል። በበጀትዎ ወሰን ውስጥ እንመክራለን።";
-          msg = String(msg).replace(/\\bAI\\b/gi, "እኛ").replace(/\\bbot\\b/gi, "እኛ");
+      function bindAdvisorChat() {
+        var sendBtn = document.getElementById("advisorChatSend");
+        var input = document.getElementById("advisorChatInput");
+        if (!sendBtn || !input || sendBtn.dataset.bound === "1") return;
+        sendBtn.dataset.bound = "1";
+        function removeTyping() {
           var log = document.getElementById("advisorChatLog");
-          if (log && log.lastChild) log.removeChild(log.lastChild);
-          appendAdvisorChat("advisor", msg);
-        })
-        .catch(function(){
+          if (!log) return;
+          var nodes = log.querySelectorAll("[data-typing='1']");
+          for (var i = 0; i < nodes.length; i++) nodes[i].parentNode.removeChild(nodes[i]);
+        }
+        function showTyping() {
           var log = document.getElementById("advisorChatLog");
-          if (log && log.lastChild) log.removeChild(log.lastChild);
-          appendAdvisorChat("advisor", "አሁን መልስ ማግኘት አልተቻለም። ትንሽ ቆይተው ይሞክሩ።");
-        });
+          if (!log) return;
+          removeTyping();
+          var row = document.createElement("div");
+          row.setAttribute("data-typing", "1");
+          row.className = "mr-6 p-2 rounded-xl bg-slate-50 text-slate-600 border border-slate-100 text-[11px] font-bold";
+          row.textContent = "ኦፕሬተሩ መልስ በመጻፍ ላይ ነው...";
+          log.appendChild(row);
+          log.scrollTop = log.scrollHeight;
+        }
+        function sendChat() {
+          var text = (input.value || "").trim();
+          if (!text) return;
+          if (typeof appendAdvisorChat === "function") appendAdvisorChat("user", text);
+          input.value = "";
+          showTyping();
+          var budgetEl = document.getElementById("advisorBudget");
+          var budget = budgetEl && budgetEl.value ? Number(budgetEl.value) : 2000000;
+          var purchaseCap = Math.round(budget * 0.70);
+          fetch("/api/ai-advisor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              budget: budget,
+              chat_message: text,
+              strict_budget_cap: true,
+              purchase_allocation_etb: purchaseCap
+            })
+          })
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            removeTyping();
+            var advice = (d && d.advice) ? d.advice : (d || {});
+            var msg = advice.chat_reply || advice.advice_amharic || advice.advice_am || advice.message || advice.reply ||
+              ("ጥያቄዎን ተረድተናል። እኛ በ " + purchaseCap.toLocaleString() + " ብር (70% የግዢ ድርሻ) ወሰን ውስጥ እንመክራለን።");
+            msg = String(msg).replace(/\bAI\b/gi, "እኛ").replace(/language model/gi, "እኛ").replace(/\bbot\b/gi, "እኛ");
+            if (typeof appendAdvisorChat === "function") appendAdvisorChat("advisor", msg);
+          })
+          .catch(function(){
+            removeTyping();
+            if (typeof appendAdvisorChat === "function") {
+              appendAdvisorChat("advisor", "አሁን መልስ ማግኘት አልተቻለም። ትንሽ ቆይተው ይሞክሩ።");
+            }
+          });
+        }
+        sendBtn.onclick = sendChat;
+        input.addEventListener("keydown", function(ev){ if (ev.key === "Enter") { ev.preventDefault(); sendChat(); } });
       }
-      sendBtn.onclick = sendChat;
-      input.addEventListener("keydown", function(ev){ if (ev.key === "Enter") sendChat(); });
+      bindAdvisorChat();
+      setTimeout(bindAdvisorChat, 500);
     })();
 
     // Duty Calculator Action
