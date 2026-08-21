@@ -11,14 +11,11 @@ logging.basicConfig(
 logger = logging.getLogger("adika")
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-
-ADMIN_CHAT_ID_INT = int(os.environ.get("ADMIN_CHAT_ID", 0))
-DATABASE_URL = os.environ.get("DATABASE_URL")
-WEBAPP_URL = os.environ.get("WEBAPP_URL")
-
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
-
+GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
+GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
+OPENROUTER_API_KEY = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+OPENROUTER_MODEL = (os.environ.get("OPENROUTER_MODEL") or "google/gemini-2.0-flash-001").strip()
+ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "0")
 
 # Primary: PostgreSQL / Supabase (Session or Transaction pooler URL)
 DATABASE_URL = (
