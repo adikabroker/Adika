@@ -2965,7 +2965,6 @@ try:
 except ImportError:
     st = None
 
-
 try:
     from api_service import generate_advisor_response
 except Exception:
@@ -2983,33 +2982,28 @@ def render_chat_interface(user_budget):
         return
     st.markdown("### 💬 ከአዲካ የፋይናንስ ኦፕሬተር ጋር ይወያዩ")
     
+    # 1. State ማስጀመሪያ
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": f"ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። በያዙት {user_budget:,.0f} ETB በጀት ዙሪያ የሚፈልጉትን ማንኛውንም የፋይናንስ እና የገበያ ጥያቄ መጠየቅ ይችላሉ።"}
+            {"role": "assistant", "content": f"ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። በያዙት {user_budget:,.0f} ETB በጀት ዙሪያ የሚፈልጉትን ማንኛውንም ጥያቄ መጠየቅ ይችላሉ።"}
         ]
 
-    # የቀደሙ መልእክቶችን ማሳየት
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+    # 2. የቻት ታሪክ ማሳያ (Scrollable Container)
+    chat_container = st.container()
+    with chat_container:
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
 
-    # የተጠቃሚ አዲስ ጥያቄ
+    # 3. ጥያቄ መቀበያ እና የኤፒአይ ጥሪ
     if prompt := st.chat_input("ጥያቄዎን እዚህ ያስገቡ..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
+        
         with st.chat_message("user"):
             st.write(prompt)
 
-        # Typing Indicator & Real API Call
         with st.chat_message("assistant"):
             with st.spinner("ኦፕሬተሩ መልስ በመጻፍ ላይ ነው..."):
-                system_instruction = (
-                    "You are a human Senior Financial Advisor at Adika Digital. "
-                    "Speak politely and naturally in Amharic like an expert advisor. "
-                    "NEVER mention you are an AI, bot, or language model. "
-                    "Always refer to Adika as 'እኛ' or 'እኔ'. Strictly respect the user's budget context."
-                )
-                
-                # api_service.py ላይ ያለውን ጥሪ ማገናኘት
                 response = generate_advisor_response(
                     prompt=prompt, 
                     history=st.session_state.messages, 
@@ -3018,4 +3012,6 @@ def render_chat_interface(user_budget):
                 st.write(response)
                 
         st.session_state.messages.append({"role": "assistant", "content": response})
+        st.rerun()
+
 
