@@ -147,68 +147,64 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
 
 def generate_advisor_response(prompt, history=None, budget=0):
     """
-    ከ Gemini API ጋር ተገናኝቶ ለቻቱ በሰውኛ የተዘጋጀ ሙያዊና ተለዋዋጭ መልስ የሚያመጣ Function
+    gemini-1.5-flash ሞዴልን ብቻ በጥብቅ የሚጠቀም አሰራር
     """
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return "ይቅርታ፣ የ GEMINI_API_KEY በ Render/Environment ላይ አልተዋቀረም።"
+        
     try:
-        budget_num = float(budget or 0)
+        budget_val = float(budget or 0)
     except Exception:
-        budget_num = 0.0
+        budget_val = 0.0
 
     system_instruction = (
-        "You are a human Senior Financial & Investment Advisor at Adika Digital in Addis Ababa, Ethiopia. "
-        "You provide bespoke, highly practical, and context-aware advice for car purchases, real estate/property acquisitions, and business investments. "
-        "COMMUNICATION RULES:\n"
-        "1. Speak politely, warmly, and naturally in Amharic like a seasoned Ethiopian investment expert.\n"
-        "2. NEVER mention that you are an AI, bot, virtual assistant, algorithm, or language model.\n"
-        "3. Always refer to yourself and Adika as 'እኔ' or 'እኛ'.\n"
-        f"4. Budget Framework: The client's total budget is {budget_num:,.0f} ETB. The 70/15/15 rule applies (70% max for purchase, 15% for title transfer/taxes/duties, 15% emergency/maintenance reserve).\n"
-        "5. DYNAMIC & CONTEXTUAL ANSWERS: Avoid repeating generic template definitions of the 70% rule on every turn. Directly answer the user's specific question (e.g. comparing specific car models, tax/duty implications, bank loan down payment vs cash, ROI, maintenance costs, condominium vs apartment) while keeping financial feasibility in mind within the client's budget."
+        "You are a human Senior Financial Advisor at Adika Digital. "
+        "Speak politely and naturally in Amharic using 'እኛ' or 'እኔ'. "
+        "NEVER mention you are an AI, bot, or language model. "
+        f"Context: Total user budget is {budget_val:,.0f} ETB. "
+        "Answer the user's specific query dynamically without repeating generic template text."
     )
-
-    # Format chat history if provided
-    formatted_history = ""
+    
+    # የቻት ታሪክ ማቀናጃ
+    context_text = f"System Context: {system_instruction}\n"
     if history:
-        if isinstance(history, list):
-            history_lines = []
-            for item in history:
-                if isinstance(item, dict):
-                    role_label = "ተጠቃሚ" if item.get("role") in ["user", "client", "human"] else "አማካሪ (እኛ)"
-                    content = item.get("content") or item.get("text") or item.get("message") or ""
-                    if content:
-                        history_lines.append(f"{role_label}: {content}")
-                elif isinstance(item, str) and item.strip():
-                    history_lines.append(item.strip())
-            if history_lines:
-                formatted_history = "የቀደመው የውይይት ታሪክ:\n" + "\n".join(history_lines) + "\n\n"
-        elif isinstance(history, str) and history.strip():
-            formatted_history = f"የቀደመው የውይይት ታሪክ:\n{history.strip()}\n\n"
-
-    # Assemble full prompt with context
-    budget_ctx = f"የተጠቃሚ ጠቅላላ በጀት: {budget_num:,.0f} ETB (ለግዢ የሚመደበው 70%: {budget_num * 0.7:,.0f} ETB)\n" if budget_num > 0 else ""
-    full_prompt = f"{formatted_history}{budget_ctx}የተጠቃሚ አዲስ ጥያቄ: {prompt}\n\nእባክዎ ለዚህ ጥያቄ ቀጥተኛ፣ ሙያዊ እና ዝርዝር ምላሽ በአማርኛ ይስጡ:"
+        for msg in history[-4:]:
+            if isinstance(msg, dict):
+                role_label = "የተጠቃሚ ጥያቄ" if msg.get("role") in ["user", "client"] else "የእርስዎ መልስ"
+                content = msg.get("content") or msg.get("text") or msg.get("message") or ""
+                context_text += f"{role_label}: {content}\n"
+            elif isinstance(msg, str):
+                context_text += f"{msg}\n"
+        
+    context_text += f"የተጠቃሚ አዲስ ጥያቄ: {prompt}"
 
     try:
-        response_text = _gemini_generate(
-            prompt=full_prompt, 
-            system=system_instruction
-        )
-        if response_text:
-            cleaned = re.sub(r'\bAI\b', 'እኛ', response_text, flags=re.I)
+        # gemini-1.5-flash ብቻ ቀጥታ መጠቀም
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(context_text)
+        
+        if response and response.text:
+            cleaned = re.sub(r'\bAI\b', 'እኛ', response.text.strip(), flags=re.I)
             cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.I)
             cleaned = re.sub(r'\blanguage model\b', 'የአማካሪ ቡድናችን', cleaned, flags=re.I)
-            return cleaned.strip()
-        return "ጥያቄዎን ተመልክተናል። በበጀትዎ ማዕቀፍ ውስጥ ተገቢውን ንብረት ለመምረጥ ተጨማሪ ማብራሪያዎችን መስጠት እንችላለን።"
+            return cleaned
+        return "ይቅርታ፣ መረጃውን ማካሄድ አልተቻለም። እባክዎ ድጋሚ ይሞክሩ።"
+        
     except Exception as e:
-        logger.warning("generate_advisor_response fallback due to: %s", e)
-        # Fallback contextual response based on keywords
-        p_lower = prompt.lower()
-        if "መኪና" in prompt or "car" in p_lower or "vitz" in p_lower or "dzire" in p_lower:
-            return f"በበጀትዎ ({budget_num:,.0f} ብር) ውስጥ 70% የሚሆነውን ({budget_num * 0.7:,.0f} ብር) ለንብረት ግዢ በመመደብ፣ አነስተኛ የነዳጅ እና የጥገና ወጪ ያላቸውን እንደ Suzuki Dzire ወይም Toyota Vitz የመሳሰሉ ተሽከርካሪዎችን መምረጥ ይችላሉ።"
-        elif "ቤት" in prompt or "house" in p_lower or "አፓርታማ" in prompt:
-            return f"ለቤት እና ንብረት ኢንቨስትመንት በ {budget_num:,.0f} ብር በጀትዎ፣ የባለቤትነት ማረጋገጫ (ካርታ) እና ህጋዊ የውክልና ሰነዶችን ቅድሚያ በመፈተሽ ደህንነቱ የተጠበቀ ግዢ እንዲፈጽሙ እንመክራለን።"
-        elif "ብድር" in prompt or "loan" in p_lower or "ባንክ" in prompt:
-            return f"ለባንክ ብድር የ 30% የቅድመ ክፍያ ካፒታል በማዘጋጀት ቀሪውን የ 70% ድርሻ በባንክ በኩል ማመቻቸት ይቻላል።"
-        return f"ጥያቄዎን ተመልክተናል። በ {budget_num:,.0f} ብር የበጀት ማዕቀፍዎ ውስጥ ተገቢውን የኢንቨስትመንትና የግዢ ምርጫዎችን ለማመቻቸት ዝግጁ ነን።"
+        # Fallback to _gemini_generate if direct legacy module has issues
+        try:
+            resp = _gemini_generate(prompt=context_text, system=system_instruction)
+            if resp:
+                cleaned = re.sub(r'\bAI\b', 'እኛ', resp.strip(), flags=re.I)
+                cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.I)
+                cleaned = re.sub(r'\blanguage model\b', 'የአማካሪ ቡድናችን', cleaned, flags=re.I)
+                return cleaned
+        except Exception:
+            pass
+        return f"የግንኙነት ስህተት ተፈጠረ፦ {str(e)}"
 
 
 
