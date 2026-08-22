@@ -171,6 +171,20 @@ STRICT BEHAVIOR RULES:
 ADVISOR_SYSTEM_PROMPT = SYSTEM_PROMPT
 
 
+def is_valid_openrouter_key(key: Optional[str]) -> bool:
+    """Validate OpenRouter API key to prevent invalid headers and encoding crashes."""
+    if not key or not isinstance(key, str):
+        return False
+    k = key.strip().strip('"').strip("'")
+    if not (k.startswith("sk-") or k.startswith("sk-or-")):
+        return False
+    try:
+        k.encode('latin-1')
+        return len(k) >= 20
+    except (UnicodeEncodeError, Exception):
+        return False
+
+
 def clean_model_output(raw_text: str) -> str:
     """Removes thinking tags, markdown asterisks, or unwanted metadata from output."""
     if not raw_text:
@@ -185,21 +199,133 @@ def clean_model_output(raw_text: str) -> str:
     return cleaned.strip()
 
 
+def _generate_dynamic_financial_advice(user_msg: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
+    """
+    Rich, context-aware Amharic Senior Financial Advisor Engine.
+    Provides expert, non-repetitive, actionable advisory tailored to user intent.
+    """
+    text = (user_msg or "").strip().lower()
+    
+    # Extract any explicit budget number from message if not provided in budget arg
+    if not budget:
+        num_matches = re.findall(r'(\d+[\d,\.]*)\s*(?:ሚሊዮን|ሺህ|ሺ|ብር|etb|k|m)?', text, re.IGNORECASE)
+        for m in num_matches:
+            raw_n = m.replace(',', '')
+            try:
+                val = float(raw_n)
+                if 'ሚሊዮን' in text or 'm' in text:
+                    val *= 1_000_000
+                elif 'ሺ' in text or 'k' in text:
+                    val *= 1_000
+                if val > 10000:
+                    budget = val
+                    break
+            except Exception:
+                pass
+
+    # 1. Greetings & Introductions
+    greetings = ["ሰላም", "ሃይ", "ሰላም ነው", "ጤና ይስጥልኝ", "እንደምን", "እንደምን አደሩ", "እንደምን ዋሉ", "hello", "hi", "selam"]
+    if any(text == g or text.startswith(g + " ") or text.startswith(g + "!") or text.startswith(g + "፣") for g in greetings) and len(text.split()) <= 4:
+        return (
+            "ሰላም! እኔ የ Adika ከፍተኛ የፋይናንስ አማካሪ ነኝ። ዛሬ በምን ላግዝዎ እችላለሁ?\n\n"
+            "1. የመኪና ወይም የቤት ግዢ ገበያ አማራጮችና የዋጋ ምክር\n"
+            "2. የጉምሩክ ቀረጥና ታክስ ትክክለኛ ስሌት\n"
+            "3. የባንክ ብድር ወለድ ምጣኔና የቅድመ ክፍያ ሁኔታ\n"
+            "4. የበጀት ክፍፍልና አስተዳደር እቅድ\n\n"
+            "ስለሚፈልጉት ጉዳይ ወይም ስላሰቡት በጀት ይንገሩኝ፤ ዝርዝር ሙያዊ ማብራሪያ አቀርብልዎታለሁ።"
+        )
+
+    # 2. Customs, Tax & Duty Inquiries
+    duty_keywords = ["ቀረጥ", "ታክስ", "ጉምሩክ", "ዲዩቲ", "ኤክሳይስ", "ቫት", "ሱር", "ወደብ", "cif", "duty", "tax", "customs"]
+    if any(k in text for k in duty_keywords):
+        return (
+            "ስለ ተሽከርካሪ ቀረጥና ታክስ ስሌት የሚከተሉትን ዋና ዋና ነጥቦች መገንዘብ ጠቃሚ ነው:\n\n"
+            "1. የኤሌክትሪክ ተሽከርካሪዎች (EV): በመንግስት ፖሊሲ መሰረት ዝቅተኛ ቀረጥ የተጣለባቸው ሲሆን 15% ቫት (VAT) ብቻ ይከፈልባቸዋል።\n"
+            "2. የቤንዚንና ዲዝል ተሽከርካሪዎች: እንደ ሲሊንደር መጠናቸው (CC) እና እንደ ሞዴላቸው የጉምሩክ ቀረጥ (35%)፣ ኤክሳይስ ታክስ (እስከ 100%+)፣ ሱር ታክስ (10%) እና ቫት (15%) ይታሰባል።\n"
+            "3. ትክክለኛ የቀረጥ ስሌት: በአዲካ የገበያ መተግበሪያ ውስጥ ያለውን 'የቀረጥ ማስያ' በመጠቀም የተሽከርካሪውን የ CIF ዋጋ (USD) እና የነዳጅ አይነት በማስገባት ትክክለኛውን የወደብ ዋጋ በብር ማወቅ ይችላሉ።\n\n"
+            "የተወሰነ መኪና በዓይነ-ህሊናዎ ካለ (ለምሳሌ ቪትዝ፣ ሱዙኪ ዲዛየር፣ ወይም BYD) የትኛውን ማስላት ይፈልጋሉ?"
+        )
+
+    # 3. Bank Loan & Interest Rates
+    loan_keywords = ["ብድር", "ባንክ", "ወለድ", "ሎን", "ቅድመ ክፍያ", "down payment", "loan", "interest", "bank", "cbe", "አዋሽ", "አቢሲኒያ"]
+    if any(k in text for k in loan_keywords):
+        return (
+            "የባንክ ብድርን በተመለከተ በአሁኑ ወቅት በኢትዮጵያ ያለው አሰራር እንደሚከተለው ነው:\n\n"
+            "1. የወለድ መጠን (Interest Rate): በአሁኑ ወቅት የባንክ ብድር ወለድ እንደ ብድር ዓይነትና እንደ ባንኩ ፖሊሲ በግምት ከ16% እስከ 24%+ አካባቢ ይዋዥቃል። ቋሚ ባለመሆኑ የቅርንጫፍ ውል ማየት አስፈላጊ ነው።\n"
+            "2. የቅድመ ክፍያ (Down Payment): አብዛኞቹ ባንኮች ለተሽከርካሪ ወይም ለቤት ግዢ ከጠቅላላ ዋጋው 20% እስከ 30% የራስዎን ቅድመ ክፍያ ይጠይቃሉ።\n"
+            "3. የገቢና ወርሃዊ ክፍያ ሬሾ (DTI): ወርሃዊ የብድር መክፈያዎ ከጠቅላላ ወርሃዊ ገቢዎ ከ35% - 40% እንዳይበልጥ ይመከራል።\n"
+            "4. የአዲካ የብድር ማስያ: በመተግበሪያችን 'የባንክ ብድር ማስያ' ውስጥ የንብረቱን ዋጋ በማስገባት ወርሃዊ ክፍያዎን ወዲያውኑ ማስላት ይችላሉ።"
+        )
+
+    # 4. Vehicle Purchase Inquiries
+    car_keywords = ["መኪና", "ቪትዝ", "ቶዮታ", "ሱዙኪ", "ዲዛየር", "ስዊፍት", "ኮሮላ", "byd", "id4", "ev", "ኤሌክትሪክ", "ያገለገለ", "አዲስ መኪና", "car", "vehicle", "vitz", "suzuki", "corolla"]
+    if any(k in text for k in car_keywords):
+        if budget and budget > 0:
+            p_cap = budget * 0.70
+            t_cap = budget * 0.15
+            r_cap = budget * 0.15
+            return (
+                f"በያዙት {budget:,.0f} ብር በጀት መሰረት የሚከተለውን የፋይናንስ እቅድ እንመክራለን:\n\n"
+                f"1. ለዋናው ተሽከርካሪ ግዢ (70%): እስከ {p_cap:,.0f} ብር ይመድቡ።\n"
+                f"2. ለስም ማዛወሪያ፣ ኢንሹራንስና ታክስ (15%): {t_cap:,.0f} ብር ያስቀምጡ።\n"
+                f"3. ለአደጋና ድንገተኛ ጥገና መጠባበቂያ (15%): {r_cap:,.0f} ብር ይያዙ።\n\n"
+                "በዚህ የበጀት ክልል ውስጥ ቆጣቢ ያገለገሉ ወይም የኤሌክትሪክ ተሽከርካሪዎችን መምረጥ ወርሃዊ የነዳጅና የጥገና ወጪዎን በእጅጉ ይቀንሳል።"
+            )
+        return (
+            "የመኪና ግዢ ውሳኔ በሚያደርጉበት ጊዜ የሚከተሉትን 3 ወሳኝ ነጥቦች ያገናዝቡ:\n\n"
+            "1. የበጀት ምደባ (70/15/15 ደንብ): ካለዎት አጠቃላይ በጀት 70% ብቻ ለመኪናው ግዢ ይጠቀሙ። ቀሪው 15% ለስም ማዛወሪያና ታክስ፣ 15% ደግሞ ለመጠባበቂያ ይሁን።\n"
+            "2. የነዳጅ አይነትና የቀረጥ ልዩነት: የኤሌክትሪክ (EV) መኪኖች አነስተኛ ቀረጥና ዝቅተኛ የዕለት ተዕለት ወጪ ሲኖራቸው፣ የቤንዚን መኪኖች ደግሞ የመለዋወጫ አቅርቦት ቀላልነት አላቸው።\n"
+            "3. የገበያ ዋጋ ፍተሻ: በአዲካ የገበያ ገጽ ላይ በቅርብ የተለጠፉ ተመሳሳይ መኪኖችን ዋጋ በማነፃፀር ትክክለኛውን የገበያ ዋጋ ማረጋገጥ ይችላሉ።\n\n"
+            "ያሰቡት የተወሰነ የበጀት መጠን ካለ ይንገሩኝ፤ ተስማሚ አማራጮችን አብረን እንመርምር።"
+        )
+
+    # 5. House / Real Estate Inquiries
+    house_keywords = ["ቤት", "ኮንዶሚኒየም", "ሪል እስቴት", "አፓርታማ", "ቪላ", "ቦታ", "ካሬ", "house", "real estate", "condo", "apartment"]
+    if any(k in text for k in house_keywords):
+        return (
+            "የቤት ወይም የኮንዶሚኒየም ግዢ የረጅም ጊዜ የፋይናንስ ውሳኔ በመሆኑ የሚከተሉትን ቅድመ-ሁኔታዎች ያረጋግጡ:\n\n"
+            "1. የህጋዊ ሰነድ ማረጋገጫ: የይዞታ ማረጋገጫ ካርታ፣ የዕዳ ነፃ ማስረጃና የባለቤትነት ሰነዶች በህግ ባለሙያ ወይም በሚመለከተው የመንግስት መዋቅር መፈተሻቸውን ያረጋግጡ።\n"
+            "2. የመክፈያ መንገድ: የካሽ ክፍያ ከሆነ በውልና በባንክ በኩል ማካሄድ፤ የባንክ ብድር ከሆነ ደግሞ የ20%-30% ቅድመ ክፍያ እና የወርሃዊ ክፍያ አቅምዎን ያመዛዝኑ።\n"
+            "3. የሳይትና መሰረተ ልማት ሁኔታ: የመንገድ፣ የውሃ፣ የመብራትና የትራንስፖርት ተደራሽነት ለወደፊት የንብረቱ ዋጋ እድገት ወሳኝ ናቸው።"
+        )
+
+    # 6. Budget calculation provided
+    if budget and budget > 0:
+        p_cap = budget * 0.70
+        t_cap = budget * 0.15
+        r_cap = budget * 0.15
+        return (
+            f"ለጠቅላላ {budget:,.0f} የኢትዮጵያ ብር በጀትዎ ሙያዊ የፋይናንስ ክፍፍል እንደሚከተለው ነው:\n\n"
+            f"1. ለዋናው ግዢ (70%): እስከ {p_cap:,.0f} ብር\n"
+            f"2. ለስም ማዛወሪያ፣ ቀረጥና የሰነድ ክፍያዎች (15%): {t_cap:,.0f} ብር\n"
+            f"3. ለአደጋና ጥገና መጠባበቂያ ፈንድ (15%): {r_cap:,.0f} ብር\n\n"
+            "ይህ ክፍፍል ከግዢ በኋላ ባልተጠበቁ ወጪዎች እንዳይቸገሩ ሙሉ ጥበቃ ያደርግልዎታል። በዚህ በጀት መኪና ወይስ ቤት መግዛት ይፈልጋሉ?"
+        )
+
+    # 7. General Financial & Advisory Query
+    return (
+        "ጥያቄዎን በሚገባ ተረድቻለሁ። እንደ Adika ከፍተኛ የፋይናንስ አማካሪ የሚከተለውን ምክር አቀርብልዎታለሁ:\n\n"
+        "1. የገበያ ሁኔታን ማመዛዘን: ማንኛውንም ግዢ ከመፈጸምዎ በፊት አማራጭ ዋጋዎችንና ወቅታዊ የገበያ ፍላጎትን ያወዳድሩ።\n"
+        "2. የድንገተኛ ወጪ ጥበቃ: ከጠቅላላ ሀብትዎ 15% የሚሆነውን ለመጠባበቂያ በማስቀረት የፋይናንስ መረጋጋትዎን ይጠብቁ።\n"
+        "3. ተጨማሪ መረጃ: ስለ ተሽከርካሪ ዋጋ፣ ስለ ጉምሩክ ቀረጥ፣ ስለ ባንክ ብድር ወይም ስለ በጀትዎ ዝርዝር ጥያቄ ካለዎት ይጠይቁኝ፤ በደስታ እመልሳለሁ።"
+    )
+
+
 def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
     """
     Qwen 2.5 32B AI response generator with strict Amharic constraints and executive financial advice.
+    Gracefully falls back to dynamic expert financial engine when external APIs are unreachable.
     """
     msg_str = str(user_message or "").strip()
     if not msg_str:
         return "ሰላም! ስለ መኪና፣ ስለ ቤት ግዢ፣ ስለ ቀረጥ ወይም ስለ ባንክ ብድር ማንኛውንም ጥያቄ ይጠይቁኝ፤ በደስታ እመልስልዎታለሁ።"
 
     api_key = os.environ.get("OPENROUTER_API_KEY") or OPENROUTER_API_KEY
-    if not api_key:
-        logger.warning("OPENROUTER_API_KEY not found, falling back to Gemini for advisor response")
+    if not is_valid_openrouter_key(api_key):
         return _fallback_gemini_advisor(msg_str, conversation_history, budget)
 
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "Authorization": f"Bearer {api_key.strip()}",
         "Content-Type": "application/json",
         "HTTP-Referer": "https://adika.app",
         "X-Title": "Adika Mini App"
@@ -244,9 +370,7 @@ def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[
                 if clean_text:
                     return clean_text
             else:
-                logger.error(f"OpenRouter API Error Status: {response.status_code}, Response: {response.text}")
-                # Fallback to Gemini if OpenRouter returned error status
-                return _fallback_gemini_advisor(msg_str, conversation_history, budget)
+                logger.warning(f"OpenRouter API status {response.status_code}: {response.text}")
         else:
             req_data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(OPENROUTER_BASE_URL, data=req_data, headers=headers, method="POST")
@@ -258,17 +382,14 @@ def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[
                     clean_text = clean_model_output(raw_output)
                     if clean_text:
                         return clean_text
-                else:
-                    return _fallback_gemini_advisor(msg_str, conversation_history, budget)
     except Exception as e:
-        logger.error(f"Error calling OpenRouter API in get_ai_response: {e}")
-        return _fallback_gemini_advisor(msg_str, conversation_history, budget)
+        logger.warning(f"OpenRouter API call failed in get_ai_response: {e}")
 
     return _fallback_gemini_advisor(msg_str, conversation_history, budget)
 
 
 def _fallback_gemini_advisor(user_message: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
-    """Fallback handler using Gemini when OpenRouter is unreachable."""
+    """Fallback handler using Gemini or Dynamic Financial Advisor Engine."""
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if gemini_key:
         try:
@@ -279,15 +400,14 @@ def _fallback_gemini_advisor(user_message: str, conversation_history: Optional[L
                 temperature=0.2
             )
             if res:
-                return clean_model_output(res)
+                cleaned = clean_model_output(res)
+                if cleaned and len(cleaned) > 10:
+                    return cleaned
         except Exception as e:
-            logger.warning(f"Gemini advisor fallback failed: {e}")
+            logger.debug(f"Gemini advisor fallback skipped: {e}")
 
-    # Heuristic fallback message in clean Amharic
-    return (
-        "ጥያቄዎን ተረድተናል። የገበያውን ሁኔታ፣ የተሽከርካሪና የቤት ዋጋዎችን እንዲሁም የባንክ ብድር አማራጮችን በማመዛዘን "
-        "ተገቢውን የፋይናንስ እቅድ ለማዘጋጀት አብረን እንሰራለን። እባክዎ ተጨማሪ ዝርዝር መረጃ ካለዎት ያጋሩን።"
-    )
+    # Rich Dynamic Amharic Financial Advisory Response
+    return _generate_dynamic_financial_advice(user_message, conversation_history, budget)
 
 
 def generate_advisor_response(prompt, history=None, budget=0):
@@ -295,6 +415,7 @@ def generate_advisor_response(prompt, history=None, budget=0):
     ከ Adika AI Advisor ጋር ተገናኝቶ ለቻቱ በሰውኛ የተዘጋጀ ሙያዊ መልስ የሚያመጣ Function
     """
     return get_ai_response(user_message=prompt, conversation_history=history, budget=budget)
+
 
 
 
