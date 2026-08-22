@@ -224,10 +224,10 @@ def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[
     payload = {
         "model": OPENROUTER_ADVISOR_MODEL,
         "messages": messages,
-        "temperature": 0.2,
+        "temperature": 0.5,
         "repetition_penalty": 1.2,
         "frequency_penalty": 0.3,
-        "max_tokens": 1000
+        "max_tokens":2048
     }
 
     try:
