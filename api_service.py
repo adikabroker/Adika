@@ -3,18 +3,9 @@ import json
 import re
 import os
 import random
-import urllib.request
-import urllib.error
-from typing import List, Dict, Any, Optional
-
-try:
-    import requests
-except ImportError:
-    requests = None
-
 from flask import request, jsonify, Response
 
-from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY
+from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY, OPENROUTER_MODEL, GEMINI_API_KEY
 from models import (
     LAST_DB_ERROR,
     get_db_connection, get_placeholder, add_listing, get_listing_by_id,
@@ -30,15 +21,252 @@ _json_safe = None
 # ---------------------------------------------------------------------------
 # Gemini (new google-genai SDK + multi-model fallback)
 # ---------------------------------------------------------------------------
-_GEMINI_MODEL_CANDIDATES = [
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
-    "gemini-1.5-flash-8b",
+_GEMINI_MODEL_CANDIDATES = (
+    "gemini-1.5-flash",
     "gemini-1.5-pro",
-]
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-pro-latest",
+)
 
 
-def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temperature=0.3, image_bytes=None, mime_type="image/jpeg"):
+
+# ---------------------------------------------------------------------------
+# OpenRouter chat (primary) via OpenAI SDK
+# ---------------------------------------------------------------------------
+_ADIKA_SYSTEM = (
+    "You are Adika's Senior Financial Advisor in Ethiopia.\n"
+    "\n"
+    "STRICT CORE RULES:\n"
+    "1. LANGUAGE: Respond EXCLUSIVELY in fluent, natural, executive-level Amharic "
+    "(ንጹህ እና ተፈጥሮአዊ አማርኛ). Never output foreign scripts (Korean, Hebrew, Russian) "
+    "or random English words.\n"
+    "2. NO RAW MARKDOWN: Do NOT output raw formatting symbols like **, *, or ###. "
+    "Provide clean text with simple numbered lists (1, 2, 3) where necessary.\n"
+    "3. FINANCIAL DATA ACCURACY: Never invent static bank interest rates or false "
+    "vehicle prices. For bank loans, explain that Ethiopian interest rates float "
+    "(currently ~16%-24%+) and advise consulting specific branches.\n"
+    "4. CONVERSATIONAL FREEDOM: Talk naturally and warmly like a human senior "
+    "consultant in Addis Ababa—no repetitive loops or cut-off sentences."
+)
+
+
+
+
+_openrouter_client = None
+
+
+def _get_openrouter_client():
+    """Lazy OpenAI client pointed at OpenRouter."""
+    global _openrouter_client
+    if _openrouter_client is not None:
+        return _openrouter_client
+    key = (OPENROUTER_API_KEY if OPENROUTER_API_KEY else None) or os.environ.get("OPENROUTER_API_KEY")
+    if not key:
+        return None
+    try:
+        from openai import OpenAI
+        _openrouter_client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=key,
+        )
+        return _openrouter_client
+    except Exception as e:
+        logger.warning("OpenRouter client init failed: %s", e)
+        return None
+
+
+def get_chat_response(user_message: str, chat_history=None) -> str:
+    """
+    OpenRouter chat — OpenAI SDK first, raw requests fallback.
+    Clean Amharic output; strip residual markdown.
+    """
+    if chat_history is None:
+        chat_history = []
+
+    api_key = (OPENROUTER_API_KEY if OPENROUTER_API_KEY else None) or os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        logger.error("OPENROUTER_API_KEY missing")
+        return (
+            "ይቅርታ፣ የ OpenRouter API ቁልፍ አልተዋቀረም። "
+            "በ Render Environment ውስጥ OPENROUTER_API_KEY ያስገቡ።"
+        )
+
+    try:
+        model_name = (
+            (OPENROUTER_MODEL if OPENROUTER_MODEL else None)
+            or os.environ.get("OPENROUTER_MODEL")
+            or "qwen/qwen-2.5-32b-instruct"
+        )
+    except NameError:
+        model_name = os.environ.get("OPENROUTER_MODEL") or "qwen/qwen-2.5-32b-instruct"
+
+    messages = [{"role": "system", "content": _ADIKA_SYSTEM}]
+    for msg in chat_history:
+        if isinstance(msg, dict) and msg.get("role") and msg.get("content") is not None:
+            role = msg["role"]
+            if role in ("advisor", "bot"):
+                role = "assistant"
+            messages.append({"role": role, "content": str(msg["content"])})
+    messages.append({"role": "user", "content": str(user_message)})
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://adika-marketplace.app",
+        "X-Title": "Adika Marketplace",
+    }
+    payload = {
+        "model": model_name,
+        "messages": messages,
+        "temperature": 0.2,
+        "repetition_penalty": 1.2,
+        "max_tokens": 800,
+    }
+
+    def _clean(text: str) -> str:
+        if not text:
+            return ""
+        t = str(text).replace("**", "").replace("###", "").replace("##", "")
+        # remove lone markdown asterisks used for bold/italic
+        t = re.sub(r"(?<!\w)\*(?!\w)", "", t)
+        return t.strip()
+
+    # 1) OpenAI SDK
+    try:
+        client = _get_openrouter_client()
+        if client is not None:
+            # SDK may not accept repetition_penalty — pass via extra_body
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=0.2,
+                max_tokens=800,
+                extra_headers={
+                    "HTTP-Referer": "https://adika-marketplace.app",
+                    "X-Title": "Adika Marketplace",
+                },
+                extra_body={"repetition_penalty": 1.2},
+            )
+            text = (response.choices[0].message.content or "").strip()
+            if text:
+                return _clean(text)
+    except Exception as e:
+        logger.warning("OpenRouter SDK error: %s", e)
+
+    # 2) Raw requests fallback
+    try:
+        import requests as _req
+
+        r = _req.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=45,
+        )
+        data = r.json() if r.content else {}
+        if r.status_code == 200:
+            choices = data.get("choices") or []
+            if choices:
+                text = (choices[0].get("message", {}) or {}).get("content") or ""
+                if str(text).strip():
+                    return _clean(str(text))
+        err = (data.get("error") or {}).get("message") or r.text[:200]
+        logger.warning("OpenRouter HTTP %s: %s", r.status_code, err)
+        if r.status_code in (401, 403):
+            return "ይቅርታ፣ የ API ቁልፍ ልክ አይደለም። OPENROUTER_API_KEYን ያረጋግጡ።"
+        if r.status_code == 429:
+            return "ይቅርታ፣ በጣም ብዙ ጥያቄ ተልኳል። ትንሽ ቆይተው ይሞክሩ።"
+        return f"ይቅርታ፣ አገልግሎቱ አልተሳካም ({r.status_code})።"
+    except Exception as e:
+        logger.warning("OpenRouter requests error: %s", e)
+        return "ይቅርታ፣ አሁን ላይ አገልግሎቱን ማቅረብ አልተቻለም። እባክዎን ጥቂት ቆይተው እንደገና ይሞክሩ።"
+
+
+
+
+def get_groq_chat_response(user_message: str, chat_history=None) -> str:
+    """Compatibility alias → OpenRouter."""
+    return get_chat_response(user_message, chat_history=chat_history)
+
+
+
+def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.7):
+    """
+    Main entry for advisor/chat. Uses OpenRouter; optional custom system prompt.
+    """
+    if chat_history is None:
+        chat_history = []
+
+    if system is None:
+        return get_chat_response(prompt, chat_history=chat_history)
+
+    client = _get_openrouter_client()
+    if client is None:
+        return "ይቅርታ፣ የ OpenRouter API ቁልፍ አልተዋቀረም።"
+
+    try:
+        model_name = (
+            (OPENROUTER_MODEL if OPENROUTER_MODEL else None)
+            or os.environ.get("OPENROUTER_MODEL")
+            or "qwen/qwen-2.5-32b-instruct"
+        )
+    except NameError:
+        model_name = os.environ.get("OPENROUTER_MODEL") or "qwen/qwen-2.5-32b-instruct"
+
+    messages = [{"role": "system", "content": system}]
+    for msg in chat_history:
+        if isinstance(msg, dict) and msg.get("role") and msg.get("content") is not None:
+            messages.append({"role": msg["role"], "content": str(msg["content"])})
+    messages.append({"role": "user", "content": str(prompt)})
+
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=1000,
+            extra_headers={
+                "HTTP-Referer": "https://adika-marketplace.app",
+                "X-Title": "Adika Marketplace",
+            },
+        )
+        return (response.choices[0].message.content or "").strip()
+    except Exception as e:
+        logger.warning("[OpenRouter API Error]: %s", e)
+        return "ይቅርታ፣ አሁን ላይ አገልግሎቱን ማቅረብ አልተቻለም። እባክዎን ጥቂት ቆይተው እንደገና ይሞክሩ።"
+
+
+def get_openrouter_response(prompt, chat_history=None, system=None, temperature=0.7, max_tokens=1000):
+    return generate_ai_response(
+        prompt, chat_history=chat_history, system=system, temperature=temperature
+    )
+
+
+def _advisor_chat_reply(user_message, *, system=None, temperature=0.7):
+    return generate_ai_response(
+        user_message,
+        chat_history=[],
+        system=system,
+        temperature=temperature,
+    )
+
+
+
+
+def generate_advisor_response(prompt, history=None, budget=None, system_prompt=None):
+    """Used by Streamlit/UI helpers — dynamic OpenRouter reply, no static finance text."""
+    hist = history if isinstance(history, list) else []
+    sys_p = system_prompt
+    if budget and not sys_p:
+        sys_p = (
+            _ADIKA_SYSTEM
+            + f"\nUser mentioned a budget context of about {budget} ETB. "
+            "Only use this if relevant to their question; never invent fixed allocation templates."
+        )
+    return generate_ai_response(prompt, chat_history=hist, system=sys_p, temperature=0.7)
+
+
+def _gemini_generate(prompt, *, api_key=None, system=None, json_mode=False, temperature=0.3, image_bytes=None, mime_type="image/jpeg"):
     """Generate text via new `google.genai` Client; fall back to legacy package."""
     api_key = api_key or os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -70,29 +298,17 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
             contents.append(prompt)
         for model_name in _GEMINI_MODEL_CANDIDATES:
             try:
-                # Build config per-call; support GenerateContentConfig or dictionary config
-                config = None
-                if genai_types is not None and hasattr(genai_types, "GenerateContentConfig"):
-                    try:
-                        cfg_kwargs = {"temperature": temperature}
-                        if json_mode:
-                            cfg_kwargs["response_mime_type"] = "application/json"
-                        if system:
-                            cfg_kwargs["system_instruction"] = system
-                        config = genai_types.GenerateContentConfig(**cfg_kwargs)
-                    except Exception:
-                        config = None
-
-                if config is None:
-                    config = {
-                        "temperature": temperature,
-                        "tools": None,
-                        "automatic_function_calling": {"disable": True},
-                    }
-                    if json_mode:
-                        config["response_mime_type"] = "application/json"
-                    if system:
-                        config["system_instruction"] = system
+                # Build config per-call; older/newer SDKs differ on key names
+                config = {
+                    "temperature": temperature,
+                    # Disable automatic function calling to avoid AFC warning on generate_content
+                    "tools": None,
+                    "automatic_function_calling": {"disable": True},
+                }
+                if json_mode:
+                    config["response_mime_type"] = "application/json"
+                if system:
+                    config["system_instruction"] = system
                 try:
                     response = client.models.generate_content(
                         model=model_name,
@@ -100,13 +316,10 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
                         config=config,
                     )
                 except TypeError:
-                    # Fallback for SDK signatures without config kwarg
-                    full_text = prompt
-                    if system and not image_bytes:
-                        full_text = f"System Instruction: {system}\n\nUser Prompt: {prompt}"
+                    # SDK without config= kwarg
                     response = client.models.generate_content(
                         model=model_name,
-                        contents=contents if image_bytes else full_text,
+                        contents=contents,
                     )
                 text = getattr(response, "text", None)
                 if not text and getattr(response, "candidates", None):
@@ -152,141 +365,6 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
 
     logger.error("Gemini generate failed after all models: %s", last_err)
     raise RuntimeError(f"Gemini generate failed: {last_err}")
-
-
-# ==============================================================================
-# OpenRouter / Qwen3-30B-A3B Senior Financial Advisor AI Service
-# ==============================================================================
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_ADVISOR_MODEL = os.environ.get("OPENROUTER_MODEL") or "qwen/qwen3-30b-a3b-instruct"
-
-ADVISOR_SYSTEM_PROMPT = """አንተ የ "Adika" ከፍተኛ የፋይናንስ አማካሪ ነህ። ተጠቃሚዎች ስለ መኪና ግዢ፣ ስለ ቤት ግዢ እና ስለ በጀት አስተዳደር ምክር ለማግኘት ይመጣሉ።
-
-የማይቀሩ ህጎች (Non-negotiable Rules):
-1. ሁሉንም መልሶችህን በንጹህ አማርኛ ቋንቋ ብቻ ስጥ። እንግሊዝኛ ቃላት፣ የላቲን ፊደላት ወይም ሌሎች የውጭ ቋንቋ ቃላት በፍጹም አትጠቀም።
-2. ተጠቃሚው በእንግሊዝኛ ወይም በሌላ ቋንቋ ቢጽፍም፣ አንተ ግን ያለ ምንም ልዩነት በአማርኛ ብቻ መልስ ስጠው።
-3. እንደ እውነተኛ የኢትዮጵያ የፋይናንስና የገበያ ባለሙያ ሁነህ ተናገር (እኔ/እኛ ብለህ ተጠቀም)። ሮቦት ወይም AI መሆንህን ፈጽሞ አትግለጽ።
-4. የባንክ ወለድ መጠኖችን በተመለከተ፣ በአሁኑ ወቅት በኢትዮጵያ የባንክ ብድር ወለድ እንደ ብድር ዓይነትና እንደ ባንኩ ፖሊሲ ከ16%-24%+ አካባቢ እንደሚለዋወጥ አስረዳ።
-5. የመልስህ ርዝመት አስፈላጊውን መረጃ የያዘና ግልጽ፣ ጥርት ያለ አማርኛ ይሁን። ማርክዳውን (**, ##, *) ምልክቶችን አትጠቀም፤ ንጹህ ጽሁፍና ቁጥሮችን (1, 2, 3) ተጠቀም።"""
-
-
-def clean_model_output(raw_text: str) -> str:
-    """Removes thinking tags, markdown asterisks, or unwanted metadata from output."""
-    if not raw_text:
-        return ""
-    cleaned = re.sub(r'<thought>.*?</thought>', '', raw_text, flags=re.DOTALL | re.IGNORECASE)
-    cleaned = re.sub(r'<think>.*?</think>', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
-    cleaned = re.sub(r'</?response>', '', cleaned, flags=re.IGNORECASE)
-    # Remove raw markdown bold/header markers for clean plain text display
-    cleaned = re.sub(r'[*#_`]', '', cleaned)
-    cleaned = re.sub(r'\bAI\b', 'እኛ', cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.IGNORECASE)
-    return cleaned.strip()
-
-
-def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
-    """
-    Qwen3 / OpenRouter AI response generator with strict Amharic constraints and history trimming.
-    Falls back gracefully to Gemini or heuristic advisor if OpenRouter is unavailable.
-    """
-    if not user_message or not str(user_message).strip():
-        return "እባክዎ ጥያቄዎን ያስገቡ።"
-
-    api_key = os.environ.get("OPENROUTER_API_KEY") or OPENROUTER_API_KEY
-    if not api_key:
-        logger.warning("OPENROUTER_API_KEY not found, falling back to Gemini for advisor response")
-        return _fallback_gemini_advisor(user_message, conversation_history, budget)
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": os.environ.get("WEBAPP_URL") or "https://adika-marketplace.et",
-        "X-Title": "Adika Marketplace Senior Financial Advisor"
-    }
-
-    system_prompt = ADVISOR_SYSTEM_PROMPT
-    if budget and float(budget) > 0:
-        system_prompt += f"\n\nየተጠቃሚው አጠቃላይ በጀት: {float(budget):,.0f} የኢትዮጵያ ብር (ETB) ነው። በዚህ በጀት ማዕቀፍ ውስጥ ተገቢውን ምክር ስጥ።"
-
-    messages = [{"role": "system", "content": system_prompt}]
-
-    # Keep only the last 6 messages to save context tokens and maintain low latency
-    if conversation_history:
-        recent_history = conversation_history[-6:]
-        for msg in recent_history:
-            role = msg.get("role")
-            content = msg.get("content")
-            if role in ["user", "assistant"] and content:
-                messages.append({"role": role, "content": str(content)})
-
-    messages.append({"role": "user", "content": str(user_message).strip()})
-
-    payload = {
-        "model": OPENROUTER_ADVISOR_MODEL,
-        "messages": messages,
-        "temperature": 0.5,
-        "repetition_penalty": 1.2,
-        "frequency_penalty": 0.3,
-        "max_tokens":2048
-    }
-
-    try:
-        if requests is not None:
-            response = requests.post(OPENROUTER_BASE_URL, headers=headers, json=payload, timeout=25)
-            if response.status_code == 200:
-                result = response.json()
-                raw_text = result["choices"][0]["message"]["content"]
-                final_text = clean_model_output(raw_text)
-                if final_text:
-                    return final_text
-            else:
-                logger.error(f"OpenRouter API Error: {response.status_code} - {response.text}")
-        else:
-            req_data = json.dumps(payload).encode("utf-8")
-            req = urllib.request.Request(OPENROUTER_BASE_URL, data=req_data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=25) as resp:
-                if resp.status == 200:
-                    resp_body = resp.read().decode("utf-8")
-                    result = json.loads(resp_body)
-                    raw_text = result["choices"][0]["message"]["content"]
-                    final_text = clean_model_output(raw_text)
-                    if final_text:
-                        return final_text
-    except Exception as e:
-        logger.error(f"Error calling OpenRouter API: {e}")
-
-    # Fallback to Gemini if OpenRouter call failed
-    return _fallback_gemini_advisor(user_message, conversation_history, budget)
-
-
-def _fallback_gemini_advisor(user_message: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
-    """Fallback handler using Gemini when OpenRouter is unreachable."""
-    gemini_key = os.environ.get("GEMINI_API_KEY")
-    if gemini_key:
-        try:
-            budget_str = f"የተጠቃሚ በጀት: {float(budget):,.0f} ETB\n" if budget and float(budget) > 0 else ""
-            res = _gemini_generate(
-                prompt=f"{budget_str}የተጠቃሚ ጥያቄ: {user_message}",
-                system=ADVISOR_SYSTEM_PROMPT,
-                temperature=0.2
-            )
-            if res:
-                return clean_model_output(res)
-        except Exception as e:
-            logger.warning(f"Gemini advisor fallback failed: {e}")
-
-    # Heuristic fallback message in clean Amharic
-    return (
-        "ጥያቄዎን ተረድተናል። የገበያውን ሁኔታ፣ የተሽከርካሪና የቤት ዋጋዎችን እንዲሁም የባንክ ብድር አማራጮችን በማመዛዘን "
-        "ተገቢውን የፋይናንስ እቅድ ለማዘጋጀት አብረን እንሰራለን። እባክዎ ተጨማሪ ዝርዝር መረጃ ካለዎት ያጋሩን።"
-    )
-
-
-def generate_advisor_response(prompt, history=None, budget=0):
-    """
-    ከ Adika AI Advisor ጋር ተገናኝቶ ለቻቱ በሰውኛ የተዘጋጀ ሙያዊ መልስ የሚያመጣ Function
-    """
-    return get_ai_response(user_message=prompt, conversation_history=history, budget=budget)
 
 
 
@@ -416,6 +494,27 @@ class _AdikaGeminiModel:
 
 
 def register_api_routes(web_app):
+
+    @web_app.route("/api/chat", methods=["POST", "OPTIONS"])
+    def api_chat():
+        """General Amharic chat via OpenRouter (Mini App frontend)."""
+        if request.method == "OPTIONS":
+            return ("", 204)
+        try:
+            data = request.get_json(silent=True) or {}
+            message = (data.get("message") or data.get("prompt") or data.get("text") or "").strip()
+            history = data.get("history") or data.get("chat_history") or []
+            if not message:
+                return jsonify({"status": "error", "response": "ጥያቄ ባዶ ነው።"}), 400
+            if not isinstance(history, list):
+                history = []
+            reply = get_chat_response(message, chat_history=history)
+            return jsonify({"status": "success", "response": reply, "message": reply})
+        except Exception as e:
+            logger.exception("api_chat: %s", e)
+            return jsonify({"status": "error", "response": "ይቅርታ፣ መልስ ማመንጨት አልተቻለም።"}), 500
+
+
     """Register every /api/* endpoint on the Flask application."""
     def _safe(obj):
         if _json_safe is not None:
@@ -881,7 +980,7 @@ def register_api_routes(web_app):
                         "Speak as a human Adika Senior Financial Advisor in polite Amharic. Never mention AI, bot, or language model. Use እኛ/እኔ. Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
+                        model_name="gemini-1.5-flash",
                         system_instruction=system_prompt,
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
@@ -950,7 +1049,7 @@ def register_api_routes(web_app):
                         "- 'reason': short concise explanation in English.\n"
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
+                        model_name="gemini-1.5-flash",
                         system_instruction=prompt,
                         generation_config={"response_mime_type": "application/json", "temperature": 0.0}
                     )
@@ -1073,7 +1172,7 @@ def register_api_routes(web_app):
                     "Respond ONLY with valid JSON."
                 )
                 model = _AdikaGeminiModel(
-                    model_name="gemini-2.0-flash",
+                    model_name="gemini-1.5-flash",
                     system_instruction=system_instruction,
                     generation_config={"response_mime_type": "application/json", "temperature": 0.0}
                 )
@@ -1644,275 +1743,79 @@ def register_api_routes(web_app):
     @web_app.route('/api/ai-advisor', methods=['POST', 'OPTIONS'])
     def api_ai_advisor():
         """
-        SMART FINANCIAL & PURCHASE ADVISOR (/api/ai-advisor)
-        Interactive AI evaluation based on realistic Ethiopian vehicle and property markets.
-        Handles low budgets (< 500k ETB), cash vs bank loan options, and commercial ROI.
+        Dynamic advisor via OpenRouter — no static budget templates.
+        Accepts: message / chat_message / prompt, optional budget context.
         """
         if request.method == 'OPTIONS':
             return ('', 204)
         try:
-            data = request.json or {}
-            budget = float(data.get('budget') or data.get('property_price') or 2000000.0)
-            purpose = str(data.get('purpose') or 'business').lower().strip()
-            payment_strategy = str(data.get('payment_strategy') or data.get('payment') or 'cash').lower().strip()
-            monthly_income = float(data.get('monthly_income') or (budget * 0.05 if payment_strategy == 'loan' else 0.0))
-            chat_message = str(data.get('chat_message') or data.get('message') or '').strip()
-            strict_cap = bool(data.get('strict_budget_cap'))
-            purchase_cap = float(data.get('purchase_allocation_etb') or (budget * 0.70))
+            data = request.json or request.get_json(silent=True) or {}
+            chat_message = str(
+                data.get('chat_message')
+                or data.get('message')
+                or data.get('prompt')
+                or data.get('question')
+                or ''
+            ).strip()
+            budget_raw = data.get('budget') or data.get('property_price')
+            history = data.get('history') or data.get('chat_history') or []
+            if not isinstance(history, list):
+                history = []
 
-            api_key = os.environ.get("GEMINI_API_KEY")
-            advice_result = None
-
-            # Follow-up chat from Analysis View
+            # Pure chat path
             if chat_message:
-                history = data.get('history') or data.get('conversation_history') or []
-                chat_reply = get_ai_response(
-                    user_message=chat_message,
-                    conversation_history=history,
-                    budget=budget
-                )
+                ctx = ""
+                if budget_raw not in (None, "", 0, "0"):
+                    try:
+                        b = float(budget_raw)
+                        ctx = f" (ተጠቃሚው በጀት ~{b:,.0f} ብር አውስቷል — አስፈላጊ ከሆነ ብቻ ተጠቀም)"
+                    except Exception:
+                        ctx = ""
+                user_q = chat_message + ctx
+                reply = get_chat_response(user_q, chat_history=history)
                 return jsonify({
                     "status": "success",
-                    "advice": {
-                        "chat_reply": chat_reply,
-                        "advice_amharic": chat_reply,
-                        "message": chat_reply,
-                    },
-                    "budget": budget,
-                    "purchase_allocation_etb": purchase_cap,
-                    "allocation": {
-                        "purchase_pct": 70, "fees_pct": 15, "reserve_pct": 15,
-                        "purchase_etb": purchase_cap,
-                        "fees_etb": round(budget * 0.15),
-                        "reserve_etb": round(budget * 0.15),
+                    "response": reply,
+                    "message": reply,
+                    "chat_reply": reply,
+                    "advisor_report": {
+                        "expert_advice_amharic": reply,
+                        "summary_amharic": reply,
                     },
                 })
 
-            if api_key:
+            # Form-style request without free text → ask OpenRouter dynamically
+            purpose = str(data.get('purpose') or '').strip()
+            payment = str(data.get('payment_strategy') or data.get('payment') or '').strip()
+            parts = ["እባክዎ እንደ ባለሙያ አማካሪ በአማርኛ አጭርና ግልጽ ምክር ስጡ።"]
+            if budget_raw not in (None, "", 0, "0"):
                 try:
-                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
-                    prompt = (
-                        "You are the top Ethiopian automotive & real-estate financial investment advisor in Addis Ababa.\\n"
-                        f"Evaluate this buyer inquiry under REAL Ethiopian market conditions:\\n"
-                        f"• Total Budget: {budget:,.0f} ETB\\n"
-                        f"• Purpose: {'ለስራ / ለንግድ (Commercial/Ride/Cargo/Business)' if purpose == 'business' else 'ለቤት / ለቤተሰብ (Personal/Family/Residence)'}\\n"
-                        f"• Payment Strategy: {'ሙሉ በሙሉ በጥሬ ገንዘብ (Cash Buy)' if payment_strategy == 'cash' else 'በባንክ ብድር / Down Payment Financing (CBE/Awash Bank Loan)'}\\n"
-                        f"• Monthly Income: {monthly_income:,.0f} ETB\\n\\n"
-                        "REALISTIC ETHIOPIAN MARKET RULES:\\n"
-                        "1. If Budget < 500,000 ETB: Do not dismiss the user or suggest unattainable 3M ETB cars. Provide constructive entry pathways such as Bajaj (Tuk-Tuk), motorcycle (TVS/Bajaj Boxer), co-investment / Equb pooling, or 20% down payment deposit for bank financing.\\n"
-                        "2. If Budget 500k - 2.5M ETB: Suggest realistic Ethiopian market models (e.g., Toyota Vitz 2000-2005, Toyota Yaris, Suzuki Dzire/Swift, Hyundai Atos/Santro, or 40/60 condominium down payment).\\n"
-                        "3. If Budget 2.5M - 6M ETB: Suggest top liquid cars (Toyota Vitz 2018+, Corolla Executive, Suzuki Dzire 2022, Hyundai Tucson, Electric BYD/Neta) or 1-2 bed residential apartments.\\n"
-                        "4. If Purpose is Business/Ride/Cargo: Include estimated net monthly ROI in Addis Ababa (e.g., Ride/Feres grossing 45,000 - 75,000 ETB/mo net after fuel/maintenance).\\n"
-                        "5. If Payment is Loan: Model 20-30% down payment, 17.5% annual bank interest, monthly repayments, and eligibility.\\n\\n"
-                        "Generate strictly valid JSON with keys:\\n"
-                        "1. 'verdict_title_amharic': Catchy summary title in Amharic\\n"
-                        "2. 'budget_tier': 'Low (<500k)' | 'Entry (500k-1.5M)' | 'Mid (1.5M-3.5M)' | 'High (3.5M-7M)' | 'Premium (>7M)'\\n"
-                        "3. 'recommended_options': list of 2-3 specific model/property objects with {'name': string, 'category': 'Car'|'Property'|'Commercial', 'estimated_price_range_etb': string, 'pros': [string, string], 'why_it_fits_amharic': string}\\n"
-                        "4. 'financial_strategy': {'strategy_type': string, 'down_payment_etb': number, 'monthly_bank_payment_etb': number, 'monthly_estimated_income_etb': number, 'payback_period_months': number, 'summary_amharic': string}\\n"
-                        "5. 'expert_advice_amharic': Deep, actionable, highly knowledgeable paragraph in Amharic offering clear financial roadmap and next steps.\\n"
-                        "6. 'actionable_steps': list of 3 practical next steps in Amharic.\\n"
-                        "Return ONLY JSON."
-                    )
-                    model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
-                        generation_config={"response_mime_type": "application/json", "temperature": 0.2}
-                    )
-                    res = model.generate_content(prompt)
-                    txt = (res.text or "").strip()
-                    if txt.startswith("```json"): txt = txt[7:]
-                    if txt.startswith("```"): txt = txt[3:]
-                    if txt.endswith("```"): txt = txt[:-3]
-                    advice_result = json.loads(txt.strip())
-                except Exception as e:
-                    logger.warning(f"AI advisor Gemini error: {e}")
-
-            if not advice_result:
-                # High-precision heuristic fallback tailored to Ethiopian market
-                if budget < 500000:
-                    tier = "Low (<500k)"
-                    if purpose == "business":
-                        title = f"የ{budget:,.0f} ብር በጀት ለባጃጅ፣ ሞተር ወይም ለቅድመ ክፍያ ማከማቻ"
-                        options = [
-                            {
-                                "name": "ባጃጅ (Bajaj RE 4-Stroke 2017-2020)",
-                                "category": "Commercial",
-                                "estimated_price_range_etb": "350,000 - 480,000 ETB",
-                                "pros": ["በጣም አነስተኛ የነዳጅ ፍጆታ", "ቀን በቀን አስተማማኝ ገቢ (1,200 - 2,000 ብር/ቀን)"],
-                                "why_it_fits_amharic": "በአነስተኛ ካፒታል ፈጣን የቀን ገቢ ለማስገኘት ተስማሚ ነው።"
-                            },
-                            {
-                                "name": "TVS / Bajaj Boxer የጭነት ሞተርሳይክል",
-                                "category": "Commercial",
-                                "estimated_price_range_etb": "180,000 - 260,000 ETB",
-                                "pros": ["ለዴሊቨሪና ፈጣን መልእክት ስራ ተፈላጊ", "አነስተኛ ጥገና"],
-                                "why_it_fits_amharic": "በአዲስ አበባ ፈጣን የዴሊቨሪ ስራ በመስራት በወር እስከ 25,000-35,000 ብር ገቢ ያስገኛል።"
-                            },
-                            {
-                                "name": "የመኪና ባንክ ብድር ቅድመ ክፍያ (20% Down Payment Fund)",
-                                "category": "Car",
-                                "estimated_price_range_etb": f"{budget:,.0f} ETB (እንደ መነሻ)",
-                                "pros": ["በእቁብ ወይም በቁጠባ ካፒታልን ማሳደግ", "ለወደፊት የባንክ ብድር መመቻቸት"],
-                                "why_it_fits_amharic": "ይህን በጀት እንደ 20% ቅድመ ክፍያ በመጠቀም እስከ 350,000 ብር የሚደርስ አነስተኛ ንብረት ማመቻቸት ይቻላል።"
-                            }
-                        ]
-                        strat = {
-                            "strategy_type": "የአነስተኛ ንግድ ማስጀመሪያ / የቅድመ ክፍያ ቁጠባ",
-                            "down_payment_etb": budget,
-                            "monthly_bank_payment_etb": 0,
-                            "monthly_estimated_income_etb": 30000,
-                            "payback_period_months": 14,
-                            "summary_amharic": "በዚህ በጀት ሞተርሳይክል ወይም ባጃጅ በመግዛት ወይም በእቁብ በማሳደግ ወደ መኪና መሸጋገር ይመረጣል።"
-                        }
-                        advice_am = (
-                            f"የእርስዎ በጀት {budget:,.0f} ብር ነው። ሙሉ መኪና በጥሬ ገንዘብ ለመግዛት በቂ ባይሆንም፣ "
-                            "ለዴሊቨሪ ሞተርሳይክል ወይም ለባጃጅ ግዢ በቂ ነው። እንዲሁም በባንክ የ20% ቅድመ ክፍያ በማስያዝ "
-                            "ወይም በእቁብ ካፒታልዎን በማሳደግ በ6-12 ወራት ውስጥ ወደ ትልቅ ንብረት መሸጋገር ይችላሉ።"
-                        )
-                    else:
-                        title = f"የ{budget:,.0f} ብር በጀት ለግል ቁጠባና ለኮንዶሚኒየም ምዝገባ"
-                        options = [
-                            {
-                                "name": "የቤት ቁጠባና የኮንዶሚኒየም ክፍያ (CBE 40/60 or 20/80)",
-                                "category": "Property",
-                                "estimated_price_range_etb": f"{budget:,.0f} ETB",
-                                "pros": ["አስተማማኝ የረጅም ጊዜ የቤት ባለቤትነት", "የዋጋ ግሽበትን መቋቋም"],
-                                "why_it_fits_amharic": "ለቤት መስሪያ ቁጠባ ወይም ለኮንዶሚኒየም ቅድመ ክፍያ ምርጥ መነሻ ነው።"
-                            },
-                            {
-                                "name": "የግል ኤሌክትሪክ ሞተርሳይክል (EV Scooter)",
-                                "category": "Car",
-                                "estimated_price_range_etb": "120,000 - 220,000 ETB",
-                                "pros": ["የዜሮ ነዳጅ ወጪ", "ቀላል የቤት ውስጥ ቻርጅ"],
-                                "why_it_fits_amharic": "ለዕለታዊ የከተማ ውስጥ የትራንስፖርት ወጪ ቆጣቢ መፍትሄ።"
-                            }
-                        ]
-                        strat = {
-                            "strategy_type": "የቁጠባና የወደፊት ንብረት ግንባታ",
-                            "down_payment_etb": budget,
-                            "monthly_bank_payment_etb": 0,
-                            "monthly_estimated_income_etb": 0,
-                            "payback_period_months": 0,
-                            "summary_amharic": "ገንዘቡን ለቤት ቁጠባ ወይም ለቀላል ትራንስፖርት ማዋል ተመራጭ ነው።"
-                        }
-                        advice_am = f"በ{budget:,.0f} ብር በጀት ለግል ትራንስፖርት የኤሌክትሪክ ስኩተር መግዛት ወይም ለቤት ግዢ ቁጠባ ማጠናከር አስተማማኝ ምርጫ ነው።"
-                elif budget < 2500000:
-                    tier = "Entry (500k-2.5M)"
-                    if payment_strategy == "loan":
-                        asset_cap = budget * 4.0
-                        title = f"የባንክ ብድር ስትራቴጂ (እስከ {asset_cap:,.0f} ብር የሚደርስ ንብረት)"
-                        options = [
-                            {
-                                "name": "Suzuki Dzire / Swift 2022 (አዲስ ሞዴል)",
-                                "category": "Car",
-                                "estimated_price_range_etb": "2,400,000 - 3,200,000 ETB",
-                                "pros": ["እጅግ ቆጣቢ 22 KM/L", "ከባንክ ብድር ጋር በቀላሉ የሚፈቀድ"],
-                                "why_it_fits_amharic": "በቀላል ወርሃዊ ክፍያ አዲስ መኪና ባለቤት ለመሆን ፍጹም ነው።"
-                            },
-                            {
-                                "name": "ባለ 1 መኝታ አፓርትመንት ቅድመ ክፍያ (CMC/Ayat)",
-                                "category": "Property",
-                                "estimated_price_range_etb": "3,500,000 - 4,800,000 ETB",
-                                "pros": ["ከፍተኛ የኪራይ ገቢ", "የንብረት ዋጋ ዕድገት"],
-                                "why_it_fits_amharic": "በቀላሉ በባንክና በሪልስቴት የክፍያ ስምምነት የሚገዛ።"
-                            }
-                        ]
-                        monthly_loan = round((asset_cap - budget) * 0.016, 2)
-                        strat = {
-                            "strategy_type": "የባንክ ብድር ማበረታቻ (75% Bank Loan + 25% Down Payment)",
-                            "down_payment_etb": budget,
-                            "monthly_bank_payment_etb": monthly_loan,
-                            "monthly_estimated_income_etb": 55000 if purpose == "business" else 0,
-                            "payback_period_months": 60,
-                            "summary_amharic": f"በ{budget:,.0f} ብር ቅድመ ክፍያ እስከ {asset_cap:,.0f} ብር የሚገመት መኪና ወይም ቤት መግዛት ይቻላል።"
-                        }
-                        advice_am = (
-                            f"በእጅዎ ያለው {budget:,.0f} ብር እንደ 25% ቅድመ ክፍያ በማስያዝ እስከ {asset_cap:,.0f} ብር የሚደርስ "
-                            "አዲስ የሱዙኪ ወይም የቶዮታ መኪና በባንክ ብድር መግዛት ይችላሉ። በወር የሚከፈለው ~" + f"{monthly_loan:,.0f} ብር "
-                            "ሲሆን፣ ለራይድ ስራ ካዋሉት ራሱ ወርሃዊ ክፍያውን ሙሉ በሙሉ ይሸፍነዋል።"
-                        )
-                    else:
-                        title = f"የ{budget:,.0f} ብር የጥሬ ገንዘብ ግዢ ምርጫዎች"
-                        options = [
-                            {
-                                "name": "Toyota Vitz 2004 - 2008 (Auto/Manual)",
-                                "category": "Car",
-                                "estimated_price_range_etb": "1,400,000 - 1,950,000 ETB",
-                                "pros": ["መለዋወጫ በየቦታው መገኘቱ", "ፈጣን ሽያጭ (High Resale)", "ዝቅተኛ የጥገና ወጪ"],
-                                "why_it_fits_amharic": "በአዲስ አበባ ውስጥ ያለምንም ዕዳ በጥሬ ገንዘብ የሚገዛ አስተማማኝ መኪና።"
-                            },
-                            {
-                                "name": "Toyota Yaris / Suzuki Alto 2015",
-                                "category": "Car",
-                                "estimated_price_range_etb": "1,600,000 - 2,200,000 ETB",
-                                "pros": ["የነዳጅ ቆጣቢነት", "ለከተማ መንዳት ምቹ"],
-                                "why_it_fits_amharic": "ለዕለታዊ የከተማ እንቅስቃሴ እና ለቤተሰብ እጅግ ተስማሚ ነው።"
-                            }
-                        ]
-                        strat = {
-                            "strategy_type": "100% የጥሬ ገንዘብ ግዢ (Debt-Free Ownership)",
-                            "down_payment_etb": budget,
-                            "monthly_bank_payment_etb": 0,
-                            "monthly_estimated_income_etb": 45000 if purpose == "business" else 0,
-                            "payback_period_months": 24 if purpose == "business" else 0,
-                            "summary_amharic": "ያለምንም የባንክ ወለድና ዕዳ ወዲያውኑ ንብረትዎን በስምዎ ማዛወር ይችላሉ።"
-                        }
-                        advice_am = (
-                            f"በ{budget:,.0f} ብር ጥሬ ገንዘብ ቶዮታ ቪትዝ ወይም ያሪስ መግዛት ከዕዳ ነጻ የሆነ አስተማማኝ ኢንቨስትመንት ነው። "
-                            "ለመለዋወጫ ወጪ የማይጠይቅና በፈለጉበት ሰዓት ያለምንም ኪሳራ መልሰው መሸጥ የሚችሉት ንብረት ነው።"
-                        )
-                else:
-                    tier = "Mid/High (2.5M - 6M+)"
-                    title = f"የ{budget:,.0f} ብር የፕሪሚየም መኪናና የሪልስቴት ኢንቨስትመንት"
-                    options = [
-                        {
-                            "name": "Toyota Vitz 2018 / Suzuki Dzire 2023 / BYD Dolphin EV",
-                            "category": "Car",
-                            "estimated_price_range_etb": "2,600,000 - 3,600,000 ETB",
-                            "pros": ["ዘመናዊ ቴክኖሎጂ", "ዜሮ የጥገና ችግር", "እጅግ ከፍተኛ የገበያ ተፈላጊነት"],
-                            "why_it_fits_amharic": "ለራይድ ፕሪሚየምም ሆነ ለግል ክብርና ምቾት አንደኛ ምርጫ ነው።"
-                        },
-                        {
-                            "name": "ባለ 2 መኝታ አፓርትመንት ወይም ሰፊ ኮንዶሚኒየም (Bole/Ayat/CMC)",
-                            "category": "Property",
-                            "estimated_price_range_etb": "4,200,000 - 7,500,000 ETB",
-                            "pros": ["በወር 25,000 - 45,000 ብር ኪራይ", "ዓመታዊ 15-20% የዋጋ ዕድገት"],
-                            "why_it_fits_amharic": "የዋጋ ግሽበትን የሚከላከል ዘላቂ የሀብት ማከማቻ።"
-                        }
-                    ]
-                    strat = {
-                        "strategy_type": "ከፍተኛ ምርታማነት ያለው ኢንቨስትመንት (High Yield Asset)",
-                        "down_payment_etb": budget,
-                        "monthly_bank_payment_etb": 0,
-                        "monthly_estimated_income_etb": 65000 if purpose == "business" else 30000,
-                        "payback_period_months": 36,
-                        "summary_amharic": "በዚህ በጀት ዘመናዊ መኪና ወይም ከፍተኛ የኪራይ ገቢ የሚያስገኝ አፓርትመንት መግዛት ይቻላል።"
-                    }
-                    advice_am = (
-                        f"የ{budget:,.0f} ብር በጀት በአዲስ አበባ ገበያ ውስጥ ጠንካራ የመደራደር አቅም ይሰጥዎታል። "
-                        "አዳዲስ የኤሌክትሪክ (EV) መኪኖች ከቀረጥ ነጻ በመሆናቸው የነዳጅ ወጪዎን 90% ይቀንሳሉ፤ "
-                        "ሪልስቴት ላይ ካዋሉት ደግሞ ቋሚ ወርሃዊ የኪራይ ገቢ ያስገኝልዎታል።"
-                    )
-
-                advice_result = {
-                    "verdict_title_amharic": title,
-                    "budget_tier": tier,
-                    "recommended_options": options,
-                    "financial_strategy": strat,
-                    "expert_advice_amharic": advice_am,
-                    "actionable_steps": [
-                        "በአዲካ ገበያ ላይ ያሉትን ትክክለኛ ዋጋዎችና ሰነዶች ያረጋግጡ",
-                        "የባንክ ብድር ከሆነ የገቢ ማስረጃና የ3 ወር የባንክ እስቴትመንት ያዘጋጁ",
-                        "ከመግዛትዎ በፊት የጋራዥ ምርመራና የውክልና ሰነድ በሲስተሙ ያጣሩ"
-                    ]
-                }
-
+                    parts.append(f"በጀት: {float(budget_raw):,.0f} ብር።")
+                except Exception:
+                    parts.append(f"በጀት: {budget_raw}።")
+            if purpose:
+                parts.append(f"ዓላማ: {purpose}።")
+            if payment:
+                parts.append(f"የክፍያ መንገድ: {payment}።")
+            parts.append("ቋሚ ቁጥር ወይም ዝግጁ template አትድገም። የተጠየቀውን ብቻ መልስ።")
+            prompt = " ".join(parts)
+            reply = get_chat_response(prompt, chat_history=history)
             return jsonify({
                 "status": "success",
-                "advisor_report": advice_result
+                "response": reply,
+                "message": reply,
+                "advisor_report": {
+                    "expert_advice_amharic": reply,
+                    "summary_amharic": reply,
+                    "verdict_title_amharic": "የአዲካ ምክር",
+                    "recommended_options": [],
+                    "actionable_steps": [],
+                },
             })
         except Exception as e:
-            logger.error(f"api_ai_advisor error: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            logger.error("api_ai_advisor error: %s", e, exc_info=True)
+            return jsonify({"status": "error", "message": str(e), "response": "ይቅርታ፣ ምክር ማቅረብ አልተቻለም።"}), 500
+
 
 
     @web_app.route('/api/financial-insights', methods=['GET', 'POST', 'OPTIONS'])
@@ -2225,7 +2128,7 @@ def register_api_routes(web_app):
     def api_generate_social_post():
         """
         3. CROSS-PLATFORM PROMOTIONAL POST GENERATOR (/api/generate-social-post):
-        - Use gemini-2.0-flash to format listing details into high-converting promotional text
+        - Use gemini-1.5-flash to format listing details into high-converting promotional text
           and banner layouts for Telegram Channels and Social Media.
         """
         if request.method == 'OPTIONS':
@@ -2257,7 +2160,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
+                        model_name="gemini-1.5-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.3}
                     )
                     res = model.generate_content(prompt)
@@ -2341,7 +2244,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
+                        model_name="gemini-1.5-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
                     res = model.generate_content(prompt)
@@ -2396,25 +2299,25 @@ def register_api_routes(web_app):
             buyer_name = data.get('buyer_name') or 'ወ/ሮ ማርታ ደሳለኝ'
             buyer_phone = data.get('buyer_phone') or '0922000000'
             buyer_id = data.get('buyer_id') or 'ID-AA-67890'
-        
+
             total_price = str(data.get('total_price') or '2,200,000')
             advance_payment = str(data.get('advance_payment') or '500,000')
             payment_method = data.get('payment_method') or 'የባንክ ሒሳብ ዝውውር (CBE/Awash)'
-        
+
             # Vehicle specifics
             plate_number = data.get('plate_number') or 'ኮድ 3 - A12345'
             chassis_number = data.get('chassis_number') or 'JTDKB20U00123456'
             engine_number = data.get('engine_number') or '1NZ-FE-789012'
             car_model = data.get('car_model') or 'Toyota Vitz 2018'
             libre_number = data.get('libre_number') or 'LIB-ET-998877'
-        
+
             # Property specifics
             property_type = data.get('property_type') or 'ቪላ ቤት / የመኖሪያ አፓርትመንት'
             house_number = data.get('house_number') or 'አ/አ-ቂ/ቦሌ-1234'
             title_deed = data.get('title_deed') or 'ካርታ ቁጥር DEED-AA-445566'
             area_sqm = data.get('area_sqm') or '150 ካሬ ሜትር'
             location = data.get('location') or 'አዲስ አበባ፣ ቦሌ ክፍለ ከተማ፣ ወረዳ 03'
-        
+
             today_eth = datetime.now().strftime("%Y-%m-%d")
 
             api_key = os.environ.get("GEMINI_API_KEY")
@@ -2442,7 +2345,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON with keys: 'contract_title', 'contract_text_amharic', 'key_clauses_summary', 'print_ready_text'."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
+                        model_name="gemini-1.5-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
                     res = model.generate_content(prompt)
@@ -2557,7 +2460,7 @@ def register_api_routes(web_app):
                         "Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
+                        model_name="gemini-1.5-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
                     res = model.generate_content(prompt)
@@ -2949,7 +2852,7 @@ def register_api_routes(web_app):
                     "null if unreadable. Never invent names."
                 )
                 model = _AdikaGeminiModel(
-                    model_name="gemini-2.0-flash",
+                    model_name="gemini-1.5-flash",
                     generation_config={"response_mime_type": "application/json", "temperature": 0.0},
                 )
                 res = model.generate_content([prompt, pil])
@@ -3156,10 +3059,10 @@ def register_api_routes(web_app):
                         "Return ONLY JSON."
                     )
                     model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
+                        model_name="gemini-1.5-flash",
                         generation_config={"response_mime_type": "application/json", "temperature": 0.2}
                     )
-                
+
                     content_inputs = [prompt]
                     if image_data:
                         raw_b64 = image_data.split(',', 1)[1] if ',' in image_data else image_data
@@ -3193,18 +3096,12 @@ def register_api_routes(web_app):
                     }
                 else:
                     analysis = {
-                        "is_valid_diagnostic": True,
-                        "health_score_pct": 86,
-                        "engine_grade": "A-",
-                        "transmission_grade": "A",
-                        "body_and_suspension": "እጅግ ጤናማ እገዳዎች (Shock absorbers) እና ንጹህ ቻሲ",
-                        "identified_faults": [
-                            {"component": "Valve Cover Gasket", "severity": "Low", "estimated_cost_etb": 3500, "description": "ቀላል የዘይት ላብ (Gasket መለወጥ)"},
-                            {"component": "Brake Pads", "severity": "Medium", "estimated_cost_etb": 4200, "description": "የፍሬን ፓድ በቅርቡ መለወጥ አለበት (40% ቀሪ)"},
-                            {"component": "AC Gas Refill", "severity": "Low", "estimated_cost_etb": 2500, "description": "የኤሲ ጋዝ መሙላት"}
-                        ],
-                        "total_estimated_repair_cost_etb": 10200,
-                        "buyer_negotiation_advice_amharic": "መኪናው በጥሩ ይዞታ ላይ ይገኛል። ለቀላል ጥገናዎች የሚሆን 15,000 እስከ 20,000 ብር ከሻጩ ላይ በመደራደር እንዲቀንስ መጠየቅ ይችላሉ።"
+                        "is_valid_diagnostic": False,
+                        "error_message_amharic": "ትንተና ለማድረግ በቂ መረጃ አልተገኘም። እባክዎ ግልጽ የምርመራ ወረቀት ወይም ዝርዝር ጽሁፍ ያስገቡ።",
+                        "health_score_pct": 0,
+                        "total_estimated_repair_cost_etb": 0,
+                        "identified_faults": [],
+                        "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
                     }
 
             return jsonify({
@@ -3239,6 +3136,4 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_post_to_channel error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
-
-
 
