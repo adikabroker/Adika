@@ -31,21 +31,19 @@ try:
 except ImportError:
     OpenAI = None
 
-SYSTEM_PROMPT = """You are Adika's Senior Financial Advisor.
+SYSTEM_PROMPT = """You are Adika's Senior Financial Advisor in Ethiopia.
 
-WORKFLOW INSTRUCTIONS:
-1. You may think and analyze internally in English. Put all internal thoughts inside <thought>...</thought> tags.
-2. Put your FINAL output strictly inside <response>...</response> tags.
-
-AMHARIC OUTPUT RULES (Inside <response>):
-- Respond ONLY in natural, fluent, and clean Amharic as spoken by Ethiopian business experts.
-- Absolutely NO English words, translation notes, or draft explanations inside <response>."""
+STRICT TRUTH & ACCURACY RULES:
+1. REALISTIC DATA ONLY: Never invent or hallucinate Ethiopian market prices or technical specs. If exact real-time market numbers are unknown, provide general strategic advice instead of making up false prices.
+2. NO BROKEN AMHARIC: Use proper Amharic vocabulary (e.g., use "የፋይናንስ አማካሪ" NOT "ምክር አዳሪ").
+3. LANGUAGE: Respond strictly in continuous, fluent Amharic. Do not randomly switch to English phrases inside sentences.
+4. CONVERSATIONAL TONE: Keep responses natural, professional, and directly addressing the user's question without looping."""
 
 
 def get_ai_response(user_message: str, conversation_history: list = None) -> str:
-    """Generate live AI response from OpenRouter with strict Amharic XML response parsing."""
+    """Generate live AI response from OpenRouter with strict truth and accuracy rules."""
     if not user_message or not str(user_message).strip():
-        return "እንኳን ደህና መጡ። እኔ የ Adika Senior Financial Advisor & Strategist ነኝ። ስለ ሪል እስቴት ኢንቨስትመንት፣ የካፒታል ምደባ፣ የገበያ ትንተና ወይም የፋይናንስ ስትራቴጂ ምን መወያየት ይፈልጋሉ?"
+        return "እንኳን ደህና መጡ። እኔ የ Adika Senior Financial Advisor ነኝ። ስለ ሪል እስቴት ኢንቨስትመንት፣ የካፒታል ምደባ፣ የገበያ ትንተና ወይም የፋይናንስ ስትራቴጂ ምን መወያየት ይፈልጋሉ?"
 
     api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY") or "").strip()
     url = "https://openrouter.ai/api/v1/chat/completions"
@@ -70,9 +68,9 @@ def get_ai_response(user_message: str, conversation_history: list = None) -> str
     payload = {
         "model": "meta-llama/llama-3.3-70b-instruct",
         "messages": messages,
-        "temperature": 0.5,
+        "temperature": 0.2,
         "repetition_penalty": 1.2,
-        "frequency_penalty": 0.4,
+        "frequency_penalty": 0.3,
         "presence_penalty": 0.2,
         "max_tokens": 800
     }
@@ -127,7 +125,7 @@ def _openrouter_generate(
     prompt,
     system=None,
     chat_history=None,
-    temperature=0.5,
+    temperature=0.2,
     repetition_penalty=1.2,
     frequency_penalty=0.3,
     presence_penalty=0.2,
@@ -238,15 +236,16 @@ def _openrouter_generate(
 def get_chat_response(user_message: str, chat_history: list = None) -> str:
     """Active live LLM chat generation strictly via OpenRouter API with XML response parsing."""
     if not user_message or not str(user_message).strip():
-        return "እንኳን ደህና መጡ። እኔ የ Adika Senior Financial Advisor & Strategist ነኝ። ስለ ሪል እስቴት ኢንቨስትመንት፣ የካፒታል ምደባ፣ የገበያ ትንተና ወይም የፋይናንስ ስትራቴጂ ምን መወያየት ይፈልጋሉ?"
+        return "እንኳን ደህና መጡ። እኔ የ Adika Senior Financial Advisor ነኝ። ስለ ሪል እስቴት ኢንቨስትመንት፣ የካፒታል ምደባ፣ የገበያ ትንተና ወይም የፋይናንስ ስትራቴጂ ምን መወያየት ይፈልጋሉ?"
 
     try:
         raw_reply = _openrouter_generate(
             user_message,
             system=SYSTEM_PROMPT,
             chat_history=chat_history,
-            temperature=0.5,
+            temperature=0.2,
             repetition_penalty=1.2,
+            frequency_penalty=0.3,
             max_tokens=1200,
             model="meta-llama/llama-3.3-70b-instruct",
         )
