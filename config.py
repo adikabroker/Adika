@@ -23,13 +23,17 @@ BOT_TOKEN = (
     or ""
 ).strip()
 
-GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
-GROQ_MODEL = (os.environ.get("GROQ_MODEL") or os.environ.get("GROQ_MODEL_NAME") or "mixtral-8x7b-32768").strip()
-GROQ_MODEL_NAME = GROQ_MODEL  # alias
+import os
+from dotenv import load_dotenv
 
-GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
-OPENROUTER_API_KEY = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
-OPENROUTER_MODEL = (os.environ.get("OPENROUTER_MODEL") or "google/gemini-2.0-flash-001").strip()
+load_dotenv()
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+
+if not OPENROUTER_API_KEY:
+    raise ValueError("CRITICAL ERROR: OPENROUTER_API_KEY በ .env ፋይል ውስጥ አልተገኘም።")
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "0")
 
 if not GROQ_API_KEY and not GEMINI_API_KEY:
