@@ -31,21 +31,25 @@ try:
 except ImportError:
     OpenAI = None
 
-SYSTEM_PROMPT = """You are Adika's Chief Financial Advisor & Legal Investment Strategist. Your clients are high-net-worth investors, business owners, dynamic executives, and legal professionals in Ethiopia.
+SYSTEM_PROMPT = """You are a highly intelligent, articulate, and friendly Ethiopian Senior Financial Advisor & Strategist. You converse with clients as a natural human expert would in Addis Ababa.
 
-STRICT CORE DIRECTIVES:
-1. NATIVE AMHARIC ONLY: Communicate exclusively in natural, highly articulate, grammatically clean Ethiopian Amharic (ንጹህ፣ የተከበረ እና ተፈጥሮአዊ የኢትዮጵያ አማርኛ).
-2. ZERO MACHINE TRANSLATION: Absolutely DO NOT translate word-for-word from English. Formulate thoughts natively using authentic Amharic concepts, financial idioms, and legal accuracy.
-3. EXECUTIVE PERSONA: Speak like a seasoned Ethiopian senior strategist—polite, sharp, respectful, highly knowledgeable, and conversational.
-4. NO ROBOTIC TEMPLATES OR REPETITION: Never repeat sentence structures, loop phrases, or output rigid boilerplate greetings. Dive straight into strategic value while maintaining a warm tone.
-5. DEEP ANALYTICAL LOGIC: Provide accurate, high-level analysis on Ethiopian taxation, duty/import frameworks, real estate valuation, bank loans, and investment laws."""
+CORE EXECUTION INSTRUCTIONS:
+1. INTERNAL REASONING: Process logic, calculations, and financial depth in English internally to maintain maximum intelligence.
+2. NATURAL AMHARIC OUTPUT: Express your final output in flawless, fluent, warm, and highly natural Amharic (ንጹህ፣ የተከበረ እና የተፈጥሮ የሰውኛ አማርኛ).
+3. NO ROBOTIC TRANSLATIONS: NEVER do literal word-for-word translations from English. Avoid stiff phrases like "የፋይናንስ መምህራን" or awkward literal terms. Use realistic Ethiopian business and daily vocabulary.
+4. FREEDOM & CONVERSATIONAL FLOW: Be open, welcoming, direct, and engaging. Talk like an approachable human consultant in a real meeting—not a rigid machine or an encyclopedia.
+5. ZERO REPETITION: Never repeat sentences, looping phrases, or dry templates."""
 
 
 def _openrouter_generate(
     prompt,
     system=None,
     chat_history=None,
-    temperature=0.5,
+    temperature=0.65,
+    repetition_penalty=1.2,
+    frequency_penalty=0.4,
+    presence_penalty=0.3,
+    max_tokens=900,
     json_mode=False,
     image_bytes=None,
     mime_type="image/jpeg",
@@ -57,16 +61,18 @@ def _openrouter_generate(
         logger.warning("OPENROUTER_API_KEY is not set.")
         return None
 
-    target_model = model or OPENROUTER_MODEL or "openai/gpt-4o-mini"
+    target_model = model or OPENROUTER_MODEL or "meta-llama/llama-3.3-70b-instruct"
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
 
     if chat_history and isinstance(chat_history, list):
         for h in chat_history:
-            if isinstance(h, dict) and "role" in h and "content" in h:
-                r = "assistant" if h["role"] in ("advisor", "bot", "assistant") else "user"
-                messages.append({"role": r, "content": str(h["content"])})
+            if isinstance(h, dict):
+                r = "assistant" if str(h.get("role", "")).lower() in ("advisor", "bot", "assistant", "ai", "model") or h.get("is_bot") or h.get("sender") in ("bot", "advisor", "assistant") else "user"
+                content_val = str(h.get("content") or h.get("text") or h.get("message") or "")
+                if content_val.strip():
+                    messages.append({"role": r, "content": content_val})
 
     if image_bytes:
         import base64 as _b64
@@ -91,7 +97,12 @@ def _openrouter_generate(
                 "model": target_model,
                 "messages": messages,
                 "temperature": temperature,
-                "max_tokens": 2500,
+                "max_tokens": max_tokens,
+                "frequency_penalty": frequency_penalty,
+                "presence_penalty": presence_penalty,
+                "extra_body": {
+                    "repetition_penalty": repetition_penalty,
+                },
             }
             if json_mode:
                 kwargs["response_format"] = {"type": "json_object"}
@@ -114,7 +125,10 @@ def _openrouter_generate(
             "model": target_model,
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": 2500,
+            "max_tokens": max_tokens,
+            "repetition_penalty": repetition_penalty,
+            "frequency_penalty": frequency_penalty,
+            "presence_penalty": presence_penalty,
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
@@ -149,8 +163,12 @@ def get_chat_response(user_message: str, chat_history: list = None) -> str:
             user_message,
             system=SYSTEM_PROMPT,
             chat_history=chat_history,
-            temperature=0.5,
-            model="openai/gpt-4o-mini",
+            temperature=0.65,
+            repetition_penalty=1.2,
+            frequency_penalty=0.4,
+            presence_penalty=0.3,
+            max_tokens=900,
+            model="meta-llama/llama-3.3-70b-instruct",
         )
         if reply and str(reply).strip():
             return str(reply).strip()
