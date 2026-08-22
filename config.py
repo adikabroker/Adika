@@ -1,10 +1,17 @@
-# config.py — የተሻሻለ እና የተዋሃደ ውቅር (configuration) ለAdika Marketplace
+# config.py — የተሻሻለ እና ጠንካራ ውቅር
 import os
 import logging
-from dotenv import load_dotenv
 
-# .env ፋይልን ይጭናል
-load_dotenv()
+# dotenv በአስተማማኝ ሁኔታ ለማስገባት
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv ካልተገኘ, መደበኛ የስርዓተ አካባቢ ተለዋዋጮችን ይጠቀሙ
+    print("⚠️ python-dotenv not installed. Using system environment variables only.")
+    # load_dotenv ን ባዶ ተግባር አድርገን እንገልጻለን
+    def load_dotenv():
+        pass
 
 # ----------------------------------------------------------------------------
 # መሰረታዊ ሎግ (Logging) ውቅር
@@ -16,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger("adika")
 
 # ----------------------------------------------------------------------------
-# API KEYS (ከ .env የሚመጡ)
+# API KEYS (ከ .env ወይም ከስርዓተ አካባቢ የሚመጡ)
 # ----------------------------------------------------------------------------
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN") or ""
 GROQ_API_KEY = os.getenv("GROQ_API_KEY") or ""
@@ -138,7 +145,7 @@ HOUSE_TYPES = ["🏡 ቪላ", "🏢 አፓርታማ", "🏢 ኮንዶሚኒየ�
 PROPERTY_TYPES = ["🏠 መኖሪያ ቤት", "🏢 የሥራ ቦታ / ንግድ"]
 FUEL_TYPES = ["⛽ ቤንዚን", "🛢️ ናፍጣ", "⚡ ኤሌክትሪክ", "🔋 ሀይብሪድ"]
 TRANSMISSION_TYPES = ["🕹️ ማንዋል", "🤖 ኦቶማቲክ"]
-CONDITIONS = ["🆕 አዲስ", "✅ ያገለገለ", "🔧 ጥገና የሚፈልግ"]
+CONDITIONS = ["🆕 አዲስ", "✅ ያገለገለ", "🔧 ጥገና የሚፍልግ"]
 
 BROKER_CATEGORIES = ["🚗 መኪና", "🏠 ቤትና ቦታ", "📦 አጠቃላይ ደላላ"]
 BROKER_REG_SUBCITIES = [
@@ -148,9 +155,9 @@ BROKER_REG_SUBCITIES = [
 ]
 
 # ----------------------------------------------------------------------------
-# የስህተት ማስተናገጃ (Error Handling) - አስፈላጊ ተለዋዋጮች ሲጎድሉ ማሳወቅ
+# የስህተት ማጠቃለያ (Error Summary)
 # ----------------------------------------------------------------------------
 if CRITICAL_MISSING:
-    logger.error(f"CRITICAL: የሚከተሉት ተለዋዋጮች ጎድለዋል: {', '.join(CRITICAL_MISSING)}")
-    logger.error("እባክዎን .env ፋይልዎን ያረጋግጡ ወይም እነዚህን ተለዋዋጮች በስርዓተ አካባቢ (environment) ያዘጋጁ።")
-    # ለምርት (production) መቆም የለበትም, ነገር ግን አገልግሎቱ በከፊል ይሰራል
+    logger.error(f"⚠️ CRITICAL: የሚከተሉት ተለዋዋጮች ጎድለዋል: {', '.join(CRITICAL_MISSING)}")
+    logger.error("📌 እባክዎን .env ፋይልዎን ያረጋግጡ ወይም እነዚህን ተለዋዋጮች በስርዓተ አካባቢ (environment) ያዘጋጁ።")
+    logger.error("💡 አፕሊኬሽኑ በከፊል ይሰራል, ነገር ግን አንዳንድ ተግባራት አይሰሩም።")
