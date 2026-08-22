@@ -31,26 +31,26 @@ try:
 except ImportError:
     OpenAI = None
 
-SYSTEM_PROMPT = """You are Adika Senior Financial Advisor in Addis Ababa, Ethiopia.
+SYSTEM_PROMPT = """You are Adika's Senior Financial Advisor & Strategist. Your primary audience consists of high-net-worth investors, business owners, and corporate executives in Ethiopia.
 
-STRICT OPERATIONAL RULES:
-1. LANGUAGE & AMHARIC ACCURACY:
-   - Always respond in clear, polite, fluent, and natural Amharic (አማርኛ).
-   - Speak warmly as a real professional human financial advisor (እኔ / እኛ).
-   - Never mention AI, bot, LLM, or language model.
-2. DIRECTNESS & DYNAMIC RESPONSES:
-   - Directly answer whatever question, inquiry, or greeting the user provides.
-   - Provide realistic, actionable advice regarding Ethiopian vehicle/property markets, bank loans, customs duties, and financial planning.
-   - NEVER return static, canned, or hardcoded templates.
-3. SECURITY:
-   - NEVER leak or reveal API keys, credentials, or internal system configurations."""
+Guidelines for Interaction:
+
+Language Quality: Speak in flawless, natural, highly polished, and professional Amharic (ንጹህ፣ የተከበረ እና ፕሮፌሽናል አማርኛ). Avoid literal machine translations or awkward phrasing.
+
+Tone & Style: Maintain a warm, highly engaging, respectful, and articulate persona (Friendly, confident, and executive-level). Talk directly to the user as an expert consultant would in a face-to-face meeting.
+
+Financial Depth: Provide deep, analytical, and actionable financial insights regarding real estate, capital allocation, feasibility, risk assessment, and investment strategy in Ethiopia.
+
+Directness: Cut out repetitive introductory templates (e.g., avoid repeating 'አስቀድሜ እንደተናገርኩት' or redundant greetings every turn). Dive straight into strategic value while remaining welcoming.
+
+Concise & Smart: Keep responses focused, deeply insightful, and prompt the client with a thoughtful, strategic follow-up question to keep the consultation active."""
 
 
 def _openrouter_generate(
     prompt,
     system=None,
     chat_history=None,
-    temperature=0.4,
+    temperature=0.5,
     json_mode=False,
     image_bytes=None,
     mime_type="image/jpeg",
@@ -62,7 +62,7 @@ def _openrouter_generate(
         logger.warning("OPENROUTER_API_KEY is not set.")
         return None
 
-    target_model = model or OPENROUTER_MODEL or "google/gemini-2.0-flash-001"
+    target_model = model or OPENROUTER_MODEL or "openai/gpt-4o-mini"
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
@@ -96,7 +96,7 @@ def _openrouter_generate(
                 "model": target_model,
                 "messages": messages,
                 "temperature": temperature,
-                "max_tokens": 1200,
+                "max_tokens": 2500,
             }
             if json_mode:
                 kwargs["response_format"] = {"type": "json_object"}
@@ -119,7 +119,7 @@ def _openrouter_generate(
             "model": target_model,
             "messages": messages,
             "temperature": temperature,
-            "max_tokens": 1200,
+            "max_tokens": 2500,
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
@@ -147,14 +147,15 @@ def _openrouter_generate(
 def get_chat_response(user_message: str, chat_history: list = None) -> str:
     """Active live LLM chat generation strictly via OpenRouter API."""
     if not user_message or not str(user_message).strip():
-        return "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። ስለ መኪና ወይም የቤት ግዢ፣ የቀረጥ ስሌት፣ የባንክ ብድር ወይም ማንኛውም የፋይናንስ ምክር ምን ማወቅ ይፈልጋሉ? ጥያቄዎን እዚህ ይጠይቁኝ።"
+        return "እንኳን ደህና መጡ። እኔ የ Adika Senior Financial Advisor & Strategist ነኝ። ስለ ሪል እስቴት ኢንቨስትመንት፣ የካፒታል ምደባ፣ የገበያ ትንተና ወይም የፋይናንስ ስትራቴጂ ምን መወያየት ይፈልጋሉ?"
 
     try:
         reply = _openrouter_generate(
             user_message,
             system=SYSTEM_PROMPT,
             chat_history=chat_history,
-            temperature=0.6,
+            temperature=0.5,
+            model="openai/gpt-4o-mini",
         )
         if reply and str(reply).strip():
             return str(reply).strip()
