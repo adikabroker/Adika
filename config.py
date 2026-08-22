@@ -2,14 +2,13 @@
 # config.py — Adika Marketplace configuration
 # ==============================================================================
 import os
+import logging
 
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
-
-import logging
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -22,15 +21,22 @@ BOT_TOKEN = (
     or os.environ.get("TELEGRAM_BOT_TOKEN")
     or ""
 ).strip()
+TELEGRAM_BOT_TOKEN = BOT_TOKEN
 
+# OpenRouter (primary AI — no Groq/Gemini for chat)
 OPENROUTER_API_KEY = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
-OPENROUTER_MODEL = (os.environ.get("OPENROUTER_MODEL") or "qwen/qwen3-30b-a3b-instruct").strip()
+OPENROUTER_MODEL = (
+    os.environ.get("OPENROUTER_MODEL") or "qwen/qwen-2.5-32b-instruct"
+).strip()
+
+# Optional legacy keys (unused by chat; kept so env does not break imports)
+GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
+GROQ_MODEL = (os.environ.get("GROQ_MODEL") or os.environ.get("GROQ_MODEL_NAME") or "").strip()
+GROQ_MODEL_NAME = GROQ_MODEL
+GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
+
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "0")
 
-if not OPENROUTER_API_KEY:
-    logger.warning("OPENROUTER_API_KEY is not configured! Please provide OPENROUTER_API_KEY in environment variables.")
-
-# Primary: PostgreSQL / Supabase
 DATABASE_URL = (
     os.environ.get("DATABASE_URL")
     or os.environ.get("SUPABASE_DB_URL")
