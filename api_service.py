@@ -5,7 +5,7 @@ import os
 import random
 from flask import request, jsonify, Response
 
-from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, GROQ_API_KEY, GROQ_MODEL, GROQ_MODEL_NAME, OPENROUTER_API_KEY, OPENROUTER_MODEL
+from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY, OPENROUTER_MODEL, GEMINI_API_KEY
 from models import (
     LAST_DB_ERROR,
     get_db_connection, get_placeholder, add_listing, get_listing_by_id,
@@ -109,9 +109,10 @@ def get_chat_response(user_message: str, chat_history=None) -> str:
         return "ይቅርታ፣ አሁን ላይ አገልግሎቱን ማቅረብ አልተቻለም። እባክዎን ጥቂት ቆይተው እንደገና ይሞክሩ።"
 
 
-def get_chat_response(user_message: str, chat_history=None) -> str:
-    """Compatibility alias → OpenRouter get_chat_response."""
+def get_groq_chat_response(user_message: str, chat_history=None) -> str:
+    """Compatibility alias → OpenRouter."""
     return get_chat_response(user_message, chat_history=chat_history)
+
 
 
 def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.7):
@@ -170,6 +171,20 @@ def _advisor_chat_reply(user_message, *, system=None, temperature=0.7):
         temperature=temperature,
     )
 
+
+
+
+def generate_advisor_response(prompt, history=None, budget=None, system_prompt=None):
+    """Used by Streamlit/UI helpers — dynamic OpenRouter reply, no static finance text."""
+    hist = history if isinstance(history, list) else []
+    sys_p = system_prompt
+    if budget and not sys_p:
+        sys_p = (
+            "You are Adika's advisor. Respond in natural Amharic. "
+            f"User mentioned budget context: {budget} ETB. "
+            "Answer only what they ask; do not invent static budget plans."
+        )
+    return generate_ai_response(prompt, chat_history=hist, system=sys_p, temperature=0.7)
 
 
 def _gemini_generate(prompt, *, api_key=None, system=None, json_mode=False, temperature=0.3, image_bytes=None, mime_type="image/jpeg"):
@@ -403,7 +418,7 @@ def register_api_routes(web_app):
 
     @web_app.route("/api/chat", methods=["POST", "OPTIONS"])
     def api_chat():
-        """General Amharic chat via Groq (Mini App frontend)."""
+        """General Amharic chat via OpenRouter (Mini App frontend)."""
         if request.method == "OPTIONS":
             return ("", 204)
         try:
