@@ -5,7 +5,7 @@ psycopg2-binary>=2.9
 uvicorn
 fastapi
 gunicorn
-openai
+groq
 requests
 supabase
 streamlit
