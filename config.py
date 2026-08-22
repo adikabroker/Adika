@@ -7,7 +7,7 @@ try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    pass  # python-dotenv optional on Render (use dashboard env vars)
+    pass
 
 import logging
 
@@ -22,15 +22,20 @@ BOT_TOKEN = (
     or os.environ.get("TELEGRAM_BOT_TOKEN")
     or ""
 ).strip()
+
 GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
 GROQ_MODEL = (os.environ.get("GROQ_MODEL") or os.environ.get("GROQ_MODEL_NAME") or "llama-3.3-70b-versatile").strip()
 GROQ_MODEL_NAME = GROQ_MODEL  # alias
+
 GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
 OPENROUTER_API_KEY = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
 OPENROUTER_MODEL = (os.environ.get("OPENROUTER_MODEL") or "google/gemini-2.0-flash-001").strip()
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "0")
 
-# Primary: PostgreSQL / Supabase (Session or Transaction pooler URL)
+if not GROQ_API_KEY and not GEMINI_API_KEY:
+    logger.warning("Neither GROQ_API_KEY nor GEMINI_API_KEY is configured!")
+
+# Primary: PostgreSQL / Supabase
 DATABASE_URL = (
     os.environ.get("DATABASE_URL")
     or os.environ.get("SUPABASE_DB_URL")
@@ -46,7 +51,6 @@ RENDER_EXTERNAL_HOSTNAME = (os.environ.get("RENDER_EXTERNAL_HOSTNAME", "") or ""
 PORT = int(os.environ.get("PORT", "8080"))
 DB_FILE = os.environ.get("DB_FILE", "adika_marketplace.db")
 
-# Supabase Storage (optional — for Fayda ID photo upload)
 SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
 SUPABASE_KEY = (
     os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -56,11 +60,8 @@ SUPABASE_KEY = (
 ).strip()
 SUPABASE_BUCKET = os.environ.get("SUPABASE_BUCKET", "broker-documents")
 
-
-# Runtime flag set by models after successful connect (postgres | sqlite)
 DB_BACKEND = "unknown"
 
-# Public HTTPS URL for Telegram Mini App (must be https://)
 _raw_web = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
 if RENDER_EXTERNAL_HOSTNAME:
     WEBAPP_URL = f"https://{RENDER_EXTERNAL_HOSTNAME}".rstrip("/")
@@ -70,22 +71,6 @@ elif _raw_web:
     WEBAPP_URL = _raw_web.replace("http://", "https://").rstrip("/")
 else:
     WEBAPP_URL = "http://127.0.0.1:8080"
-
-# Guard: SUPABASE_URL is NOT a Postgres connection string
-_supabase_api = (os.environ.get("SUPABASE_URL") or "").strip()
-if DATABASE_URL and DATABASE_URL.startswith("http"):
-    logger.error(
-        "DATABASE_URL looks like an HTTP URL (%s). "
-        "Use the Postgres URI (port 6543 pooler), not SUPABASE_URL.",
-        DATABASE_URL[:48],
-    )
-    DATABASE_URL = ""
-if not DATABASE_URL and _supabase_api:
-    logger.warning(
-        "SUPABASE_URL is set but DATABASE_URL is missing. "
-        "Mini App needs DATABASE_URL=postgresql://...@...pooler.supabase.com:6543/postgres"
-    )
-
 
 try:
     ADMIN_CHAT_ID_INT = int(ADMIN_CHAT_ID) if ADMIN_CHAT_ID else 0
