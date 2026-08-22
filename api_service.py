@@ -168,6 +168,8 @@ STRICT BEHAVIOR RULES:
 3. FINANCIAL DATA ACCURACY: Never invent static bank interest rates or false vehicle prices. Explain that loan rates in Ethiopia float (~16%-24%+) and direct users to bank branches.
 4. COMPLETENESS: Always provide direct, fully structured sentences without cutting off."""
 
+ADVISOR_SYSTEM_PROMPT = SYSTEM_PROMPT
+
 
 def clean_model_output(raw_text: str) -> str:
     """Removes thinking tags, markdown asterisks, or unwanted metadata from output."""
@@ -178,6 +180,8 @@ def clean_model_output(raw_text: str) -> str:
     cleaned = re.sub(r'</?response>', '', cleaned, flags=re.IGNORECASE)
     # Clean any raw markdown symbols
     cleaned = cleaned.replace('**', '').replace('*', '').replace('###', '').replace('#', '').strip()
+    cleaned = re.sub(r'\bAI\b', 'እኛ', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.IGNORECASE)
     return cleaned.strip()
 
 
@@ -185,13 +189,14 @@ def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[
     """
     Qwen 2.5 32B AI response generator with strict Amharic constraints and executive financial advice.
     """
-    if not user_message or not str(user_message).strip():
-        return "እባክዎ ጥያቄዎን ያስገቡ።"
+    msg_str = str(user_message or "").strip()
+    if not msg_str:
+        return "ሰላም! ስለ መኪና፣ ስለ ቤት ግዢ፣ ስለ ቀረጥ ወይም ስለ ባንክ ብድር ማንኛውንም ጥያቄ ይጠይቁኝ፤ በደስታ እመልስልዎታለሁ።"
 
     api_key = os.environ.get("OPENROUTER_API_KEY") or OPENROUTER_API_KEY
     if not api_key:
         logger.warning("OPENROUTER_API_KEY not found, falling back to Gemini for advisor response")
-        return _fallback_gemini_advisor(user_message, conversation_history, budget)
+        return _fallback_gemini_advisor(msg_str, conversation_history, budget)
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -207,7 +212,7 @@ def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[
     messages = [{"role": "system", "content": system_prompt}]
 
     if conversation_history:
-        for msg in conversation_history:
+        for msg in conversation_history[-8:]:
             if isinstance(msg, dict):
                 role = msg.get("role", "user")
                 if role not in ["user", "assistant", "system"]:
@@ -219,7 +224,7 @@ def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[
                         "content": str(content)
                     })
 
-    messages.append({"role": "user", "content": str(user_message).strip()})
+    messages.append({"role": "user", "content": msg_str})
 
     payload = {
         "model": OPENROUTER_ADVISOR_MODEL,
@@ -232,15 +237,16 @@ def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[
     try:
         if requests is not None:
             response = requests.post(OPENROUTER_BASE_URL, headers=headers, json=payload, timeout=25)
-            if response.status_code != 200:
-                print(f"OpenRouter API Error Status: {response.status_code}, Response: {response.text}")
+            if response.status_code == 200:
+                data = response.json()
+                raw_output = data['choices'][0]['message']['content']
+                clean_text = clean_model_output(raw_output)
+                if clean_text:
+                    return clean_text
+            else:
                 logger.error(f"OpenRouter API Error Status: {response.status_code}, Response: {response.text}")
-                return "ይቅርታ፣ ከሲስተሙ ጋር መገናኘት አልተቻለም። እባክዎን የኢንተርኔት ግንኙነትዎን አረጋግጠው ደግመው ይሞክሩ።"
-
-            data = response.json()
-            raw_output = data['choices'][0]['message']['content']
-            clean_text = clean_model_output(raw_output)
-            return clean_text
+                # Fallback to Gemini if OpenRouter returned error status
+                return _fallback_gemini_advisor(msg_str, conversation_history, budget)
         else:
             req_data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(OPENROUTER_BASE_URL, data=req_data, headers=headers, method="POST")
@@ -250,17 +256,15 @@ def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[
                     data = json.loads(resp_body)
                     raw_output = data['choices'][0]['message']['content']
                     clean_text = clean_model_output(raw_output)
-                    return clean_text
+                    if clean_text:
+                        return clean_text
                 else:
-                    return "ይቅርታ፣ ከሲስተሙ ጋር መገናኘት አልተቻለም። እባክዎን የኢንተርኔት ግንኙነትዎን አረጋግጠው ደግመው ይሞክሩ።"
+                    return _fallback_gemini_advisor(msg_str, conversation_history, budget)
     except Exception as e:
-        print(f"Qwen API Exception: {str(e)}")
-        logger.error(f"Qwen API Exception in get_ai_response: {e}")
-        # Try fallback if available
-        fallback = _fallback_gemini_advisor(user_message, conversation_history, budget)
-        if fallback:
-            return fallback
-        return "ይቅርታ፣ አሁን ላይ አገልግሎቱን ማቅረብ አልተቻለም። እባክዎን ትንሽ ቆይተው እንደገና ይሞክሩ።"
+        logger.error(f"Error calling OpenRouter API in get_ai_response: {e}")
+        return _fallback_gemini_advisor(msg_str, conversation_history, budget)
+
+    return _fallback_gemini_advisor(msg_str, conversation_history, budget)
 
 
 def _fallback_gemini_advisor(user_message: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
@@ -1643,6 +1647,43 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_calculate_loan error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
+
+
+    @web_app.route('/api/advisor/chat', methods=['POST', 'GET', 'OPTIONS'])
+    @web_app.route('/api/advisor-chat', methods=['POST', 'GET', 'OPTIONS'])
+    def api_advisor_chat():
+        """Live Advisor interactive chat endpoint supporting Qwen/Gemini response."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {} if request.method == 'POST' else request.args
+            user_msg = str(data.get('message') or data.get('chat_message') or data.get('text') or data.get('prompt') or '').strip()
+            history = data.get('history') or data.get('conversation_history') or []
+            budget = float(data.get('budget') or data.get('property_price') or 0.0)
+
+            reply = get_ai_response(
+                user_message=user_msg,
+                conversation_history=history,
+                budget=budget
+            )
+
+            return jsonify({
+                "status": "success",
+                "reply": reply,
+                "response": reply,
+                "message": reply,
+                "chat_reply": reply
+            })
+        except Exception as e:
+            logger.error(f"api_advisor_chat error: {e}", exc_info=True)
+            fallback = "ሰላም! ጥያቄዎን ተቀብለናል። ስለ ተሽከርካሪና የቤት ግዢ፣ የቀረጥ ስሌት ወይም የባንክ ብድር ማንኛውንም ጥያቄ በዝርዝር ይጠይቁን፤ በደስታ እንመልሳለን።"
+            return jsonify({
+                "status": "success",
+                "reply": fallback,
+                "response": fallback,
+                "message": fallback,
+                "chat_reply": fallback
+            }), 200
 
 
     @web_app.route('/api/ai-advisor', methods=['POST', 'OPTIONS'])
