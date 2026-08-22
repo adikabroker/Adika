@@ -104,10 +104,22 @@ def get_chat_response(user_message: str, chat_history=None) -> str:
             messages=messages,
             temperature=0.7,
             max_tokens=1000,
+            extra_headers={
+                "HTTP-Referer": "https://adika-marketplace.app",
+                "X-Title": "Adika Marketplace",
+            },
         )
-        return (response.choices[0].message.content or "").strip()
+        text = (response.choices[0].message.content or "").strip()
+        if not text:
+            return "ይቅርታ፣ ባዶ መልስ ተመልሷል። እባክዎ እንደገና ይሞክሩ።"
+        return text
     except Exception as e:
         logger.warning("[OpenRouter API Error]: %s", e)
+        err = str(e)
+        if "401" in err or "auth" in err.lower():
+            return "ይቅርታ፣ የ API ቁልፍ ልክ አይደለም። OPENROUTER_API_KEYን ያረጋግጡ።"
+        if "429" in err:
+            return "ይቅርታ፣ በጣም ብዙ ጥያቄ ተልኳል። ትንሽ ቆይተው ይሞክሩ።"
         return "ይቅርታ፣ አሁን ላይ አገልግሎቱን ማቅረብ አልተቻለም። እባክዎን ጥቂት ቆይተው እንደገና ይሞክሩ።"
 
 
@@ -152,6 +164,10 @@ def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.7
             messages=messages,
             temperature=temperature,
             max_tokens=1000,
+            extra_headers={
+                "HTTP-Referer": "https://adika-marketplace.app",
+                "X-Title": "Adika Marketplace",
+            },
         )
         return (response.choices[0].message.content or "").strip()
     except Exception as e:
@@ -1666,295 +1682,79 @@ def register_api_routes(web_app):
     @web_app.route('/api/ai-advisor', methods=['POST', 'OPTIONS'])
     def api_ai_advisor():
         """
-        SMART FINANCIAL & PURCHASE ADVISOR (/api/ai-advisor)
-        Interactive AI evaluation based on realistic Ethiopian vehicle and property markets.
-        Handles low budgets (< 500k ETB), cash vs bank loan options, and commercial ROI.
+        Dynamic advisor via OpenRouter — no static budget templates.
+        Accepts: message / chat_message / prompt, optional budget context.
         """
         if request.method == 'OPTIONS':
             return ('', 204)
         try:
-            data = request.json or {}
-            budget = float(data.get('budget') or data.get('property_price') or 2000000.0)
-            purpose = str(data.get('purpose') or 'business').lower().strip()
-            payment_strategy = str(data.get('payment_strategy') or data.get('payment') or 'cash').lower().strip()
-            monthly_income = float(data.get('monthly_income') or (budget * 0.05 if payment_strategy == 'loan' else 0.0))
-            chat_message = str(data.get('chat_message') or data.get('message') or '').strip()
-            strict_cap = bool(data.get('strict_budget_cap'))
-            purchase_cap = float(data.get('purchase_allocation_etb') or (budget * 0.70))
+            data = request.json or request.get_json(silent=True) or {}
+            chat_message = str(
+                data.get('chat_message')
+                or data.get('message')
+                or data.get('prompt')
+                or data.get('question')
+                or ''
+            ).strip()
+            budget_raw = data.get('budget') or data.get('property_price')
+            history = data.get('history') or data.get('chat_history') or []
+            if not isinstance(history, list):
+                history = []
 
-            api_key = os.environ.get("GEMINI_API_KEY")
-            advice_result = None
-
-            # Follow-up chat from Analysis View
+            # Pure chat path
             if chat_message:
-                chat_reply = None
-                try:
-                    system_chat = (
-                        "You are Adika Senior Financial Advisor in Addis Ababa. "
-                        "Speak as a human advisor in polite Amharic. Use እኔ/እኛ. "
-                        "Never mention AI, bot, LLM, or language model. "
-                        f"Client total budget: {budget:,.0f} ETB. "
-                        f"Max purchase allocation (70%): {purchase_cap:,.0f} ETB. "
-                        "Reply in 2-5 short Amharic sentences. Stay within the purchase allocation. "
-                        "Return ONLY plain Amharic text (no JSON)."
-                    )
-                    chat_reply = _advisor_chat_reply(
-                        chat_message,
-                        system=system_chat,
-                        temperature=0.4,
-                    )
-                except Exception as e:
-                    logger.warning("advisor chat error: %s", e)
-                if not chat_reply:
-                    chat_reply = (
-                        f"ጥያቄዎን ተረድተናል። እኛ በጠቅላላ {budget:,.0f} ብር በጀትዎ ውስጥ "
-                        f"ለግዢ እስከ {purchase_cap:,.0f} ብር (70%) እንመክራለን። "
-                        "የቀረው 15% ለታክስ/ክፍያ እና 15% እንደ ሪዘርቭ ይቆይ። ተጨማሪ ዝርዝር ከፈለጉ ይንገሩን።"
-                    )
-                chat_reply = re.sub(r'\bAI\b', 'እኛ', chat_reply, flags=re.I)
-                chat_reply = re.sub(r'\bbot\b', 'እኛ', chat_reply, flags=re.I)
+                ctx = ""
+                if budget_raw not in (None, "", 0, "0"):
+                    try:
+                        b = float(budget_raw)
+                        ctx = f" (ተጠቃሚው በጀት ~{b:,.0f} ብር አውስቷል — አስፈላጊ ከሆነ ብቻ ተጠቀም)"
+                    except Exception:
+                        ctx = ""
+                user_q = chat_message + ctx
+                reply = get_chat_response(user_q, chat_history=history)
                 return jsonify({
                     "status": "success",
-                    "advice": {
-                        "chat_reply": chat_reply,
-                        "advice_amharic": chat_reply,
-                        "message": chat_reply,
-                    },
-                    "budget": budget,
-                    "purchase_allocation_etb": purchase_cap,
-                    "allocation": {
-                        "purchase_pct": 70, "fees_pct": 15, "reserve_pct": 15,
-                        "purchase_etb": purchase_cap,
-                        "fees_etb": round(budget * 0.15),
-                        "reserve_etb": round(budget * 0.15),
+                    "response": reply,
+                    "message": reply,
+                    "chat_reply": reply,
+                    "advisor_report": {
+                        "expert_advice_amharic": reply,
+                        "summary_amharic": reply,
                     },
                 })
 
-            if api_key:
+            # Form-style request without free text → ask OpenRouter dynamically
+            purpose = str(data.get('purpose') or '').strip()
+            payment = str(data.get('payment_strategy') or data.get('payment') or '').strip()
+            parts = ["እባክዎ እንደ ባለሙያ አማካሪ በአማርኛ አጭርና ግልጽ ምክር ስጡ።"]
+            if budget_raw not in (None, "", 0, "0"):
                 try:
-                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
-                    prompt = (
-                        "You are the top Ethiopian automotive & real-estate financial investment advisor in Addis Ababa.\\n"
-                        f"Evaluate this buyer inquiry under REAL Ethiopian market conditions:\\n"
-                        f"• Total Budget: {budget:,.0f} ETB\\n"
-                        f"• Purpose: {'ለስራ / ለንግድ (Commercial/Ride/Cargo/Business)' if purpose == 'business' else 'ለቤት / ለቤተሰብ (Personal/Family/Residence)'}\\n"
-                        f"• Payment Strategy: {'ሙሉ በሙሉ በጥሬ ገንዘብ (Cash Buy)' if payment_strategy == 'cash' else 'በባንክ ብድር / Down Payment Financing (CBE/Awash Bank Loan)'}\\n"
-                        f"• Monthly Income: {monthly_income:,.0f} ETB\\n\\n"
-                        "REALISTIC ETHIOPIAN MARKET RULES:\\n"
-                        "1. If Budget < 500,000 ETB: Do not dismiss the user or suggest unattainable 3M ETB cars. Provide constructive entry pathways such as Bajaj (Tuk-Tuk), motorcycle (TVS/Bajaj Boxer), co-investment / Equb pooling, or 20% down payment deposit for bank financing.\\n"
-                        "2. If Budget 500k - 2.5M ETB: Suggest realistic Ethiopian market models (e.g., Toyota Vitz 2000-2005, Toyota Yaris, Suzuki Dzire/Swift, Hyundai Atos/Santro, or 40/60 condominium down payment).\\n"
-                        "3. If Budget 2.5M - 6M ETB: Suggest top liquid cars (Toyota Vitz 2018+, Corolla Executive, Suzuki Dzire 2022, Hyundai Tucson, Electric BYD/Neta) or 1-2 bed residential apartments.\\n"
-                        "4. If Purpose is Business/Ride/Cargo: Include estimated net monthly ROI in Addis Ababa (e.g., Ride/Feres grossing 45,000 - 75,000 ETB/mo net after fuel/maintenance).\\n"
-                        "5. If Payment is Loan: Model 20-30% down payment, 17.5% annual bank interest, monthly repayments, and eligibility.\\n\\n"
-                        "Generate strictly valid JSON with keys:\\n"
-                        "1. 'verdict_title_amharic': Catchy summary title in Amharic\\n"
-                        "2. 'budget_tier': 'Low (<500k)' | 'Entry (500k-1.5M)' | 'Mid (1.5M-3.5M)' | 'High (3.5M-7M)' | 'Premium (>7M)'\\n"
-                        "3. 'recommended_options': list of 2-3 specific model/property objects with {'name': string, 'category': 'Car'|'Property'|'Commercial', 'estimated_price_range_etb': string, 'pros': [string, string], 'why_it_fits_amharic': string}\\n"
-                        "4. 'financial_strategy': {'strategy_type': string, 'down_payment_etb': number, 'monthly_bank_payment_etb': number, 'monthly_estimated_income_etb': number, 'payback_period_months': number, 'summary_amharic': string}\\n"
-                        "5. 'expert_advice_amharic': Deep, actionable, highly knowledgeable paragraph in Amharic offering clear financial roadmap and next steps.\\n"
-                        "6. 'actionable_steps': list of 3 practical next steps in Amharic.\\n"
-                        "Return ONLY JSON."
-                    )
-                    model = _AdikaGeminiModel(
-                        model_name="gemini-1.5-flash",
-                        generation_config={"response_mime_type": "application/json", "temperature": 0.2}
-                    )
-                    res = model.generate_content(prompt)
-                    txt = (res.text or "").strip()
-                    if txt.startswith("```json"): txt = txt[7:]
-                    if txt.startswith("```"): txt = txt[3:]
-                    if txt.endswith("```"): txt = txt[:-3]
-                    advice_result = json.loads(txt.strip())
-                except Exception as e:
-                    logger.warning(f"AI advisor Gemini error: {e}")
-
-            if not advice_result:
-                # High-precision heuristic fallback tailored to Ethiopian market
-                if budget < 500000:
-                    tier = "Low (<500k)"
-                    if purpose == "business":
-                        title = f"የ{budget:,.0f} ብር በጀት ለባጃጅ፣ ሞተር ወይም ለቅድመ ክፍያ ማከማቻ"
-                        options = [
-                            {
-                                "name": "ባጃጅ (Bajaj RE 4-Stroke 2017-2020)",
-                                "category": "Commercial",
-                                "estimated_price_range_etb": "350,000 - 480,000 ETB",
-                                "pros": ["በጣም አነስተኛ የነዳጅ ፍጆታ", "ቀን በቀን አስተማማኝ ገቢ (1,200 - 2,000 ብር/ቀን)"],
-                                "why_it_fits_amharic": "በአነስተኛ ካፒታል ፈጣን የቀን ገቢ ለማስገኘት ተስማሚ ነው።"
-                            },
-                            {
-                                "name": "TVS / Bajaj Boxer የጭነት ሞተርሳይክል",
-                                "category": "Commercial",
-                                "estimated_price_range_etb": "180,000 - 260,000 ETB",
-                                "pros": ["ለዴሊቨሪና ፈጣን መልእክት ስራ ተፈላጊ", "አነስተኛ ጥገና"],
-                                "why_it_fits_amharic": "በአዲስ አበባ ፈጣን የዴሊቨሪ ስራ በመስራት በወር እስከ 25,000-35,000 ብር ገቢ ያስገኛል።"
-                            },
-                            {
-                                "name": "የመኪና ባንክ ብድር ቅድመ ክፍያ (20% Down Payment Fund)",
-                                "category": "Car",
-                                "estimated_price_range_etb": f"{budget:,.0f} ETB (እንደ መነሻ)",
-                                "pros": ["በእቁብ ወይም በቁጠባ ካፒታልን ማሳደግ", "ለወደፊት የባንክ ብድር መመቻቸት"],
-                                "why_it_fits_amharic": "ይህን በጀት እንደ 20% ቅድመ ክፍያ በመጠቀም እስከ 350,000 ብር የሚደርስ አነስተኛ ንብረት ማመቻቸት ይቻላል።"
-                            }
-                        ]
-                        strat = {
-                            "strategy_type": "የአነስተኛ ንግድ ማስጀመሪያ / የቅድመ ክፍያ ቁጠባ",
-                            "down_payment_etb": budget,
-                            "monthly_bank_payment_etb": 0,
-                            "monthly_estimated_income_etb": 30000,
-                            "payback_period_months": 14,
-                            "summary_amharic": "በዚህ በጀት ሞተርሳይክል ወይም ባጃጅ በመግዛት ወይም በእቁብ በማሳደግ ወደ መኪና መሸጋገር ይመረጣል።"
-                        }
-                        advice_am = (
-                            f"የእርስዎ በጀት {budget:,.0f} ብር ነው። ሙሉ መኪና በጥሬ ገንዘብ ለመግዛት በቂ ባይሆንም፣ "
-                            "ለዴሊቨሪ ሞተርሳይክል ወይም ለባጃጅ ግዢ በቂ ነው። እንዲሁም በባንክ የ20% ቅድመ ክፍያ በማስያዝ "
-                            "ወይም በእቁብ ካፒታልዎን በማሳደግ በ6-12 ወራት ውስጥ ወደ ትልቅ ንብረት መሸጋገር ይችላሉ።"
-                        )
-                    else:
-                        title = f"የ{budget:,.0f} ብር በጀት ለግል ቁጠባና ለኮንዶሚኒየም ምዝገባ"
-                        options = [
-                            {
-                                "name": "የቤት ቁጠባና የኮንዶሚኒየም ክፍያ (CBE 40/60 or 20/80)",
-                                "category": "Property",
-                                "estimated_price_range_etb": f"{budget:,.0f} ETB",
-                                "pros": ["አስተማማኝ የረጅም ጊዜ የቤት ባለቤትነት", "የዋጋ ግሽበትን መቋቋም"],
-                                "why_it_fits_amharic": "ለቤት መስሪያ ቁጠባ ወይም ለኮንዶሚኒየም ቅድመ ክፍያ ምርጥ መነሻ ነው።"
-                            },
-                            {
-                                "name": "የግል ኤሌክትሪክ ሞተርሳይክል (EV Scooter)",
-                                "category": "Car",
-                                "estimated_price_range_etb": "120,000 - 220,000 ETB",
-                                "pros": ["የዜሮ ነዳጅ ወጪ", "ቀላል የቤት ውስጥ ቻርጅ"],
-                                "why_it_fits_amharic": "ለዕለታዊ የከተማ ውስጥ የትራንስፖርት ወጪ ቆጣቢ መፍትሄ።"
-                            }
-                        ]
-                        strat = {
-                            "strategy_type": "የቁጠባና የወደፊት ንብረት ግንባታ",
-                            "down_payment_etb": budget,
-                            "monthly_bank_payment_etb": 0,
-                            "monthly_estimated_income_etb": 0,
-                            "payback_period_months": 0,
-                            "summary_amharic": "ገንዘቡን ለቤት ቁጠባ ወይም ለቀላል ትራንስፖርት ማዋል ተመራጭ ነው።"
-                        }
-                        advice_am = f"በ{budget:,.0f} ብር በጀት ለግል ትራንስፖርት የኤሌክትሪክ ስኩተር መግዛት ወይም ለቤት ግዢ ቁጠባ ማጠናከር አስተማማኝ ምርጫ ነው።"
-                elif budget < 2500000:
-                    tier = "Entry (500k-2.5M)"
-                    if payment_strategy == "loan":
-                        asset_cap = budget * 4.0
-                        title = f"የባንክ ብድር ስትራቴጂ (እስከ {asset_cap:,.0f} ብር የሚደርስ ንብረት)"
-                        options = [
-                            {
-                                "name": "Suzuki Dzire / Swift 2022 (አዲስ ሞዴል)",
-                                "category": "Car",
-                                "estimated_price_range_etb": "2,400,000 - 3,200,000 ETB",
-                                "pros": ["እጅግ ቆጣቢ 22 KM/L", "ከባንክ ብድር ጋር በቀላሉ የሚፈቀድ"],
-                                "why_it_fits_amharic": "በቀላል ወርሃዊ ክፍያ አዲስ መኪና ባለቤት ለመሆን ፍጹም ነው።"
-                            },
-                            {
-                                "name": "ባለ 1 መኝታ አፓርትመንት ቅድመ ክፍያ (CMC/Ayat)",
-                                "category": "Property",
-                                "estimated_price_range_etb": "3,500,000 - 4,800,000 ETB",
-                                "pros": ["ከፍተኛ የኪራይ ገቢ", "የንብረት ዋጋ ዕድገት"],
-                                "why_it_fits_amharic": "በቀላሉ በባንክና በሪልስቴት የክፍያ ስምምነት የሚገዛ።"
-                            }
-                        ]
-                        monthly_loan = round((asset_cap - budget) * 0.016, 2)
-                        strat = {
-                            "strategy_type": "የባንክ ብድር ማበረታቻ (75% Bank Loan + 25% Down Payment)",
-                            "down_payment_etb": budget,
-                            "monthly_bank_payment_etb": monthly_loan,
-                            "monthly_estimated_income_etb": 55000 if purpose == "business" else 0,
-                            "payback_period_months": 60,
-                            "summary_amharic": f"በ{budget:,.0f} ብር ቅድመ ክፍያ እስከ {asset_cap:,.0f} ብር የሚገመት መኪና ወይም ቤት መግዛት ይቻላል።"
-                        }
-                        advice_am = (
-                            f"በእጅዎ ያለው {budget:,.0f} ብር እንደ 25% ቅድመ ክፍያ በማስያዝ እስከ {asset_cap:,.0f} ብር የሚደርስ "
-                            "አዲስ የሱዙኪ ወይም የቶዮታ መኪና በባንክ ብድር መግዛት ይችላሉ። በወር የሚከፈለው ~" + f"{monthly_loan:,.0f} ብር "
-                            "ሲሆን፣ ለራይድ ስራ ካዋሉት ራሱ ወርሃዊ ክፍያውን ሙሉ በሙሉ ይሸፍነዋል።"
-                        )
-                    else:
-                        title = f"የ{budget:,.0f} ብር የጥሬ ገንዘብ ግዢ ምርጫዎች"
-                        options = [
-                            {
-                                "name": "Toyota Vitz 2004 - 2008 (Auto/Manual)",
-                                "category": "Car",
-                                "estimated_price_range_etb": "1,400,000 - 1,950,000 ETB",
-                                "pros": ["መለዋወጫ በየቦታው መገኘቱ", "ፈጣን ሽያጭ (High Resale)", "ዝቅተኛ የጥገና ወጪ"],
-                                "why_it_fits_amharic": "በአዲስ አበባ ውስጥ ያለምንም ዕዳ በጥሬ ገንዘብ የሚገዛ አስተማማኝ መኪና።"
-                            },
-                            {
-                                "name": "Toyota Yaris / Suzuki Alto 2015",
-                                "category": "Car",
-                                "estimated_price_range_etb": "1,600,000 - 2,200,000 ETB",
-                                "pros": ["የነዳጅ ቆጣቢነት", "ለከተማ መንዳት ምቹ"],
-                                "why_it_fits_amharic": "ለዕለታዊ የከተማ እንቅስቃሴ እና ለቤተሰብ እጅግ ተስማሚ ነው።"
-                            }
-                        ]
-                        strat = {
-                            "strategy_type": "100% የጥሬ ገንዘብ ግዢ (Debt-Free Ownership)",
-                            "down_payment_etb": budget,
-                            "monthly_bank_payment_etb": 0,
-                            "monthly_estimated_income_etb": 45000 if purpose == "business" else 0,
-                            "payback_period_months": 24 if purpose == "business" else 0,
-                            "summary_amharic": "ያለምንም የባንክ ወለድና ዕዳ ወዲያውኑ ንብረትዎን በስምዎ ማዛወር ይችላሉ።"
-                        }
-                        advice_am = (
-                            f"በ{budget:,.0f} ብር ጥሬ ገንዘብ ቶዮታ ቪትዝ ወይም ያሪስ መግዛት ከዕዳ ነጻ የሆነ አስተማማኝ ኢንቨስትመንት ነው። "
-                            "ለመለዋወጫ ወጪ የማይጠይቅና በፈለጉበት ሰዓት ያለምንም ኪሳራ መልሰው መሸጥ የሚችሉት ንብረት ነው።"
-                        )
-                else:
-                    tier = "Mid/High (2.5M - 6M+)"
-                    title = f"የ{budget:,.0f} ብር የፕሪሚየም መኪናና የሪልስቴት ኢንቨስትመንት"
-                    options = [
-                        {
-                            "name": "Toyota Vitz 2018 / Suzuki Dzire 2023 / BYD Dolphin EV",
-                            "category": "Car",
-                            "estimated_price_range_etb": "2,600,000 - 3,600,000 ETB",
-                            "pros": ["ዘመናዊ ቴክኖሎጂ", "ዜሮ የጥገና ችግር", "እጅግ ከፍተኛ የገበያ ተፈላጊነት"],
-                            "why_it_fits_amharic": "ለራይድ ፕሪሚየምም ሆነ ለግል ክብርና ምቾት አንደኛ ምርጫ ነው።"
-                        },
-                        {
-                            "name": "ባለ 2 መኝታ አፓርትመንት ወይም ሰፊ ኮንዶሚኒየም (Bole/Ayat/CMC)",
-                            "category": "Property",
-                            "estimated_price_range_etb": "4,200,000 - 7,500,000 ETB",
-                            "pros": ["በወር 25,000 - 45,000 ብር ኪራይ", "ዓመታዊ 15-20% የዋጋ ዕድገት"],
-                            "why_it_fits_amharic": "የዋጋ ግሽበትን የሚከላከል ዘላቂ የሀብት ማከማቻ።"
-                        }
-                    ]
-                    strat = {
-                        "strategy_type": "ከፍተኛ ምርታማነት ያለው ኢንቨስትመንት (High Yield Asset)",
-                        "down_payment_etb": budget,
-                        "monthly_bank_payment_etb": 0,
-                        "monthly_estimated_income_etb": 65000 if purpose == "business" else 30000,
-                        "payback_period_months": 36,
-                        "summary_amharic": "በዚህ በጀት ዘመናዊ መኪና ወይም ከፍተኛ የኪራይ ገቢ የሚያስገኝ አፓርትመንት መግዛት ይቻላል።"
-                    }
-                    advice_am = (
-                        f"የ{budget:,.0f} ብር በጀት በአዲስ አበባ ገበያ ውስጥ ጠንካራ የመደራደር አቅም ይሰጥዎታል። "
-                        "አዳዲስ የኤሌክትሪክ (EV) መኪኖች ከቀረጥ ነጻ በመሆናቸው የነዳጅ ወጪዎን 90% ይቀንሳሉ፤ "
-                        "ሪልስቴት ላይ ካዋሉት ደግሞ ቋሚ ወርሃዊ የኪራይ ገቢ ያስገኝልዎታል።"
-                    )
-
-                advice_result = {
-                    "verdict_title_amharic": title,
-                    "budget_tier": tier,
-                    "recommended_options": options,
-                    "financial_strategy": strat,
-                    "expert_advice_amharic": advice_am,
-                    "actionable_steps": [
-                        "በአዲካ ገበያ ላይ ያሉትን ትክክለኛ ዋጋዎችና ሰነዶች ያረጋግጡ",
-                        "የባንክ ብድር ከሆነ የገቢ ማስረጃና የ3 ወር የባንክ እስቴትመንት ያዘጋጁ",
-                        "ከመግዛትዎ በፊት የጋራዥ ምርመራና የውክልና ሰነድ በሲስተሙ ያጣሩ"
-                    ]
-                }
-
+                    parts.append(f"በጀት: {float(budget_raw):,.0f} ብር።")
+                except Exception:
+                    parts.append(f"በጀት: {budget_raw}።")
+            if purpose:
+                parts.append(f"ዓላማ: {purpose}።")
+            if payment:
+                parts.append(f"የክፍያ መንገድ: {payment}።")
+            parts.append("ቋሚ ቁጥር ወይም ዝግጁ template አትድገም። የተጠየቀውን ብቻ መልስ።")
+            prompt = " ".join(parts)
+            reply = get_chat_response(prompt, chat_history=history)
             return jsonify({
                 "status": "success",
-                "advisor_report": advice_result
+                "response": reply,
+                "message": reply,
+                "advisor_report": {
+                    "expert_advice_amharic": reply,
+                    "summary_amharic": reply,
+                    "verdict_title_amharic": "የአዲካ ምክር",
+                    "recommended_options": [],
+                    "actionable_steps": [],
+                },
             })
         except Exception as e:
-            logger.error(f"api_ai_advisor error: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            logger.error("api_ai_advisor error: %s", e, exc_info=True)
+            return jsonify({"status": "error", "message": str(e), "response": "ይቅርታ፣ ምክር ማቅረብ አልተቻለም።"}), 500
+
 
 
     @web_app.route('/api/financial-insights', methods=['GET', 'POST', 'OPTIONS'])
