@@ -62,13 +62,13 @@ def get_groq_chat_response(user_message: str, chat_history=None) -> str:
             or (GROQ_MODEL if GROQ_MODEL else None)
             or os.environ.get("GROQ_MODEL_NAME")
             or os.environ.get("GROQ_MODEL")
-            or "llama-3.1-8b-instant"
+            or "llama3-8b-8192"
         )
     except NameError:
         model_name = (
             os.environ.get("GROQ_MODEL_NAME")
             or os.environ.get("GROQ_MODEL")
-            or "llama-3.1-8b-instant"
+            or "llama3-8b-8192"
         )
 
     messages = [{"role": "system", "content": _ADIKA_SYSTEM}]
@@ -110,13 +110,13 @@ def generate_ai_response(prompt, chat_history=None, system=None, temperature=0.7
             or (GROQ_MODEL if GROQ_MODEL else None)
             or os.environ.get("GROQ_MODEL_NAME")
             or os.environ.get("GROQ_MODEL")
-            or "llama-3.1-8b-instant"
+            or "llama3-8b-8192"
         )
     except NameError:
         model_name = (
             os.environ.get("GROQ_MODEL_NAME")
             or os.environ.get("GROQ_MODEL")
-            or "llama-3.1-8b-instant"
+            or "llama3-8b-8192"
         )
 
     system_instruction = system or _ADIKA_SYSTEM
