@@ -24,7 +24,7 @@ BOT_TOKEN = (
 ).strip()
 
 GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
-GROQ_MODEL = (os.environ.get("GROQ_MODEL") or os.environ.get("GROQ_MODEL_NAME") or "llama-3.3-70b-versatile").strip()
+GROQ_MODEL = (os.environ.get("GROQ_MODEL") or os.environ.get("GROQ_MODEL_NAME") or "llama-3.1-8b-instant").strip()
 GROQ_MODEL_NAME = GROQ_MODEL  # alias
 
 GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
