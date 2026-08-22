@@ -3,13 +3,9 @@ import json
 import re
 import os
 import random
-import requests
 from flask import request, jsonify, Response
 
-from config import (
-    logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL,
-    OPENROUTER_API_KEY, OPENROUTER_MODEL,
-)
+from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL
 from models import (
     LAST_DB_ERROR,
     get_db_connection, get_placeholder, add_listing, get_listing_by_id,
@@ -23,219 +19,242 @@ bot_loop = None
 _json_safe = None
 
 # ---------------------------------------------------------------------------
-# Active Live AI Engine: OpenRouter API (Server-Side LLM)
+# Gemini (new google-genai SDK + multi-model fallback)
 # ---------------------------------------------------------------------------
-
-try:
-    from openai import OpenAI
-except ImportError:
-    OpenAI = None
-
-SYSTEM_PROMPT = """You are Adika's Senior Financial Advisor.
-
-WORKFLOW INSTRUCTIONS:
-1. Wrap your internal English analysis and thought process inside <thought>...</thought> tags.
-2. Wrap your final, fluent, natural Amharic response inside <response>...</response> tags.
-
-AMHARIC OUTPUT RULES (Inside <response>):
-- Write purely in natural, executive-level Amharic as spoken by Ethiopian financial strategists.
-- Do NOT include any English translation notes, draft corrections, or explanations of your translation choices."""
+_GEMINI_MODEL_CANDIDATES = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash-8b",
+    "gemini-1.5-pro",
+]
 
 
-def extract_ai_response(raw_ai_output: str) -> str:
-    """Extract strictly the content inside <response> tags with fallback cleanup."""
-    if not raw_ai_output:
-        return ""
-    response_text = raw_ai_output
-    match = re.search(r'<response>(.*?)</response>', raw_ai_output, re.DOTALL)
-    if match:
-        response_text = match.group(1).strip()
-    else:
-        # Fallback: Clean up accidental thought leaks or notes if tags are missed
-        response_text = re.sub(r'<thought>.*?</thought>', '', response_text, flags=re.DOTALL)
-        response_text = re.sub(r'<response>', '', response_text, flags=re.IGNORECASE)
-        response_text = re.sub(r'</response>', '', response_text, flags=re.IGNORECASE)
-        response_text = re.sub(r'\(.*?note.*?\)', '', response_text, flags=re.IGNORECASE)
-        response_text = re.sub(r'corrected response.*?:', '', response_text, flags=re.IGNORECASE)
-
-    return response_text.strip()
-
-
-def _openrouter_generate(
-    prompt,
-    system=None,
-    chat_history=None,
-    temperature=0.5,
-    repetition_penalty=1.2,
-    frequency_penalty=0.3,
-    presence_penalty=0.2,
-    max_tokens=1200,
-    json_mode=False,
-    image_bytes=None,
-    mime_type="image/jpeg",
-    model=None
-):
-    """Generate text, analysis, or JSON strictly via OpenRouter API."""
-    api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY") or "").strip()
+def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temperature=0.3, image_bytes=None, mime_type="image/jpeg"):
+    """Generate text via new `google.genai` Client; fall back to legacy package."""
+    api_key = api_key or os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        logger.warning("OPENROUTER_API_KEY is not set.")
-        return None
+        raise RuntimeError("GEMINI_API_KEY is not set")
+    last_err = None
 
-    target_model = model or OPENROUTER_MODEL or "meta-llama/llama-3.3-70b-instruct"
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-
-    if chat_history and isinstance(chat_history, list):
-        for h in chat_history:
-            if isinstance(h, dict):
-                r = "assistant" if str(h.get("role", "")).lower() in ("advisor", "bot", "assistant", "ai", "model") or h.get("is_bot") or h.get("sender") in ("bot", "advisor", "assistant") else "user"
-                content_val = str(h.get("content") or h.get("text") or h.get("message") or "")
-                if content_val.strip():
-                    messages.append({"role": r, "content": content_val})
-
-    if image_bytes:
-        import base64 as _b64
-        b64_str = _b64.b64encode(image_bytes).decode("ascii")
-        data_url = f"data:{mime_type or 'image/jpeg'};base64,{b64_str}"
-        content = [
-            {"type": "text", "text": str(prompt)},
-            {"type": "image_url", "image_url": {"url": data_url}},
-        ]
-        messages.append({"role": "user", "content": content})
-    else:
-        messages.append({"role": "user", "content": str(prompt)})
-
-    # 1. Try via OpenAI SDK with OpenRouter base_url
-    if OpenAI is not None:
-        try:
-            client = OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=api_key,
-            )
-            kwargs = {
-                "model": target_model,
-                "messages": messages,
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-                "frequency_penalty": frequency_penalty,
-                "presence_penalty": presence_penalty,
-                "extra_body": {
-                    "repetition_penalty": repetition_penalty,
-                },
-            }
-            if json_mode:
-                kwargs["response_format"] = {"type": "json_object"}
-            resp = client.chat.completions.create(**kwargs)
-            text = resp.choices[0].message.content
-            if text and str(text).strip():
-                return str(text).strip()
-        except Exception as e:
-            logger.warning(f"OpenRouter OpenAI SDK call error: {e}")
-
-    # 2. Direct HTTP request fallback strictly to OpenRouter
     try:
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": WEBAPP_URL or "https://t.me",
-            "X-Title": "Adika Marketplace",
-        }
-        payload = {
-            "model": target_model,
-            "messages": messages,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "repetition_penalty": repetition_penalty,
-            "frequency_penalty": frequency_penalty,
-            "presence_penalty": presence_penalty,
-        }
-        if json_mode:
-            payload["response_format"] = {"type": "json_object"}
-        r = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
-        if r.status_code == 200:
-            res_json = r.json()
-            choices = res_json.get("choices") or []
-            if choices and "message" in choices[0]:
-                text = choices[0]["message"].get("content")
-                if text and str(text).strip():
-                    return str(text).strip()
+        from google import genai as genai_new
+        try:
+            from google.genai import types as genai_types
+        except Exception:
+            genai_types = None
+        client = genai_new.Client(api_key=api_key)
+        contents = []
+        if image_bytes:
+            if genai_types is not None and hasattr(genai_types, "Part"):
+                contents.append(genai_types.Part.from_bytes(data=image_bytes, mime_type=mime_type or "image/jpeg"))
+            else:
+                import base64 as _b64
+                contents.append({
+                    "inline_data": {
+                        "mime_type": mime_type or "image/jpeg",
+                        "data": _b64.b64encode(image_bytes).decode("ascii"),
+                    }
+                })
+        if isinstance(prompt, list):
+            contents.extend([p for p in prompt if isinstance(p, str)])
         else:
-            logger.warning(f"OpenRouter HTTP status {r.status_code}: {r.text[:200]}")
+            contents.append(prompt)
+        for model_name in _GEMINI_MODEL_CANDIDATES:
+            try:
+                # Build config per-call; support GenerateContentConfig or dictionary config
+                config = None
+                if genai_types is not None and hasattr(genai_types, "GenerateContentConfig"):
+                    try:
+                        cfg_kwargs = {"temperature": temperature}
+                        if json_mode:
+                            cfg_kwargs["response_mime_type"] = "application/json"
+                        if system:
+                            cfg_kwargs["system_instruction"] = system
+                        config = genai_types.GenerateContentConfig(**cfg_kwargs)
+                    except Exception:
+                        config = None
+
+                if config is None:
+                    config = {
+                        "temperature": temperature,
+                        "tools": None,
+                        "automatic_function_calling": {"disable": True},
+                    }
+                    if json_mode:
+                        config["response_mime_type"] = "application/json"
+                    if system:
+                        config["system_instruction"] = system
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=contents,
+                        config=config,
+                    )
+                except TypeError:
+                    # Fallback for SDK signatures without config kwarg
+                    full_text = prompt
+                    if system and not image_bytes:
+                        full_text = f"System Instruction: {system}\n\nUser Prompt: {prompt}"
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=contents if image_bytes else full_text,
+                    )
+                text = getattr(response, "text", None)
+                if not text and getattr(response, "candidates", None):
+                    try:
+                        text = response.candidates[0].content.parts[0].text
+                    except Exception:
+                        text = None
+                if text:
+                    return str(text).strip()
+            except Exception as e:
+                last_err = e
+                logger.warning("Gemini model %s failed: %s", model_name, e)
     except Exception as e:
-        logger.error(f"OpenRouter direct HTTP error: {e}")
-
-    return None
-
-
-def get_chat_response(user_message: str, chat_history: list = None) -> str:
-    """Active live LLM chat generation strictly via OpenRouter API with XML response parsing."""
-    if not user_message or not str(user_message).strip():
-        return "እንኳን ደህና መጡ። እኔ የ Adika Senior Financial Advisor & Strategist ነኝ። ስለ ሪል እስቴት ኢንቨስትመንት፣ የካፒታል ምደባ፣ የገበያ ትንተና ወይም የፋይናንስ ስትራቴጂ ምን መወያየት ይፈልጋሉ?"
+        last_err = e
+        logger.warning("google.genai Client unavailable: %s", e)
 
     try:
-        raw_reply = _openrouter_generate(
-            user_message,
-            system=SYSTEM_PROMPT,
-            chat_history=chat_history,
-            temperature=0.5,
-            repetition_penalty=1.2,
-            max_tokens=1200,
-            model="meta-llama/llama-3.3-70b-instruct",
-        )
-        if raw_reply and str(raw_reply).strip():
-            parsed_reply = extract_ai_response(str(raw_reply).strip())
-            if parsed_reply:
-                return parsed_reply
-            return str(raw_reply).strip()
+        import google.generativeai as genai_legacy
+        genai_legacy.configure(api_key=api_key)
+        for model_name in _GEMINI_MODEL_CANDIDATES:
+            try:
+                gen_cfg = {"temperature": temperature}
+                if json_mode:
+                    gen_cfg["response_mime_type"] = "application/json"
+                mk = {"model_name": model_name, "generation_config": gen_cfg}
+                if system:
+                    mk["system_instruction"] = system
+                model = genai_legacy.GenerativeModel(**mk)
+                parts = []
+                if image_bytes:
+                    parts.append({"mime_type": mime_type or "image/jpeg", "data": image_bytes})
+                parts.append(prompt if isinstance(prompt, str) else " ".join(str(x) for x in prompt))
+                response = model.generate_content(parts if image_bytes else prompt)
+                text = (getattr(response, "text", None) or "").strip()
+                if text:
+                    return text
+            except Exception as e:
+                last_err = e
+                logger.warning("Legacy Gemini model %s failed: %s", model_name, e)
     except Exception as e:
-        logger.error(f"OpenRouter chat failure: {e}")
+        last_err = e
+        logger.warning("Legacy generativeai unavailable: %s", e)
 
-    return "ሰላም! ጥያቄዎን ተቀብያለሁ። በአሁኑ ወቅት የኢትዮጵያ ንብረትና ተሽከርካሪ ገበያ፣ የባንክ ብድር ወይም የቀረጥ ጉዳዮችን አስመልክቶ የሚፈልጉትን ዝርዝር ነጥብ ቢያጋሩኝ በደስታ አብረን እንመረምራለን።"
-
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-try:
-    from supabase import create_client, Client
-except ImportError:
-    create_client = None
-    Client = None
-
-
-def get_supabase_client():
-    if SUPABASE_URL and SUPABASE_KEY and create_client:
-        try:
-            return create_client(SUPABASE_URL, SUPABASE_KEY)
-        except Exception as e:
-            print(f"Supabase Client Error: {e}")
-    return None
+    logger.error("Gemini generate failed after all models: %s", last_err)
+    raise RuntimeError(f"Gemini generate failed: {last_err}")
 
 
 def generate_advisor_response(prompt, history=None, budget=0):
     """
-    Generate dynamic live AI financial advisor response.
-    Connects directly to the active backend LLM via OpenRouter in fluent Amharic.
+    ከ Gemini API ጋር ተገናኝቶ ለቻቱ በሰውኛ የተዘጋጀ ሙያዊ መልስ የሚያመጣ Function
     """
-    if not prompt or not str(prompt).strip():
-        return "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። ስለ መኪና ወይም የቤት ግዢ፣ የቀረጥ ስሌት፣ የባንክ ብድር ወይም ማንኛውም የፋይናንስ ምክር ምን ማወቅ ይፈልጋሉ? ጥያቄዎን እዚህ ይጠይቁኝ።"
+    try:
+        budget_num = float(budget or 0)
+    except Exception:
+        budget_num = 0.0
+
+    system_instruction = (
+        "You are a human Senior Financial Advisor at Adika Digital. "
+        "Speak politely and naturally in Amharic like an expert advisor. "
+        "NEVER mention you are an AI, bot, or language model. "
+        "Always refer to Adika as 'እኛ' or 'እኔ'. "
+        f"Context: The user's total budget is {budget_num:,.0f} ETB. "
+        "Strictly analyze options respecting this budget framework."
+    )
     
-    return get_chat_response(str(prompt).strip(), chat_history=history)
+    # የቻት ታሪክ እና አዲስ ጥያቄ አቀናጅቶ መላክ
+    full_prompt = f"የተጠቃሚ በጀት: {budget_num:,.0f} ETB\nየተጠቃሚ ጥያቄ: {prompt}"
+    
+    try:
+        # በፋይልህ ውስጥ ያለውን _gemini_generate ጥሪ መጠቀም
+        response_text = _gemini_generate(
+            prompt=full_prompt, 
+            system=system_instruction
+        )
+        if response_text:
+            return response_text
+        return "ይቅርታ፣ አሁን ላይ መረጃውን ማካሄድ አልተቻለም። እባክዎ ጥቂት ቆይተው እንደገና ይሞክሩ።"
+    except Exception as e:
+        return "ይቅርታ፣ ከኦፕሬተራችን ጋር ማገናኘት አልተቻለም። እባክዎ መስመርዎን አረጋግጠው ድጋሚ ይሞክሩ።"
+
+
+
+def _gemini_chat(user_message, *, api_key=None, system=None, temperature=0.4, model=None):
+    """Chat via client.chats.create + send_message (avoids AFC generate_content warning)."""
+    api_key = api_key or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not set")
+    if not user_message or not str(user_message).strip():
+        raise ValueError("empty chat message")
+
+    system_instruction = system or (
+        "You are Adika Senior Financial Advisor in Addis Ababa. "
+        "Speak as a human advisor in polite Amharic. Use እኔ/እኛ. "
+        "Never mention AI, bot, LLM, or language model."
+    )
+    last_err = None
+    models = [model] if model else list(_GEMINI_MODEL_CANDIDATES)
+    models = [m for m in models if m] + [m for m in _GEMINI_MODEL_CANDIDATES if m not in models]
+
+    try:
+        from google import genai as genai_new
+        client = genai_new.Client(api_key=api_key)
+        for model_name in models:
+            try:
+                config = {
+                    "temperature": temperature,
+                    "system_instruction": system_instruction,
+                }
+                # Prefer Chat API (recommended over Models.generate_content for conversational turns)
+                try:
+                    chat = client.chats.create(model=model_name, config=config)
+                except TypeError:
+                    try:
+                        chat = client.chats.create(model=model_name)
+                    except Exception as e:
+                        last_err = e
+                        continue
+                response = chat.send_message(str(user_message).strip())
+                text = getattr(response, "text", None)
+                if not text and getattr(response, "candidates", None):
+                    try:
+                        text = response.candidates[0].content.parts[0].text
+                    except Exception:
+                        text = None
+                if text and str(text).strip():
+                    return str(text).strip()
+            except Exception as e:
+                last_err = e
+                logger.warning("Gemini chat model %s failed: %s", model_name, e)
+                continue
+    except Exception as e:
+        last_err = e
+        logger.warning("google.genai chats API unavailable: %s", e)
+
+    # Fallback: plain generate without tools/AFC
+    try:
+        return _gemini_generate(
+            str(user_message).strip(),
+            api_key=api_key,
+            system=system_instruction,
+            temperature=temperature,
+            json_mode=False,
+        )
+    except Exception as e:
+        last_err = e
+        logger.error("Gemini chat fallback failed: %s", e)
+        raise RuntimeError(f"Gemini chat failed: {last_err}")
+
 
 
 class _AdikaGeminiModel:
-    """Drop-in interface executing all multimodal and text queries strictly via OpenRouter API."""
+    """Drop-in stand-in for google.generativeai.GenerativeModel."""
 
     def __init__(self, model_name=None, system_instruction=None, generation_config=None, api_key=None, **kwargs):
         self.system = system_instruction
         self.config = dict(generation_config or {})
-        self.model_name = model_name or OPENROUTER_MODEL
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
 
     def generate_content(self, contents, **kwargs):
         image_bytes = None
@@ -267,20 +286,20 @@ class _AdikaGeminiModel:
         prompt = "\n".join(prompt_parts) if prompt_parts else "Analyze the provided content."
         json_mode = str(self.config.get("response_mime_type") or "").endswith("json")
         temperature = self.config.get("temperature", 0.3)
-        text = _openrouter_generate(
+        text = _gemini_generate(
             prompt,
+            api_key=self.api_key,
             system=self.system,
             json_mode=json_mode,
             temperature=temperature,
             image_bytes=image_bytes,
             mime_type=mime_type,
-            model=self.model_name,
         )
 
         class _Resp:
             pass
         r = _Resp()
-        r.text = text or ""
+        r.text = text
         return r
 
 
@@ -462,23 +481,6 @@ def register_api_routes(web_app):
             "webapp_url": WEBAPP_URL,
         }
         return jsonify(info)
-
-
-    @web_app.route('/api/chat', methods=['POST', 'OPTIONS'])
-    def api_chat_endpoint():
-        if request.method == 'OPTIONS':
-            return ('', 204)
-        try:
-            data = request.json or {}
-            message = data.get('message') or data.get('prompt') or ''
-            history = data.get('history') or data.get('chat_history') or []
-            if not message:
-                return jsonify({"status": "error", "message": "No message provided"}), 400
-            response_text = get_chat_response(message, chat_history=history)
-            return jsonify({"status": "success", "response": response_text})
-        except Exception as e:
-            logger.error(f"api_chat_endpoint error: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
 
 
     @web_app.route('/api/explorer/listings', methods=['GET', 'OPTIONS'])
@@ -751,12 +753,12 @@ def register_api_routes(web_app):
                     "message": "No image provided. Upload a file or send base64 data."
                 }), 400
 
-            api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+            api_key = os.environ.get("GEMINI_API_KEY")
             autofill_result = None
 
             if api_key:
                 try:
-                    # Routed through _AdikaGeminiModel (OpenRouter API)
+                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
                     system_prompt = (
                         "You are an expert appraiser and cataloger for Adika Marketplace in Ethiopia.\n"
                         "Analyze the provided image (car, house/apartment, commercial space, or general item).\n"
@@ -823,10 +825,10 @@ def register_api_routes(web_app):
             text_content = f"{data.get('title', '')} {data.get('description', '')} {data.get('text', '')}".strip()
             raw_img = data.get('image') or data.get('photo') or data.get('base64')
 
-            api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+            api_key = os.environ.get("GEMINI_API_KEY")
             if api_key:
                 try:
-                    # Routed through _AdikaGeminiModel (OpenRouter API)
+                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
                     prompt = (
                         "You are a strict content safety and moderation officer for an Ethiopian e-commerce marketplace.\n"
                         "Check if the submission contains prohibited content:\n"
@@ -940,12 +942,12 @@ def register_api_routes(web_app):
         if not clean_text:
             return {"category": "all", "max_price": None, "keyword": None}
 
-        api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+        api_key = os.environ.get("GEMINI_API_KEY")
         parsed_result = None
 
         if api_key:
             try:
-                # Routed through _AdikaGeminiModel (OpenRouter API)
+                # Gemini routed through _AdikaGeminiModel (google.genai Client)
                 system_instruction = (
                     "You are an AI Search Parser for an Ethiopian marketplace (cars, properties, commercial items).\n"
                     "Given a search prompt in English or Amharic (e.g. 'Vits under 2M ETB', 'ቪትስ < 2M', 'ኮሮላ 1.5 ሚሊዮን', 'መኪና < 1M', '2 bedroom apartment in Bole below 30k'):\n"
@@ -975,7 +977,7 @@ def register_api_routes(web_app):
                     text = text[:-3]
                 parsed_result = json.loads(text.strip())
             except Exception as e:
-                logger.warning(f"AI search parse error via OpenRouter, falling back: {e}")
+                logger.warning(f"Gemini API parse error via google.generativeai, falling back: {e}")
 
         if not parsed_result or not isinstance(parsed_result, dict):
             cat = "all"
@@ -1548,20 +1550,42 @@ def register_api_routes(web_app):
             strict_cap = bool(data.get('strict_budget_cap'))
             purchase_cap = float(data.get('purchase_allocation_etb') or (budget * 0.70))
 
-            api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+            api_key = os.environ.get("GEMINI_API_KEY")
             advice_result = None
 
             # Follow-up chat from Analysis View
             if chat_message:
-                history = data.get('history') or data.get('messages') or []
-                chat_reply = generate_advisor_response(
-                    prompt=chat_message,
-                    history=history,
-                    budget=budget
-                )
+                chat_reply = None
+                if api_key:
+                    try:
+                        system_chat = (
+                            "You are Adika Senior Financial Advisor in Addis Ababa. "
+                            "Speak as a human advisor in polite Amharic. Use እኔ/እኛ. "
+                            "Never mention AI, bot, LLM, or language model. "
+                            f"Client total budget: {budget:,.0f} ETB. "
+                            f"Max purchase allocation (70%): {purchase_cap:,.0f} ETB. "
+                            "Reply in 2-5 short Amharic sentences. Stay within the purchase allocation. "
+                            "Return ONLY plain Amharic text (no JSON)."
+                        )
+                        chat_reply = _gemini_chat(
+                            chat_message,
+                            api_key=api_key,
+                            system=system_chat,
+                            temperature=0.4,
+                            model="gemini-2.0-flash",
+                        )
+                    except Exception as e:
+                        logger.warning("advisor chat Gemini: %s", e)
+                if not chat_reply:
+                    chat_reply = (
+                        f"ጥያቄዎን ተረድተናል። እኛ በጠቅላላ {budget:,.0f} ብር በጀትዎ ውስጥ "
+                        f"ለግዢ እስከ {purchase_cap:,.0f} ብር (70%) እንመክራለን። "
+                        "የቀረው 15% ለታክስ/ክፍያ እና 15% እንደ ሪዘርቭ ይቆይ። ተጨማሪ ዝርዝር ከፈለጉ ይንገሩን።"
+                    )
+                chat_reply = re.sub(r'\bAI\b', 'እኛ', chat_reply, flags=re.I)
+                chat_reply = re.sub(r'\bbot\b', 'እኛ', chat_reply, flags=re.I)
                 return jsonify({
                     "status": "success",
-                    "reply": chat_reply,
                     "advice": {
                         "chat_reply": chat_reply,
                         "advice_amharic": chat_reply,
@@ -1579,7 +1603,7 @@ def register_api_routes(web_app):
 
             if api_key:
                 try:
-                    # Routed through _AdikaGeminiModel (OpenRouter API)
+                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
                     prompt = (
                         "You are the top Ethiopian automotive & real-estate financial investment advisor in Addis Ababa.\\n"
                         f"Evaluate this buyer inquiry under REAL Ethiopian market conditions:\\n"
@@ -1802,37 +1826,6 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_ai_advisor error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
-
-
-    @web_app.route('/api/advisor/chat', methods=['POST', 'OPTIONS'])
-    def api_advisor_chat():
-        """
-        Chat endpoint for Advisor with conversational history support.
-        """
-        if request.method == 'OPTIONS':
-            return ('', 204)
-        try:
-            data = request.json or {}
-            message = str(data.get('message') or data.get('prompt') or data.get('chat_message') or '').strip()
-            budget = float(data.get('budget_etb') or data.get('budget') or 2000000.0)
-            history = data.get('history') or data.get('messages') or []
-            reply = generate_advisor_response(prompt=message, history=history, budget=budget)
-            return jsonify({
-                "status": "success",
-                "reply": reply,
-                "message": reply
-            })
-        except Exception as e:
-            logger.error(f"api_advisor_chat error: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
-
-
-    @web_app.route('/api/advisor/analyze', methods=['POST', 'OPTIONS'])
-    def api_advisor_analyze():
-        """
-        Analysis endpoint for Advisor allocating 70/15/15 capital budget.
-        """
-        return api_ai_advisor()
 
 
     @web_app.route('/api/financial-insights', methods=['GET', 'POST', 'OPTIONS'])
@@ -2159,12 +2152,12 @@ def register_api_routes(web_app):
             telegram_user = data.get('telegram_user') or '@AdikaMarketplace'
             features = data.get('features') or data.get('description') or 'Automatic, Benzine, Clean condition, Full document'
 
-            api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+            api_key = os.environ.get("GEMINI_API_KEY")
             post_content = None
 
             if api_key:
                 try:
-                    # Routed through _AdikaGeminiModel (OpenRouter API)
+                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
                     prompt = (
                         "You are a master social media copywriter for an Ethiopian Telegram marketplace (@AdikaMarketplace).\\n"
                         "Create ultra-engaging, high-converting promotional posts for this item:\\n"
@@ -2242,12 +2235,12 @@ def register_api_routes(web_app):
                     {"sender": "Dawit", "text": "What is the final fixed cash price for the Tucson? Bank loan accepted?"}
                 ]
 
-            api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+            api_key = os.environ.get("GEMINI_API_KEY")
             summary_result = None
 
             if api_key:
                 try:
-                    # Routed through _AdikaGeminiModel (OpenRouter API)
+                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
                     prompt = (
                         f"You are an executive real-estate and automotive assistant summarizing buyer inquiries for broker '{broker_name}'.\\n"
                         f"Inbound Messages:\\n{json.dumps(messages, ensure_ascii=False)}\\n\\n"
@@ -2337,12 +2330,12 @@ def register_api_routes(web_app):
         
             today_eth = datetime.now().strftime("%Y-%m-%d")
 
-            api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+            api_key = os.environ.get("GEMINI_API_KEY")
             generated_contract = None
 
             if api_key:
                 try:
-                    # Routed through _AdikaGeminiModel (OpenRouter API)
+                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
                     prompt = (
                         "You are an expert Ethiopian legal counsel drafting a legally binding sales agreement under the Ethiopian Civil Code.\\n"
                         f"Contract Type: {contract_type}\\n"
@@ -2459,12 +2452,12 @@ def register_api_routes(web_app):
             car_1 = data.get('car_1') or 'Toyota Vitz 2018'
             car_2 = data.get('car_2') or 'Suzuki Dzire 2020'
 
-            api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+            api_key = os.environ.get("GEMINI_API_KEY")
             comparison = None
 
             if api_key:
                 try:
-                    # Routed through _AdikaGeminiModel (OpenRouter API)
+                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
                     prompt = (
                         "You are a leading Ethiopian automotive market expert and mechanic based in Addis Ababa.\\n"
                         f"Compare these two vehicles thoroughly for the Ethiopian market: '{car_1}' vs '{car_2}'.\\n\\n"
@@ -2845,10 +2838,11 @@ def register_api_routes(web_app):
             }), code
 
         def _ocr_image(uploaded_file, image_data):
-            api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+            api_key = os.environ.get("GEMINI_API_KEY")
             if not api_key:
                 return None, "no_key"
             try:
+                # google.generativeai optional (fallback inside _gemini_generate)
                 from PIL import Image
                 import io
                 import base64 as b64mod
@@ -2868,7 +2862,7 @@ def register_api_routes(web_app):
                     "null if unreadable. Never invent names."
                 )
                 model = _AdikaGeminiModel(
-                    model_name=OPENROUTER_MODEL,
+                    model_name="gemini-2.0-flash",
                     generation_config={"response_mime_type": "application/json", "temperature": 0.0},
                 )
                 res = model.generate_content([prompt, pil])
@@ -2947,7 +2941,7 @@ def register_api_routes(web_app):
                 parsed, st = _ocr_image(uploaded_file, image_data)
                 if st == "no_key":
                     return _fail(
-                        "ፎቶ ለማንበብ OPENROUTER_API_KEY ያስፈልጋል። የሰነድ ቁጥሩን በጽሁፍ ያስገቡ።",
+                        "ፎቶ ለማንበብ GEMINI_API_KEY ያስፈልጋል። የሰነድ ቁጥሩን በጽሁፍ ያስገቡ።",
                         400,
                     )
                 if not parsed or parsed.get("is_valid_format") is False:
@@ -3036,11 +3030,12 @@ def register_api_routes(web_app):
                     }
                 })
 
-            api_key = (OPENROUTER_API_KEY or os.environ.get("OPENROUTER_API_KEY"))
+            api_key = os.environ.get("GEMINI_API_KEY")
             analysis = None
 
             if api_key and (diagnostic_text or image_data):
                 try:
+                    # google.generativeai optional (fallback inside _gemini_generate)
                     from PIL import Image
                     import io
                     import base64
