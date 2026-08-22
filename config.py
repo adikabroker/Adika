@@ -24,7 +24,7 @@ BOT_TOKEN = (
 ).strip()
 
 OPENROUTER_API_KEY = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
-OPENROUTER_MODEL = (os.environ.get("OPENROUTER_MODEL") or "meta-llama/llama-3.3-70b-instruct").strip()
+OPENROUTER_MODEL = (os.environ.get("OPENROUTER_MODEL") or "qwen/qwen3-30b-a3b-instruct").strip()
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "0")
 
 if not OPENROUTER_API_KEY:
