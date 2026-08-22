@@ -23,15 +23,12 @@ BOT_TOKEN = (
     or ""
 ).strip()
 
-GROQ_API_KEY = (os.environ.get("GROQ_API_KEY") or "").strip()
-GROQ_MODEL = (os.environ.get("GROQ_MODEL") or os.environ.get("GROQ_MODEL_NAME") or "llama-3.3-70b-versatile").strip()
-GROQ_MODEL_NAME = GROQ_MODEL  # alias
-
-GEMINI_API_KEY = (os.environ.get("GEMINI_API_KEY") or "").strip()
+OPENROUTER_API_KEY = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+OPENROUTER_MODEL = (os.environ.get("OPENROUTER_MODEL") or "google/gemini-2.0-flash-001").strip()
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "0")
 
-if not GROQ_API_KEY and not GEMINI_API_KEY:
-    logger.warning("Neither GROQ_API_KEY nor GEMINI_API_KEY is configured!")
+if not OPENROUTER_API_KEY:
+    logger.warning("OPENROUTER_API_KEY is not configured! Please provide OPENROUTER_API_KEY in environment variables.")
 
 # Primary: PostgreSQL / Supabase
 DATABASE_URL = (
