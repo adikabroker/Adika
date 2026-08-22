@@ -36,8 +36,6 @@ if not OPENROUTER_API_KEY:
     raise ValueError("CRITICAL ERROR: OPENROUTER_API_KEY በ .env ፋይል ውስጥ አልተገኘም።")
 ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "0")
 
-if not GROQ_API_KEY and not GEMINI_API_KEY:
-    logger.warning("Neither GROQ_API_KEY nor GEMINI_API_KEY is configured!")
 
 # Primary: PostgreSQL / Supabase
 DATABASE_URL = (
