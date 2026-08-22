@@ -31,25 +31,45 @@ try:
 except ImportError:
     OpenAI = None
 
-SYSTEM_PROMPT = """You are a highly intelligent, articulate, and friendly Ethiopian Senior Financial Advisor & Strategist. You converse with clients as a natural human expert would in Addis Ababa.
+SYSTEM_PROMPT = """You are Adika's Senior Financial Advisor.
 
-CORE EXECUTION INSTRUCTIONS:
-1. INTERNAL REASONING: Process logic, calculations, and financial depth in English internally to maintain maximum intelligence.
-2. NATURAL AMHARIC OUTPUT: Express your final output in flawless, fluent, warm, and highly natural Amharic (ንጹህ፣ የተከበረ እና የተፈጥሮ የሰውኛ አማርኛ).
-3. NO ROBOTIC TRANSLATIONS: NEVER do literal word-for-word translations from English. Avoid stiff phrases like "የፋይናንስ መምህራን" or awkward literal terms. Use realistic Ethiopian business and daily vocabulary.
-4. FREEDOM & CONVERSATIONAL FLOW: Be open, welcoming, direct, and engaging. Talk like an approachable human consultant in a real meeting—not a rigid machine or an encyclopedia.
-5. ZERO REPETITION: Never repeat sentences, looping phrases, or dry templates."""
+WORKFLOW INSTRUCTIONS:
+1. Wrap your internal English analysis and thought process inside <thought>...</thought> tags.
+2. Wrap your final, fluent, natural Amharic response inside <response>...</response> tags.
+
+AMHARIC OUTPUT RULES (Inside <response>):
+- Write purely in natural, executive-level Amharic as spoken by Ethiopian financial strategists.
+- Do NOT include any English translation notes, draft corrections, or explanations of your translation choices."""
+
+
+def extract_ai_response(raw_ai_output: str) -> str:
+    """Extract strictly the content inside <response> tags with fallback cleanup."""
+    if not raw_ai_output:
+        return ""
+    response_text = raw_ai_output
+    match = re.search(r'<response>(.*?)</response>', raw_ai_output, re.DOTALL)
+    if match:
+        response_text = match.group(1).strip()
+    else:
+        # Fallback: Clean up accidental thought leaks or notes if tags are missed
+        response_text = re.sub(r'<thought>.*?</thought>', '', response_text, flags=re.DOTALL)
+        response_text = re.sub(r'<response>', '', response_text, flags=re.IGNORECASE)
+        response_text = re.sub(r'</response>', '', response_text, flags=re.IGNORECASE)
+        response_text = re.sub(r'\(.*?note.*?\)', '', response_text, flags=re.IGNORECASE)
+        response_text = re.sub(r'corrected response.*?:', '', response_text, flags=re.IGNORECASE)
+
+    return response_text.strip()
 
 
 def _openrouter_generate(
     prompt,
     system=None,
     chat_history=None,
-    temperature=0.65,
+    temperature=0.5,
     repetition_penalty=1.2,
-    frequency_penalty=0.4,
-    presence_penalty=0.3,
-    max_tokens=900,
+    frequency_penalty=0.3,
+    presence_penalty=0.2,
+    max_tokens=1200,
     json_mode=False,
     image_bytes=None,
     mime_type="image/jpeg",
@@ -154,24 +174,25 @@ def _openrouter_generate(
 
 
 def get_chat_response(user_message: str, chat_history: list = None) -> str:
-    """Active live LLM chat generation strictly via OpenRouter API."""
+    """Active live LLM chat generation strictly via OpenRouter API with XML response parsing."""
     if not user_message or not str(user_message).strip():
         return "እንኳን ደህና መጡ። እኔ የ Adika Senior Financial Advisor & Strategist ነኝ። ስለ ሪል እስቴት ኢንቨስትመንት፣ የካፒታል ምደባ፣ የገበያ ትንተና ወይም የፋይናንስ ስትራቴጂ ምን መወያየት ይፈልጋሉ?"
 
     try:
-        reply = _openrouter_generate(
+        raw_reply = _openrouter_generate(
             user_message,
             system=SYSTEM_PROMPT,
             chat_history=chat_history,
-            temperature=0.65,
+            temperature=0.5,
             repetition_penalty=1.2,
-            frequency_penalty=0.4,
-            presence_penalty=0.3,
-            max_tokens=900,
+            max_tokens=1200,
             model="meta-llama/llama-3.3-70b-instruct",
         )
-        if reply and str(reply).strip():
-            return str(reply).strip()
+        if raw_reply and str(raw_reply).strip():
+            parsed_reply = extract_ai_response(str(raw_reply).strip())
+            if parsed_reply:
+                return parsed_reply
+            return str(raw_reply).strip()
     except Exception as e:
         logger.error(f"OpenRouter chat failure: {e}")
 
