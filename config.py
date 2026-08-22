@@ -26,7 +26,7 @@ TELEGRAM_BOT_TOKEN = BOT_TOKEN
 # OpenRouter (primary AI — no Groq/Gemini for chat)
 OPENROUTER_API_KEY = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
 OPENROUTER_MODEL = (
-    os.environ.get("OPENROUTER_MODEL") or "qwen/qwen-2.5-32b-instruct"
+    os.environ.get("OPENROUTER_MODEL") or "deepseek/deepseek-chat"
 ).strip()
 
 # Optional legacy keys (unused by chat; kept so env does not break imports)
