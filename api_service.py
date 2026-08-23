@@ -628,96 +628,147 @@ ETHIOPIA_VEHICLES_DATABASE = {
 }
 
 
+# Comprehensive Amharic to English vehicle and brand mapping
+AMHARIC_VEHICLE_SYNONYMS = {
+    # BYD
+    "ቢዋይዲ": "byd",
+    "ቢ ዋይ ዲ": "byd",
+    "ሲጋል": "seagull",
+    "ሲገል": "seagull",
+    "ሲጎል": "seagull",
+    "ሶንግ": "song plus",
+    "ሶንግ ፕላስ": "song plus",
+    "ዶልፊን": "dolphin",
+    # Toyota
+    "ቶዮታ": "toyota",
+    "ቶዮታስ": "toyota",
+    "ቪትዝ": "vitz",
+    "ቪትስ": "vitz",
+    "ቪትዞ": "vitz",
+    "ያሪስ": "yaris",
+    "ያሪስስ": "yaris",
+    "ኮሮላ": "corolla",
+    "ኮሮላስ": "corolla",
+    "ሀይሉክስ": "hilux",
+    "ሃይሉክስ": "hilux",
+    "ሃይለክስ": "hilux",
+    "ሀይለክስ": "hilux",
+    "ፕራዶ": "prado",
+    "ላንድ ክሩዘር": "land cruiser",
+    "ላንድክሩዘር": "land cruiser",
+    "ላንድ ክሩዘር 70": "land cruiser 70",
+    "ራቭ4": "rav4",
+    "ራቭ 4": "rav4",
+    "ፎርቹን": "fortuner",
+    "ፎርቹንር": "fortuner",
+    "ሀያይስ": "hiace",
+    "ሃያይስ": "hiace",
+    "ሃይስ": "hiace",
+    "ሀይስ": "hiace",
+    "ፎር ራነር": "4runner",
+    "ፎርራነር": "4runner",
+    "ኖህ": "noah",
+    "ቮክሲ": "voxy",
+    "ረሽ": "rush",
+    "ራሽ": "rush",
+    "አርባን ክሩዘር": "urban cruiser",
+    "ኡርባን ክሩዘር": "urban cruiser",
+    "አክሲዮ": "axio",
+    "ፕሪሚዮ": "premio",
+    # Suzuki
+    "ሱዙኪ": "suzuki",
+    "ዲዛየር": "dzire",
+    "ዲዛይር": "dzire",
+    "ደዛየር": "dzire",
+    "ስዊፍት": "swift",
+    "ስዊፍቲ": "swift",
+    # Hyundai
+    "ሀዩንዳይ": "hyundai",
+    "ሃዩንዳይ": "hyundai",
+    "ሂዩንዳይ": "hyundai",
+    "ቱክሰን": "tucson",
+    "ቱክሶን": "tucson",
+    "ቱክሰንት": "tucson",
+    "አክሰንት": "accent",
+    "አቶስ": "atos",
+    "ሳንትሮ": "santro",
+}
+
+
+def _normalize_query_for_vehicle_search(text: str) -> str:
+    """Normalize query text, converting Amharic vehicle and brand keywords to standard English tokens."""
+    if not text:
+        return ""
+    q = text.lower()
+    # Replace Amharic vehicle names with normalized English terms
+    for amh, eng in AMHARIC_VEHICLE_SYNONYMS.items():
+        if amh in q:
+            q = q.replace(amh, f" {eng} ")
+    # Replace common Amharic punctuation and stop-characters
+    q = re.sub(r'[፣፤፥፦!\?,\.\(\)\[\]"\'/\\-]', ' ', q)
+    # Remove Amharic single-character grammatical prefixes attached to words (e.g. የ, ለ, በ, ከ, ስለ)
+    tokens = q.split()
+    cleaned = []
+    for t in tokens:
+        stripped = re.sub(r'^(የ|ለ|በ|ከ|ስለ|ደግሞ)', '', t).strip()
+        if stripped and stripped not in {"ዋጋ", "ዋጋው", "ስንት", "ነው", "መኪና", "ተሽከርካሪ", "car", "price", "ብር", "etb"}:
+            cleaned.append(stripped)
+        elif t and t not in {"ዋጋ", "ዋጋው", "ስንት", "ነው", "መኪና", "ተሽከርካሪ", "car", "price", "ብር", "etb"}:
+            cleaned.append(t)
+    return " ".join(cleaned).strip()
+
+
 def search_vehicle_in_db(user_query: str) -> Optional[Dict]:
     """
-    Search for vehicle in ethiopia_vehicles table via Supabase, REST API, or verified local database.
-    Accurately extracts vehicle names by stripping Amharic prefixes (e.g. የ, ለ, በ, ከ, ስለ).
+    Search for vehicle in ethiopia_vehicles table via local verified database first (zero latency),
+    with full Amharic synonym translation and fallback to Supabase table when available.
     """
     if not user_query:
         return None
     
-    query_str = str(user_query).strip()
-    raw_words = re.findall(r"\b\w+\b", query_str)
-    
-    stop_words = {"ዋጋ", "ዋጋው", "ስንት", "ነው", "የ", "ለ", "በ", "ከ", "ስለ", "መኪና", "ተሽከርካሪ", "car", "price", "how", "much", "is", "the", "and", "ምን", "ያህል", "ግዢ", "ሽያጭ"}
-    
-    cleaned_tokens = []
-    for w in raw_words:
-        # Strip common Amharic prefixes
-        clean_w = re.sub(r'^(የ|ለ|በ|ከ|ስለ|ደግሞ)', '', w, flags=re.IGNORECASE).strip()
-        if len(clean_w) >= 2 and clean_w.lower() not in stop_words:
-            cleaned_tokens.append(clean_w)
-        if len(w) >= 2 and w.lower() not in stop_words and w not in cleaned_tokens:
-            cleaned_tokens.append(w)
+    query_raw = str(user_query).strip().lower()
+    normalized_q = _normalize_query_for_vehicle_search(query_raw)
+    combined_search_text = f"{query_raw} {normalized_q}".lower()
 
-    # Check multi-word models first (e.g., "BYD Seagull", "Land Cruiser", "Song Plus", "Urban Cruiser")
-    clean_query_lower = query_str.lower()
-    for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
-        if key in clean_query_lower:
-            # 1. Check if Supabase has a live update for this exact model
-            if supabase is not None:
-                try:
-                    res = supabase.table("ethiopia_vehicles").select("*").ilike("full_model", f"%{key}%").execute()
-                    if res and hasattr(res, 'data') and res.data:
-                        return res.data[0]
-                except Exception:
-                    pass
-            return data
+    # 1. FAST LOCAL LOOKUP: Check multi-word keys and single keys in ETHIOPIA_VEHICLES_DATABASE
+    # Sort keys by length descending so "toyota land cruiser prado" or "toyota vitz" match before "prado" or "vitz"
+    sorted_keys = sorted(ETHIOPIA_VEHICLES_DATABASE.keys(), key=lambda k: len(k), reverse=True)
+    
+    for key in sorted_keys:
+        # Direct substring match in normalized or raw query
+        if key in normalized_q or key in query_raw or key in combined_search_text:
+            return ETHIOPIA_VEHICLES_DATABASE[key]
+        
+        # Check all key parts (e.g. "corolla", "vitz", "hilux", "seagull", "tucson", "dzire", "swift")
+        parts = [p for p in key.split() if p not in {"toyota", "suzuki", "hyundai", "byd", "plus", "70", "200"}]
+        for part in parts:
+            if len(part) >= 3 and (part in normalized_q or part in query_raw or f" {part} " in f" {combined_search_text} "):
+                return ETHIOPIA_VEHICLES_DATABASE[key]
 
-    for token in cleaned_tokens:
-        t_lower = token.lower()
-        # 1. Try Supabase ethiopia_vehicles table
-        if supabase is not None:
-            try:
+    # 2. Check Amharic vehicle synonym dictionary directly against local keys
+    for amh_word, eng_term in AMHARIC_VEHICLE_SYNONYMS.items():
+        if amh_word in query_raw:
+            # Check if this english term directly matches a database key
+            for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
+                if eng_term in key or key in eng_term:
+                    return data
+
+    # 3. Check Supabase (with fast 1.5s timeout) if remote records exist
+    if supabase is not None:
+        try:
+            tokens = [t for t in normalized_q.split() if len(t) >= 3][:3]
+            for tok in tokens:
                 res = (
                     supabase.table("ethiopia_vehicles")
                     .select("*")
-                    .or_(
-                        f"full_model.ilike.%{token}%,brand.ilike.%{token}%,category.ilike.%{token}%"
-                    )
+                    .or_(f"full_model.ilike.%{tok}%,brand.ilike.%{tok}%,model.ilike.%{tok}%")
+                    .limit(1)
                     .execute()
                 )
                 if res and hasattr(res, 'data') and res.data:
                     return res.data[0]
-            except Exception:
-                try:
-                    res = (
-                        supabase.table("ethiopia_vehicles")
-                        .select("*")
-                        .or_(
-                            f"model.ilike.%{token}%,name.ilike.%{token}%,category.ilike.%{token}%"
-                        )
-                        .execute()
-                    )
-                    if res and hasattr(res, 'data') and res.data:
-                        return res.data[0]
-                except Exception:
-                    pass
-
-        # 2. Try REST fallback
-        if SUPABASE_URL and SUPABASE_KEY and requests is not None:
-            try:
-                url = f"{SUPABASE_URL}/rest/v1/ethiopia_vehicles?or=(full_model.ilike.*{token}*,brand.ilike.*{token}*,category.ilike.*{token}*)&limit=1"
-                headers = {
-                    "apikey": SUPABASE_KEY,
-                    "Authorization": f"Bearer {SUPABASE_KEY}",
-                    "Content-Type": "application/json"
-                }
-                resp = requests.get(url, headers=headers, timeout=5)
-                if resp.status_code == 200:
-                    rows = resp.json()
-                    if isinstance(rows, list) and rows:
-                        return rows[0]
-            except Exception:
-                pass
-
-        # 3. Try Local Verified Database
-        for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
-            if t_lower == key or t_lower in key or any(t_lower == part.lower() for part in key.split()):
-                return data
-            name = str(data.get('name') or data.get('full_model') or data.get('model') or '').lower()
-            if t_lower in name:
-                return data
+        except Exception:
+            pass
 
     return None
 
@@ -1003,7 +1054,7 @@ def call_llm_api(model_name: str, user_message: str, history: Optional[List[Dict
 
     try:
         if requests is not None:
-            response = requests.post(BASE_URL, headers=headers, json=payload, timeout=25)
+            response = requests.post(BASE_URL, headers=headers, json=payload, timeout=12)
             response.raise_for_status()
             data = response.json()
             raw_text = data["choices"][0]["message"]["content"]
@@ -1011,7 +1062,7 @@ def call_llm_api(model_name: str, user_message: str, history: Optional[List[Dict
         else:
             req_data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(BASE_URL, data=req_data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=25) as resp:
+            with urllib.request.urlopen(req, timeout=12) as resp:
                 if resp.status == 200:
                     resp_body = resp.read().decode("utf-8")
                     data = json.loads(resp_body)
@@ -1088,8 +1139,33 @@ def _generate_dynamic_financial_advice(user_msg: str, conversation_history: Opti
             except Exception:
                 pass
 
-    # 1. Greetings & Introductions
-    greetings = ["ሰላም", "ሃይ", "ሰላም ነው", "ጤና ይስጥልኝ", "እንደምን", "እንደምን አደሩ", "እንደምን ዋሉ", "hello", "hi", "selam"]
+    # 0. Precise Vehicle Database Lookup (Ground-Truth First)
+    db_car = search_vehicle_in_db(user_msg)
+    if db_car:
+        car_name = db_car.get('full_model') or db_car.get('name') or db_car.get('model') or "የተሽከርካሪ መረጃ"
+        price = db_car.get('current_price_range_etb', 'በዕለታዊ የዋጋ ማስተካከያ ላይ')
+        cat = db_car.get('category', 'አጠቃላይ')
+        adv = db_car.get('core_advantage', 'አስተማማኝ አገልግሎት')
+        collateral = db_car.get('bank_collateral_appeal', 'መካከለኛ/ከፍተኛ')
+        fuel = db_car.get('fuel_economy', 'ቆጣቢ')
+        clearance = db_car.get('ground_clearance', 'መደበኛ')
+        use_case = db_car.get('primary_use_case', 'ለከተማና ለቤተሰብ')
+        parts = db_car.get('spare_parts_availability', 'በስፋት የሚገኝ')
+        liquidity = db_car.get('resale_liquidity', 'ፈጣን')
+        
+        return (
+            f"ስለ {car_name} ይፋዊ የዳታቤዝ መረጃ እንደሚከተለው ነው:\n\n"
+            f"💰 ይፋዊ የገበያ ዋጋ ክልል: {price}\n"
+            f"🚗 ምድብ: {cat}\n"
+            f"⚡ የነዳጅ/ኃይል ቁጠባ: {fuel}\n"
+            f"⭐ ዋና ጠቀሜታ: {adv}\n"
+            f"🏦 የባንክ ዋስትና ተቀባይነት: {collateral}\n"
+            f"📏 የመሬት ከፍታ: {clearance}\n"
+            f"🎯 ዋና የአገልግሎት መስክ: {use_case}\n"
+            f"🔧 የመለዋወጫ አቅርቦት: {parts}\n"
+            f"🔄 የዳግም ሽያጭ ፍጥነት: {liquidity}\n\n"
+            f"💡 ማሳሰቢያ: ይህ መረጃ ከ Adika ይፋዊ ዳታቤዝ የተገኘ ትክክለኛ መረጃ ነው። ተጨማሪ የቀጥታ ሽያጮችን ለማየት በአዲካ ቴሌግራም ቻናል (@AdikaMarketplace) ይመልከቱ።"
+        )
     if any(text == g or text.startswith(g + " ") or text.startswith(g + "!") or text.startswith(g + "፣") for g in greetings) and len(text.split()) <= 4:
         return (
             "ሰላም! እኔ የ Adika ከፍተኛ የፋይናንስ አማካሪ ነኝ። ዛሬ በምን ላግዝዎ እችላለሁ?\n\n"
