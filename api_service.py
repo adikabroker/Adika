@@ -191,22 +191,360 @@ except Exception as _sb_err:
 
 # Verified Local Ground-Truth Database for Ethiopia Vehicles (Matches ethiopia_vehicles table schema)
 ETHIOPIA_VEHICLES_DATABASE = {
+    "byd seagull": {
+        "name": "BYD Seagull EV",
+        "full_model": "Seagull",
+        "brand": "BYD",
+        "category": "Compact Electric Hatchback",
+        "current_price_range_etb": "2,800,000 - 4,200,000 ETB",
+        "core_advantage": "በጣም አነስተኛ የመነሻ ዋጋ፣ ዜሮ የነዳጅ ወጪ፣ የ5% ዝቅተኛ ጉምሩክ ቀረጥ እና ዘመናዊ ገጽታ",
+        "bank_collateral_appeal": "ጥሩ የባንክ ዋስትና ተቀባይነት (Green Financing)",
+        "fuel_economy": "305 - 405 KM በአንድ ሙሉ ቻርጅ (~80-120 ብር የኤሌክትሪክ ወጪ)",
+        "ground_clearance": "150 mm",
+        "primary_use_case": "ለከተማ ውስጥ አነስተኛ ወጪ ጉዞ እና ለግል/ቤተሰብ አገልግሎት",
+        "spare_parts_availability": "3.8/5 — በአዲስ አበባ የኤሌክትሪክ መኪና ጋራዦች በስፋት እየተስፋፋ",
+        "resale_liquidity": "በከተማ ወጣቶችና ባለሙያዎች ዘንድ እጅግ ተወዳጅና ፈጣን ሽያጭ"
+    },
+    "seagull": {
+        "name": "BYD Seagull EV",
+        "full_model": "Seagull",
+        "brand": "BYD",
+        "category": "Compact Electric Hatchback",
+        "current_price_range_etb": "2,800,000 - 4,200,000 ETB",
+        "core_advantage": "በጣም አነስተኛ የመነሻ ዋጋ፣ ዜሮ የነዳጅ ወጪ፣ የ5% ዝቅተኛ ጉምሩክ ቀረጥ እና ዘመናዊ ገጽታ",
+        "bank_collateral_appeal": "ጥሩ የባንክ ዋስትና ተቀባይነት (Green Financing)",
+        "fuel_economy": "305 - 405 KM በአንድ ሙሉ ቻርጅ (~80-120 ብር የኤሌክትሪክ ወጪ)",
+        "ground_clearance": "150 mm",
+        "primary_use_case": "ለከተማ ውስጥ አነስተኛ ወጪ ጉዞ እና ለግል/ቤተሰብ አገልግሎት",
+        "spare_parts_availability": "3.8/5 — በአዲስ አበባ የሚገኝ",
+        "resale_liquidity": "በከተማ ወጣቶችና ባለሙያዎች ዘንድ ተወዳጅ"
+    },
+    "byd song plus": {
+        "name": "BYD Song Plus (EV / DM-i Hybrid)",
+        "full_model": "Song Plus (EV / DM-i Hybrid)",
+        "brand": "BYD",
+        "category": "Compact / Mid-Size Electric / Hybrid SUV",
+        "current_price_range_etb": "5,500,000 - 8,500,000 ETB",
+        "core_advantage": "ፕሪሚየም የውስጥ ምቾት፣ የላቀ የኤሌክትሪክ/ሀይብሪድ ቴክኖሎጂ እና ረጅም የጉዞ ርቀት",
+        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና ተቀባይነት",
+        "fuel_economy": "EV 500+ KM / DM-i 1000+ KM Comprehensive Range",
+        "ground_clearance": "170 mm",
+        "primary_use_case": "ለቤተሰብ ምቾት፣ ለከተማና ለክልል የረጅም ጉዞ",
+        "spare_parts_availability": "4/5 — በአዲስ አበባ በስፋት የሚገኝ",
+        "resale_liquidity": "ከፍተኛ ተፈላጊነት ያለው"
+    },
+    "song plus": {
+        "name": "BYD Song Plus (EV / DM-i Hybrid)",
+        "full_model": "Song Plus (EV / DM-i Hybrid)",
+        "brand": "BYD",
+        "category": "Compact / Mid-Size Electric / Hybrid SUV",
+        "current_price_range_etb": "5,500,000 - 8,500,000 ETB",
+        "core_advantage": "ፕሪሚየም የውስጥ ምቾት እና የላቀ የኤሌክትሪክ/ሀይብሪድ ቴክኖሎጂ",
+        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና ተቀባይነት",
+        "fuel_economy": "EV 500+ KM / DM-i 1000+ KM",
+        "ground_clearance": "170 mm",
+        "primary_use_case": "ለቤተሰብ ምቾት እና ለረጅም ጉዞ",
+        "spare_parts_availability": "4/5",
+        "resale_liquidity": "በጣም ከፍተኛ"
+    },
+    "byd dolphin": {
+        "name": "BYD Dolphin EV",
+        "full_model": "Dolphin",
+        "brand": "BYD",
+        "category": "Electric Compact Hatchback (EV)",
+        "current_price_range_etb": "2,700,000 - 3,600,000 ETB",
+        "core_advantage": "ዜሮ የነዳጅ ወጪ፣ የ5% ዝቅተኛ ጉምሩክ ቀረጥ ማበረታቻ እና የላቀ Blade Battery",
+        "bank_collateral_appeal": "በአረንጓዴ ብድር ፖሊሲዎች (Green Financing) ከፍተኛ ተቀባይነት",
+        "fuel_economy": "400 - 420 KM በአንድ ሙሉ ቻርጅ",
+        "ground_clearance": "145 mm",
+        "primary_use_case": "ለዕለታዊ የከተማ ቆጣቢ መጓጓዣ እና ዘመናዊ ራይድ",
+        "spare_parts_availability": "3.8/5",
+        "resale_liquidity": "በከፍተኛ ፍጥነት እያደገ ያለ ተፈላጊነት"
+    },
+    "toyota land cruiser 70": {
+        "name": "Toyota Land Cruiser 70 Series (Hardtop/Troop)",
+        "full_model": "Land Cruiser 70 Series (Hardtop/Troop)",
+        "brand": "Toyota",
+        "category": "Full-Size Rugged Utility SUV",
+        "current_price_range_etb": "4,500,000 - 12,000,000 ETB",
+        "core_advantage": "ለኢትዮጵያ አስቸጋሪ መንገዶች የማይበገር ጠንካራ ብረት እና አስተማማኝ 4x4",
+        "bank_collateral_appeal": "ፕራይም ደረጃ የባንክ ዋስትና",
+        "fuel_economy": "8 - 10 KM/L (Diesel)",
+        "ground_clearance": "230 mm",
+        "primary_use_case": "ለገጠር ፕሮጀክት፣ ለማዕድን፣ ለቱሪዝም እና ለአስቸጋሪ መንገዶች",
+        "spare_parts_availability": "5/5 — በሁሉም ቦታ የሚገኝ",
+        "resale_liquidity": "እጅግ ከፍተኛ የገበያ ዋጋ ጠባቂነት"
+    },
+    "toyota land cruiser prado": {
+        "name": "Toyota Land Cruiser Prado (TX/VX/VXL)",
+        "full_model": "Land Cruiser Prado (TX/VX/VXL)",
+        "brand": "Toyota",
+        "category": "Mid-to-Full Size Luxury SUV",
+        "current_price_range_etb": "8,000,000 - 22,000,000 ETB",
+        "core_advantage": "የላቀ የቅንጦት ምቾት፣ የማይበገር ጥንካሬ እና በኢትዮጵያ ገበያ ላይ ከፍተኛ ክብር",
+        "bank_collateral_appeal": "ፕሪሚየም የባንክ ዋስትና ተቀባይነት",
+        "fuel_economy": "9 - 12 KM/L",
+        "ground_clearance": "215 mm",
+        "primary_use_case": "ለስራ አስፈፃሚዎች፣ ለቤተሰብ ክብር እና ለረጅም የሀገር አቋራጭ ጉዞ",
+        "spare_parts_availability": "5/5 — የተትረፈረፈ መለዋወጫ",
+        "resale_liquidity": "እንደ ጥሬ ገንዘብ የሚቀየር ከፍተኛ ተፈላጊነት"
+    },
+    "prado": {
+        "name": "Toyota Land Cruiser Prado (TX/VX/VXL)",
+        "full_model": "Land Cruiser Prado (TX/VX/VXL)",
+        "brand": "Toyota",
+        "category": "Mid-to-Full Size Luxury SUV",
+        "current_price_range_etb": "8,000,000 - 22,000,000 ETB",
+        "core_advantage": "የላቀ የቅንጦት ምቾት፣ የማይበገር ጥንካሬ እና ከፍተኛ ክብር",
+        "bank_collateral_appeal": "ፕሪሚየም የባንክ ዋስትና ተቀባይነት",
+        "fuel_economy": "9 - 12 KM/L",
+        "ground_clearance": "215 mm",
+        "primary_use_case": "ለስራ አስፈፃሚዎች እና ለቤተሰብ ክብር",
+        "spare_parts_availability": "5/5",
+        "resale_liquidity": "እጅግ ፈጣን ሽያጭ"
+    },
+    "toyota hilux": {
+        "name": "Toyota Hilux Double Cab / Single Cab",
+        "full_model": "Hilux Double Cab / Single Cab",
+        "brand": "Toyota",
+        "category": "Pickup Truck / Commercial Workhorse",
+        "current_price_range_etb": "3,500,000 - 16,000,000 ETB",
+        "core_advantage": "ለኢትዮጵያ መንገዶች የማይበገር ጥንካሬ እና ከፍተኛ የመጫን አቅም",
+        "bank_collateral_appeal": "በጣም ከፍተኛ የንግድና የባንክ ዋስትና",
+        "fuel_economy": "10 - 12 KM/L (Diesel)",
+        "ground_clearance": "220 mm",
+        "primary_use_case": "ለኮንስትራክሽን፣ ለእርሻ እና ለረጅም የፕሮጀክት ስራዎች",
+        "spare_parts_availability": "5/5 — በሀገሪቱ ባሉ ሁሉም አካባቢዎች የሚገኝ",
+        "resale_liquidity": "ወዲያውኑ የሚሸጥ ቋሚ የገበያ ተፈላጊነት"
+    },
+    "hilux": {
+        "name": "Toyota Hilux Double Cab / Single Cab",
+        "full_model": "Hilux Double Cab / Single Cab",
+        "brand": "Toyota",
+        "category": "Pickup Truck / Commercial Workhorse",
+        "current_price_range_etb": "3,500,000 - 16,000,000 ETB",
+        "core_advantage": "የማይበገር ጥንካሬ እና ከፍተኛ የመጫን አቅም",
+        "bank_collateral_appeal": "በጣም ከፍተኛ የንግድና የባንክ ዋስትና",
+        "fuel_economy": "10 - 12 KM/L (Diesel)",
+        "ground_clearance": "220 mm",
+        "primary_use_case": "ለኮንስትራክሽን፣ ለእርሻ እና ለንግድ",
+        "spare_parts_availability": "5/5",
+        "resale_liquidity": "ወዲያውኑ የሚሸጥ"
+    },
+    "toyota corolla": {
+        "name": "Toyota Corolla Sedan (NZE / Executive)",
+        "full_model": "Corolla Sedan (NZE / Executive)",
+        "brand": "Toyota",
+        "category": "Compact Sedan",
+        "current_price_range_etb": "1,800,000 - 4,500,000 ETB",
+        "core_advantage": "በኢትዮጵያ ገበያ ውስጥ ተወዳዳሪ የሌለው ዝና፣ ምቾት እና የሞተር ጥንካሬ",
+        "bank_collateral_appeal": "ፕራይም ደረጃ የባንክ ዋስትና",
+        "fuel_economy": "13 - 15 KM/L",
+        "ground_clearance": "155 mm",
+        "primary_use_case": "ለቤተሰብ ክብር፣ ለረጅም የክልል ጉዞዎች እና ለድርጅት ስራዎች",
+        "spare_parts_availability": "5/5 — በማንኛውም የሀገሪቱ ክፍል በቀላሉ የሚገኝ",
+        "resale_liquidity": "እንደ ጥሬ ገንዘብ የሚቆጠር ፈጣን ሽያጭ"
+    },
+    "corolla": {
+        "name": "Toyota Corolla Sedan (NZE / Executive)",
+        "full_model": "Corolla Sedan (NZE / Executive)",
+        "brand": "Toyota",
+        "category": "Compact Sedan",
+        "current_price_range_etb": "1,800,000 - 4,500,000 ETB",
+        "core_advantage": "ተወዳዳሪ የሌለው ዝና እና የሞተር ጥንካሬ",
+        "bank_collateral_appeal": "ፕራይም ደረጃ የባንክ ዋስትና",
+        "fuel_economy": "13 - 15 KM/L",
+        "ground_clearance": "155 mm",
+        "primary_use_case": "ለቤተሰብ እና ለረጅም ጉዞ",
+        "spare_parts_availability": "5/5",
+        "resale_liquidity": "እጅግ ፈጣን ሽያጭ"
+    },
     "toyota vitz": {
-        "name": "Toyota Vitz (2000 - 2008 / 2015+)",
-        "model": "Vitz",
-        "category": "Compact Hatchback / City Car",
-        "current_price_range_etb": "1,400,000 - 2,200,000 ETB (እንደ ሞዴል ዓመትና ይዞታ)",
+        "name": "Toyota Vitz / Yaris Hatchback",
+        "full_model": "Vitz / Yaris Hatchback",
+        "brand": "Toyota",
+        "category": "Subcompact Hatchback",
+        "current_price_range_etb": "1,300,000 - 2,800,000 ETB",
         "core_advantage": "በጣም ቀላል የጥገና ሁኔታ እና በየቦታው የሚገኝ የተትረፈረፈ መለዋወጫ",
         "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና ተቀባይነት (High Collateral Value)",
         "fuel_economy": "16 - 18 KM/L (እጅግ ቆጣቢ 1.0L - 1.3L VVT-i)",
-        "ground_clearance": "140 mm (ለአስፓልትና ለቀላል የከተማ መንገዶች)",
+        "ground_clearance": "140 mm",
         "primary_use_case": "ለከተማ ዕለታዊ ትራንስፖርት፣ ለቤተሰብ እና ለራይድ (Ride) ስራ",
-        "spare_parts_availability": "5/5 — በአዲስ አበባና በሁሉም ክልሎች በሙሉ ዋጋ ተደራሽ",
-        "resale_liquidity": "እጅግ ፈጣን ሽያጭ (High Liquidity) — በገበያ ላይ ወዲያውኑ የሚቀየር"
+        "spare_parts_availability": "5/5 — በሁሉም ክልሎች በሙሉ ዋጋ ተደራሽ",
+        "resale_liquidity": "እጅግ ፈጣን ሽያጭ — በገበያ ላይ ወዲያውኑ የሚቀየር"
+    },
+    "vitz": {
+        "name": "Toyota Vitz / Yaris Hatchback",
+        "full_model": "Vitz / Yaris Hatchback",
+        "brand": "Toyota",
+        "category": "Subcompact Hatchback",
+        "current_price_range_etb": "1,300,000 - 2,800,000 ETB",
+        "core_advantage": "ቀላል የጥገና ሁኔታ እና የተትረፈረፈ መለዋወጫ",
+        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና ተቀባይነት",
+        "fuel_economy": "16 - 18 KM/L",
+        "ground_clearance": "140 mm",
+        "primary_use_case": "ለከተማ መጓጓዣ እና ለራይድ ስራ",
+        "spare_parts_availability": "5/5",
+        "resale_liquidity": "ወዲያውኑ የሚሸጥ"
+    },
+    "toyota yaris": {
+        "name": "Toyota Vitz / Yaris Hatchback",
+        "full_model": "Vitz / Yaris Hatchback",
+        "brand": "Toyota",
+        "category": "Subcompact Hatchback",
+        "current_price_range_etb": "1,300,000 - 2,800,000 ETB",
+        "core_advantage": "የቶዮታ አስተማማኝ ሞተር ጥንካሬ እና ረጅም የአገልግሎት ዘመን",
+        "bank_collateral_appeal": "ከፍተኛ የዋስትና ዋጋ",
+        "fuel_economy": "15 - 18 KM/L",
+        "ground_clearance": "150 mm",
+        "primary_use_case": "ለቤተሰብ፣ ለግል እና ለከተማ ጉዞ",
+        "spare_parts_availability": "5/5",
+        "resale_liquidity": "እጅግ ከፍተኛ የገበያ ተፈላጊነት"
+    },
+    "toyota rav4": {
+        "name": "Toyota RAV4 (Petrol / Hybrid)",
+        "full_model": "RAV4 (Petrol / Hybrid)",
+        "brand": "Toyota",
+        "category": "Compact / Mid-Size Crossover SUV",
+        "current_price_range_etb": "4,000,000 - 12,000,000 ETB",
+        "core_advantage": "የቶዮታ ታዋቂ ጥንካሬ፣ አስተማማኝ 4WD/AWD እና ከፍተኛ የገበያ ክብር",
+        "bank_collateral_appeal": "ፕሪሚየም የባንክ ዋስትና",
+        "fuel_economy": "12 - 14 KM/L (Gasoline) / 18+ KM/L (Hybrid)",
+        "ground_clearance": "190 mm",
+        "primary_use_case": "ለዲፕሎማቲክ፣ ለቤተሰብና ለአስቸጋሪ የገጠር ጉዞዎች",
+        "spare_parts_availability": "4.8/5",
+        "resale_liquidity": "እጅግ ከፍተኛ የገበያ ዋጋ ጠባቂነት"
+    },
+    "rav4": {
+        "name": "Toyota RAV4 (Petrol / Hybrid)",
+        "full_model": "RAV4 (Petrol / Hybrid)",
+        "brand": "Toyota",
+        "category": "Compact / Mid-Size Crossover SUV",
+        "current_price_range_etb": "4,000,000 - 12,000,000 ETB",
+        "core_advantage": "የቶዮታ ታዋቂ ጥንካሬ እና አስተማማኝ 4WD/AWD",
+        "bank_collateral_appeal": "ፕሪሚየም የባንክ ዋስትና",
+        "fuel_economy": "12 - 14 KM/L",
+        "ground_clearance": "190 mm",
+        "primary_use_case": "ለቤተሰብና ለአስቸጋሪ መንገዶች",
+        "spare_parts_availability": "4.8/5",
+        "resale_liquidity": "ከፍተኛ"
+    },
+    "toyota fortuner": {
+        "name": "Toyota Fortuner",
+        "full_model": "Fortuner",
+        "brand": "Toyota",
+        "category": "Mid-Size SUV",
+        "current_price_range_etb": "7,000,000 - 15,000,000 ETB",
+        "core_advantage": "ጠንካራ የHilux ቻሲ፣ 7 መቀመጫ እና የላቀ የ4x4 አቅም",
+        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና",
+        "fuel_economy": "10 - 12 KM/L",
+        "ground_clearance": "225 mm",
+        "primary_use_case": "ለትልቅ ቤተሰብ እና ለአስቸጋሪ የገጠር መንገዶች",
+        "spare_parts_availability": "4.8/5",
+        "resale_liquidity": "ከፍተኛ ተፈላጊነት"
+    },
+    "toyota hiace": {
+        "name": "Toyota Hiace (Commuter / Van)",
+        "full_model": "Hiace (Commuter / Van)",
+        "brand": "Toyota",
+        "category": "Minibus / Commercial Van",
+        "current_price_range_etb": "3,000,000 - 9,000,000 ETB",
+        "core_advantage": "ለህዝብ ትራንስፖርትና ለንግድ ተወዳዳሪ የሌለው ከፍተኛ ገቢ አመንጪነት",
+        "bank_collateral_appeal": "በጣም ከፍተኛ የንግድ ብድር ዋስትና",
+        "fuel_economy": "11 - 13 KM/L (Diesel)",
+        "ground_clearance": "185 mm",
+        "primary_use_case": "ለትራንስፖርት ንግድ፣ ለቱሪዝም እና ለድርጅት ሰራተኞች",
+        "spare_parts_availability": "5/5",
+        "resale_liquidity": "እጅግ ፈጣን ሽያጭ"
+    },
+    "toyota land cruiser 200": {
+        "name": "Toyota Land Cruiser 200 Series (V8)",
+        "full_model": "Land Cruiser 200 Series",
+        "brand": "Toyota",
+        "category": "Full-Size Luxury SUV",
+        "current_price_range_etb": "12,000,000 - 28,000,000 ETB",
+        "core_advantage": "ከፍተኛ ክብር፣ የማይበገር ጥንካሬ እና ፕሪሚየም የቪ8 ምቾት",
+        "bank_collateral_appeal": "ከፍተኛ ደረጃ የባንክ ዋስትና",
+        "fuel_economy": "7 - 9 KM/L (V8 Petrol / Diesel)",
+        "ground_clearance": "225 mm",
+        "primary_use_case": "ለቪአይፒ፣ ለዲፕሎማቲክ እና ለስራ አስፈፃሚዎች",
+        "spare_parts_availability": "4.8/5",
+        "resale_liquidity": "ከፍተኛ"
+    },
+    "toyota 4runner": {
+        "name": "Toyota 4Runner",
+        "full_model": "4Runner",
+        "brand": "Toyota",
+        "category": "Mid-Size Off-road SUV",
+        "current_price_range_etb": "6,000,000 - 14,000,000 ETB",
+        "core_advantage": "እጅግ ጠንካራ የኦፍሮድ ብቃት እና አስተማማኝ የሞተር ጥንካሬ",
+        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና",
+        "fuel_economy": "8 - 11 KM/L",
+        "ground_clearance": "240 mm",
+        "primary_use_case": "ለገጠር አስቸጋሪ መንገዶች እና ለጀብዱ ጉዞዎች",
+        "spare_parts_availability": "4.5/5",
+        "resale_liquidity": "ጠንካራ የገበያ ተቀባይነት"
+    },
+    "toyota noah": {
+        "name": "Toyota Noah / Voxy",
+        "full_model": "Noah / Voxy",
+        "brand": "Toyota",
+        "category": "MPV / Family Van",
+        "current_price_range_etb": "3,500,000 - 8,500,000 ETB",
+        "core_advantage": "ሰፊ የቤተሰብ መቀመጫ እና ዝቅተኛ የነዳጅ ፍጆታ",
+        "bank_collateral_appeal": "ጥሩ የባንክ ዋስትና",
+        "fuel_economy": "12 - 14 KM/L",
+        "ground_clearance": "160 mm",
+        "primary_use_case": "ለትልቅ ቤተሰብ እና ለከተማ መጓጓዣ",
+        "spare_parts_availability": "4.6/5",
+        "resale_liquidity": "ፈጣን"
+    },
+    "toyota rush": {
+        "name": "Toyota Rush",
+        "full_model": "Rush",
+        "brand": "Toyota",
+        "category": "Compact SUV",
+        "current_price_range_etb": "4,000,000 - 7,500,000 ETB",
+        "core_advantage": "7 መቀመጫ፣ ከፍተኛ የመሬት ከፍታ እና ቆጣቢ ሞተር",
+        "bank_collateral_appeal": "ጥሩ የባንክ ዋስትና",
+        "fuel_economy": "14 - 16 KM/L",
+        "ground_clearance": "220 mm",
+        "primary_use_case": "ለቤተሰብ እና ለከተማ ጉዞ",
+        "spare_parts_availability": "4.5/5",
+        "resale_liquidity": "ተወዳጅ"
+    },
+    "toyota urban cruiser": {
+        "name": "Toyota Urban Cruiser",
+        "full_model": "Urban Cruiser",
+        "brand": "Toyota",
+        "category": "Compact SUV",
+        "current_price_range_etb": "3,800,000 - 6,500,000 ETB",
+        "core_advantage": "ዘመናዊ ገጽታ፣ አነስተኛ የነዳጅ ፍጆታ እና ከፍተኛ የመሬት ከፍታ",
+        "bank_collateral_appeal": "ጥሩ የባንክ ዋስትና",
+        "fuel_economy": "16 - 18 KM/L",
+        "ground_clearance": "180 mm",
+        "primary_use_case": "ለከተማና ለቤተሰብ ጉዞ",
+        "spare_parts_availability": "4.5/5",
+        "resale_liquidity": "ፈጣን"
+    },
+    "toyota axio": {
+        "name": "Toyota Axio / Premio",
+        "full_model": "Axio / Premio",
+        "brand": "Toyota",
+        "category": "Compact Sedan",
+        "current_price_range_etb": "2,200,000 - 4,800,000 ETB",
+        "core_advantage": "ምቹ የውስጥ ክፍል፣ አስተማማኝ ቶዮታ ሞተር እና ዘላቂነት",
+        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና",
+        "fuel_economy": "14 - 16 KM/L",
+        "ground_clearance": "155 mm",
+        "primary_use_case": "ለግል እና ለቤተሰብ የከተማ ጉዞ",
+        "spare_parts_availability": "5/5",
+        "resale_liquidity": "በጣም ፈጣን"
     },
     "suzuki dzire": {
         "name": "Suzuki Dzire (2020 - 2024)",
-        "model": "Dzire",
+        "full_model": "Dzire",
+        "brand": "Suzuki",
         "category": "Compact Sedan",
         "current_price_range_etb": "2,400,000 - 3,300,000 ETB",
         "core_advantage": "አዲስ የሞዴል ዓመት፣ ዘመናዊ የውስጥ ገጽታ እና የላቀ የነዳጅ ቁጠባ",
@@ -217,9 +555,24 @@ ETHIOPIA_VEHICLES_DATABASE = {
         "spare_parts_availability": "4.5/5 — በአዲስ አበባ በስፋት የሚገኝ ኦሪጅናል መለዋወጫ",
         "resale_liquidity": "በጣም ፈጣን የገበያ ዝውውር እና የተረጋጋ ዋጋ"
     },
+    "dzire": {
+        "name": "Suzuki Dzire",
+        "full_model": "Dzire",
+        "brand": "Suzuki",
+        "category": "Compact Sedan",
+        "current_price_range_etb": "2,400,000 - 3,300,000 ETB",
+        "core_advantage": "አዲስ የሞዴል ዓመት እና የላቀ የነዳጅ ቁጠባ",
+        "bank_collateral_appeal": "እጅግ ከፍተኛ",
+        "fuel_economy": "20 - 22 KM/L",
+        "ground_clearance": "163 mm",
+        "primary_use_case": "ለከተማ መጓጓዣ እና ለራይድ",
+        "spare_parts_availability": "4.5/5",
+        "resale_liquidity": "በጣም ፈጣን"
+    },
     "suzuki swift": {
         "name": "Suzuki Swift (2020 - 2024)",
-        "model": "Swift",
+        "full_model": "Swift",
+        "brand": "Suzuki",
         "category": "Subcompact Hatchback",
         "current_price_range_etb": "2,350,000 - 3,100,000 ETB",
         "core_advantage": "ቀልጣፋ የመሪ ቁጥጥር፣ ዘመናዊ መልክ እና አነስተኛ የነዳጅ ወጪ",
@@ -230,35 +583,24 @@ ETHIOPIA_VEHICLES_DATABASE = {
         "spare_parts_availability": "4.5/5 — የተሟላ የገበያ አቅርቦት",
         "resale_liquidity": "ከፍተኛ ተፈላጊነት ያለው"
     },
-    "toyota yaris": {
-        "name": "Toyota Yaris (Sedan / Hatchback)",
-        "model": "Yaris",
-        "category": "Compact Sedan / Hatchback",
-        "current_price_range_etb": "1,800,000 - 2,800,000 ETB",
-        "core_advantage": "የቶዮታ አስተማማኝ ሞተር ጥንካሬ እና ረጅም የአገልግሎት ዘመን",
-        "bank_collateral_appeal": "ከፍተኛ የዋስትና ዋጋ",
-        "fuel_economy": "15 - 17 KM/L",
-        "ground_clearance": "150 mm",
-        "primary_use_case": "ለቤተሰብ፣ ለግል እና ለረጅም ጉዞ",
-        "spare_parts_availability": "5/5 — በሁሉም የመለዋወጫ ሱቆች የሚገኝ",
-        "resale_liquidity": "እጅግ ከፍተኛ የገበያ ተፈላጊነት"
-    },
-    "toyota corolla": {
-        "name": "Toyota Corolla (Executive / Compact)",
-        "model": "Corolla",
-        "category": "Mid-size Sedan",
-        "current_price_range_etb": "2,200,000 - 4,500,000 ETB (እንደ ዓመተ ምህረቱ)",
-        "core_advantage": "በኢትዮጵያ ገበያ ውስጥ ተወዳዳሪ የሌለው ዝና፣ ምቾት እና የሞተር ጥንካሬ",
-        "bank_collateral_appeal": "ፕራይም ደረጃ (Prime Collateral Asset)",
-        "fuel_economy": "13 - 15 KM/L",
-        "ground_clearance": "155 mm",
-        "primary_use_case": "ለቤተሰብ ክብር፣ ለረጅም የክልል ጉዞዎች እና ለድርጅት ስራ አስፈፃሚዎች",
-        "spare_parts_availability": "5/5 — በማንኛውም የሀገሪቱ ክፍል በቀላሉ የሚገኝ",
-        "resale_liquidity": "እንደ ጥሬ ገንዘብ የሚቆጠር ፈጣን ሽያጭ"
+    "swift": {
+        "name": "Suzuki Swift",
+        "full_model": "Swift",
+        "brand": "Suzuki",
+        "category": "Subcompact Hatchback",
+        "current_price_range_etb": "2,350,000 - 3,100,000 ETB",
+        "core_advantage": "ቀልጣፋ የመሪ ቁጥጥር እና አነስተኛ የነዳጅ ወጪ",
+        "bank_collateral_appeal": "ከፍተኛ የባንክ ብድር ተቀባይነት",
+        "fuel_economy": "20 - 23 KM/L",
+        "ground_clearance": "163 mm",
+        "primary_use_case": "ለግልና ለቤተሰብ የከተማ ጉዞ",
+        "spare_parts_availability": "4.5/5",
+        "resale_liquidity": "ከፍተኛ"
     },
     "hyundai tucson": {
         "name": "Hyundai Tucson (2018 - 2023)",
-        "model": "Tucson",
+        "full_model": "Tucson",
+        "brand": "Hyundai",
         "category": "Compact Crossover SUV",
         "current_price_range_etb": "5,000,000 - 7,800,000 ETB",
         "core_advantage": "ከፍተኛ የመሬት ከፍታ፣ ምቹ የውስጥ ክፍል እና ዘመናዊ የደህንነት ሲስተም",
@@ -269,125 +611,113 @@ ETHIOPIA_VEHICLES_DATABASE = {
         "spare_parts_availability": "4.2/5 — በአዲስ አበባ በስፋት የሚገኝ",
         "resale_liquidity": "ጠንካራ የገበያ ተቀባይነት"
     },
-    "toyota rav4": {
-        "name": "Toyota RAV4 (2018 - 2024)",
-        "model": "RAV4",
-        "category": "Compact / Mid SUV",
-        "current_price_range_etb": "6,500,000 - 11,000,000 ETB",
-        "core_advantage": "የቶዮታ ታዋቂ ጥንካሬ፣ አስተማማኝ 4WD/AWD እና ከፍተኛ የገበያ ክብር",
-        "bank_collateral_appeal": "ፕሪሚየም የባንክ ዋስትና",
-        "fuel_economy": "12 - 14 KM/L (Gasoline) / 18+ KM/L (Hybrid)",
-        "ground_clearance": "190 mm (ለሁሉም የመንገድ አይነቶች)",
-        "primary_use_case": "ለዲፕሎማቲክ፣ ለቤተሰብና ለአስቸጋሪ የገጠር ጉዞዎች",
-        "spare_parts_availability": "4.8/5 — በሰፊው የሚገኝ",
-        "resale_liquidity": "እጅግ ከፍተኛ የገበያ ዋጋ ጠባቂነት"
-    },
-    "byd dolphin": {
-        "name": "BYD Dolphin EV (2023 - 2024)",
-        "model": "Dolphin",
-        "category": "Electric Compact Hatchback (EV)",
-        "current_price_range_etb": "2,700,000 - 3,600,000 ETB",
-        "core_advantage": "ዜሮ የነዳጅ ወጪ፣ የ5% ዝቅተኛ ጉምሩክ ቀረጥ ማበረታቻ እና የላቀ የኤሌክትሪክ ባትሪ ቴክኖሎጂ (Blade Battery)",
-        "bank_collateral_appeal": "በአዳዲስ አረንጓዴ ብድር ፖሊሲዎች (Green Financing) ከፍተኛ ተቀባይነት",
-        "fuel_economy": "400 - 420 KM በአንድ ሙሉ ቻርጅ (~80-120 ብር የኤሌክትሪክ ወጪ)",
-        "ground_clearance": "145 mm",
-        "primary_use_case": "ለዕለታዊ የከተማ ቆጣቢ መጓጓዣ እና ዘመናዊ ራይድ",
-        "spare_parts_availability": "3.8/5 — በአዲስ አበባ የኤሌክትሪክ መኪና ጋራዦች በፍጥነት እየሰፋ ያለ",
-        "resale_liquidity": "በከፍተኛ ፍጥነት እያደገ ያለ ተፈላጊነት"
-    },
-    "byd seagull": {
-        "name": "BYD Seagull EV (2023 - 2024)",
-        "model": "Seagull",
-        "category": "Electric Mini City Car (EV)",
-        "current_price_range_etb": "2,200,000 - 2,850,000 ETB",
-        "core_advantage": "በጣም አነስተኛ የመነሻ ዋጋ፣ ዜሮ የነዳጅ ወጪ እና ዘመናዊ ገጽታ",
-        "bank_collateral_appeal": "ጥሩ የባንክ ዋስትና ተቀባይነት",
-        "fuel_economy": "305 - 405 KM በአንድ ሙሉ ቻርጅ",
-        "ground_clearance": "150 mm",
-        "primary_use_case": "ለከተማ ውስጥ አነስተኛ ወጪ ጉዞ እና ለግል አገልግሎት",
-        "spare_parts_availability": "3.8/5 — በአዲስ አበባ የሚገኝ",
-        "resale_liquidity": "በከተማ ወጣቶችና ባለሙያዎች ዘንድ ተወዳጅ"
-    },
-    "toyota hilux": {
-        "name": "Toyota Hilux D4D Double Cabin",
-        "model": "Hilux",
-        "category": "Pickup Truck / Utility",
-        "current_price_range_etb": "6,500,000 - 13,500,000 ETB (እንደ ሞዴል ዓመቱ)",
-        "core_advantage": "ለኢትዮጵያ አስቸጋሪ መንገዶች የማይበገር ጥንካሬ እና ከፍተኛ የመጫን አቅም",
-        "bank_collateral_appeal": "በጣም ከፍተኛ የንግድና የባንክ ዋስትና",
-        "fuel_economy": "10 - 12 KM/L (Diesel)",
-        "ground_clearance": "220 mm",
-        "primary_use_case": "ለኮንስትራክሽን፣ ለማዕድን፣ ለእርሻ እና ለረጅም የፕሮጀክት ስራዎች",
-        "spare_parts_availability": "5/5 — በሀገሪቱ ባሉ ሁሉም አካባቢዎች የሚገኝ",
-        "resale_liquidity": "ወዲያውኑ የሚሸጥ ቋሚ የገበያ ተፈላጊነት"
+    "tucson": {
+        "name": "Hyundai Tucson",
+        "full_model": "Tucson",
+        "brand": "Hyundai",
+        "category": "Compact Crossover SUV",
+        "current_price_range_etb": "5,000,000 - 7,800,000 ETB",
+        "core_advantage": "ከፍተኛ የመሬት ከፍታ እና ምቹ የውስጥ ክፍል",
+        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና",
+        "fuel_economy": "11 - 13 KM/L",
+        "ground_clearance": "175 mm",
+        "primary_use_case": "ለቤተሰብ ምቾት እና ለረጅም ጉዞ",
+        "spare_parts_availability": "4.2/5",
+        "resale_liquidity": "ጠንካራ"
     }
 }
 
 
 def search_vehicle_in_db(user_query: str) -> Optional[Dict]:
-    """Search for vehicle in ethiopia_vehicles table via Supabase, REST API, or verified local database."""
+    """
+    Search for vehicle in ethiopia_vehicles table via Supabase, REST API, or verified local database.
+    Accurately extracts vehicle names by stripping Amharic prefixes (e.g. የ, ለ, በ, ከ, ስለ).
+    """
     if not user_query:
         return None
-    # ጥያቄው ውስጥ ያሉትን ዋና ዋና ቃላት መለየት (ለምሳሌ Seagull, BYD)
-    words = re.findall(r"\b\w+\b", str(user_query))
+    
+    query_str = str(user_query).strip()
+    raw_words = re.findall(r"\b\w+\b", query_str)
+    
+    stop_words = {"ዋጋ", "ዋጋው", "ስንት", "ነው", "የ", "ለ", "በ", "ከ", "ስለ", "መኪና", "ተሽከርካሪ", "car", "price", "how", "much", "is", "the", "and", "ምን", "ያህል", "ግዢ", "ሽያጭ"}
+    
+    cleaned_tokens = []
+    for w in raw_words:
+        # Strip common Amharic prefixes
+        clean_w = re.sub(r'^(የ|ለ|በ|ከ|ስለ|ደግሞ)', '', w, flags=re.IGNORECASE).strip()
+        if len(clean_w) >= 2 and clean_w.lower() not in stop_words:
+            cleaned_tokens.append(clean_w)
+        if len(w) >= 2 and w.lower() not in stop_words and w not in cleaned_tokens:
+            cleaned_tokens.append(w)
 
-    stop_words = {"ዋጋ", "ስንት", "ነው", "የ", "ስለ", "መኪና", "ተሽከርካሪ", "car", "price", "how", "much", "is", "the", "and", "ምን", "ያህል"}
-
-    for word in words:
-        if len(word) > 2 and word.lower() not in stop_words:
-            # 1. Try Supabase ethiopia_vehicles table
+    # Check multi-word models first (e.g., "BYD Seagull", "Land Cruiser", "Song Plus", "Urban Cruiser")
+    clean_query_lower = query_str.lower()
+    for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
+        if key in clean_query_lower:
+            # 1. Check if Supabase has a live update for this exact model
             if supabase is not None:
+                try:
+                    res = supabase.table("ethiopia_vehicles").select("*").ilike("full_model", f"%{key}%").execute()
+                    if res and hasattr(res, 'data') and res.data:
+                        return res.data[0]
+                except Exception:
+                    pass
+            return data
+
+    for token in cleaned_tokens:
+        t_lower = token.lower()
+        # 1. Try Supabase ethiopia_vehicles table
+        if supabase is not None:
+            try:
+                res = (
+                    supabase.table("ethiopia_vehicles")
+                    .select("*")
+                    .or_(
+                        f"full_model.ilike.%{token}%,brand.ilike.%{token}%,category.ilike.%{token}%"
+                    )
+                    .execute()
+                )
+                if res and hasattr(res, 'data') and res.data:
+                    return res.data[0]
+            except Exception:
                 try:
                     res = (
                         supabase.table("ethiopia_vehicles")
                         .select("*")
                         .or_(
-                            f"full_model.ilike.%{word}%,brand.ilike.%{word}%,category.ilike.%{word}%"
+                            f"model.ilike.%{token}%,name.ilike.%{token}%,category.ilike.%{token}%"
                         )
                         .execute()
                     )
                     if res and hasattr(res, 'data') and res.data:
-                        return res.data[0]  # የተገኘውን መረጃ ይመልሳል
-                except Exception:
-                    try:
-                        res = (
-                            supabase.table("ethiopia_vehicles")
-                            .select("*")
-                            .or_(
-                                f"model.ilike.%{word}%,name.ilike.%{word}%,category.ilike.%{word}%"
-                            )
-                            .execute()
-                        )
-                        if res and hasattr(res, 'data') and res.data:
-                            return res.data[0]
-                    except Exception:
-                        pass
-
-            # 2. Try REST fallback
-            if SUPABASE_URL and SUPABASE_KEY and requests is not None:
-                try:
-                    url = f"{SUPABASE_URL}/rest/v1/ethiopia_vehicles?or=(full_model.ilike.*{word}*,brand.ilike.*{word}*,model.ilike.*{word}*,name.ilike.*{word}*)&limit=1"
-                    headers = {
-                        "apikey": SUPABASE_KEY,
-                        "Authorization": f"Bearer {SUPABASE_KEY}",
-                        "Content-Type": "application/json"
-                    }
-                    resp = requests.get(url, headers=headers, timeout=5)
-                    if resp.status_code == 200:
-                        rows = resp.json()
-                        if isinstance(rows, list) and rows:
-                            return rows[0]
+                        return res.data[0]
                 except Exception:
                     pass
 
-            # 3. Try Local Verified Database
-            w_lower = word.lower()
-            for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
-                if w_lower in key or any(w_lower == part.lower() for part in key.split()):
-                    return data
-                name = str(data.get('name') or data.get('full_model') or data.get('model') or '').lower()
-                if w_lower in name:
-                    return data
+        # 2. Try REST fallback
+        if SUPABASE_URL and SUPABASE_KEY and requests is not None:
+            try:
+                url = f"{SUPABASE_URL}/rest/v1/ethiopia_vehicles?or=(full_model.ilike.*{token}*,brand.ilike.*{token}*,category.ilike.*{token}*)&limit=1"
+                headers = {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json"
+                }
+                resp = requests.get(url, headers=headers, timeout=5)
+                if resp.status_code == 200:
+                    rows = resp.json()
+                    if isinstance(rows, list) and rows:
+                        return rows[0]
+            except Exception:
+                pass
+
+        # 3. Try Local Verified Database
+        for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
+            if t_lower == key or t_lower in key or any(t_lower == part.lower() for part in key.split()):
+                return data
+            name = str(data.get('name') or data.get('full_model') or data.get('model') or '').lower()
+            if t_lower in name:
+                return data
 
     return None
 
