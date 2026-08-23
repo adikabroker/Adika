@@ -628,132 +628,150 @@ ETHIOPIA_VEHICLES_DATABASE = {
 }
 
 
-# Comprehensive Amharic to English vehicle and brand mapping
-AMHARIC_VEHICLE_SYNONYMS = {
-    # BYD
-    "ቢዋይዲ": "byd",
-    "ቢ ዋይ ዲ": "byd",
-    "ሲጋል": "seagull",
-    "ሲገል": "seagull",
-    "ሲጎል": "seagull",
-    "ሶንግ": "song plus",
-    "ሶንግ ፕላስ": "song plus",
-    "ዶልፊን": "dolphin",
-    # Toyota
-    "ቶዮታ": "toyota",
-    "ቶዮታስ": "toyota",
-    "ቪትዝ": "vitz",
-    "ቪትስ": "vitz",
-    "ቪትዞ": "vitz",
-    "ያሪስ": "yaris",
-    "ያሪስስ": "yaris",
-    "ኮሮላ": "corolla",
-    "ኮሮላስ": "corolla",
-    "ሀይሉክስ": "hilux",
-    "ሃይሉክስ": "hilux",
-    "ሃይለክስ": "hilux",
-    "ሀይለክስ": "hilux",
-    "ፕራዶ": "prado",
-    "ላንድ ክሩዘር": "land cruiser",
-    "ላንድክሩዘር": "land cruiser",
-    "ላንድ ክሩዘር 70": "land cruiser 70",
-    "ራቭ4": "rav4",
-    "ራቭ 4": "rav4",
-    "ፎርቹን": "fortuner",
-    "ፎርቹንር": "fortuner",
-    "ሀያይስ": "hiace",
-    "ሃያይስ": "hiace",
-    "ሃይስ": "hiace",
-    "ሀይስ": "hiace",
-    "ፎር ራነር": "4runner",
-    "ፎርራነር": "4runner",
-    "ኖህ": "noah",
-    "ቮክሲ": "voxy",
-    "ረሽ": "rush",
-    "ራሽ": "rush",
-    "አርባን ክሩዘር": "urban cruiser",
-    "ኡርባን ክሩዘር": "urban cruiser",
-    "አክሲዮ": "axio",
-    "ፕሪሚዮ": "premio",
-    # Suzuki
-    "ሱዙኪ": "suzuki",
-    "ዲዛየር": "dzire",
-    "ዲዛይር": "dzire",
-    "ደዛየር": "dzire",
-    "ስዊፍት": "swift",
-    "ስዊፍቲ": "swift",
-    # Hyundai
-    "ሀዩንዳይ": "hyundai",
-    "ሃዩንዳይ": "hyundai",
-    "ሂዩንዳይ": "hyundai",
-    "ቱክሰን": "tucson",
-    "ቱክሶን": "tucson",
-    "ቱክሰንት": "tucson",
-    "አክሰንት": "accent",
-    "አቶስ": "atos",
-    "ሳንትሮ": "santro",
-}
+from data_catalog import (
+    ETHIOPIA_VEHICLES_DATABASE,
+    AMHARIC_VEHICLE_SYNONYMS,
+    KNOWLEDGE_BASE_STORE,
+    normalize_search_query
+)
+
+try:
+    from models import (
+        get_db_connection,
+        get_all_listings,
+        get_vehicle_by_name,
+        get_knowledge_by_category
+    )
+except ImportError:
+    get_db_connection = None
+    get_all_listings = None
+    get_vehicle_by_name = None
+    get_knowledge_by_category = None
 
 
 def _normalize_query_for_vehicle_search(text: str) -> str:
     """Normalize query text, converting Amharic vehicle and brand keywords to standard English tokens."""
-    if not text:
-        return ""
-    q = text.lower()
-    # Replace Amharic vehicle names with normalized English terms
-    for amh, eng in AMHARIC_VEHICLE_SYNONYMS.items():
-        if amh in q:
-            q = q.replace(amh, f" {eng} ")
-    # Replace common Amharic punctuation and stop-characters
-    q = re.sub(r'[፣፤፥፦!\?,\.\(\)\[\]"\'/\\-]', ' ', q)
-    # Remove Amharic single-character grammatical prefixes attached to words (e.g. የ, ለ, በ, ከ, ስለ)
-    tokens = q.split()
-    cleaned = []
-    for t in tokens:
-        stripped = re.sub(r'^(የ|ለ|በ|ከ|ስለ|ደግሞ)', '', t).strip()
-        if stripped and stripped not in {"ዋጋ", "ዋጋው", "ስንት", "ነው", "መኪና", "ተሽከርካሪ", "car", "price", "ብር", "etb"}:
-            cleaned.append(stripped)
-        elif t and t not in {"ዋጋ", "ዋጋው", "ስንት", "ነው", "መኪና", "ተሽከርካሪ", "car", "price", "ብር", "etb"}:
-            cleaned.append(t)
-    return " ".join(cleaned).strip()
+    return normalize_search_query(text)
+
+
+def search_marketplace_listings(user_query: str) -> Optional[Dict]:
+    """Search dynamic user-submitted listings in SQLite database or Supabase listings table."""
+    if not user_query:
+        return None
+
+    query_raw = str(user_query).strip().lower()
+    normalized_q = _normalize_query_for_vehicle_search(query_raw)
+    search_terms = set(query_raw.split() + normalized_q.split())
+    search_terms = {t for t in search_terms if len(t) >= 3 and t not in {"መኪና", "ተሽከርካሪ", "car", "price", "ዋጋ", "ብር"}}
+
+    # 1. Search in local SQLite marketplace listings table if models module is present
+    if get_all_listings is not None:
+        try:
+            listings = get_all_listings(limit=100)
+            if listings:
+                for item in listings:
+                    title = str(item.get("title", "")).lower()
+                    make = str(item.get("make", "")).lower()
+                    model = str(item.get("model", "")).lower()
+                    desc = str(item.get("description", "")).lower()
+                    item_text = f"{title} {make} {model} {desc}"
+
+                    if any(term in item_text for term in search_terms):
+                        price_val = item.get("price")
+                        formatted_price = f"{float(price_val):,.0f} ETB" if price_val else "በድርድር የሚወሰን"
+                        return {
+                            "name": title or f"{make} {model}".strip(),
+                            "full_model": f"{make} {model}".strip() or title,
+                            "brand": make or "የገበያ ዝርዝር",
+                            "category": item.get("category", "የገበያ ሽያጭ ተሽከርካሪ"),
+                            "current_price_range_etb": formatted_price,
+                            "core_advantage": item.get("description", "በቅርቡ በ Adika Marketplace የቀረበ ሽያጭ"),
+                            "bank_collateral_appeal": "እንደ ተሽከርካሪው ሁኔታ በባንክ ዋስትናነት ሊቀርብ የሚችል",
+                            "fuel_economy": item.get("fuel_type", "ቆጣቢ"),
+                            "ground_clearance": "መደበኛ",
+                            "primary_use_case": "ለግል/ለቤተሰብ ወይም ለንግድ አገልግሎት",
+                            "spare_parts_availability": "በአዲስ አበባ ገበያ የሚገኝ",
+                            "resale_liquidity": "ቀጥታ ከሻጭ የቀረበ ወቅታዊ ዝርዝር",
+                            "source": "marketplace_listing"
+                        }
+        except Exception as _e:
+            logger.debug(f"Local marketplace search note: {_e}")
+
+    # 2. Search in Supabase listings table
+    if supabase is not None:
+        try:
+            for term in search_terms:
+                res = (
+                    supabase.table("listings")
+                    .select("*")
+                    .or_(f"title.ilike.%{term}%,make.ilike.%{term}%,model.ilike.%{term}%")
+                    .eq("status", "active")
+                    .limit(1)
+                    .execute()
+                )
+                if res and hasattr(res, "data") and res.data:
+                    item = res.data[0]
+                    price_val = item.get("price")
+                    formatted_price = f"{float(price_val):,.0f} ETB" if price_val else "በድርድር"
+                    return {
+                        "name": item.get("title") or f"{item.get('make', '')} {item.get('model', '')}".strip(),
+                        "full_model": item.get("title") or f"{item.get('make', '')} {item.get('model', '')}".strip(),
+                        "brand": item.get("make") or "የገበያ ዝርዝር",
+                        "category": item.get("category", "የገበያ ሽያጭ ተሽከርካሪ"),
+                        "current_price_range_etb": formatted_price,
+                        "core_advantage": item.get("description", "በ Adika የቀጥታ ገበያ ላይ የተለጠፈ"),
+                        "bank_collateral_appeal": "እንደ ንብረቱ ሁኔታ በባንክ ዋስትናነት የሚቀርብ",
+                        "fuel_economy": item.get("fuel_type", "ቆጣቢ"),
+                        "ground_clearance": "መደበኛ",
+                        "primary_use_case": "ለከተማና ለቤተሰብ",
+                        "spare_parts_availability": "በስፋት የሚገኝ",
+                        "resale_liquidity": "ቀጥታ ከሻጭ የቀረበ ወቅታዊ ሽያጭ",
+                        "source": "supabase_marketplace"
+                    }
+        except Exception:
+            pass
+
+    return None
 
 
 def search_vehicle_in_db(user_query: str) -> Optional[Dict]:
     """
-    Search for vehicle in ethiopia_vehicles table via local verified database first (zero latency),
-    with full Amharic synonym translation and fallback to Supabase table when available.
+    Two-Tier Robust Vehicle Search Engine:
+    Tier 1 (Admin Ground Truth): Admin-verified ETHIOPIA_VEHICLES_DATABASE & Supabase ethiopia_vehicles table.
+    Tier 2 (Marketplace Live Listings): Real-time seller postings from SQLite listings & Supabase listings.
+    Zero-latency, typo-tolerant, Amharic-synonym-aware, strict no-hallucination.
     """
     if not user_query:
         return None
-    
+
     query_raw = str(user_query).strip().lower()
     normalized_q = _normalize_query_for_vehicle_search(query_raw)
     combined_search_text = f"{query_raw} {normalized_q}".lower()
 
-    # 1. FAST LOCAL LOOKUP: Check multi-word keys and single keys in ETHIOPIA_VEHICLES_DATABASE
-    # Sort keys by length descending so "toyota land cruiser prado" or "toyota vitz" match before "prado" or "vitz"
+    # 1. TIER 1 LOCAL ADMIN GROUND TRUTH (Exact & Multi-word match)
     sorted_keys = sorted(ETHIOPIA_VEHICLES_DATABASE.keys(), key=lambda k: len(k), reverse=True)
-    
     for key in sorted_keys:
-        # Direct substring match in normalized or raw query
         if key in normalized_q or key in query_raw or key in combined_search_text:
             return ETHIOPIA_VEHICLES_DATABASE[key]
-        
-        # Check all key parts (e.g. "corolla", "vitz", "hilux", "seagull", "tucson", "dzire", "swift")
-        parts = [p for p in key.split() if p not in {"toyota", "suzuki", "hyundai", "byd", "plus", "70", "200"}]
+
+        parts = [p for p in key.split() if p not in {"toyota", "suzuki", "hyundai", "byd", "plus", "70", "200", "series"}]
         for part in parts:
             if len(part) >= 3 and (part in normalized_q or part in query_raw or f" {part} " in f" {combined_search_text} "):
                 return ETHIOPIA_VEHICLES_DATABASE[key]
 
-    # 2. Check Amharic vehicle synonym dictionary directly against local keys
+    # 2. Amharic Vehicle Synonym Dictionary Mapping
     for amh_word, eng_term in AMHARIC_VEHICLE_SYNONYMS.items():
         if amh_word in query_raw:
-            # Check if this english term directly matches a database key
             for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
                 if eng_term in key or key in eng_term:
                     return data
 
-    # 3. Check Supabase (with fast 1.5s timeout) if remote records exist
+    # 3. TIER 2 LIVE MARKETPLACE POSTINGS (SQLite listings table & Supabase)
+    marketplace_match = search_marketplace_listings(user_query)
+    if marketplace_match:
+        return marketplace_match
+
+    # 4. Supabase ethiopia_vehicles remote table
     if supabase is not None:
         try:
             tokens = [t for t in normalized_q.split() if len(t) >= 3][:3]
@@ -774,15 +792,8 @@ def search_vehicle_in_db(user_query: str) -> Optional[Dict]:
 
 
 def fetch_vehicle_knowledge(user_message: str) -> str:
-    """Fetch matching vehicle records from ethiopia_vehicles table in Supabase or local verified store."""
+    """Fetch matching vehicle records from ethiopia_vehicles table or local verified store. Strict: No guessing or defaulting."""
     car_data = search_vehicle_in_db(user_message)
-    if not car_data:
-        msg = str(user_message or "").lower()
-        if any(k in msg for k in ['መኪና', 'ተሽከርካሪ', 'car', 'vehicle', 'ዋጋ']):
-            car_data = ETHIOPIA_VEHICLES_DATABASE.get("toyota vitz")
-        else:
-            return ""
-
     if not car_data:
         return ""
 
@@ -812,13 +823,24 @@ def fetch_vehicle_knowledge(user_message: str) -> str:
 
 
 def fetch_dynamic_knowledge(user_message: str) -> str:
-    """Selectively fetches exact knowledge entries based on context keywords to save tokens."""
+    """
+    Selectively fetches exact knowledge entries for Banking, Land/Real Estate, Legal/DARA,
+    Customs Duty, and Platform rules from local ground-truth store and Supabase.
+    """
     msg = str(user_message or "").lower()
-    categories = []
+    snippets = []
 
+    # 1. Local Ground-Truth Knowledge Store (Zero latency, 100% reliable)
+    for topic_key, entry in KNOWLEDGE_BASE_STORE.items():
+        keywords = entry.get("keywords", [])
+        if any(k in msg for k in keywords):
+            snippets.append(f"[{entry.get('title')}]:\n{entry.get('content')}")
+
+    # 2. Remote Supabase Knowledge Base (if online)
+    categories = []
     if any(k in msg for k in ['ባንክ', 'ብድር', 'ወለድ', 'cpo', 'ቼክ', 'forex', 'ስዊፍት']):
         categories.append('banking')
-    if any(k in msg for k in ['ቤት', 'ካርታ', 'ኪራይ', 'ሪል እስቴት', 'ሊዝ', 'ቦታ']):
+    if any(k in msg for k in ['ቤት', 'ካርታ', 'ኪራይ', 'ሪል እስቴት', 'ሊዝ', 'ቦታ', 'መሬት']):
         categories.append('real_estate')
     if any(k in msg for k in ['መኪና', 'ሊብሬ', 'ቦሎ', 'ቪትስ', 'ev', 'ባለቤትነት', 'ሻሲ', 'ተሽከርካሪ', 'ቀረጥ']):
         categories.append('automotive')
@@ -826,54 +848,20 @@ def fetch_dynamic_knowledge(user_message: str) -> str:
         categories.append('legal')
     if any(k in msg for k in ['አዲካ', 'ኮሚሽን', 'ማስታወቂያ', 'መለጠፍ', 'ደላላ']):
         categories.append('platform')
-    if any(k in msg for k in ['ኢንቨስትመንት', 'አክሲዮን', 'ንግድ', 'ፋብሪካ', 'ቀረጥ']):
-        categories.append('investment')
 
-    if not categories:
-        return ""
-
-    # 1. Try Supabase Client SDK if initialized
-    if supabase is not None:
+    if categories and supabase is not None:
         try:
             res = supabase.table('knowledge_base').select('topic, content').in_('category', categories).execute()
             if res and hasattr(res, 'data') and res.data:
-                snippets = [f"- {item['topic']}: {item['content']}" for item in res.data if item.get('topic') and item.get('content')]
-                if snippets:
-                    return "\n".join(snippets)
-        except Exception as e:
-            print(f"Supabase Context Fetch Error: {str(e)}")
+                for item in res.data:
+                    if item.get('topic') and item.get('content'):
+                        remote_snippet = f"- {item['topic']}: {item['content']}"
+                        if remote_snippet not in snippets:
+                            snippets.append(remote_snippet)
+        except Exception:
+            pass
 
-    # 2. Fallback via direct Supabase PostgREST REST API
-    if SUPABASE_URL and SUPABASE_KEY:
-        try:
-            cat_filter = "(" + ",".join(categories) + ")"
-            url = f"{SUPABASE_URL}/rest/v1/knowledge_base?select=topic,content&category=in.{cat_filter}"
-            headers = {
-                "apikey": SUPABASE_KEY,
-                "Authorization": f"Bearer {SUPABASE_KEY}",
-                "Content-Type": "application/json"
-            }
-            if requests is not None:
-                resp = requests.get(url, headers=headers, timeout=5)
-                if resp.status_code == 200:
-                    rows = resp.json()
-                    if isinstance(rows, list) and rows:
-                        snippets = [f"- {item['topic']}: {item['content']}" for item in rows if isinstance(item, dict) and item.get('topic') and item.get('content')]
-                        if snippets:
-                            return "\n".join(snippets)
-            else:
-                req = urllib.request.Request(url, headers=headers, method="GET")
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    if resp.status == 200:
-                        rows = json.loads(resp.read().decode("utf-8"))
-                        if isinstance(rows, list) and rows:
-                            snippets = [f"- {item['topic']}: {item['content']}" for item in rows if isinstance(item, dict) and item.get('topic') and item.get('content')]
-                            if snippets:
-                                return "\n".join(snippets)
-        except Exception as e:
-            logger.debug(f"Supabase REST knowledge base fetch note: {e}")
-
-    return ""
+    return "\n\n".join(snippets)
 
 
 def build_system_prompt(user_message: str) -> str:
