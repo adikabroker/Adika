@@ -451,375 +451,46 @@ ETHIOPIA_VEHICLES_DATABASE = {
         "current_price_range_etb": "3,000,000 - 9,000,000 ETB",
         "core_advantage": "ለህዝብ ትራንስፖርትና ለንግድ ተወዳዳሪ የሌለው ከፍተኛ ገቢ አመንጪነት",
         "bank_collateral_appeal": "በጣም ከፍተኛ የንግድ ብድር ዋስትና",
-        "fuel_economy": "11 - 13 KM/L (Diesel)",
-        "ground_clearance": "185 mm",
-        "primary_use_case": "ለትራንስፖርት ንግድ፣ ለቱሪዝም እና ለድርጅት ሰራተኞች",
-        "spare_parts_availability": "5/5",
-        "resale_liquidity": "እጅግ ፈጣን ሽያጭ"
-    },
-    "toyota land cruiser 200": {
-        "name": "Toyota Land Cruiser 200 Series (V8)",
-        "full_model": "Land Cruiser 200 Series",
-        "brand": "Toyota",
-        "category": "Full-Size Luxury SUV",
-        "current_price_range_etb": "12,000,000 - 28,000,000 ETB",
-        "core_advantage": "ከፍተኛ ክብር፣ የማይበገር ጥንካሬ እና ፕሪሚየም የቪ8 ምቾት",
-        "bank_collateral_appeal": "ከፍተኛ ደረጃ የባንክ ዋስትና",
-        "fuel_economy": "7 - 9 KM/L (V8 Petrol / Diesel)",
-        "ground_clearance": "225 mm",
-        "primary_use_case": "ለቪአይፒ፣ ለዲፕሎማቲክ እና ለስራ አስፈፃሚዎች",
-        "spare_parts_availability": "4.8/5",
-        "resale_liquidity": "ከፍተኛ"
-    },
-    "toyota 4runner": {
-        "name": "Toyota 4Runner",
-        "full_model": "4Runner",
-        "brand": "Toyota",
-        "category": "Mid-Size Off-road SUV",
-        "current_price_range_etb": "6,000,000 - 14,000,000 ETB",
-        "core_advantage": "እጅግ ጠንካራ የኦፍሮድ ብቃት እና አስተማማኝ የሞተር ጥንካሬ",
-        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና",
-        "fuel_economy": "8 - 11 KM/L",
-        "ground_clearance": "240 mm",
-        "primary_use_case": "ለገጠር አስቸጋሪ መንገዶች እና ለጀብዱ ጉዞዎች",
-        "spare_parts_availability": "4.5/5",
-        "resale_liquidity": "ጠንካራ የገበያ ተቀባይነት"
-    },
-    "toyota noah": {
-        "name": "Toyota Noah / Voxy",
-        "full_model": "Noah / Voxy",
-        "brand": "Toyota",
-        "category": "MPV / Family Van",
-        "current_price_range_etb": "3,500,000 - 8,500,000 ETB",
-        "core_advantage": "ሰፊ የቤተሰብ መቀመጫ እና ዝቅተኛ የነዳጅ ፍጆታ",
-        "bank_collateral_appeal": "ጥሩ የባንክ ዋስትና",
-        "fuel_economy": "12 - 14 KM/L",
-        "ground_clearance": "160 mm",
-        "primary_use_case": "ለትልቅ ቤተሰብ እና ለከተማ መጓጓዣ",
-        "spare_parts_availability": "4.6/5",
-        "resale_liquidity": "ፈጣን"
-    },
-    "toyota rush": {
-        "name": "Toyota Rush",
-        "full_model": "Rush",
-        "brand": "Toyota",
-        "category": "Compact SUV",
-        "current_price_range_etb": "4,000,000 - 7,500,000 ETB",
-        "core_advantage": "7 መቀመጫ፣ ከፍተኛ የመሬት ከፍታ እና ቆጣቢ ሞተር",
-        "bank_collateral_appeal": "ጥሩ የባንክ ዋስትና",
-        "fuel_economy": "14 - 16 KM/L",
-        "ground_clearance": "220 mm",
-        "primary_use_case": "ለቤተሰብ እና ለከተማ ጉዞ",
-        "spare_parts_availability": "4.5/5",
-        "resale_liquidity": "ተወዳጅ"
-    },
-    "toyota urban cruiser": {
-        "name": "Toyota Urban Cruiser",
-        "full_model": "Urban Cruiser",
-        "brand": "Toyota",
-        "category": "Compact SUV",
-        "current_price_range_etb": "3,800,000 - 6,500,000 ETB",
-        "core_advantage": "ዘመናዊ ገጽታ፣ አነስተኛ የነዳጅ ፍጆታ እና ከፍተኛ የመሬት ከፍታ",
-        "bank_collateral_appeal": "ጥሩ የባንክ ዋስትና",
-        "fuel_economy": "16 - 18 KM/L",
-        "ground_clearance": "180 mm",
-        "primary_use_case": "ለከተማና ለቤተሰብ ጉዞ",
-        "spare_parts_availability": "4.5/5",
-        "resale_liquidity": "ፈጣን"
-    },
-    "toyota axio": {
-        "name": "Toyota Axio / Premio",
-        "full_model": "Axio / Premio",
-        "brand": "Toyota",
-        "category": "Compact Sedan",
-        "current_price_range_etb": "2,200,000 - 4,800,000 ETB",
-        "core_advantage": "ምቹ የውስጥ ክፍል፣ አስተማማኝ ቶዮታ ሞተር እና ዘላቂነት",
-        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና",
-        "fuel_economy": "14 - 16 KM/L",
-        "ground_clearance": "155 mm",
-        "primary_use_case": "ለግል እና ለቤተሰብ የከተማ ጉዞ",
-        "spare_parts_availability": "5/5",
-        "resale_liquidity": "በጣም ፈጣን"
-    },
-    "suzuki dzire": {
-        "name": "Suzuki Dzire (2020 - 2024)",
-        "full_model": "Dzire",
-        "brand": "Suzuki",
-        "category": "Compact Sedan",
-        "current_price_range_etb": "2,400,000 - 3,300,000 ETB",
-        "core_advantage": "አዲስ የሞዴል ዓመት፣ ዘመናዊ የውስጥ ገጽታ እና የላቀ የነዳጅ ቁጠባ",
-        "bank_collateral_appeal": "እጅግ ከፍተኛ — አብዛኞቹ ባንኮች በ 20-30% ቅድመ ክፍያ ብድር ይሰጡበታል",
-        "fuel_economy": "20 - 22 KM/L (DualJet 1.2L Engine)",
-        "ground_clearance": "163 mm (ለአዲስ አበባ መንገዶች ተስማሚ)",
-        "primary_use_case": "ለከተማ መጓጓዣ፣ ለፕሪሚየም ራይድ እና ለንግድ ድርጅት ሰራተኞች",
-        "spare_parts_availability": "4.5/5 — በአዲስ አበባ በስፋት የሚገኝ ኦሪጅናል መለዋወጫ",
-        "resale_liquidity": "በጣም ፈጣን የገበያ ዝውውር እና የተረጋጋ ዋጋ"
-    },
-    "dzire": {
-        "name": "Suzuki Dzire",
-        "full_model": "Dzire",
-        "brand": "Suzuki",
-        "category": "Compact Sedan",
-        "current_price_range_etb": "2,400,000 - 3,300,000 ETB",
-        "core_advantage": "አዲስ የሞዴል ዓመት እና የላቀ የነዳጅ ቁጠባ",
-        "bank_collateral_appeal": "እጅግ ከፍተኛ",
-        "fuel_economy": "20 - 22 KM/L",
-        "ground_clearance": "163 mm",
-        "primary_use_case": "ለከተማ መጓጓዣ እና ለራይድ",
-        "spare_parts_availability": "4.5/5",
-        "resale_liquidity": "በጣም ፈጣን"
-    },
-    "suzuki swift": {
-        "name": "Suzuki Swift (2020 - 2024)",
-        "full_model": "Swift",
-        "brand": "Suzuki",
-        "category": "Subcompact Hatchback",
-        "current_price_range_etb": "2,350,000 - 3,100,000 ETB",
-        "core_advantage": "ቀልጣፋ የመሪ ቁጥጥር፣ ዘመናዊ መልክ እና አነስተኛ የነዳጅ ወጪ",
-        "bank_collateral_appeal": "ከፍተኛ የባንክ ብድር ተቀባይነት ያለው ንብረት",
-        "fuel_economy": "20 - 23 KM/L",
-        "ground_clearance": "163 mm",
-        "primary_use_case": "ለግልና ለቤተሰብ የከተማ ጉዞ እንዲሁም ለተቀላጠፈ የቢሮ እንቅስቃሴ",
-        "spare_parts_availability": "4.5/5 — የተሟላ የገበያ አቅርቦት",
-        "resale_liquidity": "ከፍተኛ ተፈላጊነት ያለው"
-    },
-    "swift": {
-        "name": "Suzuki Swift",
-        "full_model": "Swift",
-        "brand": "Suzuki",
-        "category": "Subcompact Hatchback",
-        "current_price_range_etb": "2,350,000 - 3,100,000 ETB",
-        "core_advantage": "ቀልጣፋ የመሪ ቁጥጥር እና አነስተኛ የነዳጅ ወጪ",
-        "bank_collateral_appeal": "ከፍተኛ የባንክ ብድር ተቀባይነት",
-        "fuel_economy": "20 - 23 KM/L",
-        "ground_clearance": "163 mm",
-        "primary_use_case": "ለግልና ለቤተሰብ የከተማ ጉዞ",
-        "spare_parts_availability": "4.5/5",
-        "resale_liquidity": "ከፍተኛ"
-    },
-    "hyundai tucson": {
-        "name": "Hyundai Tucson (2018 - 2023)",
-        "full_model": "Tucson",
-        "brand": "Hyundai",
-        "category": "Compact Crossover SUV",
-        "current_price_range_etb": "5,000,000 - 7,800,000 ETB",
-        "core_advantage": "ከፍተኛ የመሬት ከፍታ፣ ምቹ የውስጥ ክፍል እና ዘመናዊ የደህንነት ሲስተም",
-        "bank_collateral_appeal": "ከፍተኛ ዋጋ ያለው የባንክ ዋስትና ንብረት",
-        "fuel_economy": "11 - 13 KM/L (Benzine / Diesel)",
-        "ground_clearance": "172 - 181 mm (ለኢትዮጵያ ያልተስተካከሉ መንገዶች ምርጥ)",
-        "primary_use_case": "ለቤተሰብ ምቾት፣ ለከተማና ለገጠር መንገዶች እንዲሁም ለከፍተኛ የንግድ ጉዞ",
-        "spare_parts_availability": "4.2/5 — በአዲስ አበባ በስፋት የሚገኝ",
-        "resale_liquidity": "ጠንካራ የገበያ ተቀባይነት"
-    },
-    "tucson": {
-        "name": "Hyundai Tucson",
-        "full_model": "Tucson",
-        "brand": "Hyundai",
-        "category": "Compact Crossover SUV",
-        "current_price_range_etb": "5,000,000 - 7,800,000 ETB",
-        "core_advantage": "ከፍተኛ የመሬት ከፍታ እና ምቹ የውስጥ ክፍል",
-        "bank_collateral_appeal": "ከፍተኛ የባንክ ዋስትና",
-        "fuel_economy": "11 - 13 KM/L",
-        "ground_clearance": "175 mm",
-        "primary_use_case": "ለቤተሰብ ምቾት እና ለረጅም ጉዞ",
-        "spare_parts_availability": "4.2/5",
-        "resale_liquidity": "ጠንካራ"
-    }
-}
+        "fuel_economy": "11 -        for tok in tokens:
+            cur.execute(
+                f"SELECT * FROM ethiopia_vehicles WHERE name {like_op} {p} OR full_model {like_op} {p} OR model_key {like_op} {p} LIMIT 1",
+                (f"%{tok}%", f"%{tok}%", f"%{tok}%")
+            )
+            row = cur.fetchone()
+            if row:
+                conn.close()
+                item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
+                item["source"] = "ethiopia_vehicles"
+                return item
+        conn.close()
+    except Exception as _e:
+        logger.debug(f"ethiopia_vehicles query note: {_e}")
 
-
-from data_catalog import (
-    ETHIOPIA_VEHICLES_DATABASE,
-    AMHARIC_VEHICLE_SYNONYMS,
-    KNOWLEDGE_BASE_STORE,
-    normalize_search_query
-)
-
-try:
-    from models import (
-        get_db_connection,
-        get_all_listings,
-        get_vehicle_by_name,
-        get_knowledge_by_category
-    )
-except ImportError:
-    get_db_connection = None
-    get_all_listings = None
-    get_vehicle_by_name = None
-    get_knowledge_by_category = None
-
-
-def _normalize_query_for_vehicle_search(text: str) -> str:
-    """Normalize query text, converting Amharic vehicle and brand keywords to standard English tokens."""
-    return normalize_search_query(text)
-
-
-def search_marketplace_listings(user_query: str) -> Optional[Dict]:
-    """Search dynamic user-submitted listings in SQLite database or Supabase listings table."""
-    if not user_query:
-        return None
-
-    query_raw = str(user_query).strip().lower()
-    normalized_q = _normalize_query_for_vehicle_search(query_raw)
-    search_terms = set(query_raw.split() + normalized_q.split())
-    search_terms = {t for t in search_terms if len(t) >= 3 and t not in {"መኪና", "ተሽከርካሪ", "car", "price", "ዋጋ", "ብር"}}
-
-    # 1. Search in local SQLite marketplace listings table if models module is present
-    if get_all_listings is not None:
-        try:
-            listings = get_all_listings(limit=100)
-            if listings:
-                for item in listings:
-                    title = str(item.get("title", "")).lower()
-                    make = str(item.get("make", "")).lower()
-                    model = str(item.get("model", "")).lower()
-                    desc = str(item.get("description", "")).lower()
-                    item_text = f"{title} {make} {model} {desc}"
-
-                    if any(term in item_text for term in search_terms):
-                        price_val = item.get("price")
-                        formatted_price = f"{float(price_val):,.0f} ETB" if price_val else "በድርድር የሚወሰን"
-                        return {
-                            "name": title or f"{make} {model}".strip(),
-                            "full_model": f"{make} {model}".strip() or title,
-                            "brand": make or "የገበያ ዝርዝር",
-                            "category": item.get("category", "የገበያ ሽያጭ ተሽከርካሪ"),
-                            "current_price_range_etb": formatted_price,
-                            "core_advantage": item.get("description", "በቅርቡ በ Adika Marketplace የቀረበ ሽያጭ"),
-                            "bank_collateral_appeal": "እንደ ተሽከርካሪው ሁኔታ በባንክ ዋስትናነት ሊቀርብ የሚችል",
-                            "fuel_economy": item.get("fuel_type", "ቆጣቢ"),
-                            "ground_clearance": "መደበኛ",
-                            "primary_use_case": "ለግል/ለቤተሰብ ወይም ለንግድ አገልግሎት",
-                            "spare_parts_availability": "በአዲስ አበባ ገበያ የሚገኝ",
-                            "resale_liquidity": "ቀጥታ ከሻጭ የቀረበ ወቅታዊ ዝርዝር",
-                            "source": "marketplace_listing"
-                        }
-        except Exception as _e:
-            logger.debug(f"Local marketplace search note: {_e}")
-
-    # 2. Search in Supabase listings table
-    if supabase is not None:
-        try:
-            for term in search_terms:
-                res = (
-                    supabase.table("listings")
-                    .select("*")
-                    .or_(f"title.ilike.%{term}%,make.ilike.%{term}%,model.ilike.%{term}%")
-                    .eq("status", "active")
-                    .limit(1)
-                    .execute()
-                )
-                if res and hasattr(res, "data") and res.data:
-                    item = res.data[0]
-                    price_val = item.get("price")
-                    formatted_price = f"{float(price_val):,.0f} ETB" if price_val else "በድርድር"
-                    return {
-                        "name": item.get("title") or f"{item.get('make', '')} {item.get('model', '')}".strip(),
-                        "full_model": item.get("title") or f"{item.get('make', '')} {item.get('model', '')}".strip(),
-                        "brand": item.get("make") or "የገበያ ዝርዝር",
-                        "category": item.get("category", "የገበያ ሽያጭ ተሽከርካሪ"),
-                        "current_price_range_etb": formatted_price,
-                        "core_advantage": item.get("description", "በ Adika የቀጥታ ገበያ ላይ የተለጠፈ"),
-                        "bank_collateral_appeal": "እንደ ንብረቱ ሁኔታ በባንክ ዋስትናነት የሚቀርብ",
-                        "fuel_economy": item.get("fuel_type", "ቆጣቢ"),
-                        "ground_clearance": "መደበኛ",
-                        "primary_use_case": "ለከተማና ለቤተሰብ",
-                        "spare_parts_availability": "በስፋት የሚገኝ",
-                        "resale_liquidity": "ቀጥታ ከሻጭ የቀረበ ወቅታዊ ሽያጭ",
-                        "source": "supabase_marketplace"
-                    }
-        except Exception:
-            pass
-
-    return None
-
-
-def search_vehicle_in_db(user_query: str) -> Optional[Dict]:
-    """
-    Two-Tier Robust Vehicle Search Engine:
-    Tier 1 (Admin Ground Truth): Admin-verified ETHIOPIA_VEHICLES_DATABASE & Supabase ethiopia_vehicles table.
-    Tier 2 (Marketplace Live Listings): Real-time seller postings from SQLite listings & Supabase listings.
-    Zero-latency, typo-tolerant, Amharic-synonym-aware, strict no-hallucination.
-    """
-    if not user_query:
-        return None
-
-    query_raw = str(user_query).strip().lower()
-    normalized_q = _normalize_query_for_vehicle_search(query_raw)
-    combined_search_text = f"{query_raw} {normalized_q}".lower()
-
-    # 1. TIER 1 LOCAL ADMIN GROUND TRUTH (Exact & Multi-word match)
+    # Check local verified ETHIOPIA_VEHICLES_DATABASE store
     sorted_keys = sorted(ETHIOPIA_VEHICLES_DATABASE.keys(), key=lambda k: len(k), reverse=True)
     for key in sorted_keys:
         if key in normalized_q or key in query_raw or key in combined_search_text:
-            return ETHIOPIA_VEHICLES_DATABASE[key]
+            match = dict(ETHIOPIA_VEHICLES_DATABASE[key])
+            match["source"] = "ethiopia_vehicles"
+            return match
 
         parts = [p for p in key.split() if p not in {"toyota", "suzuki", "hyundai", "byd", "plus", "70", "200", "series"}]
         for part in parts:
             if len(part) >= 3 and (part in normalized_q or part in query_raw or f" {part} " in f" {combined_search_text} "):
-                return ETHIOPIA_VEHICLES_DATABASE[key]
+                match = dict(ETHIOPIA_VEHICLES_DATABASE[key])
+                match["source"] = "ethiopia_vehicles"
+                return match
 
-    # 2. Amharic Vehicle Synonym Dictionary Mapping
+    # Amharic Vehicle Synonym Dictionary Mapping
     for amh_word, eng_term in AMHARIC_VEHICLE_SYNONYMS.items():
         if amh_word in query_raw:
             for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
                 if eng_term in key or key in eng_term:
-                    return data
-
-    # 3. TIER 2 LIVE MARKETPLACE POSTINGS (SQLite listings table & Supabase)
-    marketplace_match = search_marketplace_listings(user_query)
-    if marketplace_match:
-        return marketplace_match
-
-    # 4. Supabase ethiopia_vehicles remote table
-    if supabase is not None:
-        try:
-            tokens = [t for t in normalized_q.split() if len(t) >= 3][:3]
-            for tok in tokens:
-                res = (
-                    supabase.table("ethiopia_vehicles")
-                    .select("*")
-                    .or_(f"full_model.ilike.%{tok}%,brand.ilike.%{tok}%,model.ilike.%{tok}%")
-                    .limit(1)
-                    .execute()
-                )
-                if res and hasattr(res, 'data') and res.data:
-                    return res.data[0]
-        except Exception:
-            pass
+                    match = dict(data)
+                    match["source"] = "ethiopia_vehicles"
+                    return match
 
     return None
-
-
-def fetch_vehicle_knowledge(user_message: str) -> str:
-    """Fetch matching vehicle records from ethiopia_vehicles table or local verified store. Strict: No guessing or defaulting."""
-    car_data = search_vehicle_in_db(user_message)
-    if not car_data:
-        return ""
-
-    name = car_data.get('name') or car_data.get('full_model') or car_data.get('model') or "የተሽከርካሪ መረጃ"
-    cat = car_data.get('category', 'አጠቃላይ')
-    price = car_data.get('current_price_range_etb', 'በዕለታዊ የዋጋ ማስተካከያ ላይ')
-    adv = car_data.get('core_advantage', 'አስተማማኝ አገልግሎት')
-    collateral = car_data.get('bank_collateral_appeal', 'መካከለኛ/ከፍተኛ')
-    fuel = car_data.get('fuel_economy', 'ቆጣቢ')
-    clearance = car_data.get('ground_clearance', 'መደበኛ')
-    use_case = car_data.get('primary_use_case', 'ለከተማና ለቤተሰብ')
-    parts = car_data.get('spare_parts_availability', 'በስፋት የሚገኝ')
-    liquidity = car_data.get('resale_liquidity', 'ፈጣን')
-
-    return (
-        f"• ተሽከርካሪ: {name}\n"
-        f"  - ምድብ (Category): {cat}\n"
-        f"  - ይፋዊ የገበያ ዋጋ ክልል (Current Price Range): {price}\n"
-        f"  - ዋና ጠቀሜታ (Core Advantage): {adv}\n"
-        f"  - የባንክ ዋስትና ተቀባይነት (Bank Collateral Appeal): {collateral}\n"
-        f"  - የነዳጅ/ኃይል ቁጠባ (Fuel Economy): {fuel}\n"
-        f"  - የመሬት ከፍታ (Ground Clearance): {clearance}\n"
-        f"  - ዋና የአገልግሎት መስክ (Primary Use Case): {use_case}\n"
-        f"  - የመለዋወጫ አቅርቦት (Spare Parts Availability): {parts}\n"
-        f"  - የዳግም ሽያጭ ፍጥነት (Resale Liquidity): {liquidity}"
-    )
 
 
 def fetch_dynamic_knowledge(user_message: str) -> str:
@@ -842,6 +513,167 @@ def fetch_dynamic_knowledge(user_message: str) -> str:
         categories.append('banking')
     if any(k in msg for k in ['ቤት', 'ካርታ', 'ኪራይ', 'ሪል እስቴት', 'ሊዝ', 'ቦታ', 'መሬት']):
         categories.append('real_estate')
+    if any(k in msg for k in ['መኪና', 'ሊብሬ', 'ቦሎ', 'ቪትስ', 'ev', 'ባለቤትነት', 'ሻሲ', 'ተሽከርካሪ', 'ቀረጥ']):
+        categories.append('automotive')
+    if any(k in msg for k in ['ታክስ', 'ግብር', 'tin', 'ውል', 'ህግ', 'ካፒታል', 'dara', 'ውርስ']):
+        categories.append('legal')
+    if any(k in msg for k in ['አዲካ', 'ኮሚሽን', 'ማስታወቂያ', 'መለጠፍ', 'ደላላ']):
+        categories.append('platform')
+
+    if categories and supabase is not None:
+        try:
+            res = supabase.table('knowledge_base').select('topic, content').in_('category', categories).execute()
+            if res and hasattr(res, 'data') and res.data:
+                for item in res.data:
+                    if item.get('topic') and item.get('content'):
+                        remote_snippet = f"- {item['topic']}: {item['content']}"
+                        if remote_snippet not in snippets:
+                            snippets.append(remote_snippet)
+        except Exception:
+            pass
+
+    return "\n\n".join(snippets)
+
+
+def build_system_prompt(user_message: str) -> str:
+    """
+    Construct ground-truth augmented system prompt adhering strictly to:
+    1. DATABASE RETRIEVAL ORDER (WATERFALL LOGIC):
+       `listings` (active market) -> `ethiopia_vehicles` (car analysis) -> `knowledge_base` -> (secondary dynamic tables).
+    2. DUAL FALLBACK LOGIC:
+       A. PRICE & TRANSACTION QUERIES: Missing data -> Strict NO price guessing -> Direct to @AdikaMarketplace.
+       B. GENERAL & TECHNICAL QUERIES: Missing data -> Provide professional technical analysis in Amharic.
+    3. Natural, direct, professional Amharic with no introductory fluff.
+    """
+    msg_lower = str(user_message or "").lower()
+    is_price_query = any(k in msg_lower for k in [
+        'ዋጋ', 'ስንት ነው', 'ስንት', 'በስንት', 'መግዛት', 'መሸጥ', 'ግዢ', 'ሽያጭ', 'ገበያ', 'ዋጋው',
+        'price', 'cost', 'valuation', 'buy', 'sell', 'how much', 'rate', 'etb', 'ብር'
+    ])
+
+    retrieved_knowledge = fetch_dynamic_knowledge(user_message)
+    matched_data = search_vehicle_in_db(user_message)
+
+    if matched_data:
+        source_type = matched_data.get('source', 'database')
+        name = matched_data.get('full_model') or matched_data.get('name') or matched_data.get('sub_category') or "የተገኘ መረጃ"
+        price = matched_data.get('current_price_range_etb') or matched_data.get('price') or 'በዕለታዊ የዋጋ ማስተካከያ ላይ'
+        cat = matched_data.get('category') or matched_data.get('main_category') or 'አጠቃላይ'
+        adv = matched_data.get('core_advantage') or matched_data.get('description') or 'አስተማማኝ አገልግሎት'
+        collateral = matched_data.get('bank_collateral_appeal') or 'መካከለኛ/ከፍተኛ'
+        fuel = matched_data.get('fuel_economy') or 'ቆጣቢ'
+        clearance = matched_data.get('ground_clearance') or 'መደበኛ'
+        use_case = matched_data.get('primary_use_case') or 'ለከተማና ለቤተሰብ'
+        parts = matched_data.get('spare_parts_availability') or 'በስፋት የሚገኝ'
+        liquidity = matched_data.get('resale_liquidity') or 'ፈጣን'
+
+        system_instruction = f"""
+የተገኘው ይፋዊ የዳታቤዝ መረጃ ({source_type}):
+- ስም/ሞዴል (Name/Model): {name}
+- ይፋዊ የገበያ ዋጋ/ክልል (Official Price): {price}
+- ምድብ (Category): {cat}
+- ዋና ጠቀሜታ (Core Specs/Advantage): {adv}
+- የባንክ ዋስትና ተቀባይነት (Bank Collateral): {collateral}
+- የነዳጅ/ኃይል ቁጠባ (Fuel Economy): {fuel}
+- የመሬት ከፍታ (Ground Clearance): {clearance}
+- ዋና የአገልግሎት መስክ (Primary Use): {use_case}
+- የመለዋወጫ አቅርቦት (Spare Parts): {parts}
+- የዳግም ሽያጭ ፍጥነት (Resale Liquidity): {liquidity}
+
+ትዕዛዝ:
+1. ከዳታቤዙ በተገኘው መረጃ ላይ ብቻ ተመስርተህ የተዋቀረና ግልጽ ምላሽ በንጹህ አማርኛ አቅርብ።
+2. ዋጋውን ስትጠቅስ ከላይ ከተጠቀሰው '{price}' ውጪ ምንም አይነት ግምት እንዳትሰጥ።
+"""
+    else:
+        if is_price_query:
+            system_instruction = """
+ሁኔታ: ተጠቃሚው የጠየቀው የተሽከርካሪ ወይም የንብረት ዋጋ ዳታቤዝ ውስጥ አልተገኘም።
+DUAL FALLBACK DIRECTIVE (PRICE & TRANSACTION QUERY):
+- ጥብቅ ህግ: በራስህ ግምት ወይም አጠቃላይ AI እውቀት በፍፁም ዋጋ እንዳትገምት ወይም እንዳትፈጥር!
+- ምላሽ መመሪያ: ይህ ንብረት በቋሚ ዳታቤዛችን ላይ በዕለታዊ የቀጥታ ዋጋ ማስተካከያ ላይ መሆኑን በአክብሮት በአማርኛ ግለጽ፤ ወቅታዊ የቀጥታ ሽያጭ መረጃዎችን ለማግኘት ወዲያውኑ ወደ ይፋዊው አዲካ ቴሌግራም ቻናል (@AdikaMarketplace) እንዲሄዱ ወይም ከአዲካ ኤጀንቶች ጋር እንዲገናኙ ምራቸው።
+- የአማርኛ ምላሽ ምሳሌ:
+"ይህ ተሽከርካሪ በቋሚ ዳታቤዛችን ላይ በዕለታዊ የዋጋ ማስተካከያ ላይ ስለሆነ፣ እባክዎን አዲስ የተለቀቁ የቀጥታ የገበያ ዋጋዎችንና ሽያጮችን ለማየት በይፋዊው አዲካ ቴሌግራም ቻናል (@AdikaMarketplace) ይመልከቱ ወይም በቀጥታ ከአዲካ ኤጀንቶች ጋር ይገናኙ።"
+"""
+        else:
+            system_instruction = """
+ሁኔታ: ተጠቃሚው የጠየቀው ቴክኒካዊ መረጃ፣ ንጽጽር ወይም ምክር ዳታቤዝ ውስጥ በቀጥታ አልተገኘም።
+DUAL FALLBACK DIRECTIVE (GENERAL & TECHNICAL QUERY):
+- ምላሽ መመሪያ: የውስጥ ሙያዊ እውቀትህን ተጠቅመህ የተሟላ፣ አጋዥ እና እጅግ ትክክለኛ የሆነ ቴክኒካዊ ትንተና፣ የሞተር ዝርዝር፣ ጥቅምና ጉዳት በንጹህ አማርኛ አቅርብ።
+"""
+
+    return f"""You are the official Adika Marketplace Senior AI Advisor.
+Your task is to process user queries by evaluating database search results retrieved from tables (`listings`, `ethiopia_vehicles`, `knowledge_base`, and future system tables).
+
+1. DATABASE RETRIEVAL ORDER (WATERFALL LOGIC):
+   - The backend searches tables in priority sequence: `listings` (active market) -> `ethiopia_vehicles` (car analysis) -> `knowledge_base` -> (any secondary dynamic tables).
+   - If relevant data is returned from ANY of these tables, construct a clear, accurate response based strictly on that retrieved data.
+
+2. DUAL FALLBACK LOGIC (WHEN DATA IS NOT FOUND IN DATABASE):
+   A. PRICE & TRANSACTION QUERIES (Price, Buy/Sell, Valuation, Cost):
+      - If the user query is asking for a specific vehicle price or transaction detail AND the data is MISSING from all database tables:
+      - STRICT RULE: DO NOT estimate, fabricate, or guess prices using general knowledge.
+      - Response Directive: Politely inform the user in Amharic that the price for this item is currently updating in live inventory, and direct them immediately to the official Telegram channel (@AdikaMarketplace) or human agents for current listings.
+   B. GENERAL & TECHNICAL QUERIES (Specs, Comparisons, Features, Advice):
+      - If the user query is asking for technical parameters, general advice, maintenance tips, or feature breakdowns AND the data is MISSING from database tables:
+      - Response Directive: Use your internal professional knowledge base to provide a detailed, helpful, and highly accurate analysis in clear Amharic.
+
+3. RESPONSE STYLE & TONE:
+   - Always respond in natural, direct, and professional Amharic (ኢትዮጵያዊ የከፍተኛ ገበያና ፋይናንስ አማካሪ ስልጣን ባለው አነጋገር).
+   - Avoid generic introductory fluff (e.g., 'ሰላም እንዴት ነህ...'). Jump straight into structured data or clear explanations.
+   - Always maintain professional clarity and precision.
+
+SEARCH CONTEXT & ACTIVE DIRECTIVE:
+{system_instruction.strip()}
+
+GROUND TRUTH CONTEXT FROM `knowledge_base`:
+{retrieved_knowledge if retrieved_knowledge else "Verified Ethiopian financial, real estate, automotive, and legal standards."}"""
+
+
+# =======================================================
+# 2. MASTER SYSTEM PROMPT (ለአማርኛ ብቻ)
+# =======================================================
+SYSTEM_PROMPT = """
+አንተ የ Adika Marketplace ይፋዊ Senior AI Advisor (ከፍተኛ የገበያና የተሽከርካሪ አማካሪ) ነህ።
+
+1. የዳታቤዝ ቅደም ተከተል (Waterfall Logic):
+   - `listings` (የቀጥታ ገበያ) -> `ethiopia_vehicles` (የተሽከርካሪ ዝርዝር) -> `knowledge_base` (የባንክ፣ ውል፣ ቀረጥ)
+   - መረጃ ከነዚህ ሰንጠረዦች ሲገኝ በተገኘው መረጃ ላይ ብቻ ተመስርተህ ቀጥተኛ መልስ ስጥ።
+
+2. ዳታቤዝ ላይ ካልተገኘ (Dual Fallback Logic):
+   ሀ. የዋጋና የሽያጭ/ግዢ ጥያቄዎች (Price & Transaction Queries):
+      - በግምት ዋጋ በፍፁም እንዳትናገር!
+      - ይልቁንም ንብረቱ በዕለታዊ የቀጥታ ዋጋ ማስተካከያ ላይ መሆኑን ገልጸህ ወደ @AdikaMarketplace ቴሌግራም ቻናል ምራ።
+   ለ. አጠቃላይና ቴክኒካዊ ጥያቄዎች (General & Technical Specs):
+      - የውስጥ ሙያዊ እውቀትህን ተጠቅመህ የተሟላና ትክክለኛ ትንተና በግልጽ አማርኛ አቅርብ።
+
+3. የአነጋገር ዘይቤ:
+   - አላስፈላጊ መግቢያ ሳታበዛ ቀጥታ ወደ ዝርዝሩ ግባ።
+   - 100% በንጹህ እና ሙያዊ አማርኛ መልስ።
+"""
+
+ADVISOR_SYSTEM_PROMPT = SYSTEM_PROMPT
+
+
+def is_valid_openrouter_key(key: Optional[str]) -> bool:ከተል (Waterfall Logic):
+   - `listings` (የቀጥታ ገበያ) -> `ethiopia_vehicles` (የተሽከርካሪ ዝርዝር) -> `knowledge_base` (የባንክ፣ ውል፣ ቀረጥ)
+   - መረጃ ከነዚህ ሰንጠረዦች ሲገኝ በተገኘው መረጃ ላይ ብቻ ተመስርተህ ቀጥተኛ መልስ ስጥ።
+
+2. ዳታቤዝ ላይ ካልተገኘ (Dual Fallback Logic):
+   ሀ. የዋጋና የሽያጭ/ግዢ ጥያቄዎች (Price & Transaction Queries):
+      - በግምት ዋጋ በፍፁም እንዳትናገር!
+      - ይልቁንም ንብረቱ በዕለታዊ የቀጥታ ዋጋ ማስተካከያ ላይ መሆኑን ገልጸህ ወደ @AdikaMarketplace ቴሌግራም ቻናል ምራ።
+   ለ. አጠቃላይና ቴክኒካዊ ጥያቄዎች (General & Technical Specs):
+      - የውስጥ ሙያዊ እውቀትህን ተጠቅመህ የተሟላና ትክክለኛ ትንተና በግልጽ አማርኛ አቅርብ።
+
+3. የአነጋገር ዘይቤ:
+   - አላስፈላጊ መግቢያ ሳታበዛ ቀጥታ ወደ ዝርዝሩ ግባ።
+   - 100% በንጹህ እና ሙያዊ አማርኛ መልስ።
+"""
+
+ADVISOR_SYSTEM_PROMPT = SYSTEM_PROMPT
+
+
+def is_valid_openrouter_key(key: Optional[str]) -> bool:d('real_estate')
     if any(k in msg for k in ['መኪና', 'ሊብሬ', 'ቦሎ', 'ቪትስ', 'ev', 'ባለቤትነት', 'ሻሲ', 'ተሽከርካሪ', 'ቀረጥ']):
         categories.append('automotive')
     if any(k in msg for k in ['ታክስ', 'ግብር', 'tin', 'ውል', 'ህግ', 'ካፒታል', 'dara', 'ውርስ']):
