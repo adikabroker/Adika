@@ -155,18 +155,30 @@ def _gemini_generate(prompt, api_key=None, system=None, *, json_mode=False, temp
 
 
 # ==============================================================================
-# OpenRouter / DeepSeek-V3 Senior Financial Advisor AI Service
+# OpenRouter / Qwen3 & DeepSeek Dynamic Senior Financial Advisor AI Service
 # ==============================================================================
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_ADVISOR_MODEL = os.environ.get("OPENROUTER_MODEL") or "deepseek/deepseek-chat"
+API_KEY = os.environ.get("OPENROUTER_API_KEY") or OPENROUTER_API_KEY
+BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-SYSTEM_PROMPT = """You are Adika's Senior Financial Advisor in Ethiopia.
+# 🔄 ተለዋዋጭ ሞዴሎች (Dynamic Models)
+# Qwen3 ዋናው (Primary), DeepSeek መጠባበቂያ (Fallback)
+DEFAULT_MODEL = os.environ.get("OPENROUTER_MODEL") or "qwen/qwen3-30b-a3b-instruct"
+FALLBACK_MODEL = "deepseek/deepseek-v4-flash"
 
-STRICT EXECUTION RULES:
-1. LANGUAGE: Respond EXCLUSIVELY in natural, clean, professional Amharic (ንጹህ እና ተፈጥሮአዊ አማርኛ). Never output foreign scripts or mixed English terms.
-2. NO RAW MARKDOWN: Do NOT output formatting symbols like **, *, or ###. Output plain structured text with numbered lists (1, 2, 3) only.
-3. FINANCIAL DATA ACCURACY: Never state fixed bank interest rates or false car prices. Explain that loan rates in Ethiopia float (~16%-24%+) and advise contacting bank branches directly.
-4. CONVERSATIONAL TONE: Be direct, helpful, warm, and natural like a human expert in Addis Ababa."""
+OPENROUTER_BASE_URL = BASE_URL
+OPENROUTER_ADVISOR_MODEL = DEFAULT_MODEL
+
+# =======================================================
+# 2. ጠንከር ያለ MASTER SYSTEM PROMPT (ለአማርኛ ብቻ)
+# =======================================================
+SYSTEM_PROMPT = """
+አንተ የ "Adika" ከፍተኛ የፋይናንስ አማካሪ ነህ። ተጠቃሚዎች ስለ መኪና ግዢ፣ ስለ ቤት ግዢ እና ስለ በጀት አስተዳደር ምክር ለማግኘት ይመጣሉ።
+የማይቀሩ ህጎች:
+1. ሁሉንም መልሶችህን በንጹህ አማርኛ ቋንቋ ብቻ ስጥ። እንግሊዝኛ ቃላት ሙሉ በሙሉ አትጠቀም።
+2. ተጠቃሚው በእንግሊዝኛ ቢጽፍም፣ በአማርኛ ብቻ መልስ ስጠው።
+3. እንደ እውነተኛ የፋይናንስ ባለሙያ ተወክል። መልስህ አጭር እና ለመረዳት ቀላል ይሁን።
+4. የኢትዮጵያ ብርን (ETB) በመጠቀም ግልጽ ምሳሌዎችን ስጥ።
+"""
 
 ADVISOR_SYSTEM_PROMPT = SYSTEM_PROMPT
 
@@ -197,6 +209,129 @@ def clean_model_output(raw_text: str) -> str:
     cleaned = re.sub(r'\bAI\b', 'እኛ', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.IGNORECASE)
     return cleaned.strip()
+
+
+# =======================================================
+# 3. የታሪክ አስተዳደር (Token Saver)
+# =======================================================
+def trim_history(history: Optional[List[Dict]], max_messages: int = 5) -> List[Dict]:
+    """Trim conversation history to keep context token usage low."""
+    if not history:
+        return []
+    cleaned_history = []
+    for msg in history:
+        if isinstance(msg, dict):
+            role = msg.get("role", "user")
+            if role not in ["user", "assistant", "system"]:
+                role = "assistant" if str(role).lower() in ["bot", "advisor", "ai", "model"] else "user"
+            content = str(msg.get("content", "")).strip()
+            if content:
+                cleaned_history.append({"role": role, "content": content})
+    if len(cleaned_history) > max_messages:
+        return cleaned_history[-max_messages:]
+    return cleaned_history
+
+
+# =======================================================
+# 4. ሞዴሉን የሚጠራው ዋናው ተግባር (Function)
+# =======================================================
+def call_llm_api(model_name: str, user_message: str, history: Optional[List[Dict]] = None, is_retry: bool = False, budget: float = 0.0) -> Optional[str]:
+    """በተሰጠው ሞዴል ስም ወደ OpenRouter API ይልካል"""
+    trimmed_history = trim_history(history, max_messages=5)
+    
+    api_key = os.environ.get("OPENROUTER_API_KEY") or API_KEY
+    if not is_valid_openrouter_key(api_key):
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {api_key.strip()}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://adika.app",
+        "X-Title": "Adika Financial Advisor"
+    }
+
+    # እንደገና ሲሞከር (Retry), ሞዴሉ እንዳይሳሳት ጠንከር ያለ ማስገደድ እንጨምራለን
+    system_prompt = SYSTEM_PROMPT
+    if budget and float(budget) > 0:
+        system_prompt += f"\nየተጠቃሚው አጠቃላይ በጀት: {float(budget):,.0f} የኢትዮጵያ ብር (ETB) ነው።"
+    if is_retry:
+        system_prompt = SYSTEM_PROMPT + "\nየፊት ለፊት ትዕዛዝ፦ ከመልስህ በፊት ምንም አይነት አስተሳሰብ አትጻፍ። ቀጥታ በአማርኛ መልስ ስጥ።"
+
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(trimmed_history)
+    messages.append({"role": "user", "content": str(user_message).strip()})
+
+    payload = {
+        "model": model_name,
+        "messages": messages,
+        "temperature": 0.4,
+        # ✅ በጣም አስፈላጊው ለውጥ፦ የቶከን በጀቱን በቂ ማድረግ
+        "max_tokens": 2048,
+        # ✅ የማሰብ ችግርን ለማስወገድ
+        "reasoning": {"enabled": False}
+    }
+
+    try:
+        if requests is not None:
+            response = requests.post(BASE_URL, headers=headers, json=payload, timeout=25)
+            response.raise_for_status()
+            data = response.json()
+            raw_text = data["choices"][0]["message"]["content"]
+            return clean_model_output(raw_text)
+        else:
+            req_data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(BASE_URL, data=req_data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                if resp.status == 200:
+                    resp_body = resp.read().decode("utf-8")
+                    data = json.loads(resp_body)
+                    raw_text = data["choices"][0]["message"]["content"]
+                    return clean_model_output(raw_text)
+                return None
+    except (requests.exceptions.Timeout if requests else Exception):
+        print(f"⏰ {model_name} timed out. Switching to fallback...")
+        return None
+    except (requests.exceptions.RequestException if requests else Exception) as e:
+        print(f"❌ Error on {model_name}: {e}")
+        return None
+    except Exception as e:
+        print(f"❌ Exception on {model_name}: {e}")
+        return None
+
+
+# =======================================================
+# 5. ተለዋዋጭ (Dynamic) ጥሪ ከ Fallback ጋር
+# =======================================================
+def get_user_response(user_message: str, history: Optional[List[Dict]] = None, budget: float = 0.0) -> str:
+    """Qwen3 ብቻ ሳይሆን DeepSeekን እንደ መጠባበቂያ የሚጠቀም"""
+    msg_str = str(user_message or "").strip()
+    if not msg_str:
+        return "ሰላም! ስለ መኪና፣ ስለ ቤት ግዢ፣ ስለ ቀረጥ ወይም ስለ ባንክ ብድር ማንኛውንም ጥያቄ ይጠይቁኝ፤ በደስታ እመልስልዎታለሁ።"
+
+    # 1. Qwen3 ን እንሞክር
+    answer = call_llm_api(DEFAULT_MODEL, msg_str, history, is_retry=False, budget=budget)
+    
+    # ባዶ ስህተት ከሆነ
+    if not answer:
+        print("Switching to DeepSeek (Fallback 1)...")
+        answer = call_llm_api(FALLBACK_MODEL, msg_str, history, is_retry=True, budget=budget)
+    
+    # Qwen በእንግሊዝኛ መልስ ከሰጠ
+    suspicious_words = ["Hello", "The", "Bank", "Loan", "Please", "If", "You", "I'm sorry"]
+    if answer and any(word in answer for word in suspicious_words):
+        print("Qwen gave English. Switching to DeepSeek...")
+        answer = call_llm_api(FALLBACK_MODEL, msg_str, history, is_retry=True, budget=budget)
+
+    if answer and len(answer.strip()) > 5:
+        return answer
+
+    # Gemini ወይም የውስጥ አማካሪ ተተኪ
+    return _fallback_gemini_advisor(msg_str, history, budget)
+
+
+def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
+    """Standard entry point aliasing get_user_response for compatibility."""
+    return get_user_response(user_message=user_message, history=conversation_history, budget=budget)
 
 
 def _generate_dynamic_financial_advice(user_msg: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
@@ -309,86 +444,6 @@ def _generate_dynamic_financial_advice(user_msg: str, conversation_history: Opti
         "2. የድንገተኛ ወጪ ጥበቃ: ከጠቅላላ ሀብትዎ 15% የሚሆነውን ለመጠባበቂያ በማስቀረት የፋይናንስ መረጋጋትዎን ይጠብቁ።\n"
         "3. ተጨማሪ መረጃ: ስለ ተሽከርካሪ ዋጋ፣ ስለ ጉምሩክ ቀረጥ፣ ስለ ባንክ ብድር ወይም ስለ በጀትዎ ዝርዝር ጥያቄ ካለዎት ይጠይቁኝ፤ በደስታ እመልሳለሁ።"
     )
-
-
-def get_ai_response(user_message: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
-    """
-    Qwen 2.5 32B AI response generator with strict Amharic constraints and executive financial advice.
-    Gracefully falls back to dynamic expert financial engine when external APIs are unreachable.
-    """
-    msg_str = str(user_message or "").strip()
-    if not msg_str:
-        return "ሰላም! ስለ መኪና፣ ስለ ቤት ግዢ፣ ስለ ቀረጥ ወይም ስለ ባንክ ብድር ማንኛውንም ጥያቄ ይጠይቁኝ፤ በደስታ እመልስልዎታለሁ።"
-
-    api_key = os.environ.get("OPENROUTER_API_KEY") or OPENROUTER_API_KEY
-    if not is_valid_openrouter_key(api_key):
-        return _fallback_gemini_advisor(msg_str, conversation_history, budget)
-
-    headers = {
-        "Authorization": f"Bearer {api_key.strip()}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://adika.app",
-        "X-Title": "Adika Mini App"
-    }
-
-    system_prompt = SYSTEM_PROMPT
-    if budget and float(budget) > 0:
-        system_prompt += f"\n\nClient Total Budget Context: {float(budget):,.0f} ETB. Provide recommendations strictly aligned with this budget."
-
-    messages = [{"role": "system", "content": system_prompt}]
-
-    if conversation_history:
-        for msg in conversation_history[-8:]:
-            if isinstance(msg, dict):
-                role = msg.get("role", "user")
-                if role not in ["user", "assistant", "system"]:
-                    role = "assistant" if str(role).lower() in ["bot", "advisor", "ai", "model"] else "user"
-                content = msg.get("content", "")
-                if content:
-                    messages.append({
-                        "role": role,
-                        "content": str(content)
-                    })
-
-    messages.append({"role": "user", "content": msg_str})
-
-    payload = {
-        "model": OPENROUTER_ADVISOR_MODEL,
-        "messages": messages,
-        "temperature": 0.3,
-        "repetition_penalty": 1.2,
-        "max_tokens": 800
-    }
-
-    try:
-        if requests is not None:
-            response = requests.post(OPENROUTER_BASE_URL, headers=headers, json=payload, timeout=25)
-            print(f"DeepSeek/OpenRouter API Status Code: {response.status_code}")
-            if response.status_code == 200:
-                data = response.json()
-                raw_output = data['choices'][0]['message']['content']
-                clean_text = clean_model_output(raw_output)
-                if clean_text:
-                    return clean_text
-            else:
-                print(f"DeepSeek/OpenRouter API Error Body: {response.text}")
-                logger.warning(f"OpenRouter API status {response.status_code}: {response.text}")
-        else:
-            req_data = json.dumps(payload).encode("utf-8")
-            req = urllib.request.Request(OPENROUTER_BASE_URL, data=req_data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=25) as resp:
-                if resp.status == 200:
-                    resp_body = resp.read().decode("utf-8")
-                    data = json.loads(resp_body)
-                    raw_output = data['choices'][0]['message']['content']
-                    clean_text = clean_model_output(raw_output)
-                    if clean_text:
-                        return clean_text
-    except Exception as e:
-        print(f"DeepSeek API Exception: {str(e)}")
-        logger.warning(f"OpenRouter API call failed in get_ai_response: {e}")
-
-    return _fallback_gemini_advisor(msg_str, conversation_history, budget)
 
 
 def _fallback_gemini_advisor(user_message: str, conversation_history: Optional[List[Dict[str, str]]] = None, budget: float = 0.0) -> str:
