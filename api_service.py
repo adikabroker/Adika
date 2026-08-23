@@ -169,7 +169,112 @@ OPENROUTER_BASE_URL = BASE_URL
 OPENROUTER_ADVISOR_MODEL = DEFAULT_MODEL
 
 # =======================================================
-# 2. ጠንከር ያለ MASTER SYSTEM PROMPT (ለአማርኛ ብቻ)
+# Supabase Knowledge Base Integration
+# =======================================================
+SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+SUPABASE_KEY = (
+    os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    or os.environ.get("SUPABASE_KEY")
+    or os.environ.get("SUPABASE_ANON_KEY")
+    or ""
+).strip()
+
+supabase = None
+try:
+    from supabase import create_client, Client
+    if SUPABASE_URL and SUPABASE_KEY:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as _sb_err:
+    supabase = None
+    logger.debug(f"Supabase client init note: {_sb_err}")
+
+
+def fetch_dynamic_knowledge(user_message: str) -> str:
+    """Selectively fetches exact knowledge entries based on context keywords to save tokens."""
+    msg = str(user_message or "").lower()
+    categories = []
+
+    if any(k in msg for k in ['ባንክ', 'ብድር', 'ወለድ', 'cpo', 'ቼክ', 'forex', 'ስዊፍት']):
+        categories.append('banking')
+    if any(k in msg for k in ['ቤት', 'ካርታ', 'ኪራይ', 'ሪል እስቴት', 'ሊዝ', 'ቦታ']):
+        categories.append('real_estate')
+    if any(k in msg for k in ['መኪና', 'ሊብሬ', 'ቦሎ', 'ቪትስ', 'ev', 'ባለቤትነት', 'ሻሲ']):
+        categories.append('automotive')
+    if any(k in msg for k in ['ታክስ', 'ግብር', 'tin', 'ውል', 'ህግ', 'ካፒታል', 'dara', 'ውርስ']):
+        categories.append('legal')
+    if any(k in msg for k in ['አዲካ', 'ኮሚሽን', 'ማስታወቂያ', 'መለጠፍ', 'ደላላ']):
+        categories.append('platform')
+    if any(k in msg for k in ['ኢንቨስትመንት', 'አክሲዮን', 'ንግድ', 'ፋብሪካ', 'ቀረጥ']):
+        categories.append('investment')
+
+    if not categories:
+        return ""
+
+    # 1. Try Supabase Client SDK if initialized
+    if supabase is not None:
+        try:
+            res = supabase.table('knowledge_base').select('topic, content').in_('category', categories).execute()
+            if res and hasattr(res, 'data') and res.data:
+                snippets = [f"- {item['topic']}: {item['content']}" for item in res.data if item.get('topic') and item.get('content')]
+                if snippets:
+                    return "\n".join(snippets)
+        except Exception as e:
+            print(f"Supabase Context Fetch Error: {str(e)}")
+
+    # 2. Fallback via direct Supabase PostgREST REST API
+    if SUPABASE_URL and SUPABASE_KEY:
+        try:
+            cat_filter = "(" + ",".join(categories) + ")"
+            url = f"{SUPABASE_URL}/rest/v1/knowledge_base?select=topic,content&category=in.{cat_filter}"
+            headers = {
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json"
+            }
+            if requests is not None:
+                resp = requests.get(url, headers=headers, timeout=5)
+                if resp.status_code == 200:
+                    rows = resp.json()
+                    if isinstance(rows, list) and rows:
+                        snippets = [f"- {item['topic']}: {item['content']}" for item in rows if isinstance(item, dict) and item.get('topic') and item.get('content')]
+                        if snippets:
+                            return "\n".join(snippets)
+            else:
+                req = urllib.request.Request(url, headers=headers, method="GET")
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    if resp.status == 200:
+                        rows = json.loads(resp.read().decode("utf-8"))
+                        if isinstance(rows, list) and rows:
+                            snippets = [f"- {item['topic']}: {item['content']}" for item in rows if isinstance(item, dict) and item.get('topic') and item.get('content')]
+                            if snippets:
+                                return "\n".join(snippets)
+        except Exception as e:
+            logger.debug(f"Supabase REST knowledge base fetch note: {e}")
+
+    return ""
+
+
+def build_system_prompt(user_message: str) -> str:
+    """Construct ground-truth augmented system prompt with Supabase dynamic context."""
+    retrieved_knowledge = fetch_dynamic_knowledge(user_message)
+    
+    return f"""You are Adika's Executive Financial & Legal Advisor in Ethiopia.
+
+GROUND TRUTH KNOWLEDGE BASE (SUPABASE RETRIEVED CONTEXT):
+{retrieved_knowledge if retrieved_knowledge else "No specific knowledge base row matched. Rely strictly on verified Ethiopian financial and legal standards."}
+
+CORE BEHAVIORAL & TONE GUIDELINES:
+1. ADAPTIVE PERSONA:
+   - For Investors, Lawyers, and Bankers: Be direct, highly professional, analytical, and technically precise using standard financial/legal terminology.
+   - For General Users & Small Business Owners: Be warm, friendly, supportive, clear, and easy to understand. Frame advice as a helpful peer.
+2. NO NAME FABRICATION: Never assume or invent user names unless explicitly provided in the chat conversation.
+3. GROUND TRUTH FIDELITY: If the context above covers the user's question, strictly adhere to those exact figures and legal steps. Never guess static price values for fluctuating vehicle/real estate assets—instruct users to check live Adika marketplace listings.
+4. TOKEN CONSERVATION & PROACTIVE CLOSING: Keep response focused and direct. At the end of open-ended queries, provide 1-2 practical follow-up questions or next steps to guide the user naturally.
+5. FORMATTING: Maximize scannability. Jump straight to the answer in 1-2 intro sentences. Use bolding, bullet points, or tables. Avoid markdown headers (##, ###). Always respond 100% in natural Amharic."""
+
+
+# =======================================================
+# 2. MASTER SYSTEM PROMPT (ለአማርኛ ብቻ)
 # =======================================================
 SYSTEM_PROMPT = """
 አንተ የ "Adika" ከፍተኛ የፋይናንስ አማካሪ ነህ። ተጠቃሚዎች ስለ መኪና ግዢ፣ ስለ ቤት ግዢ እና ስለ በጀት አስተዳደር ምክር ለማግኘት ይመጣሉ።
@@ -251,11 +356,11 @@ def call_llm_api(model_name: str, user_message: str, history: Optional[List[Dict
     }
 
     # እንደገና ሲሞከር (Retry), ሞዴሉ እንዳይሳሳት ጠንከር ያለ ማስገደድ እንጨምራለን
-    system_prompt = SYSTEM_PROMPT
+    system_prompt = build_system_prompt(user_message)
     if budget and float(budget) > 0:
-        system_prompt += f"\nየተጠቃሚው አጠቃላይ በጀት: {float(budget):,.0f} የኢትዮጵያ ብር (ETB) ነው።"
+        system_prompt += f"\n\nየተጠቃሚው አጠቃላይ በጀት: {float(budget):,.0f} የኢትዮጵያ ብር (ETB) ነው።"
     if is_retry:
-        system_prompt = SYSTEM_PROMPT + "\nየፊት ለፊት ትዕዛዝ፦ ከመልስህ በፊት ምንም አይነት አስተሳሰብ አትጻፍ። ቀጥታ በአማርኛ መልስ ስጥ።"
+        system_prompt += "\n\nየፊት ለፊት ትዕዛዝ፦ ከመልስህ በፊት ምንም አይነት አስተሳሰብ አትጻፍ። ቀጥታ በአማርኛ መልስ ስጥ።"
 
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(trimmed_history)
@@ -454,7 +559,7 @@ def _fallback_gemini_advisor(user_message: str, conversation_history: Optional[L
             budget_str = f"የተጠቃሚ በጀት: {float(budget):,.0f} ETB\n" if budget and float(budget) > 0 else ""
             res = _gemini_generate(
                 prompt=f"{budget_str}የተጠቃሚ ጥያቄ: {user_message}",
-                system=ADVISOR_SYSTEM_PROMPT,
+                system=build_system_prompt(user_message),
                 temperature=0.2
             )
             if res:
