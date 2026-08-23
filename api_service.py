@@ -324,98 +324,110 @@ ETHIOPIA_VEHICLES_DATABASE = {
 }
 
 
+def search_vehicle_in_db(user_query: str) -> Optional[Dict]:
+    """Search for vehicle in ethiopia_vehicles table via Supabase, REST API, or verified local database."""
+    if not user_query:
+        return None
+    # ጥያቄው ውስጥ ያሉትን ዋና ዋና ቃላት መለየት (ለምሳሌ Seagull, BYD)
+    words = re.findall(r"\b\w+\b", str(user_query))
+
+    stop_words = {"ዋጋ", "ስንት", "ነው", "የ", "ስለ", "መኪና", "ተሽከርካሪ", "car", "price", "how", "much", "is", "the", "and", "ምን", "ያህል"}
+
+    for word in words:
+        if len(word) > 2 and word.lower() not in stop_words:
+            # 1. Try Supabase ethiopia_vehicles table
+            if supabase is not None:
+                try:
+                    res = (
+                        supabase.table("ethiopia_vehicles")
+                        .select("*")
+                        .or_(
+                            f"full_model.ilike.%{word}%,brand.ilike.%{word}%,category.ilike.%{word}%"
+                        )
+                        .execute()
+                    )
+                    if res and hasattr(res, 'data') and res.data:
+                        return res.data[0]  # የተገኘውን መረጃ ይመልሳል
+                except Exception:
+                    try:
+                        res = (
+                            supabase.table("ethiopia_vehicles")
+                            .select("*")
+                            .or_(
+                                f"model.ilike.%{word}%,name.ilike.%{word}%,category.ilike.%{word}%"
+                            )
+                            .execute()
+                        )
+                        if res and hasattr(res, 'data') and res.data:
+                            return res.data[0]
+                    except Exception:
+                        pass
+
+            # 2. Try REST fallback
+            if SUPABASE_URL and SUPABASE_KEY and requests is not None:
+                try:
+                    url = f"{SUPABASE_URL}/rest/v1/ethiopia_vehicles?or=(full_model.ilike.*{word}*,brand.ilike.*{word}*,model.ilike.*{word}*,name.ilike.*{word}*)&limit=1"
+                    headers = {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization": f"Bearer {SUPABASE_KEY}",
+                        "Content-Type": "application/json"
+                    }
+                    resp = requests.get(url, headers=headers, timeout=5)
+                    if resp.status_code == 200:
+                        rows = resp.json()
+                        if isinstance(rows, list) and rows:
+                            return rows[0]
+                except Exception:
+                    pass
+
+            # 3. Try Local Verified Database
+            w_lower = word.lower()
+            for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
+                if w_lower in key or any(w_lower == part.lower() for part in key.split()):
+                    return data
+                name = str(data.get('name') or data.get('full_model') or data.get('model') or '').lower()
+                if w_lower in name:
+                    return data
+
+    return None
+
+
 def fetch_vehicle_knowledge(user_message: str) -> str:
     """Fetch matching vehicle records from ethiopia_vehicles table in Supabase or local verified store."""
-    msg = str(user_message or "").lower()
-    keywords = [
-        'vitz', 'ቪትስ', 'ቪትዝ', 'dzire', 'ዲዛየር', 'swift', 'ስዊፍት', 'yaris', 'ያሪስ',
-        'corolla', 'ኮሮላ', 'tucson', 'ቱክሰን', 'rav4', 'ራቭ4', 'byd', 'dolphin',
-        'ዶልፊን', 'seagull', 'ሲጋል', 'hilux', 'ሀይሉክስ', 'መኪና', 'ተሽከርካሪ', 'ev',
-        'alto', 'አልቶ', 'neta', 'ነታ', 'hyundai', 'ሱዙኪ', 'ቶዮታ', 'toyota', 'suzuki'
-    ]
+    car_data = search_vehicle_in_db(user_message)
+    if not car_data:
+        msg = str(user_message or "").lower()
+        if any(k in msg for k in ['መኪና', 'ተሽከርካሪ', 'car', 'vehicle', 'ዋጋ']):
+            car_data = ETHIOPIA_VEHICLES_DATABASE.get("toyota vitz")
+        else:
+            return ""
 
-    if not any(k in msg for k in keywords):
+    if not car_data:
         return ""
 
-    matched_records = []
+    name = car_data.get('name') or car_data.get('full_model') or car_data.get('model') or "የተሽከርካሪ መረጃ"
+    cat = car_data.get('category', 'አጠቃላይ')
+    price = car_data.get('current_price_range_etb', 'በዕለታዊ የዋጋ ማስተካከያ ላይ')
+    adv = car_data.get('core_advantage', 'አስተማማኝ አገልግሎት')
+    collateral = car_data.get('bank_collateral_appeal', 'መካከለኛ/ከፍተኛ')
+    fuel = car_data.get('fuel_economy', 'ቆጣቢ')
+    clearance = car_data.get('ground_clearance', 'መደበኛ')
+    use_case = car_data.get('primary_use_case', 'ለከተማና ለቤተሰብ')
+    parts = car_data.get('spare_parts_availability', 'በስፋት የሚገኝ')
+    liquidity = car_data.get('resale_liquidity', 'ፈጣን')
 
-    # 1. Try Supabase ethiopia_vehicles table
-    if supabase is not None:
-        try:
-            res = supabase.table('ethiopia_vehicles').select('*').limit(6).execute()
-            if res and hasattr(res, 'data') and res.data:
-                for row in res.data:
-                    row_txt = f"{row.get('name', '')} {row.get('model', '')} {row.get('make', '')} {row.get('category', '')}".lower()
-                    if any(k in row_txt for k in msg.split() if len(k) >= 3) or any(k in msg for k in ['መኪና', 'ተሽከርካሪ']):
-                        matched_records.append(row)
-        except Exception as e:
-            logger.debug(f"Supabase ethiopia_vehicles fetch note: {e}")
-
-    # 2. Fallback via PostgREST REST API
-    if not matched_records and SUPABASE_URL and SUPABASE_KEY:
-        try:
-            url = f"{SUPABASE_URL}/rest/v1/ethiopia_vehicles?select=*&limit=8"
-            headers = {
-                "apikey": SUPABASE_KEY,
-                "Authorization": f"Bearer {SUPABASE_KEY}",
-                "Content-Type": "application/json"
-            }
-            if requests is not None:
-                resp = requests.get(url, headers=headers, timeout=5)
-                if resp.status_code == 200:
-                    rows = resp.json()
-                    if isinstance(rows, list) and rows:
-                        for row in rows:
-                            row_txt = f"{row.get('name', '')} {row.get('model', '')} {row.get('make', '')}".lower()
-                            if any(k in row_txt for k in msg.split() if len(k) >= 3):
-                                matched_records.append(row)
-        except Exception as e:
-            logger.debug(f"Supabase REST ethiopia_vehicles fetch note: {e}")
-
-    # 3. Fallback to verified local ETHIOPIA_VEHICLES_DATABASE
-    if not matched_records:
-        for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
-            if key in msg or any(k in msg for k in key.split()):
-                matched_records.append(data)
-        # If generic vehicle query, provide top baseline vehicles
-        if not matched_records and any(k in msg for k in ['መኪና', 'ተሽከርካሪ', 'car', 'vehicle', 'ዋጋ']):
-            matched_records = [
-                ETHIOPIA_VEHICLES_DATABASE["toyota vitz"],
-                ETHIOPIA_VEHICLES_DATABASE["suzuki dzire"],
-                ETHIOPIA_VEHICLES_DATABASE["byd dolphin"]
-            ]
-
-    if not matched_records:
-        return ""
-
-    formatted_snippets = []
-    for r in matched_records[:4]:
-        name = r.get('name') or r.get('model') or "የተሽከርካሪ መረጃ"
-        cat = r.get('category', 'አጠቃላይ')
-        price = r.get('current_price_range_etb', 'በዕለታዊ የዋጋ ማስተካከያ ላይ')
-        adv = r.get('core_advantage', 'አስተማማኝ አገልግሎት')
-        collateral = r.get('bank_collateral_appeal', 'መካከለኛ/ከፍተኛ')
-        fuel = r.get('fuel_economy', 'ቆጣቢ')
-        clearance = r.get('ground_clearance', 'መደበኛ')
-        use_case = r.get('primary_use_case', 'ለከተማና ለቤተሰብ')
-        parts = r.get('spare_parts_availability', 'በስፋት የሚገኝ')
-        liquidity = r.get('resale_liquidity', 'ፈጣን')
-
-        snippet = (
-            f"• ተሽከርካሪ: {name}\n"
-            f"  - ምድብ (Category): {cat}\n"
-            f"  - ይፋዊ የገበያ ዋጋ ክልል (Current Price Range): {price}\n"
-            f"  - ዋና ጠቀሜታ (Core Advantage): {adv}\n"
-            f"  - የባንክ ዋስትና ተቀባይነት (Bank Collateral Appeal): {collateral}\n"
-            f"  - የነዳጅ/ኃይል ቁጠባ (Fuel Economy): {fuel}\n"
-            f"  - የመሬት ከፍታ (Ground Clearance): {clearance}\n"
-            f"  - ዋና የአገልግሎት መስክ (Primary Use Case): {use_case}\n"
-            f"  - የመለዋወጫ አቅርቦት (Spare Parts Availability): {parts}\n"
-            f"  - የዳግም ሽያጭ ፍጥነት (Resale Liquidity): {liquidity}"
-        )
-        formatted_snippets.append(snippet)
-
-    return "\n\n".join(formatted_snippets)
+    return (
+        f"• ተሽከርካሪ: {name}\n"
+        f"  - ምድብ (Category): {cat}\n"
+        f"  - ይፋዊ የገበያ ዋጋ ክልል (Current Price Range): {price}\n"
+        f"  - ዋና ጠቀሜታ (Core Advantage): {adv}\n"
+        f"  - የባንክ ዋስትና ተቀባይነት (Bank Collateral Appeal): {collateral}\n"
+        f"  - የነዳጅ/ኃይል ቁጠባ (Fuel Economy): {fuel}\n"
+        f"  - የመሬት ከፍታ (Ground Clearance): {clearance}\n"
+        f"  - ዋና የአገልግሎት መስክ (Primary Use Case): {use_case}\n"
+        f"  - የመለዋወጫ አቅርቦት (Spare Parts Availability): {parts}\n"
+        f"  - የዳግም ሽያጭ ፍጥነት (Resale Liquidity): {liquidity}"
+    )
 
 
 def fetch_dynamic_knowledge(user_message: str) -> str:
@@ -484,15 +496,53 @@ def fetch_dynamic_knowledge(user_message: str) -> str:
 
 
 def build_system_prompt(user_message: str) -> str:
-    """Construct ground-truth augmented system prompt with Supabase dynamic context."""
+    """Construct ground-truth augmented system prompt with vehicle search and dynamic context."""
     retrieved_knowledge = fetch_dynamic_knowledge(user_message)
-    retrieved_vehicles = fetch_vehicle_knowledge(user_message)
-    
+    car_data = search_vehicle_in_db(user_message)
+
+    if car_data:
+        # ዳታቤዝ ላይ ሲገኝ የሚላክ
+        car_name = car_data.get('full_model') or car_data.get('model') or car_data.get('name') or "የተሽከርካሪ መረጃ"
+        price = car_data.get('current_price_range_etb', 'በዕለታዊ የዋጋ ማስተካከያ ላይ')
+        cat = car_data.get('category', 'አጠቃላይ')
+        adv = car_data.get('core_advantage', 'አስተማማኝ አገልግሎት')
+        collateral = car_data.get('bank_collateral_appeal', 'መካከለኛ/ከፍተኛ')
+        fuel = car_data.get('fuel_economy', 'ቆጣቢ')
+        clearance = car_data.get('ground_clearance', 'መደበኛ')
+        use_case = car_data.get('primary_use_case', 'ለከተማና ለቤተሰብ')
+        parts = car_data.get('spare_parts_availability', 'በስፋት የሚገኝ')
+        liquidity = car_data.get('resale_liquidity', 'ፈጣን')
+
+        system_instruction = f"""
+የተሽከርካሪው ትክክለኛ የዳታቤዝ መረጃ ይህ ነው:
+- ስም/ሞዴል: {car_name}
+- ይፋዊ የገበያ ዋጋ ክልል: {price}
+- ምድብ: {cat}
+- ዋና ጠቀሜታ: {adv}
+- የባንክ ዋስትና ተቀባይነት: {collateral}
+- የነዳጅ/ኃይል ቁጠባ: {fuel}
+- የመሬት ከፍታ: {clearance}
+- ዋና የአገልግሎት መስክ: {use_case}
+- የመለዋወጫ አቅርቦት: {parts}
+- የዳግም ሽያጭ ፍጥነት: {liquidity}
+
+ህጎች:
+1. ለተጠቃሚው ዋጋ ስትነግር ከላይ ከተጠቀሰው '{price}' ውጪ በግምት ምንም አይነት ሌላ ዋጋ እንዳትናገር።
+2. ሁሉንም ዝርዝር መረጃዎች በአጭሩ እና በግልጽ አማርኛ አቅርብ።
+"""
+    else:
+        # ዳታቤዝ ላይ ሳይገኝ ሲቀር የሚላክ
+        system_instruction = """
+ተጠቃሚው የጠየቀው የተሽከርካሪ ሞዴል ዳታቤዝ ውስጥ አልተገኘም።
+ህግ:
+በፍፁም በራስህ ግምት ዋጋ እንዳትሰጥ! በምትኩ ይህ ተሽከርካሪ በቋሚ ዳታቤዛችን ላይ በዕለታዊ የዋጋ ማስተካከያ ላይ ስለሆነ፣ አዲስ የተለቀቁ የቀጥታ ሽያጭ መረጃዎችን ለማግኘት ወደ አዲካ ቴሌግራም ቻናል (@AdikaMarketplace) እንዲሄዱ ወይም ከአዲካ ኤጀንቶች ጋር እንዲገናኙ በአክብሮት ንገራቸው።
+"""
+
     return f"""You are the official Adika Marketplace AI Assistant & Senior Automotive Advisor.
 Your core task is to provide fast, highly accurate, and professionally structured information about vehicles in Ethiopia by directly reading context from two primary tables: `ethiopia_vehicles` and `knowledge_base`.
 
-GROUND TRUTH CONTEXT FROM `ethiopia_vehicles`:
-{retrieved_vehicles if retrieved_vehicles else "No exact vehicle match found in current database."}
+VEHICLE SEARCH CONTEXT & SYSTEM DIRECTIVE:
+{system_instruction.strip()}
 
 GROUND TRUTH CONTEXT FROM `knowledge_base`:
 {retrieved_knowledge if retrieved_knowledge else "Rely strictly on verified Ethiopian financial and legal standards."}
