@@ -1541,9 +1541,9 @@ EXPLORER_HTML = r"""
 
       <div class="px-3 pt-2.5 shrink-0">
         <div class="flex p-0.5 rounded-full bg-slate-900 border border-slate-800 gap-0.5" id="compareTabs">
-          <button type="button" data-ctab="vehicles" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all bg-teal-600 text-white shadow">ተሽከርካሪ</button>
-          <button type="button" data-ctab="property" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">ሪል እስቴት</button>
-          <button type="button" data-ctab="business" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">Business</button>
+          <button type="button" data-ctab="vehicles" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all bg-teal-600 text-white shadow">🚗 ተሽከርካሪ</button>
+          <button type="button" data-ctab="property" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">🏠 ሪል ስቴት</button>
+          <button type="button" data-ctab="business" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">💼 ቢዝነስ ROI</button>
         </div>
       </div>
 
@@ -1618,7 +1618,7 @@ EXPLORER_HTML = r"""
           <p class="text-[9px] text-slate-500">Capital · Space · Labor · Demand · Risk · Breakeven · ROI</p>
         </div>
 
-        <button id="compareBtn" type="button" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white font-black text-xs shadow-lg active:scale-[0.98]">Institutional Dashboard አስላ →</button>
+        <button id="compareBtn" type="button" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white font-black text-xs shadow-lg active:scale-[0.98]">ውጤቱን ይመልከቱ →</button>
         <div id="compareResult" class="hidden space-y-2.5"></div>
       </div>
     </div>
@@ -2795,8 +2795,10 @@ EXPLORER_HTML = r"""
     };
 
     // Compare Cars Action
-    // ===== Institutional Comparison Engine UI =====
+    // ===== World-class Comparison & Feasibility Engine =====
     var compareActiveTab = "vehicles";
+    var lastComparePayload = null;
+
     document.querySelectorAll(".compare-tab").forEach(function(tab) {
       tab.onclick = function() {
         compareActiveTab = tab.getAttribute("data-ctab") || "vehicles";
@@ -2822,57 +2824,151 @@ EXPLORER_HTML = r"""
       var max = Math.max(Number(v1) || 0, Number(v2) || 0, 1);
       var p1 = Math.round((Number(v1) || 0) / max * 100);
       var p2 = Math.round((Number(v2) || 0) / max * 100);
-      var b1 = winner === "item_1" ? '<span class="ml-1 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/15 text-emerald-400">WIN</span>' : '';
-      var b2 = winner === "item_2" ? '<span class="ml-1 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/15 text-emerald-400">WIN</span>' : '';
+      var b1 = winner === "item_1" ? '<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">🏆 WIN</span>' : '';
+      var b2 = winner === "item_2" ? '<span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">🏆 WIN</span>' : '';
       return (
-        '<div class="space-y-1">' +
+        '<div class="space-y-1.5">' +
           '<div class="flex justify-between text-[9px] text-slate-400 font-bold"><span>' + label + '</span><span class="text-slate-500">' + unit + '</span></div>' +
           '<div class="flex items-center gap-2">' +
             '<div class="w-7 text-[9px] font-black text-teal-300 shrink-0">A</div>' +
-            '<div class="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all duration-700" style="width:' + p1 + '%"></div></div>' +
-            '<div class="text-[9px] font-bold text-white min-w-[3.5rem] text-right">' + (Number(v1)||0).toLocaleString() + b1 + '</div>' +
+            '<div class="flex-1 h-2.5 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-emerald-500 transition-all duration-700" style="width:' + p1 + '%"></div></div>' +
+            '<div class="text-[9px] font-bold text-white min-w-[3.8rem] text-right">' + (Number(v1)||0).toLocaleString() + b1 + '</div>' +
           '</div>' +
           '<div class="flex items-center gap-2">' +
             '<div class="w-7 text-[9px] font-black text-amber-300 shrink-0">B</div>' +
-            '<div class="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all duration-700" style="width:' + p2 + '%"></div></div>' +
-            '<div class="text-[9px] font-bold text-white min-w-[3.5rem] text-right">' + (Number(v2)||0).toLocaleString() + b2 + '</div>' +
+            '<div class="flex-1 h-2.5 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-amber-500 transition-all duration-700" style="width:' + p2 + '%"></div></div>' +
+            '<div class="text-[9px] font-bold text-white min-w-[3.8rem] text-right">' + (Number(v2)||0).toLocaleString() + b2 + '</div>' +
           '</div>' +
         '</div>'
       );
     }
     function glassCard(title, value, sub) {
-      return '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2 backdrop-blur-md"><div class="text-[8px] text-slate-500 font-bold">' + title + '</div><div class="text-[11px] font-black text-white mt-0.5">' + value + '</div>' + (sub ? '<div class="text-[8px] text-slate-500 mt-0.5">' + sub + '</div>' : '') + '</div>';
+      return '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 backdrop-blur-md"><div class="text-[8px] text-slate-500 font-bold uppercase tracking-wide">' + title + '</div><div class="text-[12px] font-black text-white mt-0.5 leading-tight">' + value + '</div>' + (sub ? '<div class="text-[8px] text-slate-500 mt-0.5">' + sub + '</div>' : '') + '</div>';
     }
     function estimateBadge(it) {
-      return it && it.is_estimate ? '<span class="ml-1 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-amber-500/15 text-amber-400">AI EST</span>' : '';
+      return it && it.is_estimate ? '<span class="ml-1 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-amber-500/15 text-amber-400 border border-amber-500/20">AI EST</span>' : '';
     }
+    function executiveBox(d) {
+      return (
+        '<div class="rounded-2xl bg-slate-950/80 border border-slate-800 p-3.5">' +
+          '<div class="flex items-center justify-between mb-1.5">' +
+            '<div class="text-[9px] font-black uppercase tracking-wide text-amber-400">Executive Verdict</div>' +
+            '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">🏆 ' + (d.winner_name || "") + '</span>' +
+          '</div>' +
+          '<p class="text-[11px] text-slate-200 leading-relaxed font-medium">' + (d.executive_summary_amharic || "") + '</p>' +
+        '</div>'
+      );
+    }
+    function liveChatCta(winnerName, payload) {
+      var safeName = winnerName || "ንብረት";
+      return (
+        '<button type="button" id="compareLiveChatCta" class="w-full mt-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all flex items-center justify-between gap-2 text-[11px] leading-snug">' +
+          '<span class="text-left">💬 ስለ ተመራጩ <b>' + safeName + '</b> ከ Adika Digital Advisor ጋር Live Chat ያድርጉ →</span>' +
+        '</button>'
+      );
+    }
+    function bindLiveChatCta(d) {
+      var btn = document.getElementById("compareLiveChatCta");
+      if (!btn) return;
+      btn.onclick = function() {
+        lastComparePayload = d;
+        try {
+          var m = document.getElementById("compareModal");
+          if (m) { m.classList.add("hidden"); m.classList.remove("flex"); }
+        } catch (e) {}
+        if (typeof showAnalysisView === "function") showAnalysisView(true);
+        var log = document.getElementById("advisorChatLog");
+        if (log && !log.dataset.seeded) {
+          log.innerHTML = "";
+          if (typeof advisorChatHistory !== "undefined") advisorChatHistory = [];
+          var initMsg = "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። የንጽጽር ውጤትዎን አይቻለሁ — ጥያቄዎን ይጠይቁኝ።";
+          if (typeof appendAdvisorChat === "function") {
+            appendAdvisorChat("advisor", initMsg);
+            if (typeof advisorChatHistory !== "undefined") advisorChatHistory.push({ role: "advisor", content: initMsg });
+          }
+          log.dataset.seeded = "1";
+        }
+        var input = document.getElementById("advisorChatInput");
+        if (input) {
+          var ctx = "የንጽጽር ውጤት — አሸናፊ: " + (d.winner_name || "") +
+            " | ምድብ: " + (d.category || "") +
+            " | ነጥብ A/B: " + ((d.scores||{}).item_1||"—") + "/" + ((d.scores||{}).item_2||"—") +
+            "። እባክዎ በዚህ ውጤት ላይ ጥልቅ የፋይናንስ ምክር ይስጡኝ።";
+          input.value = ctx;
+          if (input.tagName === "TEXTAREA") {
+            input.style.height = "auto";
+            input.style.height = Math.min(input.scrollHeight, 110) + "px";
+          }
+        }
+      };
+    }
+    function skeletonLoader() {
+      return (
+        '<div class="animate-pulse bg-slate-900/80 border border-slate-800 rounded-3xl p-5 space-y-3">' +
+          '<div id="compareSkeletonStatus" class="text-[11px] font-bold text-teal-300/90 text-center">🔍 የAdika ገበያ መረጃዎችን ከመረጃ ቋት በማውጣት ላይ...</div>' +
+          '<div class="grid grid-cols-2 gap-2">' +
+            '<div class="h-16 rounded-xl bg-slate-800/80"></div><div class="h-16 rounded-xl bg-slate-800/80"></div>' +
+          '</div>' +
+          '<div class="h-3 rounded-full bg-slate-800/80"></div>' +
+          '<div class="h-3 rounded-full bg-slate-800/80 w-5/6"></div>' +
+          '<div class="h-3 rounded-full bg-slate-800/80 w-4/6"></div>' +
+          '<div class="grid grid-cols-3 gap-2">' +
+            '<div class="h-12 rounded-xl bg-slate-800/80"></div><div class="h-12 rounded-xl bg-slate-800/80"></div><div class="h-12 rounded-xl bg-slate-800/80"></div>' +
+          '</div>' +
+          '<div class="h-20 rounded-2xl bg-slate-800/80"></div>' +
+        '</div>'
+      );
+    }
+    function startSkeletonTicker() {
+      var msgs = [
+        "🔍 የAdika ገበያ መረጃዎችን ከመረጃ ቋት በማውጣት ላይ...",
+        "⛽ የ 5 ዓመት የTCO/የወጪ ስሌቶችን በማስላት ላይ...",
+        "💡 የAI የፋይናንስ ማጠቃለያ በማዘጋጀት ላይ..."
+      ];
+      var i = 0;
+      var el = document.getElementById("compareSkeletonStatus");
+      if (!el) return null;
+      return setInterval(function() {
+        i = (i + 1) % msgs.length;
+        var n = document.getElementById("compareSkeletonStatus");
+        if (n) n.textContent = msgs[i];
+      }, 800);
+    }
+
+    function wrapDashboard(inner, d) {
+      return (
+        '<div class="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-4 shadow-2xl space-y-2.5">' +
+          inner +
+          executiveBox(d) +
+          liveChatCta(d.winner_name, d) +
+        '</div>'
+      );
+    }
+
     function renderVehicleDashboard(d) {
       var a = d.item_1 || {}, b = d.item_2 || {}, m = d.metrics || {}, c = d.calculated_metrics || {};
       var html = '<div class="grid grid-cols-2 gap-2">';
-      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 backdrop-blur-md"><div class="text-[8px] font-bold text-teal-400">A' + estimateBadge(a) + '</div><div class="text-[11px] font-black text-white leading-tight mt-0.5">' + (a.name||'') + '</div><div class="text-[10px] text-slate-400 mt-1">' + fmtEtb(a.price) + '</div></div>';
-      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 backdrop-blur-md"><div class="text-[8px] font-bold text-amber-400">B' + estimateBadge(b) + '</div><div class="text-[11px] font-black text-white leading-tight mt-0.5">' + (b.name||'') + '</div><div class="text-[10px] text-slate-400 mt-1">' + fmtEtb(b.price) + '</div></div>';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5"><div class="text-[8px] font-bold text-teal-400">A' + estimateBadge(a) + '</div><div class="text-[11px] font-black text-white leading-tight mt-0.5">' + (a.name||'') + '</div><div class="text-[10px] text-slate-400 mt-1">' + fmtEtb(a.price) + '</div></div>';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5"><div class="text-[8px] font-bold text-amber-400">B' + estimateBadge(b) + '</div><div class="text-[11px] font-black text-white leading-tight mt-0.5">' + (b.name||'') + '</div><div class="text-[10px] text-slate-400 mt-1">' + fmtEtb(b.price) + '</div></div>';
       html += '</div>';
-      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 space-y-2.5 backdrop-blur-md">';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 space-y-2.5">';
       html += '<div class="text-[9px] font-black text-slate-300 uppercase tracking-wide">Metric Progress</div>';
-      if (m.fuel_efficiency) html += metricBarRow("Fuel Efficiency", m.fuel_efficiency.item_1, m.fuel_efficiency.item_2, "KM/L", m.fuel_efficiency.winner);
-      if (m.parts_score) html += metricBarRow("Spare Parts", m.parts_score.item_1, m.parts_score.item_2, "/100", m.parts_score.winner);
-      if (m.resale_index) html += metricBarRow("Resale Index", m.resale_index.item_1, m.resale_index.item_2, "/100", m.resale_index.winner);
-      if (m.ground_clearance) html += metricBarRow("Clearance", m.ground_clearance.item_1, m.ground_clearance.item_2, "mm", m.ground_clearance.winner);
+      if (m.tco_5yr) html += metricBarRow("5-Year TCO", m.tco_5yr.item_1, m.tco_5yr.item_2, "ETB", m.tco_5yr.winner);
+      if (m.depreciation_pct) html += metricBarRow("Depreciation / yr", m.depreciation_pct.item_1, m.depreciation_pct.item_2, "%", m.depreciation_pct.winner);
+      if (m.fuel_efficiency) html += metricBarRow("Fuel / Energy", m.fuel_efficiency.item_1, m.fuel_efficiency.item_2, "KM/L", m.fuel_efficiency.winner);
+      if (m.parts_score) html += metricBarRow("Parts / Liquidity", m.parts_score.item_1, m.parts_score.item_2, "/100", m.parts_score.winner);
+      if (m.resale_index) html += metricBarRow("Resale Score", m.resale_index.item_1, m.resale_index.item_2, "/100", m.resale_index.winner);
       html += '</div>';
       html += '<div class="grid grid-cols-3 gap-1.5">';
-      html += glassCard("Price Δ", fmtEtb(c.price_delta_etb));
-      html += glassCard("3yr Fuel Δ", fmtEtb(c.fuel_savings_3yr_etb));
+      html += glassCard("TCO Δ 5yr", fmtEtb(c.tco_5yr_delta));
+      html += glassCard("Fuel Δ 3yr", fmtEtb(c.fuel_savings_3yr_etb));
       html += glassCard("Min Down 30%", fmtEtb(c.loan_downpayment_min));
       html += '</div>';
       html += '<div class="grid grid-cols-2 gap-1.5">';
       html += glassCard("A Loan / mo", fmtEtb(c.monthly_loan_item_1), "18% · 5yr");
       html += glassCard("B Loan / mo", fmtEtb(c.monthly_loan_item_2), "18% · 5yr");
       html += '</div>';
-      html += '<div class="rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 p-3">';
-      html += '<div class="flex items-center justify-between mb-1.5"><div class="text-[9px] font-black uppercase tracking-wide text-amber-400">Executive Verdict</div>';
-      html += '<span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/15 text-emerald-400">★ ' + (d.winner_name || "") + '</span></div>';
-      html += '<p class="text-[11px] text-slate-200 leading-relaxed font-medium">' + (d.executive_summary_amharic || "") + '</p></div>';
-      return html;
+      return wrapDashboard(html, d);
     }
     function renderPropertyDashboard(d) {
       var a = d.item_1 || {}, b = d.item_2 || {}, m = d.metrics || {};
@@ -2887,17 +2983,12 @@ EXPLORER_HTML = r"""
       if (m.appreciation_3yr) html += metricBarRow("3yr Appreciation", m.appreciation_3yr.item_1, m.appreciation_3yr.item_2, "%", m.appreciation_3yr.winner);
       if (m.appreciation_5yr) html += metricBarRow("5yr Appreciation", m.appreciation_5yr.item_1, m.appreciation_5yr.item_2, "%", m.appreciation_5yr.winner);
       if (m.development_score) html += metricBarRow("Development Potential", m.development_score.item_1, m.development_score.item_2, "/100", m.development_score.winner);
-      if (m.liquidity) html += metricBarRow("Liquidity", m.liquidity.item_1, m.liquidity.item_2, "/100", m.liquidity.winner);
       html += '</div>';
       html += '<div class="grid grid-cols-2 gap-1.5">';
       html += glassCard("A @ 5yr", fmtEtb(a.value_5yr_etb), "gain " + fmtEtb(a.gain_5yr_etb));
       html += glassCard("B @ 5yr", fmtEtb(b.value_5yr_etb), "gain " + fmtEtb(b.gain_5yr_etb));
       html += '</div>';
-      html += '<div class="rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 p-3">';
-      html += '<div class="flex items-center justify-between mb-1.5"><div class="text-[9px] font-black uppercase text-amber-400">Executive Verdict</div>';
-      html += '<span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/15 text-emerald-400">★ ' + (d.winner_name||'') + '</span></div>';
-      html += '<p class="text-[11px] text-slate-200 leading-relaxed">' + (d.executive_summary_amharic||'') + '</p></div>';
-      return html;
+      return wrapDashboard(html, d);
     }
     function renderBusinessDashboard(d) {
       var a = d.item_1 || {}, b = d.item_2 || {}, m = d.metrics || {};
@@ -2908,28 +2999,25 @@ EXPLORER_HTML = r"""
       html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 space-y-2.5">';
       html += '<div class="text-[9px] font-black text-slate-300 uppercase">Feasibility Matrix</div>';
       if (m.min_capital) html += metricBarRow("Min Capital", m.min_capital.item_1, m.min_capital.item_2, "ETB", m.min_capital.winner);
-      if (m.space_sqm) html += metricBarRow("Space Footprint", m.space_sqm.item_1, m.space_sqm.item_2, "m²", m.space_sqm.winner);
-      if (m.labor_monthly) html += metricBarRow("Labor / month", m.labor_monthly.item_1, m.labor_monthly.item_2, "ETB", m.labor_monthly.winner);
-      if (m.demand) html += metricBarRow("Market Demand", m.demand.item_1, m.demand.item_2, "/100", m.demand.winner);
+      if (m.space_sqm) html += metricBarRow("Space m²", m.space_sqm.item_1, m.space_sqm.item_2, "m²", m.space_sqm.winner);
+      if (m.labor_monthly) html += metricBarRow("Labor / mo", m.labor_monthly.item_1, m.labor_monthly.item_2, "ETB", m.labor_monthly.winner);
+      if (m.demand) html += metricBarRow("Demand Index", m.demand.item_1, m.demand.item_2, "/100", m.demand.winner);
       if (m.risk) html += metricBarRow("Risk Score", m.risk.item_1, m.risk.item_2, "/100", m.risk.winner);
       if (m.roi_mid) html += metricBarRow("ROI Mid", m.roi_mid.item_1, m.roi_mid.item_2, "%", m.roi_mid.winner);
       if (m.breakeven_months) html += metricBarRow("Breakeven", m.breakeven_months.item_1, m.breakeven_months.item_2, "months", m.breakeven_months.winner);
       html += '</div>';
       html += '<div class="grid grid-cols-2 gap-1.5">';
-      html += glassCard("A ROI range", (a.roi_low||0) + "–" + (a.roi_high||0) + "%", a.incentive || "");
-      html += glassCard("B ROI range", (b.roi_low||0) + "–" + (b.roi_high||0) + "%", b.incentive || "");
+      html += glassCard("A ROI", (a.roi_low||0) + "–" + (a.roi_high||0) + "%", a.incentive || "");
+      html += glassCard("B ROI", (b.roi_low||0) + "–" + (b.roi_high||0) + "%", b.incentive || "");
       html += '</div>';
-      html += '<div class="rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 p-3">';
-      html += '<div class="flex items-center justify-between mb-1.5"><div class="text-[9px] font-black uppercase text-amber-400">Executive Verdict</div>';
-      html += '<span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/15 text-emerald-400">★ ' + (d.winner_name||'') + '</span></div>';
-      html += '<p class="text-[11px] text-slate-200 leading-relaxed">' + (d.executive_summary_amharic||'') + '</p></div>';
-      return html;
+      return wrapDashboard(html, d);
     }
 
     document.getElementById("compareBtn").onclick = function() {
       var resEl = document.getElementById("compareResult");
       resEl.classList.remove("hidden");
-      resEl.innerHTML = '<div class="text-center text-slate-400 py-4 text-[11px] font-bold">Institutional engine እየሰራ…</div>';
+      resEl.innerHTML = skeletonLoader();
+      var ticker = startSkeletonTicker();
 
       var payload = { category: compareActiveTab };
       if (compareActiveTab === "vehicles") {
@@ -2951,6 +3039,7 @@ EXPLORER_HTML = r"""
       })
       .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, d: d }; }); })
       .then(function(x){
+        if (ticker) clearInterval(ticker);
         if (!x.ok || x.d.status === "error") {
           resEl.innerHTML = '<div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">' + (x.d.message || "ንጽጽር አልተሳካም") + '</div>';
           return;
@@ -2958,8 +3047,10 @@ EXPLORER_HTML = r"""
         if (x.d.category === "property") resEl.innerHTML = renderPropertyDashboard(x.d);
         else if (x.d.category === "business") resEl.innerHTML = renderBusinessDashboard(x.d);
         else resEl.innerHTML = renderVehicleDashboard(x.d);
+        bindLiveChatCta(x.d);
       })
       .catch(function(){
+        if (ticker) clearInterval(ticker);
         resEl.innerHTML = '<div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">ግንኙነት አልተሳካም።</div>';
       });
     };
