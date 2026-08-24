@@ -3493,54 +3493,124 @@ def register_api_routes(web_app):
             "found": True,
         }
 
+    def _vehicle_heuristic_estimate(query):
+        """Deterministic zero-fail estimate from model name keywords (Ethiopia market bands)."""
+        q = (query or "").strip()
+        ql = q.lower()
+        # Brand / segment heuristics
+        price, fuel, parts, clearance, resale, duty = 1800000, 14.0, 70, 155, 70, 35
+        brand = ""
+        if any(k in ql for k in ["byd", "seagull", "dolphin", "song", "atto", "yuan"]):
+            brand = "BYD"
+            price, fuel, parts, clearance, resale, duty = 3200000, 18.0, 72, 150, 78, 5
+            if "seagull" in ql: price, fuel = 2800000, 20.0
+            if "dolphin" in ql: price, fuel = 3100000, 19.0
+            if "song" in ql: price, fuel, clearance = 6500000, 16.0, 170
+        elif any(k in ql for k in ["chery", "tiggo", "arrizo"]):
+            brand = "Chery"
+            price, fuel, parts, resale, duty = 3500000, 13.5, 68, 72, 35
+            if "tiggo" in ql: price, clearance = 4200000, 175
+        elif any(k in ql for k in ["toyota", "vitz", "belta", "corolla", "yaris", "hilux", "prado", "rav4", "fortuner", "hiace", "land cruiser"]):
+            brand = "Toyota"
+            price, fuel, parts, resale, duty = 2200000, 15.0, 95, 90, 35
+            if "belta" in ql: price, fuel, parts = 2100000, 16.5, 92
+            if "corolla" in ql: price, fuel = 3200000, 14.5
+            if "hilux" in ql: price, fuel, clearance, parts = 5500000, 11.0, 200, 98
+            if "prado" in ql or "land cruiser" in ql: price, fuel, clearance, parts = 9000000, 9.0, 220, 98
+            if "rav4" in ql or "fortuner" in ql: price, fuel, clearance = 6500000, 11.5, 190
+            if "hiace" in ql: price, fuel = 4500000, 10.0
+            if "vitz" in ql or "yaris" in ql: price, fuel, parts = 1900000, 16.5, 95
+        elif any(k in ql for k in ["suzuki", "dzire", "swift", "alto"]):
+            brand = "Suzuki"
+            price, fuel, parts, resale = 2000000, 17.0, 80, 75
+        elif any(k in ql for k in ["hyundai", "accent", "tucson", "creta", "elantra"]):
+            brand = "Hyundai"
+            price, fuel, parts, resale = 2800000, 13.5, 75, 72
+            if "tucson" in ql or "creta" in ql: price, clearance = 4500000, 180
+        elif any(k in ql for k in ["nissan", "x-trail", "sunny", "patrol"]):
+            brand = "Nissan"
+            price, fuel, parts = 3000000, 12.5, 78
+        elif any(k in ql for k in ["mercedes", "bmw", "audi", "lexus"]):
+            brand = "Premium"
+            price, fuel, parts, resale, duty = 8000000, 9.0, 55, 65, 100
+        # year bump
+        ym = re.search(r'\b(20[0-2]\d)\b', q)
+        if ym:
+            year = int(ym.group(1))
+            if year >= 2022: price = int(price * 1.15)
+            elif year >= 2018: price = int(price * 1.05)
+            elif year <= 2010: price = int(price * 0.75)
+        return {
+            "name": q.title() if q else "Custom Vehicle",
+            "brand": brand or "Unknown",
+            "category": "Custom / Market Estimate",
+            "price": int(price),
+            "price_range_raw": f"~{int(price):,} ETB (market band)",
+            "fuel_efficiency": float(fuel),
+            "fuel_economy_raw": f"{fuel} KM/L (benchmark)",
+            "parts_score": int(parts),
+            "parts_raw": f"{parts}/100",
+            "ground_clearance_mm": float(clearance),
+            "resale_index": int(resale),
+            "resale_raw": "estimate",
+            "core_advantage": "የኢትዮጵያ ገበያ ባንድ ግምት",
+            "primary_use_case": "",
+            "estimated_duty_pct": float(duty),
+            "source": "heuristic_ethiopia_band",
+            "is_estimate": True,
+            "found": True,
+        }
+
     def _vehicle_ai_estimate(query):
-        """Estimate only when model missing from DB. Label is_estimate=True."""
+        """LLM estimate when model missing from DB; always falls back to heuristic (never None)."""
         api_key = os.environ.get("GEMINI_API_KEY")
-        if not api_key:
-            return None
-        try:
-            prompt = (
-                "You are Adika Ethiopian automotive pricing engine. "
-                f"Model query: '{query}'. "
-                "Return ONLY JSON with keys: name, brand, category, price_mid_etb (number), "
-                "fuel_kml (number), parts_score_0_100 (number), ground_clearance_mm (number), "
-                "resale_index_0_100 (number), estimated_duty_pct (number), "
-                "market_note_amharic (1 short sentence). "
-                "Use realistic Addis Ababa 2024-2026 market ranges. No markdown."
-            )
-            model = _AdikaGeminiModel(
-                model_name="gemini-2.0-flash",
-                generation_config={"response_mime_type": "application/json", "temperature": 0.15, "max_output_tokens": 400},
-            )
-            res = model.generate_content(prompt)
-            txt = (res.text or "").strip()
-            if txt.startswith("```"):
-                txt = re.sub(r'^```(?:json)?\s*', '', txt)
-                txt = re.sub(r'\s*```$', '', txt)
-            est = json.loads(txt)
-            return {
-                "name": est.get("name") or query,
-                "brand": est.get("brand") or "",
-                "category": est.get("category") or "Custom",
-                "price": round(float(est.get("price_mid_etb") or 0)),
-                "price_range_raw": f"AI estimate ~{est.get('price_mid_etb')}",
-                "fuel_efficiency": round(float(est.get("fuel_kml") or 12), 1),
-                "fuel_economy_raw": f"{est.get('fuel_kml')} KM/L (estimate)",
-                "parts_score": int(est.get("parts_score_0_100") or 60),
-                "parts_raw": "AI estimate",
-                "ground_clearance_mm": float(est.get("ground_clearance_mm") or 150),
-                "resale_index": int(est.get("resale_index_0_100") or 65),
-                "resale_raw": "estimate",
-                "core_advantage": est.get("market_note_amharic") or "",
-                "primary_use_case": "",
-                "estimated_duty_pct": float(est.get("estimated_duty_pct") or 0),
-                "source": "ai_estimate",
-                "is_estimate": True,
-                "found": True,
-            }
-        except Exception as e:
-            logger.warning(f"vehicle AI estimate failed: {e}")
-            return None
+        if api_key:
+            try:
+                prompt = (
+                    "You are Adika Ethiopian automotive pricing engine for Addis Ababa market 2024-2026. "
+                    f"Model query: '{query}'. "
+                    "Return ONLY JSON: name, brand, category, price_mid_etb (number), "
+                    "fuel_kml (number), parts_score_0_100 (number), ground_clearance_mm (number), "
+                    "resale_index_0_100 (number), estimated_duty_pct (number), "
+                    "market_note_amharic (one short friendly sentence). No markdown."
+                )
+                model = _AdikaGeminiModel(
+                    model_name="gemini-2.0-flash",
+                    generation_config={"response_mime_type": "application/json", "temperature": 0.15, "max_output_tokens": 400},
+                )
+                res = model.generate_content(prompt)
+                txt = (res.text or "").strip()
+                if txt.startswith("```"):
+                    txt = re.sub(r'^```(?:json)?\s*', '', txt)
+                    txt = re.sub(r'\s*```$', '', txt)
+                est = json.loads(txt)
+                price = float(est.get("price_mid_etb") or 0)
+                if price <= 0:
+                    raise ValueError("empty price")
+                return {
+                    "name": est.get("name") or query,
+                    "brand": est.get("brand") or "",
+                    "category": est.get("category") or "Custom",
+                    "price": round(price),
+                    "price_range_raw": f"AI estimate ~{int(price):,}",
+                    "fuel_efficiency": round(float(est.get("fuel_kml") or 12), 1),
+                    "fuel_economy_raw": f"{est.get('fuel_kml')} KM/L (estimate)",
+                    "parts_score": int(est.get("parts_score_0_100") or 60),
+                    "parts_raw": "AI estimate",
+                    "ground_clearance_mm": float(est.get("ground_clearance_mm") or 150),
+                    "resale_index": int(est.get("resale_index_0_100") or 65),
+                    "resale_raw": "estimate",
+                    "core_advantage": est.get("market_note_amharic") or "",
+                    "primary_use_case": "",
+                    "estimated_duty_pct": float(est.get("estimated_duty_pct") or 0),
+                    "source": "ai_estimate",
+                    "is_estimate": True,
+                    "found": True,
+                }
+            except Exception as e:
+                logger.warning(f"vehicle AI estimate failed, using heuristic: {e}")
+        return _vehicle_heuristic_estimate(query)
+
 
     def _compare_vehicles_hybrid(data):
         car_1_q = (data.get('car_1') or data.get('item_1') or '').strip()
@@ -3556,15 +3626,8 @@ def register_api_routes(web_app):
                 return 0
             return round((KM_PER_YEAR / kml) * FUEL_PRICE_ETB * 3)
 
-        item_1 = _vehicle_from_db(car_1_q) or _vehicle_ai_estimate(car_1_q)
-        item_2 = _vehicle_from_db(car_2_q) or _vehicle_ai_estimate(car_2_q)
-        if not item_1 or not item_2:
-            missing = [q for q, it in ((car_1_q, item_1), (car_2_q, item_2)) if not it]
-            return jsonify({
-                "status": "error",
-                "message": "ሞዴል ማግኘት/መገመት አልተቻለም: " + ", ".join(missing),
-                "missing": missing,
-            }), 404
+        item_1 = _vehicle_from_db(car_1_q) or _vehicle_ai_estimate(car_1_q) or _vehicle_heuristic_estimate(car_1_q)
+        item_2 = _vehicle_from_db(car_2_q) or _vehicle_ai_estimate(car_2_q) or _vehicle_heuristic_estimate(car_2_q)
 
         f1, f2 = item_1['fuel_efficiency'], item_2['fuel_efficiency']
         fuel_1_3yr, fuel_2_3yr = fuel_cost_3yr(f1), fuel_cost_3yr(f2)
@@ -3662,33 +3725,44 @@ def register_api_routes(web_app):
         sc2 = score(item_2, mpay_2, op_2, tco2["tco_5yr"])
         winner_key = 'item_1' if sc1 >= sc2 else 'item_2'
         winner_name = item_1['name'] if winner_key == 'item_1' else item_2['name']
-        est_note = ""
-        if item_1.get('is_estimate') or item_2.get('is_estimate'):
-            est_note = " አንዳንድ እሴቶች AI ግምት ናቸው።"
-        summary_am = (
-            f"{winner_name} በ5-ዓመት TCO እና አጠቃላይ ነጥብ ይበልጣል (A:{sc1} / B:{sc2})። "
-            f"TCO ልዩነት ~{abs(tco1['tco_5yr']-tco2['tco_5yr']):,.0f} ብር፤ ብድር 30% ቅድመ · 18% APR · 5ዓመት።{est_note}"
-        )
-        # Optional LLM: polish to fluent 2-sentence Amharic from numeric payload only
+        n1, n2 = item_1["name"], item_2["name"]
+        tco_delta = abs(tco1["tco_5yr"] - tco2["tco_5yr"])
+        lower_tco_name = n1 if tco1["tco_5yr"] <= tco2["tco_5yr"] else n2
+        cheaper_name = n1 if p1 <= p2 else n2
+        if lower_tco_name == cheaper_name:
+            summary_am = (
+                f"በመነሻ ዋጋም ሆነ በረጅም ጊዜ የባለቤትነት ወጪ {lower_tco_name} ተመራጭ አማራጭ ነው። "
+                f"በ5 ዓመት ውስጥ ከአማራጩ ጋር ሲነጻጸር በአጠቃላይ ወጪ ላይ ግልጽ ጥቅም ያሳያል።"
+            )
+        else:
+            summary_am = (
+                f"ለአጭር ጊዜ መነሻ በጀት {cheaper_name} ቀላል ቢመስልም፣ {lower_tco_name} በነዳጅና ጥገና ቁጠባ "
+                f"እና ዝቅተኛ የ5 ዓመት አጠቃላይ ወጪ ስለሚያሳይ ለረጅም ጊዜ የኢንቨስትመንት አሸናፊ ይሆናል።"
+            )
+        # LLM: warm 2-sentence Amharic — no raw scores
         try:
             if os.environ.get("GEMINI_API_KEY"):
                 payload_llm = {
+                    "name_1": n1, "name_2": n2,
                     "winner": winner_name,
-                    "scores": {"A": sc1, "B": sc2},
-                    "tco_5yr": {"A": tco1["tco_5yr"], "B": tco2["tco_5yr"]},
-                    "names": {"A": item_1["name"], "B": item_2["name"]},
+                    "lower_tco": lower_tco_name,
+                    "cheaper_upfront": cheaper_name,
+                    "tco_delta_etb": tco_delta,
+                    "fuel_1": f1, "fuel_2": f2,
                 }
                 prompt = (
-                    "ከዚህ JSON ቁጥሮች ብቻ በመጠቀም በውብ፣ ግልጽ እና ፕሮፌሽናል አማርኛ ትክክል 2 አረፍተ ነገር Executive Summary ጻፍ። "
-                    "አዲስ ዋጋ ወይም ስፔክ አትፍጠር።\n" + json.dumps(payload_llm, ensure_ascii=False)
+                    "የAdika የፋይናንስ አማካሪ ነህ። ከዚህ JSON ላይ ብቻ ተመስርተህ "
+                    "በውብ፣ ወዳጃዊ እና ፕሮፌሽናል አማርኛ ትክክል 2 አረፍተ ነገር ጻፍ። "
+                    "ጥሬ ነጥብ (score) ወይም ቀመር አታሳይ። የረጅም ጊዜ vs አጭር ጊዜ ምክንያት አብራራ።\n"
+                    + json.dumps(payload_llm, ensure_ascii=False)
                 )
                 model = _AdikaGeminiModel(
                     model_name="gemini-2.0-flash",
-                    generation_config={"temperature": 0.2, "max_output_tokens": 160},
+                    generation_config={"temperature": 0.35, "max_output_tokens": 180},
                 )
                 res = model.generate_content(prompt)
                 polished = (res.text or "").strip()
-                if polished and len(polished) > 30:
+                if polished and len(polished) > 40 and "sc1" not in polished and "TCO ልዩነት" not in polished:
                     summary_am = polished
         except Exception as _pe:
             logger.debug(f"summary polish skip: {_pe}")
@@ -3849,10 +3923,17 @@ def register_api_routes(web_app):
         sc1, sc2 = sc(item_1), sc(item_2)
         winner_key = 'item_1' if sc1 >= sc2 else 'item_2'
         winner_name = item_1['name'] if winner_key == 'item_1' else item_2['name']
-        summary_am = (
-            f"በማጣቀሻ በጀት {budget:,.0f} ብር ላይ {winner_name} በተቀናጀ ነጥብ ይበልጣል (A:{sc1} / B:{sc2})። "
-            f"የኪራይ ምርት፣ የ3/5 ዓመት ዋጋ እድገት እና የዋጋ ግሽበት መከላከያ በተቋማዊ ቀመር ተሰልቷል።"
-        )
+        a_n, b_n = item_1["name"], item_2["name"]
+        if winner_key == "item_1":
+            summary_am = (
+                f"በተመረጠው በጀት ላይ {a_n} የኪራይ ገቢ፣ የዋጋ ግሽበት መቋቋም እና የረጅም ጊዜ ዕድገት ሚዛን ላይ ይበልጣል። "
+                f"ከ {b_n} ጋር ሲነጻጸር ለባለሀብቱ የበለጠ ሚዛናዊ የሪል እስቴት አማራጭ ነው።"
+            )
+        else:
+            summary_am = (
+                f"በተመረጠው በጀት ላይ {b_n} የኪራይ ገቢ፣ የዋጋ ግሽበት መቋቋም እና የረጅም ጊዜ ዕድገት ሚዛን ላይ ይበልጣል። "
+                f"ከ {a_n} ጋር ሲነጻጸር ለባለሀብቱ የበለጠ ሚዛናዊ የሪል እስቴት አማራጭ ነው።"
+            )
         return jsonify({
             "status": "success",
             "category": "property",
@@ -3965,11 +4046,17 @@ def register_api_routes(web_app):
         sc1, sc2 = sc(item_1), sc(item_2)
         winner_key = 'item_1' if sc1 >= sc2 else 'item_2'
         winner_name = item_1['name'] if winner_key == 'item_1' else item_2['name']
-        summary_am = (
-            f"{winner_name} በfeasibility ነጥብ ይበልጣል (A:{sc1} / B:{sc2})። "
-            f"ዝቅተኛ ካፒታል፣ የገበያ ፍላጎት፣ ስጋት እና breakeven ተመዝኗል። "
-            f"ROI ክልል A: {item_1['roi_low']}-{item_1['roi_high']}% · B: {item_2['roi_low']}-{item_2['roi_high']}%።"
-        )
+        a_n, b_n = item_1["name"], item_2["name"]
+        if winner_key == "item_1":
+            summary_am = (
+                f"{a_n} በገበያ ፍላጎት፣ የመነሻ ካፒታል እና የመመለሻ ጊዜ ሚዛን ላይ ከ {b_n} ይበልጣል። "
+                f"ለረጅም ጊዜ የንግድ እድገት የበለጠ ተስማሚ አማራጭ ሆኖ ይታያል።"
+            )
+        else:
+            summary_am = (
+                f"{b_n} በገበያ ፍላጎት፣ የመነሻ ካፒታል እና የመመለሻ ጊዜ ሚዛን ላይ ከ {a_n} ይበልጣል። "
+                f"ለረጅም ጊዜ የንግድ እድገት የበለጠ ተስማሚ አማራጭ ሆኖ ይታያል።"
+            )
         return jsonify({
             "status": "success",
             "category": "business",
