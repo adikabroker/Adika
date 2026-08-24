@@ -3381,276 +3381,535 @@ def register_api_routes(web_app):
 
 
     @web_app.route('/api/compare-cars', methods=['POST', 'OPTIONS'])
+    @web_app.route('/api/compare', methods=['POST', 'OPTIONS'])
     def api_compare_cars():
         """
-        HYBRID VEHICLE COMPARISON ENGINE
-        Specs from ETHIOPIA_VEHICLES_DATABASE / ethiopia_vehicles only.
-        Financial metrics computed programmatically (no LLM hallucination).
-        Optional LLM: 2-sentence executive summary from numeric payload only.
+        UNIFIED INSTITUTIONAL COMPARISON ENGINE
+        categories: vehicles | property | business
+        Vehicles: DB first; AI estimate only if model missing (labeled estimate).
+        Property: asset-class institutional formulas (no random).
+        Business: structured feasibility + formula ROI bands.
         """
         if request.method == 'OPTIONS':
             return ('', 204)
         try:
             data = request.json or {}
-            car_1_q = (data.get('car_1') or data.get('item_1') or 'Toyota Vitz').strip()
-            car_2_q = (data.get('car_2') or data.get('item_2') or 'Toyota Corolla').strip()
             category = (data.get('category') or 'vehicles').strip().lower()
-
-            # ----- helpers: parse verified DB fields only -----
-            def parse_fuel_kml(s):
-                s = str(s or "")
-                # EV range "400 KM" -> treat as high efficiency proxy (km per charge ~ not kml)
-                nums = re.findall(r'(\d+(?:\.\d+)?)', s.replace(',', ''))
-                if not nums:
-                    return None
-                vals = [float(x) for x in nums]
-                if 'EV' in s.upper() or 'CHARGE' in s.upper() or 'ቻርጅ' in s:
-                    # map range km to approximate cost-efficiency score later; kml proxy
-                    return max(vals) / 25.0  # rough: 400km ~ 16 kml-equivalent units for ranking
-                if len(vals) >= 2:
-                    return (vals[0] + vals[1]) / 2.0
-                return vals[0]
-
-            def parse_parts_score(s):
-                s = str(s or "")
-                m = re.search(r'(\d+(?:\.\d+)?)\s*/\s*5', s)
-                if m:
-                    return round(float(m.group(1)) / 5.0 * 100)
-                m = re.search(r'(\d+(?:\.\d+)?)', s)
-                if m:
-                    v = float(m.group(1))
-                    return int(v * 20) if v <= 5 else int(min(v, 100))
-                return 50
-
-            def parse_price_mid(s):
-                s = str(s or "").replace(',', '')
-                nums = [float(x) for x in re.findall(r'(\d+(?:\.\d+)?)', s)]
-                if not nums:
-                    return 0
-                if len(nums) >= 2:
-                    return (nums[0] + nums[1]) / 2.0
-                return nums[0]
-
-            def parse_clearance_mm(s):
-                nums = re.findall(r'(\d+(?:\.\d+)?)', str(s or ""))
-                return float(nums[0]) if nums else 0
-
-            def resale_index(s):
-                s = str(s or "").lower()
-                if any(k in s for k in ['እጅግ', 'ፈጣን', 'prime', 'very high', 'ወዲያውኑ']):
-                    return 95
-                if any(k in s for k in ['ከፍተኛ', 'high', 'በጣም']):
-                    return 85
-                if any(k in s for k in ['መካከለኛ', 'medium', 'moderate']):
-                    return 70
-                if any(k in s for k in ['ዝቅተኛ', 'low']):
-                    return 55
-                return 75
-
-            def build_item(query):
-                row = search_vehicle_in_db(query)
-                if not row:
-                    # try stripping year tokens
-                    cleaned = re.sub(r'\b(19|20)\d{2}\b', '', query).strip()
-                    if cleaned and cleaned != query:
-                        row = search_vehicle_in_db(cleaned)
-                if not row:
-                    return None
-                fuel_raw = row.get('fuel_economy') or row.get('fuel_consumption') or ''
-                parts_raw = row.get('spare_parts_availability') or ''
-                price_raw = row.get('current_price_range_etb') or row.get('price_range') or ''
-                fuel_kml = parse_fuel_kml(fuel_raw) or 12.0
-                parts = parse_parts_score(parts_raw)
-                price = parse_price_mid(price_raw)
-                return {
-                    "name": row.get('name') or row.get('full_model') or query,
-                    "brand": row.get('brand') or '',
-                    "category": row.get('category') or '',
-                    "price": round(price),
-                    "price_range_raw": price_raw,
-                    "fuel_efficiency": round(fuel_kml, 1),
-                    "fuel_economy_raw": fuel_raw,
-                    "parts_score": parts,
-                    "parts_raw": parts_raw,
-                    "ground_clearance_mm": parse_clearance_mm(row.get('ground_clearance')),
-                    "resale_index": resale_index(row.get('resale_liquidity')),
-                    "resale_raw": row.get('resale_liquidity') or '',
-                    "core_advantage": row.get('core_advantage') or '',
-                    "primary_use_case": row.get('primary_use_case') or '',
-                    "source": row.get('source') or 'ethiopia_vehicles',
-                    "found": True,
-                }
-
-            # Ethiopian bank defaults
-            DOWN_PCT = 0.30
-            APR = 0.18
-            AUTO_YEARS = 5
-            FUEL_PRICE_ETB = 80.0  # petrol benchmark ETB/L
-            KM_PER_YEAR = 15000
-
-            def monthly_payment(principal, annual_rate, years):
-                if principal <= 0:
-                    return 0.0
-                r = annual_rate / 12.0
-                n = years * 12
-                if r == 0:
-                    return principal / n
-                f = (1 + r) ** n
-                return principal * (r * f) / (f - 1)
-
-            def fuel_cost_3yr(kml):
-                if not kml or kml <= 0:
-                    return 0
-                liters_yr = KM_PER_YEAR / kml
-                return round(liters_yr * FUEL_PRICE_ETB * 3)
-
-            item_1 = build_item(car_1_q)
-            item_2 = build_item(car_2_q)
-
-            if not item_1 or not item_2:
-                missing = []
-                if not item_1:
-                    missing.append(car_1_q)
-                if not item_2:
-                    missing.append(car_2_q)
-                return jsonify({
-                    "status": "error",
-                    "message": "ተሽከርካሪ በአዲካ vehicles_db አልተገኘም: " + ", ".join(missing),
-                    "missing": missing,
-                }), 404
-
-            # Programmatic metrics
-            f1, f2 = item_1['fuel_efficiency'], item_2['fuel_efficiency']
-            fuel_1_3yr = fuel_cost_3yr(f1)
-            fuel_2_3yr = fuel_cost_3yr(f2)
-            fuel_savings_3yr = abs(fuel_1_3yr - fuel_2_3yr)
-            cheaper_fuel = item_1['name'] if fuel_1_3yr < fuel_2_3yr else item_2['name']
-
-            p1, p2 = item_1['price'], item_2['price']
-            price_delta = abs(p1 - p2)
-            down_1 = round(p1 * DOWN_PCT)
-            down_2 = round(p2 * DOWN_PCT)
-            loan_1 = max(0, p1 - down_1)
-            loan_2 = max(0, p2 - down_2)
-            mpay_1 = round(monthly_payment(loan_1, APR, AUTO_YEARS))
-            mpay_2 = round(monthly_payment(loan_2, APR, AUTO_YEARS))
-
-            # Maintenance proxy from inverse parts score (higher parts = lower maintenance index)
-            maint_1 = round((100 - item_1['parts_score']) * (p1 / 100000) * 0.8)
-            maint_2 = round((100 - item_2['parts_score']) * (p2 / 100000) * 0.8)
-            op_cost_1 = fuel_1_3yr + maint_1
-            op_cost_2 = fuel_2_3yr + maint_2
-
-            # Winners per metric
-            def winner(a, b, higher_better=True):
-                if higher_better:
-                    return 'item_1' if a > b else ('item_2' if b > a else 'tie')
-                return 'item_1' if a < b else ('item_2' if b < a else 'tie')
-
-            metrics = {
-                "fuel_efficiency": {"item_1": f1, "item_2": f2, "unit": "KM/L", "winner": winner(f1, f2, True)},
-                "parts_score": {"item_1": item_1['parts_score'], "item_2": item_2['parts_score'], "unit": "/100", "winner": winner(item_1['parts_score'], item_2['parts_score'], True)},
-                "resale_index": {"item_1": item_1['resale_index'], "item_2": item_2['resale_index'], "unit": "/100", "winner": winner(item_1['resale_index'], item_2['resale_index'], True)},
-                "price": {"item_1": p1, "item_2": p2, "unit": "ETB", "winner": winner(p1, p2, False)},
-                "fuel_cost_3yr": {"item_1": fuel_1_3yr, "item_2": fuel_2_3yr, "unit": "ETB", "winner": winner(fuel_1_3yr, fuel_2_3yr, False)},
-                "monthly_loan": {"item_1": mpay_1, "item_2": mpay_2, "unit": "ETB", "winner": winner(mpay_1, mpay_2, False)},
-                "ground_clearance": {"item_1": item_1['ground_clearance_mm'], "item_2": item_2['ground_clearance_mm'], "unit": "mm", "winner": winner(item_1['ground_clearance_mm'], item_2['ground_clearance_mm'], True)},
-            }
-
-            calculated = {
-                "fuel_savings_3yr_etb": fuel_savings_3yr,
-                "cheaper_fuel_name": cheaper_fuel,
-                "price_delta_etb": price_delta,
-                "loan_downpayment_min": min(down_1, down_2),
-                "loan_downpayment_item_1": down_1,
-                "loan_downpayment_item_2": down_2,
-                "monthly_loan_item_1": mpay_1,
-                "monthly_loan_item_2": mpay_2,
-                "op_cost_3yr_item_1": op_cost_1,
-                "op_cost_3yr_item_2": op_cost_2,
-                "op_cost_delta_3yr": abs(op_cost_1 - op_cost_2),
-                "assumptions": {
-                    "downpayment_pct": DOWN_PCT,
-                    "apr": APR,
-                    "loan_years": AUTO_YEARS,
-                    "fuel_price_etb_per_liter": FUEL_PRICE_ETB,
-                    "km_per_year": KM_PER_YEAR,
-                },
-            }
-
-            # Simple score: weighted (no LLM)
-            def score(it, fuel_3yr, mpay, op):
-                # lower price/op/loan better; higher fuel/parts/resale better
-                s = 0
-                s += it['parts_score'] * 0.25
-                s += it['resale_index'] * 0.20
-                s += min(it['fuel_efficiency'] * 4, 100) * 0.20
-                # normalize cost terms roughly
-                s += max(0, 100 - (mpay / 5000)) * 0.15
-                s += max(0, 100 - (op / 50000)) * 0.20
-                return round(s, 1)
-
-            sc1 = score(item_1, fuel_1_3yr, mpay_1, op_cost_1)
-            sc2 = score(item_2, fuel_2_3yr, mpay_2, op_cost_2)
-            winner_key = 'item_1' if sc1 >= sc2 else 'item_2'
-            winner_name = item_1['name'] if winner_key == 'item_1' else item_2['name']
-
-            # Executive summary: prefer short template from numbers (no hallucinated specs)
-            if winner_key == 'item_1':
-                summary_am = (
-                    f"{item_1['name']} በአጠቃላይ ነጥብ ({sc1}) ከ {item_2['name']} ({sc2}) ይበልጣል። "
-                    f"የ3-ዓመት የነዳጅ/ስራ ወጪ ልዩነት ~{abs(op_cost_1-op_cost_2):,.0f} ብር ሲሆን፣ ቅድመ ክፍያ 30% እና 18% APR/5ዓመት ብድር ተሰልቷል።"
-                )
-            else:
-                summary_am = (
-                    f"{item_2['name']} በአጠቃላይ ነጥብ ({sc2}) ከ {item_1['name']} ({sc1}) ይበልጣል። "
-                    f"የ3-ዓመት የነዳጅ/ስራ ወጪ ልዩነት ~{abs(op_cost_1-op_cost_2):,.0f} ብር ሲሆን፣ ቅድመ ክፍያ 30% እና 18% APR/5ዓመት ብድር ተሰልቷል።"
-                )
-
-            # Optional LLM polish of the SAME numbers only (never invent specs)
-            api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
-            if api_key and data.get('polish_summary'):
-                try:
-                    payload_for_llm = {
-                        "item_1": {"name": item_1['name'], "price": p1, "fuel_efficiency": f1, "parts_score": item_1['parts_score']},
-                        "item_2": {"name": item_2['name'], "price": p2, "fuel_efficiency": f2, "parts_score": item_2['parts_score']},
-                        "calculated_metrics": calculated,
-                        "winner": winner_name,
-                        "scores": {"item_1": sc1, "item_2": sc2},
-                    }
-                    prompt = (
-                        "You are Adika Financial Advisor. Write EXACTLY 2 professional Amharic sentences as executive summary. "
-                        "Use ONLY the numbers in this JSON. Do NOT invent specs, prices, or features.\n"
-                        + json.dumps(payload_for_llm, ensure_ascii=False)
-                    )
-                    if os.environ.get("GEMINI_API_KEY"):
-                        model = _AdikaGeminiModel(
-                            model_name="gemini-2.0-flash",
-                            generation_config={"temperature": 0.1, "max_output_tokens": 180},
-                        )
-                        res = model.generate_content(prompt)
-                        polished = (res.text or "").strip()
-                        if polished and len(polished) > 20:
-                            summary_am = polished
-                except Exception as e:
-                    logger.warning(f"compare summary polish skipped: {e}")
-
-            return jsonify({
-                "status": "success",
-                "category": "vehicles",
-                "item_1": item_1,
-                "item_2": item_2,
-                "metrics": metrics,
-                "calculated_metrics": calculated,
-                "scores": {"item_1": sc1, "item_2": sc2},
-                "winner": winner_key,
-                "winner_name": winner_name,
-                "executive_summary_amharic": summary_am,
-                "data_source": "ethiopia_vehicles / ETHIOPIA_VEHICLES_DATABASE",
-            })
+            if category in ('real_estate', 'realestate', 'property', 'ሪል'):
+                return _compare_property_assets(data)
+            if category in ('business', 'roi', 'startup'):
+                return _compare_business_ideas(data)
+            return _compare_vehicles_hybrid(data)
         except Exception as e:
-            logger.error(f"api_compare_cars error: {e}", exc_info=True)
+            logger.error(f"api_compare error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
+
+    def _parse_fuel_kml(s):
+        s = str(s or "")
+        nums = re.findall(r'(\d+(?:\.\d+)?)', s.replace(',', ''))
+        if not nums:
+            return None
+        vals = [float(x) for x in nums]
+        if 'EV' in s.upper() or 'CHARGE' in s.upper() or 'ቻርጅ' in s:
+            return max(vals) / 25.0
+        if len(vals) >= 2:
+            return (vals[0] + vals[1]) / 2.0
+        return vals[0]
+
+    def _parse_parts_score(s):
+        s = str(s or "")
+        m = re.search(r'(\d+(?:\.\d+)?)\s*/\s*5', s)
+        if m:
+            return round(float(m.group(1)) / 5.0 * 100)
+        m = re.search(r'(\d+(?:\.\d+)?)', s)
+        if m:
+            v = float(m.group(1))
+            return int(v * 20) if v <= 5 else int(min(v, 100))
+        return 50
+
+    def _parse_price_mid(s):
+        s = str(s or "").replace(',', '')
+        nums = [float(x) for x in re.findall(r'(\d+(?:\.\d+)?)', s)]
+        if not nums:
+            return 0
+        if len(nums) >= 2:
+            return (nums[0] + nums[1]) / 2.0
+        return nums[0]
+
+    def _parse_clearance_mm(s):
+        nums = re.findall(r'(\d+(?:\.\d+)?)', str(s or ""))
+        return float(nums[0]) if nums else 0
+
+    def _resale_index(s):
+        s = str(s or "").lower()
+        if any(k in s for k in ['እጅግ', 'ፈጣን', 'prime', 'very high', 'ወዲያውኑ']):
+            return 95
+        if any(k in s for k in ['ከፍተኛ', 'high', 'በጣም']):
+            return 85
+        if any(k in s for k in ['መካከለኛ', 'medium', 'moderate']):
+            return 70
+        if any(k in s for k in ['ዝቅተኛ', 'low']):
+            return 55
+        return 75
+
+    def _monthly_payment(principal, annual_rate, years):
+        if principal <= 0:
+            return 0.0
+        r = annual_rate / 12.0
+        n = years * 12
+        if r == 0:
+            return principal / n
+        f = (1 + r) ** n
+        return principal * (r * f) / (f - 1)
+
+    def _vehicle_from_db(query):
+        row = search_vehicle_in_db(query)
+        if not row:
+            cleaned = re.sub(r'\b(19|20)\d{2}\b', '', query or '').strip()
+            if cleaned and cleaned != query:
+                row = search_vehicle_in_db(cleaned)
+        if not row:
+            return None
+        fuel_raw = row.get('fuel_economy') or row.get('fuel_consumption') or ''
+        parts_raw = row.get('spare_parts_availability') or ''
+        price_raw = row.get('current_price_range_etb') or row.get('price_range') or ''
+        return {
+            "name": row.get('name') or row.get('full_model') or query,
+            "brand": row.get('brand') or '',
+            "category": row.get('category') or '',
+            "price": round(_parse_price_mid(price_raw)),
+            "price_range_raw": price_raw,
+            "fuel_efficiency": round(_parse_fuel_kml(fuel_raw) or 12.0, 1),
+            "fuel_economy_raw": fuel_raw,
+            "parts_score": _parse_parts_score(parts_raw),
+            "parts_raw": parts_raw,
+            "ground_clearance_mm": _parse_clearance_mm(row.get('ground_clearance')),
+            "resale_index": _resale_index(row.get('resale_liquidity')),
+            "resale_raw": row.get('resale_liquidity') or '',
+            "core_advantage": row.get('core_advantage') or '',
+            "primary_use_case": row.get('primary_use_case') or '',
+            "source": row.get('source') or 'ethiopia_vehicles',
+            "is_estimate": False,
+            "found": True,
+        }
+
+    def _vehicle_ai_estimate(query):
+        """Estimate only when model missing from DB. Label is_estimate=True."""
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            return None
+        try:
+            prompt = (
+                "You are Adika Ethiopian automotive pricing engine. "
+                f"Model query: '{query}'. "
+                "Return ONLY JSON with keys: name, brand, category, price_mid_etb (number), "
+                "fuel_kml (number), parts_score_0_100 (number), ground_clearance_mm (number), "
+                "resale_index_0_100 (number), estimated_duty_pct (number), "
+                "market_note_amharic (1 short sentence). "
+                "Use realistic Addis Ababa 2024-2026 market ranges. No markdown."
+            )
+            model = _AdikaGeminiModel(
+                model_name="gemini-2.0-flash",
+                generation_config={"response_mime_type": "application/json", "temperature": 0.15, "max_output_tokens": 400},
+            )
+            res = model.generate_content(prompt)
+            txt = (res.text or "").strip()
+            if txt.startswith("```"):
+                txt = re.sub(r'^```(?:json)?\s*', '', txt)
+                txt = re.sub(r'\s*```$', '', txt)
+            est = json.loads(txt)
+            return {
+                "name": est.get("name") or query,
+                "brand": est.get("brand") or "",
+                "category": est.get("category") or "Custom",
+                "price": round(float(est.get("price_mid_etb") or 0)),
+                "price_range_raw": f"AI estimate ~{est.get('price_mid_etb')}",
+                "fuel_efficiency": round(float(est.get("fuel_kml") or 12), 1),
+                "fuel_economy_raw": f"{est.get('fuel_kml')} KM/L (estimate)",
+                "parts_score": int(est.get("parts_score_0_100") or 60),
+                "parts_raw": "AI estimate",
+                "ground_clearance_mm": float(est.get("ground_clearance_mm") or 150),
+                "resale_index": int(est.get("resale_index_0_100") or 65),
+                "resale_raw": "estimate",
+                "core_advantage": est.get("market_note_amharic") or "",
+                "primary_use_case": "",
+                "estimated_duty_pct": float(est.get("estimated_duty_pct") or 0),
+                "source": "ai_estimate",
+                "is_estimate": True,
+                "found": True,
+            }
+        except Exception as e:
+            logger.warning(f"vehicle AI estimate failed: {e}")
+            return None
+
+    def _compare_vehicles_hybrid(data):
+        car_1_q = (data.get('car_1') or data.get('item_1') or '').strip()
+        car_2_q = (data.get('car_2') or data.get('item_2') or '').strip()
+        if not car_1_q or not car_2_q:
+            return jsonify({"status": "error", "message": "ሁለት የመኪና ሞዴሎች ያስገቡ"}), 400
+
+        DOWN_PCT, APR, AUTO_YEARS = 0.30, 0.18, 5
+        FUEL_PRICE_ETB, KM_PER_YEAR = 80.0, 15000
+
+        def fuel_cost_3yr(kml):
+            if not kml or kml <= 0:
+                return 0
+            return round((KM_PER_YEAR / kml) * FUEL_PRICE_ETB * 3)
+
+        item_1 = _vehicle_from_db(car_1_q) or _vehicle_ai_estimate(car_1_q)
+        item_2 = _vehicle_from_db(car_2_q) or _vehicle_ai_estimate(car_2_q)
+        if not item_1 or not item_2:
+            missing = [q for q, it in ((car_1_q, item_1), (car_2_q, item_2)) if not it]
+            return jsonify({
+                "status": "error",
+                "message": "ሞዴል ማግኘት/መገመት አልተቻለም: " + ", ".join(missing),
+                "missing": missing,
+            }), 404
+
+        f1, f2 = item_1['fuel_efficiency'], item_2['fuel_efficiency']
+        fuel_1_3yr, fuel_2_3yr = fuel_cost_3yr(f1), fuel_cost_3yr(f2)
+        p1, p2 = item_1['price'], item_2['price']
+        down_1, down_2 = round(p1 * DOWN_PCT), round(p2 * DOWN_PCT)
+        loan_1, loan_2 = max(0, p1 - down_1), max(0, p2 - down_2)
+        mpay_1 = round(_monthly_payment(loan_1, APR, AUTO_YEARS))
+        mpay_2 = round(_monthly_payment(loan_2, APR, AUTO_YEARS))
+        maint_1 = round((100 - item_1['parts_score']) * (p1 / 100000) * 0.8)
+        maint_2 = round((100 - item_2['parts_score']) * (p2 / 100000) * 0.8)
+        op_1, op_2 = fuel_1_3yr + maint_1, fuel_2_3yr + maint_2
+
+        def winner(a, b, higher_better=True):
+            if higher_better:
+                return 'item_1' if a > b else ('item_2' if b > a else 'tie')
+            return 'item_1' if a < b else ('item_2' if b < a else 'tie')
+
+        metrics = {
+            "fuel_efficiency": {"item_1": f1, "item_2": f2, "unit": "KM/L", "winner": winner(f1, f2, True)},
+            "parts_score": {"item_1": item_1['parts_score'], "item_2": item_2['parts_score'], "unit": "/100", "winner": winner(item_1['parts_score'], item_2['parts_score'], True)},
+            "resale_index": {"item_1": item_1['resale_index'], "item_2": item_2['resale_index'], "unit": "/100", "winner": winner(item_1['resale_index'], item_2['resale_index'], True)},
+            "price": {"item_1": p1, "item_2": p2, "unit": "ETB", "winner": winner(p1, p2, False)},
+            "fuel_cost_3yr": {"item_1": fuel_1_3yr, "item_2": fuel_2_3yr, "unit": "ETB", "winner": winner(fuel_1_3yr, fuel_2_3yr, False)},
+            "monthly_loan": {"item_1": mpay_1, "item_2": mpay_2, "unit": "ETB", "winner": winner(mpay_1, mpay_2, False)},
+            "ground_clearance": {"item_1": item_1['ground_clearance_mm'], "item_2": item_2['ground_clearance_mm'], "unit": "mm", "winner": winner(item_1['ground_clearance_mm'], item_2['ground_clearance_mm'], True)},
+        }
+        calculated = {
+            "fuel_savings_3yr_etb": abs(fuel_1_3yr - fuel_2_3yr),
+            "price_delta_etb": abs(p1 - p2),
+            "loan_downpayment_min": min(down_1, down_2),
+            "loan_downpayment_item_1": down_1,
+            "loan_downpayment_item_2": down_2,
+            "monthly_loan_item_1": mpay_1,
+            "monthly_loan_item_2": mpay_2,
+            "op_cost_3yr_item_1": op_1,
+            "op_cost_3yr_item_2": op_2,
+            "op_cost_delta_3yr": abs(op_1 - op_2),
+            "assumptions": {"downpayment_pct": DOWN_PCT, "apr": APR, "loan_years": AUTO_YEARS, "fuel_price_etb_per_liter": FUEL_PRICE_ETB, "km_per_year": KM_PER_YEAR},
+        }
+
+        def score(it, mpay, op):
+            s = it['parts_score'] * 0.25 + it['resale_index'] * 0.20 + min(it['fuel_efficiency'] * 4, 100) * 0.20
+            s += max(0, 100 - (mpay / 5000)) * 0.15 + max(0, 100 - (op / 50000)) * 0.20
+            return round(s, 1)
+
+        sc1, sc2 = score(item_1, mpay_1, op_1), score(item_2, mpay_2, op_2)
+        winner_key = 'item_1' if sc1 >= sc2 else 'item_2'
+        winner_name = item_1['name'] if winner_key == 'item_1' else item_2['name']
+        est_note = ""
+        if item_1.get('is_estimate') or item_2.get('is_estimate'):
+            est_note = " (አንዳንድ እሴቶች AI ግምት ናቸው — በvehicles_db ያልተገኙ)"
+        summary_am = (
+            f"{winner_name} በአጠቃላይ ነጥብ ይበልጣል (A:{sc1} / B:{sc2})። "
+            f"የ3-ዓመት የስራ ወጪ ልዩነት ~{abs(op_1-op_2):,.0f} ብር፤ ብድር 30% ቅድመ · 18% APR · 5ዓመት።{est_note}"
+        )
+        return jsonify({
+            "status": "success",
+            "category": "vehicles",
+            "item_1": item_1,
+            "item_2": item_2,
+            "metrics": metrics,
+            "calculated_metrics": calculated,
+            "scores": {"item_1": sc1, "item_2": sc2},
+            "winner": winner_key,
+            "winner_name": winner_name,
+            "executive_summary_amharic": summary_am,
+            "data_source": "ethiopia_vehicles + AI estimate fallback",
+        })
+
+    # Ethiopian institutional real-estate asset profiles (deterministic benchmarks)
+    PROPERTY_ASSET_PROFILES = {
+        "vacant_land": {
+            "name_am": "ባዶ መሬት (Vacant Land)",
+            "name_en": "Vacant Land",
+            "inflation_hedge": 88,
+            "rental_yield_pct": 0.0,
+            "appreciation_3yr_pct": 42,
+            "appreciation_5yr_pct": 75,
+            "development_score": 92,
+            "liquidity": 55,
+            "risk_score": 45,
+            "typical_capex_note": "ልማት/አጥር/እቅድ ወጪ ከፍተኛ",
+        },
+        "apartment": {
+            "name_am": "አፓርትመንት (Apartment)",
+            "name_en": "Apartment",
+            "inflation_hedge": 72,
+            "rental_yield_pct": 6.5,
+            "appreciation_3yr_pct": 22,
+            "appreciation_5yr_pct": 40,
+            "development_score": 35,
+            "liquidity": 78,
+            "risk_score": 32,
+            "typical_capex_note": "ዝቅተኛ የእድሳት ወጪ",
+        },
+        "residential_villa": {
+            "name_am": "ቪላ / የመኖሪያ ቤት",
+            "name_en": "Residential Villa",
+            "inflation_hedge": 80,
+            "rental_yield_pct": 5.0,
+            "appreciation_3yr_pct": 28,
+            "appreciation_5yr_pct": 52,
+            "development_score": 55,
+            "liquidity": 62,
+            "risk_score": 38,
+            "typical_capex_note": "እድሳትና ጥገና መካከለኛ",
+        },
+        "commercial_shop": {
+            "name_am": "የንግድ ሱቅ (Commercial Shop)",
+            "name_en": "Commercial Shop",
+            "inflation_hedge": 70,
+            "rental_yield_pct": 9.5,
+            "appreciation_3yr_pct": 18,
+            "appreciation_5yr_pct": 35,
+            "development_score": 48,
+            "liquidity": 70,
+            "risk_score": 42,
+            "typical_capex_note": "የቦታ ማሻሻያ ወጪ",
+        },
+        "condo": {
+            "name_am": "ኮንዶሚኒየም",
+            "name_en": "Condominium",
+            "inflation_hedge": 68,
+            "rental_yield_pct": 7.0,
+            "appreciation_3yr_pct": 20,
+            "appreciation_5yr_pct": 38,
+            "development_score": 30,
+            "liquidity": 82,
+            "risk_score": 30,
+            "typical_capex_note": "ዝቅተኛ",
+        },
+        "warehouse": {
+            "name_am": "ዌርሃውስ / ማከማቻ",
+            "name_en": "Warehouse",
+            "inflation_hedge": 65,
+            "rental_yield_pct": 11.0,
+            "appreciation_3yr_pct": 15,
+            "appreciation_5yr_pct": 30,
+            "development_score": 60,
+            "liquidity": 50,
+            "risk_score": 48,
+            "typical_capex_note": "መዋቅርና ደህንነት ወጪ",
+        },
+    }
+
+    def _compare_property_assets(data):
+        a_key = (data.get('asset_1') or data.get('item_1') or 'apartment').strip().lower().replace(' ', '_')
+        b_key = (data.get('asset_2') or data.get('item_2') or 'vacant_land').strip().lower().replace(' ', '_')
+        # alias map
+        aliases = {
+            "land": "vacant_land", "መሬት": "vacant_land", "vacant": "vacant_land",
+            "house": "residential_villa", "villa": "residential_villa", "ቤት": "residential_villa", "ቪላ": "residential_villa",
+            "shop": "commercial_shop", "ሱቅ": "commercial_shop", "commercial": "commercial_shop",
+            "አፓርትመንት": "apartment", "apt": "apartment",
+            "ኮንዶ": "condo", "condominium": "condo",
+            "store": "warehouse", "ማከማቻ": "warehouse",
+        }
+        a_key = aliases.get(a_key, a_key)
+        b_key = aliases.get(b_key, b_key)
+        if a_key not in PROPERTY_ASSET_PROFILES:
+            a_key = "apartment"
+        if b_key not in PROPERTY_ASSET_PROFILES:
+            b_key = "vacant_land"
+        budget = float(data.get('budget') or data.get('reference_price') or 3000000)
+        a = dict(PROPERTY_ASSET_PROFILES[a_key])
+        b = dict(PROPERTY_ASSET_PROFILES[b_key])
+        a['key'], b['key'] = a_key, b_key
+        a['name'], b['name'] = a['name_am'], b['name_am']
+
+        def pack(prof, budget):
+            monthly_rent = round(budget * (prof['rental_yield_pct'] / 100.0) / 12.0)
+            val_3 = round(budget * (1 + prof['appreciation_3yr_pct'] / 100.0))
+            val_5 = round(budget * (1 + prof['appreciation_5yr_pct'] / 100.0))
+            down = round(budget * 0.30)
+            return {
+                **prof,
+                "reference_price": round(budget),
+                "monthly_rent_etb": monthly_rent,
+                "value_3yr_etb": val_3,
+                "value_5yr_etb": val_5,
+                "gain_3yr_etb": val_3 - round(budget),
+                "gain_5yr_etb": val_5 - round(budget),
+                "downpayment_30": down,
+            }
+
+        item_1, item_2 = pack(a, budget), pack(b, budget)
+
+        def w(x, y, higher=True):
+            return 'item_1' if (x > y if higher else x < y) else ('item_2' if (x < y if higher else x > y) else 'tie')
+
+        metrics = {
+            "inflation_hedge": {"item_1": item_1['inflation_hedge'], "item_2": item_2['inflation_hedge'], "unit": "/100", "winner": w(item_1['inflation_hedge'], item_2['inflation_hedge'])},
+            "rental_yield": {"item_1": item_1['rental_yield_pct'], "item_2": item_2['rental_yield_pct'], "unit": "%/yr", "winner": w(item_1['rental_yield_pct'], item_2['rental_yield_pct'])},
+            "appreciation_3yr": {"item_1": item_1['appreciation_3yr_pct'], "item_2": item_2['appreciation_3yr_pct'], "unit": "%", "winner": w(item_1['appreciation_3yr_pct'], item_2['appreciation_3yr_pct'])},
+            "appreciation_5yr": {"item_1": item_1['appreciation_5yr_pct'], "item_2": item_2['appreciation_5yr_pct'], "unit": "%", "winner": w(item_1['appreciation_5yr_pct'], item_2['appreciation_5yr_pct'])},
+            "development_score": {"item_1": item_1['development_score'], "item_2": item_2['development_score'], "unit": "/100", "winner": w(item_1['development_score'], item_2['development_score'])},
+            "liquidity": {"item_1": item_1['liquidity'], "item_2": item_2['liquidity'], "unit": "/100", "winner": w(item_1['liquidity'], item_2['liquidity'])},
+        }
+        # composite: hedge 25% + yield 25% + appr5 25% + dev 15% + liq 10% - risk
+        def sc(it):
+            return round(
+                it['inflation_hedge'] * 0.25
+                + min(it['rental_yield_pct'] * 8, 100) * 0.25
+                + it['appreciation_5yr_pct'] * 0.25
+                + it['development_score'] * 0.15
+                + it['liquidity'] * 0.10
+                - it['risk_score'] * 0.15
+            , 1)
+        sc1, sc2 = sc(item_1), sc(item_2)
+        winner_key = 'item_1' if sc1 >= sc2 else 'item_2'
+        winner_name = item_1['name'] if winner_key == 'item_1' else item_2['name']
+        summary_am = (
+            f"በማጣቀሻ በጀት {budget:,.0f} ብር ላይ {winner_name} በተቀናጀ ነጥብ ይበልጣል (A:{sc1} / B:{sc2})። "
+            f"የኪራይ ምርት፣ የ3/5 ዓመት ዋጋ እድገት እና የዋጋ ግሽበት መከላከያ በተቋማዊ ቀመር ተሰልቷል።"
+        )
+        return jsonify({
+            "status": "success",
+            "category": "property",
+            "item_1": item_1,
+            "item_2": item_2,
+            "metrics": metrics,
+            "scores": {"item_1": sc1, "item_2": sc2},
+            "winner": winner_key,
+            "winner_name": winner_name,
+            "executive_summary_amharic": summary_am,
+            "reference_budget": budget,
+            "data_source": "institutional_asset_profiles",
+        })
+
+    def _compare_business_ideas(data):
+        name_a = (data.get('business_1') or data.get('item_1') or '').strip()
+        name_b = (data.get('business_2') or data.get('item_2') or '').strip()
+        if not name_a or not name_b:
+            return jsonify({"status": "error", "message": "ሁለት የንግድ ሀሳቦች ያስገቡ"}), 400
+
+        def formula_baseline(name):
+            """Deterministic baseline from keyword bands — not random."""
+            n = name.lower()
+            # capital / footprint / labor / demand / risk / roi_low / roi_high / months_breakeven
+            if any(k in n for k in ['café', 'cafe', 'restaurant', 'ምግብ', 'ረስቶራንት', 'ቡና']):
+                return dict(min_capital=450000, space_sqm=40, labor_monthly=35000, demand=78, risk=48, roi_low=18, roi_high=32, breakeven_months=14, incentive="SME / የሴቶችና ወጣቶች ብድር እድል")
+            if any(k in n for k in ['cosmetic', 'ኮስሜቲክ', 'import', 'ማስመጣት', 'ውበት']):
+                return dict(min_capital=800000, space_sqm=25, labor_monthly=28000, demand=82, risk=55, roi_low=20, roi_high=35, breakeven_months=12, incentive="የውጭ ምንዛሬ / የንግድ ፈቃድ ማበረታቻ")
+            if any(k in n for k in ['garage', 'ጋራዥ', 'repair', 'ጥገና', 'workshop']):
+                return dict(min_capital=600000, space_sqm=80, labor_monthly=45000, demand=75, risk=40, roi_low=16, roi_high=28, breakeven_months=16, incentive="የቴክኒክ ስልጠና / መሳሪያ ብድር")
+            if any(k in n for k in ['delivery', 'መላኪያ', 'logistics', 'taxi', 'ride']):
+                return dict(min_capital=350000, space_sqm=15, labor_monthly=25000, demand=85, risk=50, roi_low=15, roi_high=30, breakeven_months=11, incentive="የዲጂታል ክፍያ / ትራንስፖርት ፈቃድ")
+            if any(k in n for k in ['shop', 'ሱቅ', 'retail', 'supermarket', 'ቢሮ']):
+                return dict(min_capital=700000, space_sqm=50, labor_monthly=40000, demand=70, risk=42, roi_low=14, roi_high=26, breakeven_months=18, incentive="የንግድ ቦታ ኪራይ ድጋፍ እድል")
+            if any(k in n for k in ['farm', 'እርሻ', 'agriculture', 'dairy']):
+                return dict(min_capital=500000, space_sqm=500, labor_monthly=30000, demand=65, risk=58, roi_low=12, roi_high=25, breakeven_months=24, incentive="የግብርና ብድር / ግብር ማበረታቻ")
+            if any(k in n for k in ['tech', 'software', 'app', 'digital', 'አፕ']):
+                return dict(min_capital=250000, space_sqm=20, labor_monthly=50000, demand=88, risk=60, roi_low=22, roi_high=40, breakeven_months=10, incentive="ICT park / የፈጠራ ማበረታቻ")
+            # generic SME band
+            return dict(min_capital=400000, space_sqm=30, labor_monthly=32000, demand=68, risk=50, roi_low=15, roi_high=28, breakeven_months=15, incentive="አጠቃላይ የMSMEs የብድር ፖሊሲ")
+
+        base_a, base_b = formula_baseline(name_a), formula_baseline(name_b)
+
+        # Optional AI enrichment of the SAME structure (cannot invent random ETB outside bands)
+        def enrich(name, base):
+            api_key = os.environ.get("GEMINI_API_KEY")
+            if not api_key:
+                return {**base, "name": name, "is_ai_enriched": False}
+            try:
+                prompt = (
+                    "Adika Ethiopia SME feasibility. Business: '" + name + "'. "
+                    "Return ONLY JSON keys: name, min_capital_etb, space_sqm, labor_monthly_etb, "
+                    "demand_index_0_100, risk_score_0_100, roi_low_pct, roi_high_pct, breakeven_months, "
+                    "policy_incentive_amharic (short), note_amharic (1 sentence). "
+                    f"Keep numbers near baseline min_capital={base['min_capital']}, roi {base['roi_low']}-{base['roi_high']}. No markdown."
+                )
+                model = _AdikaGeminiModel(
+                    model_name="gemini-2.0-flash",
+                    generation_config={"response_mime_type": "application/json", "temperature": 0.2, "max_output_tokens": 350},
+                )
+                res = model.generate_content(prompt)
+                txt = (res.text or "").strip()
+                if txt.startswith("```"):
+                    txt = re.sub(r'^```(?:json)?\s*', '', txt)
+                    txt = re.sub(r'\s*```$', '', txt)
+                est = json.loads(txt)
+                return {
+                    "name": est.get("name") or name,
+                    "min_capital": int(est.get("min_capital_etb") or base["min_capital"]),
+                    "space_sqm": float(est.get("space_sqm") or base["space_sqm"]),
+                    "labor_monthly": int(est.get("labor_monthly_etb") or base["labor_monthly"]),
+                    "demand": int(est.get("demand_index_0_100") or base["demand"]),
+                    "risk": int(est.get("risk_score_0_100") or base["risk"]),
+                    "roi_low": float(est.get("roi_low_pct") or base["roi_low"]),
+                    "roi_high": float(est.get("roi_high_pct") or base["roi_high"]),
+                    "breakeven_months": int(est.get("breakeven_months") or base["breakeven_months"]),
+                    "incentive": est.get("policy_incentive_amharic") or base["incentive"],
+                    "note": est.get("note_amharic") or "",
+                    "is_ai_enriched": True,
+                }
+            except Exception as e:
+                logger.warning(f"business enrich failed: {e}")
+                return {**base, "name": name, "note": "", "is_ai_enriched": False}
+
+        item_1 = enrich(name_a, base_a)
+        item_2 = enrich(name_b, base_b)
+
+        def w(x, y, higher=True):
+            return 'item_1' if (x > y if higher else x < y) else ('item_2' if (x < y if higher else x > y) else 'tie')
+
+        metrics = {
+            "min_capital": {"item_1": item_1['min_capital'], "item_2": item_2['min_capital'], "unit": "ETB", "winner": w(item_1['min_capital'], item_2['min_capital'], False)},
+            "space_sqm": {"item_1": item_1['space_sqm'], "item_2": item_2['space_sqm'], "unit": "m²", "winner": w(item_1['space_sqm'], item_2['space_sqm'], False)},
+            "labor_monthly": {"item_1": item_1['labor_monthly'], "item_2": item_2['labor_monthly'], "unit": "ETB/mo", "winner": w(item_1['labor_monthly'], item_2['labor_monthly'], False)},
+            "demand": {"item_1": item_1['demand'], "item_2": item_2['demand'], "unit": "/100", "winner": w(item_1['demand'], item_2['demand'])},
+            "risk": {"item_1": item_1['risk'], "item_2": item_2['risk'], "unit": "/100", "winner": w(item_1['risk'], item_2['risk'], False)},
+            "roi_mid": {
+                "item_1": round((item_1['roi_low'] + item_1['roi_high']) / 2, 1),
+                "item_2": round((item_2['roi_low'] + item_2['roi_high']) / 2, 1),
+                "unit": "%",
+                "winner": w((item_1['roi_low'] + item_1['roi_high']) / 2, (item_2['roi_low'] + item_2['roi_high']) / 2),
+            },
+            "breakeven_months": {"item_1": item_1['breakeven_months'], "item_2": item_2['breakeven_months'], "unit": "mo", "winner": w(item_1['breakeven_months'], item_2['breakeven_months'], False)},
+        }
+
+        def sc(it):
+            mid = (it['roi_low'] + it['roi_high']) / 2
+            return round(it['demand'] * 0.30 + mid * 2.0 * 0.30 + max(0, 100 - it['risk']) * 0.20 + max(0, 100 - it['breakeven_months'] * 3) * 0.20, 1)
+
+        sc1, sc2 = sc(item_1), sc(item_2)
+        winner_key = 'item_1' if sc1 >= sc2 else 'item_2'
+        winner_name = item_1['name'] if winner_key == 'item_1' else item_2['name']
+        summary_am = (
+            f"{winner_name} በfeasibility ነጥብ ይበልጣል (A:{sc1} / B:{sc2})። "
+            f"ዝቅተኛ ካፒታል፣ የገበያ ፍላጎት፣ ስጋት እና breakeven ተመዝኗል። "
+            f"ROI ክልል A: {item_1['roi_low']}-{item_1['roi_high']}% · B: {item_2['roi_low']}-{item_2['roi_high']}%።"
+        )
+        return jsonify({
+            "status": "success",
+            "category": "business",
+            "item_1": item_1,
+            "item_2": item_2,
+            "metrics": metrics,
+            "scores": {"item_1": sc1, "item_2": sc2},
+            "winner": winner_key,
+            "winner_name": winner_name,
+            "executive_summary_amharic": summary_am,
+            "data_source": "sme_formula_bands + optional AI enrich",
+        })
+
 
 
 
