@@ -805,6 +805,95 @@ EXPLORER_HTML = r"""
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Executive hero carousel */
+    .hero-carousel {
+      display: flex; gap: 0.5rem; overflow-x: auto; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; padding-bottom: 2px;
+    }
+    .hero-carousel::-webkit-scrollbar { display: none; }
+    .hero-slide {
+      scroll-snap-align: start; flex: 0 0 78%; min-width: 78%;
+      border-radius: 0.85rem; border: 1px solid rgb(30 41 59);
+      background: linear-gradient(90deg, #020617 0%, #0f172a 50%, #020617 100%);
+      padding: 0.65rem 0.85rem; color: #f8fafc;
+      box-shadow: 0 6px 18px rgba(2, 6, 23, 0.35);
+      transition: transform 0.12s ease;
+    }
+    .hero-slide:active { transform: scale(0.985); }
+    .hero-slide .accent { color: #fbbf24; }
+    .hero-dots { display: flex; justify-content: center; gap: 5px; margin-top: 6px; }
+    .hero-dot { width: 5px; height: 5px; border-radius: 999px; background: rgba(15,23,42,0.25); }
+    .hero-dot.active { background: #0e7490; width: 14px; }
+
+    /* Glass chat bubbles */
+    .chat-bubble-user {
+      margin-left: 1.5rem; padding: 0.7rem 0.85rem; border-radius: 1rem;
+      background: linear-gradient(135deg, #0d9488, #059669);
+      color: #fff; box-shadow: 0 8px 24px rgba(13, 148, 136, 0.25);
+      border: 1px solid rgba(255,255,255,0.15);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    .chat-bubble-ai {
+      margin-right: 1.5rem; padding: 0.7rem 0.85rem; border-radius: 1rem;
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.45);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      color: #0f172a;
+    }
+    .chat-input-bar {
+      display: flex; align-items: flex-end; gap: 0.4rem;
+      padding: 0.55rem; border-top: 1px solid rgba(226,232,240,0.9);
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    .chat-input-bar textarea {
+      flex: 1; min-height: 38px; max-height: 110px; resize: none;
+      border-radius: 0.85rem; padding: 0.55rem 0.75rem;
+      font-size: 12px; line-height: 1.4; border: 1px solid #e2e8f0;
+      background: #f8fafc; outline: none;
+    }
+    .chat-input-bar textarea:focus { border-color: #14b8a6; box-shadow: 0 0 0 2px rgba(20,184,166,0.2); }
+    .chat-send-btn {
+      width: 38px; height: 38px; border-radius: 999px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #0d9488, #059669); color: #fff;
+      border: none; box-shadow: 0 4px 12px rgba(13,148,136,0.35);
+    }
+    .chat-send-btn:active { transform: scale(0.94); }
+
+    /* Corporate tool cards */
+    .tool-card-pro {
+      padding: 0.75rem; border-radius: 0.9rem; text-align: left;
+      background: rgba(15, 23, 42, 0.72); border: 1px solid rgb(30 41 59);
+      color: #e2e8f0; transition: background 0.15s ease, transform 0.1s ease;
+      display: flex; flex-direction: column; gap: 0.35rem;
+      box-shadow: 0 6px 16px rgba(2, 6, 23, 0.2);
+    }
+    .tool-card-pro:hover, .tool-card-pro:active {
+      background: rgba(30, 41, 59, 0.9); transform: scale(0.98);
+    }
+    .tool-card-pro .tool-title { font-weight: 800; font-size: 11px; color: #f1f5f9; }
+    .tool-card-pro .tool-sub { font-size: 9px; color: #94a3b8; }
+    .tool-icon-wrap {
+      width: 28px; height: 28px; border-radius: 0.5rem;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.25);
+      color: #fbbf24;
+    }
+    .opp-card {
+      border-radius: 0.9rem; padding: 0.75rem;
+      background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+      border: 1px solid #334155; color: #e2e8f0;
+      box-shadow: 0 8px 20px rgba(2,6,23,0.25);
+    }
+    .opp-card .opp-cta {
+      margin-top: 0.55rem; width: 100%; padding: 0.45rem 0.5rem;
+      border-radius: 0.55rem; font-size: 10px; font-weight: 800;
+      background: linear-gradient(90deg, #0d9488, #0891b2); color: #fff;
+      border: none;
+    }
   </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
@@ -881,28 +970,52 @@ EXPLORER_HTML = r"""
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <!-- HOME HERO: Document Verify + Digital Advisor (compact dual cards) -->
-    <div id="homeHero" class="grid grid-cols-2 gap-2 mb-2.5">
-      <button id="heroAdvisorBtn" type="button"
-        class="relative overflow-hidden rounded-2xl p-2.5 text-left border border-white/70 shadow-[0_8px_20px_rgba(15,23,42,0.10)] active:scale-[0.98] transition-all"
-        style="background:linear-gradient(135deg,rgba(22,172,189,0.92),rgba(14,116,144,0.95));">
-        <div class="text-white space-y-1.5">
-          <div class="text-base leading-none">💡</div>
-          <div class="font-black text-[11px] leading-tight">አዲካ ዲጂታል አማካሪ</div>
-          <div class="text-[9px] text-white/85 leading-snug">በጀትዎን ትክክለኛ ግምት</div>
-          <span class="inline-flex mt-0.5 px-2 py-0.5 rounded-full bg-white/20 text-[9px] font-bold">ነጻ የገበያ ትንተና →</span>
-        </div>
-      </button>
-      <button id="heroPoaBtn" type="button"
-        class="relative overflow-hidden rounded-2xl p-2.5 text-left border border-white/70 shadow-[0_8px_20px_rgba(15,23,42,0.10)] active:scale-[0.98] transition-all"
-        style="background:linear-gradient(135deg,rgba(15,23,42,0.92),rgba(30,58,138,0.95));">
-        <div class="text-white space-y-1.5">
-          <div class="text-base leading-none">📄</div>
-          <div class="font-black text-[11px] leading-tight">የሰነድ ማረጋገጫ</div>
-          <div class="text-[9px] text-white/85 leading-snug">የውክልና ሰነድ ዲጂታል ማጣሪያ</div>
-          <span class="inline-flex mt-0.5 px-2 py-0.5 rounded-full bg-white/20 text-[9px] font-bold">አሁን ያረጋግጡ →</span>
-        </div>
-      </button>
+    <!-- HOME HERO: Executive horizontal carousel (compact) -->
+    <div id="homeHero" class="mb-2">
+      <div id="heroCarousel" class="hero-carousel">
+        <button id="heroAdvisorBtn" type="button" class="hero-slide text-left">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-[9px] font-bold tracking-wide uppercase text-slate-400">Adika Intelligence</div>
+              <div class="font-black text-[12px] leading-tight mt-0.5">ዲጂታል የፋይናንስ አማካሪ</div>
+              <div class="text-[9px] text-slate-300 mt-1 leading-snug">በጀትዎን በባንክ ብድርና የገበያ ዋጋ ያስተካክሉ</div>
+            </div>
+            <span class="accent text-[10px] font-black shrink-0">AI</span>
+          </div>
+          <div class="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-teal-300">ትንተና ጀምር
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </div>
+        </button>
+        <button id="heroPoaBtn" type="button" class="hero-slide text-left">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-[9px] font-bold tracking-wide uppercase text-slate-400">Legal Desk</div>
+              <div class="font-black text-[12px] leading-tight mt-0.5">የሰነድ ማረጋገጫ</div>
+              <div class="text-[9px] text-slate-300 mt-1 leading-snug">ውክልና (POA) ዲጂታል ማጣሪያ</div>
+            </div>
+            <span class="accent text-[10px] font-black shrink-0">ID</span>
+          </div>
+          <div class="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-amber-300">አሁን ያረጋግጡ
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </div>
+        </button>
+        <button id="heroToolsBtn" type="button" class="hero-slide text-left">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <div class="text-[9px] font-bold tracking-wide uppercase text-slate-400">Tools Suite</div>
+              <div class="font-black text-[12px] leading-tight mt-0.5">የፋይናንስና የህግ መሳሪያዎች</div>
+              <div class="text-[9px] text-slate-300 mt-1 leading-snug">ቀረጥ · ብድር · ውል · ንጽጽር</div>
+            </div>
+            <span class="accent text-[10px] font-black shrink-0">PRO</span>
+          </div>
+          <div class="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-sky-300">መሳሪያዎች ክፈት
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </div>
+        </button>
+      </div>
+      <div class="hero-dots" id="heroDots">
+        <span class="hero-dot active"></span><span class="hero-dot"></span><span class="hero-dot"></span>
+      </div>
     </div>
 
     <div id="status" class="text-center py-8 text-slate-600 font-semibold text-xs">
@@ -1002,19 +1115,21 @@ EXPLORER_HTML = r"""
       <span class="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 shadow-xs">ዝግጁ</span>
     </div>
     <div class="flex-1 flex flex-col min-h-0 bg-slate-50/70 p-3 space-y-3 pb-24">
-      <!-- Live advisor chat -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/90 overflow-hidden flex-1 flex flex-col min-h-0">
-        <div class="px-3.5 py-2 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between shrink-0">
-          <div class="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
-            <span>💬</span>
+      <!-- Live advisor chat — glassmorphic -->
+      <div class="rounded-2xl shadow-xl border border-white/30 overflow-hidden flex-1 flex flex-col min-h-0 bg-white/40 backdrop-blur-md">
+        <div class="px-3.5 py-2 border-b border-white/30 flex items-center justify-between shrink-0 bg-slate-900/80 text-white">
+          <div class="text-[11px] font-black flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
             <span>የቀጥታ ውይይት (Live Chat)</span>
           </div>
-          <span class="text-[10px] text-slate-500 font-medium">ፈጣን ምላሽ</span>
+          <span class="text-[9px] font-bold text-emerald-300">ፈጣን ምላሽ</span>
         </div>
         <div id="advisorChatLog" class="flex-1 overflow-y-auto p-3.5 space-y-3 text-xs scroll-smooth"></div>
-        <div class="p-2.5 border-t border-slate-100 bg-white flex gap-1.5 shrink-0">
-          <input id="advisorChatInput" type="text" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር ይጠይቁ..." class="flex-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-[#16acbd]" />
-          <button id="advisorChatSend" type="button" class="px-4 py-2 rounded-xl bg-[#16acbd] hover:bg-[#0e7490] text-white font-bold text-xs active:scale-95 transition-all shadow-sm">ላክ</button>
+        <div class="chat-input-bar shrink-0">
+          <textarea id="advisorChatInput" rows="1" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር ይጠይቁ..."></textarea>
+          <button id="advisorChatSend" type="button" class="chat-send-btn" aria-label="Send">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          </button>
         </div>
       </div>
     </div>
@@ -1063,27 +1178,58 @@ EXPLORER_HTML = r"""
             <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#16acbd]/20 text-[#0e7490] whitespace-nowrap shrink-0">Adika Advisor</span>
           </div>
 
-          <!-- 1. Budget Input & Quick Chips -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[10px] font-bold text-slate-700 block">የእርስዎ በጀት (Total Budget in ETB)</label>
-              <span id="advisorBudgetFormatted" class="text-[10px] font-extrabold text-[#0e7490]">2,000,000 ETB</span>
+          <!-- 1. Budget + Monthly Income inputs -->
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-[10px] font-bold text-slate-700">ጠቅላላ በጀት (ETB)</label>
+              </div>
+              <input id="advisorBudget" type="number" value="2000000" placeholder="2,000,000" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#16acbd]" />
+              <div id="advisorBudgetFormatted" class="text-[9px] font-extrabold text-[#0e7490] mt-0.5">2,000,000 ETB</div>
             </div>
-            <input id="advisorBudget" type="number" value="2000000" placeholder="2,000,000" class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#16acbd]" />
-            <div class="flex gap-1 mt-1.5 overflow-x-auto no-scrollbar">
-              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="70000">70k</button>
-              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="500000">500k</button>
-              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="1500000">1.5M</button>
-              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="3000000">3M</button>
-              <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="6000000">6M</button>
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-[10px] font-bold text-slate-700">ወርሃዊ ገቢ (ETB)</label>
+              </div>
+              <input id="advisorMonthlyIncome" type="number" value="25000" placeholder="25,000" class="w-full px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-[11px] font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#16acbd]" />
+              <div id="advisorIncomeFormatted" class="text-[9px] font-extrabold text-slate-500 mt-0.5">25,000 / ወር</div>
             </div>
           </div>
+          <div class="flex gap-1 overflow-x-auto no-scrollbar">
+            <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="70000">70k</button>
+            <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="500000">500k</button>
+            <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="1500000">1.5M</button>
+            <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="3000000">3M</button>
+            <button type="button" class="advisor-preset-chip px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-[10px] font-bold text-slate-700 whitespace-nowrap active:scale-95 transition-all" data-budget="6000000">6M</button>
+          </div>
 
-          <!-- Action: Generate first (progressive disclosure) -->
-          <button id="advisorBtn" type="button" class="w-full py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5">
-            <span>✨</span>
-            <span>የአዲካ ዲጂታል ትንተና አፍልቅ (Generate Analysis)</span>
+          <!-- Generate opportunity cards (does NOT jump to chat) -->
+          <button id="advisorBtn" type="button" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-slate-700">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span>የኢንቨስትመንት አማራጮች አሳይ</span>
           </button>
+
+          <!-- 3 Investment Opportunity Cards -->
+          <div id="opportunityCards" class="hidden space-y-2">
+            <div class="opp-card" data-opp="auto">
+              <div class="text-[9px] font-bold uppercase tracking-wide text-amber-400">A · Automotive</div>
+              <div class="font-black text-[12px] text-white mt-0.5">ተሽከርካሪ + የባንክ ብድር</div>
+              <div id="oppAutoBody" class="text-[10px] text-slate-300 mt-1 leading-relaxed">በበጀትዎ የሚገኙ ተሽከርካሪዎችና የብድር አማራጭ።</div>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="auto">ጥልቅ የፋይናንስ ትንተና በ AI Chat አግኝ →</button>
+            </div>
+            <div class="opp-card" data-opp="property">
+              <div class="text-[9px] font-bold uppercase tracking-wide text-sky-400">B · Real Estate</div>
+              <div class="font-black text-[12px] text-white mt-0.5">ሪል እስቴት · ቅድመ ክፍያ</div>
+              <div id="oppPropBody" class="text-[10px] text-slate-300 mt-1 leading-relaxed">የመግቢያ ደረጃ የቤት/መሬት ቅድመ ክፍያ አማራጮች።</div>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="property">ጥልቅ የፋይናንስ ትንተና በ AI Chat አግኝ →</button>
+            </div>
+            <div class="opp-card" data-opp="roi">
+              <div class="text-[9px] font-bold uppercase tracking-wide text-emerald-400">C · Business ROI</div>
+              <div class="font-black text-[12px] text-white mt-0.5">ዓመታዊ ምርት / ROI</div>
+              <div id="oppRoiBody" class="text-[10px] text-slate-300 mt-1 leading-relaxed">የንግድ/ኪራይ ገቢ ግምታዊ ዓመታዊ ምርት።</div>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="roi">ጥልቅ የፋይናንስ ትንተና በ AI Chat አግኝ →</button>
+            </div>
+          </div>
 
           <!-- Result Container -->
           <div id="advisorResult" class="hidden p-3 bg-white rounded-2xl border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium shadow-sm space-y-3"></div>
@@ -1130,41 +1276,35 @@ EXPLORER_HTML = r"""
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
           </h4>
           <div class="grid grid-cols-2 gap-2 text-xs">
-            <!-- Tool 1: Customs Duty -->
-            <button id="toolDutyBtn" type="button" class="p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:border-[#16acbd] flex flex-col text-left transition-all active:scale-95 shadow-sm">
-              <span class="text-xl mb-1">🧮</span>
-              <span class="font-extrabold text-slate-800">የቀረጥ ስሌት</span>
-              <span class="text-[10px] text-slate-500">Customs Duty & Taxes</span>
+            <button id="toolDutyBtn" type="button" class="tool-card-pro">
+              <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
+              <span class="tool-title">የቀረጥ ስሌት</span>
+              <span class="tool-sub">Customs Duty & Taxes</span>
             </button>
-            <!-- Tool 2: Bank Loan -->
-            <button id="toolLoanBtn" type="button" class="p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:border-[#16acbd] flex flex-col text-left transition-all active:scale-95 shadow-sm">
-              <span class="text-xl mb-1">🏦</span>
-              <span class="font-extrabold text-slate-800">የባንክ ብድር</span>
-              <span class="text-[10px] text-slate-500">Mortgage & Auto Loan</span>
+            <button id="toolLoanBtn" type="button" class="tool-card-pro">
+              <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h18M5 10V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2M5 10v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/><circle cx="12" cy="14" r="1.5"/></svg></span>
+              <span class="tool-title">የባንክ ብድር</span>
+              <span class="tool-sub">Mortgage & Auto Loan</span>
             </button>
-            <!-- Tool 3: Car Compare -->
-            <button id="toolCompareBtn" type="button" class="p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:border-[#16acbd] flex flex-col text-left transition-all active:scale-95 shadow-sm">
-              <span class="text-xl mb-1">⚖️</span>
-              <span class="font-extrabold text-slate-800">የመኪና ንጽጽር</span>
-              <span class="text-[10px] text-slate-500">Vehicle Comparison</span>
+            <button id="toolCompareBtn" type="button" class="tool-card-pro">
+              <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h8M8 12h8M8 17h5"/><path d="M4 4v16M20 4v16"/></svg></span>
+              <span class="tool-title">የመኪና ንጽጽር</span>
+              <span class="tool-sub">Vehicle Comparison</span>
             </button>
-            <!-- Tool 4: Legal Contract -->
-            <button id="toolContractBtn" type="button" class="p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:border-[#16acbd] flex flex-col text-left transition-all active:scale-95 shadow-sm">
-              <span class="text-xl mb-1">📜</span>
-              <span class="font-extrabold text-slate-800">የሽያጭ ውል</span>
-              <span class="text-[10px] text-slate-500">Legal Sales Contract</span>
+            <button id="toolContractBtn" type="button" class="tool-card-pro">
+              <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg></span>
+              <span class="tool-title">የሽያጭ ውል</span>
+              <span class="tool-sub">Legal Sales Contract</span>
             </button>
-            <!-- Tool 5: Verify POA -->
-            <button id="toolPoaBtn" type="button" class="p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:border-[#16acbd] flex flex-col text-left transition-all active:scale-95 shadow-sm">
-              <span class="text-xl mb-1">🔍</span>
-              <span class="font-extrabold text-slate-800">ውክልና ማረጋገጫ</span>
-              <span class="text-[10px] text-slate-500">Verify Power of Attorney</span>
+            <button id="toolPoaBtn" type="button" class="tool-card-pro">
+              <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
+              <span class="tool-title">ውክልና ማረጋገጫ</span>
+              <span class="tool-sub">Verify Power of Attorney</span>
             </button>
-            <!-- Tool 6: Diagnostic Sheet -->
-            <button id="toolDiagBtn" type="button" class="p-3 rounded-2xl bg-slate-50 border border-slate-200 hover:border-[#16acbd] flex flex-col text-left transition-all active:scale-95 shadow-sm">
-              <span class="text-xl mb-1">🛠️</span>
-              <span class="font-extrabold text-slate-800">የምርመራ ወረቀት</span>
-              <span class="text-[10px] text-slate-500">Garage Diagnostic Sheet</span>
+            <button id="toolDiagBtn" type="button" class="tool-card-pro">
+              <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
+              <span class="tool-title">የምርመራ ወረቀት</span>
+              <span class="tool-sub">Garage Diagnostic Sheet</span>
             </button>
           </div>
         </div>
@@ -2027,6 +2167,14 @@ EXPLORER_HTML = r"""
         budgetFormattedEl.textContent = v > 0 ? (v.toLocaleString() + " ETB") : "0 ETB";
       };
     }
+    var incomeInputEl = document.getElementById("advisorMonthlyIncome");
+    var incomeFormattedEl = document.getElementById("advisorIncomeFormatted");
+    if (incomeInputEl && incomeFormattedEl) {
+      incomeInputEl.oninput = function() {
+        var v = Number(incomeInputEl.value) || 0;
+        incomeFormattedEl.textContent = v > 0 ? (v.toLocaleString() + " / ወር") : "0 / ወር";
+      };
+    }
 
     document.querySelectorAll(".advisor-preset-chip").forEach(function(btn) {
       btn.onclick = function() {
@@ -2076,6 +2224,7 @@ EXPLORER_HTML = r"""
     (function(){
       var ha = document.getElementById("heroAdvisorBtn");
       var hp = document.getElementById("heroPoaBtn");
+      var ht = document.getElementById("heroToolsBtn");
       if (ha) ha.onclick = function() {
         if (typeof openToolModal === "function") openToolModal("aiModal");
         else {
@@ -2090,6 +2239,22 @@ EXPLORER_HTML = r"""
           if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
         }
       };
+      if (ht) ht.onclick = function() {
+        if (typeof openToolModal === "function") openToolModal("aiModal");
+        else {
+          var m = document.getElementById("aiModal");
+          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
+        }
+      };
+      // Carousel dots sync
+      var car = document.getElementById("heroCarousel");
+      var dots = document.querySelectorAll("#heroDots .hero-dot");
+      if (car && dots.length) {
+        car.addEventListener("scroll", function() {
+          var i = Math.round(car.scrollLeft / Math.max(car.clientWidth * 0.78, 1));
+          dots.forEach(function(d, idx){ d.classList.toggle("active", idx === i); });
+        }, { passive: true });
+      }
     })();
 
     function showAnalysisView(show) {
@@ -2115,16 +2280,14 @@ EXPLORER_HTML = r"""
       if (!log) return;
       var row = document.createElement("div");
       if (role === "user") {
-        row.className = "ml-6 p-3 rounded-2xl bg-[#16acbd] text-white shadow-sm text-right animate-in fade-in duration-150";
+        row.className = "chat-bubble-user text-right";
         row.innerHTML = '<div class="text-[9px] font-bold text-white/80 mb-0.5">እርስዎ</div><div class="text-xs font-semibold whitespace-pre-wrap leading-relaxed text-left">' + esc(String(text || "")) + '</div>';
       } else {
-        row.className = "mr-6 p-3 rounded-2xl bg-white text-slate-800 border border-slate-200/90 shadow-sm leading-relaxed text-left animate-in fade-in duration-150";
-        row.innerHTML = '<div class="text-[9px] font-black text-[#0e7490] mb-0.5 flex items-center gap-1"><span>💼</span><span>Adika Senior Financial Advisor</span></div><div class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">' + esc(String(text || "")) + '</div>';
+        row.className = "chat-bubble-ai text-left";
+        row.innerHTML = '<div class="text-[9px] font-black text-teal-700 mb-0.5 flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2H22l-6 4.8 2.4 7.2L12 16.4 5.6 21.2 8 14 2 9.2h7.6z"/></svg><span>Adika Senior Financial Advisor</span></div><div class="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">' + esc(String(text || "")) + '</div>';
       }
       log.appendChild(row);
-      setTimeout(function() {
-        log.scrollTop = log.scrollHeight;
-      }, 50);
+      setTimeout(function() { log.scrollTop = log.scrollHeight; }, 50);
     }
 
     function renderBudgetBar(budget) {
@@ -2161,11 +2324,59 @@ EXPLORER_HTML = r"""
     }
 
 
-    // Advisor Button Action — open dedicated Live Advisor Chat
+    // Advisor Button Action — render 3 investment opportunity cards (no direct jump to chat)
+    function formatEtb(n) {
+      n = Math.max(0, Number(n) || 0);
+      return n.toLocaleString() + " ብር";
+    }
+    function renderOpportunityCards() {
+      var budgetEl = document.getElementById("advisorBudget");
+      var incomeEl = document.getElementById("advisorMonthlyIncome");
+      var budget = Math.max(0, Number(budgetEl && budgetEl.value) || 0);
+      var income = Math.max(0, Number(incomeEl && incomeEl.value) || 0);
+      var purchase = Math.round(budget * 0.70);
+      var down20 = Math.round(budget * 0.20);
+      var down30 = Math.round(budget * 0.30);
+      var loanAmt = Math.max(0, purchase - down30);
+      var monthlyLoan = income > 0 ? Math.min(Math.round(income * 0.35), Math.round(loanAmt / 48)) : Math.round(loanAmt / 48);
+      var autoBody = document.getElementById("oppAutoBody");
+      var propBody = document.getElementById("oppPropBody");
+      var roiBody = document.getElementById("oppRoiBody");
+      if (autoBody) {
+        autoBody.innerHTML = "በ <b>" + formatEtb(purchase) + "</b> (70% የበጀት) ተሽከርካሪ መምረጥ ይቻላል። " +
+          "ቅድመ ክፍያ ~" + formatEtb(down30) + " · የብድር ክፍል ~" + formatEtb(loanAmt) +
+          (income ? " · ግምታዊ ወርሃዊ ክፍያ ≤ " + formatEtb(monthlyLoan) : "") + "።";
+      }
+      if (propBody) {
+        propBody.innerHTML = "የመግቢያ ቅድመ ክፍያ 20–30%: <b>" + formatEtb(down20) + " – " + formatEtb(down30) + "</b>። " +
+          "ቀሪው በባንክ ብድር ሊሸፈን ይችላል። ለኮንዶሚኒየም/አፓርትመንት መግቢያ ደረጃ ተስማሚ።";
+      }
+      if (roiBody) {
+        var rentYear = Math.round((income || budget * 0.01) * 12 * 0.4);
+        var roiPct = budget > 0 ? ((rentYear / budget) * 100).toFixed(1) : "—";
+        roiBody.innerHTML = "ግምታዊ ዓመታዊ የኪራይ/ንግድ ምርት ~<b>" + formatEtb(rentYear) + "</b> · ROI ~<b>" + roiPct + "%</b>። " +
+          "ትክክለኛ ትንተና ለማግኘት AI Chat ይጠቀሙ።";
+      }
+      var box = document.getElementById("opportunityCards");
+      if (box) box.classList.remove("hidden");
+    }
     var advBtnEl = document.getElementById("advisorBtn");
     if (advBtnEl) {
       advBtnEl.onclick = function() {
-        // Close input modal → open dedicated live advisor chat page
+        renderOpportunityCards();
+      };
+    }
+    // Opportunity CTA → open live chat with context prefilled
+    document.querySelectorAll(".opp-chat-cta").forEach(function(btn) {
+      btn.onclick = function() {
+        var ctx = btn.getAttribute("data-context") || "auto";
+        var budget = Number((document.getElementById("advisorBudget") || {}).value) || 0;
+        var income = Number((document.getElementById("advisorMonthlyIncome") || {}).value) || 0;
+        var prompts = {
+          auto: "በጀቴ " + budget.toLocaleString() + " ብር ነው፣ ወርሃዊ ገቢዬ " + income.toLocaleString() + " ብር ነው። በዚህ በጀት የትኛውን ተሽከርካሪ መምረጥ እችላለሁ? የባንክ ብድር አማራጭም አብረው ያብራሩልኝ።",
+          property: "በጀቴ " + budget.toLocaleString() + " ብር ነው፣ ወርሃዊ ገቢዬ " + income.toLocaleString() + " ብር ነው። ለቤት/መሬት የመግቢያ ቅድመ ክፍያ እና የብድር አሰራር ያብራሩልኝ።",
+          roi: "በጀቴ " + budget.toLocaleString() + " ብር ነው። የሪል እስቴት ወይም የንግድ ኢንቨስትመንት ዓመታዊ ROI እና የኪራይ ገቢ ግምት ያሳዩኝ።"
+        };
         try {
           var aiModal = document.getElementById("aiModal");
           if (aiModal) { aiModal.classList.add("hidden"); aiModal.classList.remove("flex"); }
@@ -2175,13 +2386,21 @@ EXPLORER_HTML = r"""
         if (log && !log.dataset.seeded) {
           log.innerHTML = "";
           advisorChatHistory = [];
-          var initMsg = "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። ስለ መኪና ወይም የቤት ግዢ፣ የቀረጥ ስሌት፣ የባንክ ብድር ወይም ማንኛውም የፋይናንስ ምክር ምን ማወቅ ይፈልጋሉ? ጥያቄዎን እዚህ ይጠይቁኝ።";
+          var initMsg = "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። ስለ መኪና ወይም የቤት ግዢ፣ የቀረጥ ስሌት፣ የባንክ ብድር ወይም ማንኛውም የፋይናንስ ምክር ምን ማወቅ ይፈልጋሉ?";
           appendAdvisorChat("advisor", initMsg);
           advisorChatHistory.push({ role: "advisor", content: initMsg });
           log.dataset.seeded = "1";
         }
+        var input = document.getElementById("advisorChatInput");
+        if (input) {
+          input.value = prompts[ctx] || prompts.auto;
+          if (input.tagName === "TEXTAREA") {
+            input.style.height = "auto";
+            input.style.height = Math.min(input.scrollHeight, 110) + "px";
+          }
+        }
       };
-    }
+    });
 
 
     (function(){
@@ -2213,6 +2432,7 @@ EXPLORER_HTML = r"""
           if (typeof appendAdvisorChat === "function") appendAdvisorChat("user", text);
           advisorChatHistory.push({ role: "user", content: text });
           input.value = "";
+          if (input.tagName === "TEXTAREA") { input.style.height = "38px"; }
           showTyping();
           
           fetch("/api/advisor/chat", {
@@ -2239,7 +2459,15 @@ EXPLORER_HTML = r"""
           });
         }
         sendBtn.onclick = sendChat;
-        input.addEventListener("keydown", function(ev){ if (ev.key === "Enter") { ev.preventDefault(); sendChat(); } });
+        input.addEventListener("keydown", function(ev){
+          if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); sendChat(); }
+        });
+        if (input.tagName === "TEXTAREA") {
+          input.addEventListener("input", function() {
+            input.style.height = "auto";
+            input.style.height = Math.min(input.scrollHeight, 110) + "px";
+          });
+        }
       }
       bindAdvisorChat();
       setTimeout(bindAdvisorChat, 500);
