@@ -451,10 +451,39 @@ ETHIOPIA_VEHICLES_DATABASE = {
         "current_price_range_etb": "3,000,000 - 9,000,000 ETB",
         "core_advantage": "ለህዝብ ትራንስፖርትና ለንግድ ተወዳዳሪ የሌለው ከፍተኛ ገቢ አመንጪነት",
         "bank_collateral_appeal": "በጣም ከፍተኛ የንግድ ብድር ዋስትና",
-        "fuel_economy": "11 -        for tok in tokens:
+        "fuel_economy": "11 - 13 KM/L",
+        "ground_clearance": "185 mm",
+        "primary_use_case": "ለህዝብ ትራንስፖርትና ለንግድ",
+        "spare_parts_availability": "5/5",
+        "resale_liquidity": "እጅግ ከፍተኛ"
+    },
+}
+
+
+def search_vehicle_in_db(user_message: str):
+    """Lookup vehicle in ethiopia_vehicles table then local ETHIOPIA_VEHICLES_DATABASE."""
+    query_raw = str(user_message or "").strip().lower()
+    if not query_raw:
+        return None
+    normalized_q = query_raw
+    try:
+        from data_catalog import normalize_search_query, AMHARIC_VEHICLE_SYNONYMS as _SYN
+        normalized_q = normalize_search_query(query_raw) or query_raw
+    except Exception:
+        _SYN = {}
+    combined_search_text = f"{query_raw} {normalized_q}"
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        from models import is_postgres
+        like_op = "ILIKE" if is_postgres() else "LIKE"
+        tokens = [tok for tok in re.split(r"\s+", normalized_q or query_raw) if len(tok) >= 2][:5]
+        for tok in tokens:
             cur.execute(
                 f"SELECT * FROM ethiopia_vehicles WHERE name {like_op} {p} OR full_model {like_op} {p} OR model_key {like_op} {p} LIMIT 1",
-                (f"%{tok}%", f"%{tok}%", f"%{tok}%")
+                (f"%{tok}%", f"%{tok}%", f"%{tok}%"),
             )
             row = cur.fetchone()
             if row:
@@ -466,32 +495,96 @@ ETHIOPIA_VEHICLES_DATABASE = {
     except Exception as _e:
         logger.debug(f"ethiopia_vehicles query note: {_e}")
 
-    # Check local verified ETHIOPIA_VEHICLES_DATABASE store
     sorted_keys = sorted(ETHIOPIA_VEHICLES_DATABASE.keys(), key=lambda k: len(k), reverse=True)
     for key in sorted_keys:
         if key in normalized_q or key in query_raw or key in combined_search_text:
             match = dict(ETHIOPIA_VEHICLES_DATABASE[key])
             match["source"] = "ethiopia_vehicles"
             return match
-
-        parts = [p for p in key.split() if p not in {"toyota", "suzuki", "hyundai", "byd", "plus", "70", "200", "series"}]
+        parts = [pp for pp in key.split() if pp not in {"toyota", "suzuki", "hyundai", "byd", "plus", "70", "200", "series"}]
         for part in parts:
             if len(part) >= 3 and (part in normalized_q or part in query_raw or f" {part} " in f" {combined_search_text} "):
                 match = dict(ETHIOPIA_VEHICLES_DATABASE[key])
                 match["source"] = "ethiopia_vehicles"
                 return match
 
-    # Amharic Vehicle Synonym Dictionary Mapping
-    for amh_word, eng_term in AMHARIC_VEHICLE_SYNONYMS.items():
-        if amh_word in query_raw:
+    try:
+        syn = _SYN
+    except NameError:
+        syn = {}
+    try:
+        from data_catalog import AMHARIC_VEHICLE_SYNONYMS as syn2
+        syn = {**(syn or {}), **(syn2 or {})}
+    except Exception:
+        pass
+    for amh_word, eng_term in (syn or {}).items():
+        if amh_word in query_raw or amh_word in str(user_message or ""):
             for key, data in ETHIOPIA_VEHICLES_DATABASE.items():
                 if eng_term in key or key in eng_term:
                     match = dict(data)
                     match["source"] = "ethiopia_vehicles"
                     return match
-
     return None
 
+
+def search_live_listings(user_message: str, limit: int = 8) -> list:
+    """Search active public marketplace listings for live prices (priority 1 for advisor)."""
+    q = (user_message or "").strip()
+    if not q:
+        return []
+    results = []
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        from models import is_postgres
+        like = "ILIKE" if is_postgres() else "LIKE"
+        tokens = [tok for tok in re.split(r"\s+", q.lower()) if len(tok) >= 2][:6]
+        if not tokens:
+            tokens = [q[:40]]
+        where = [
+            "(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))",
+            "(UPPER(COALESCE(req_type,'')) = 'SELL' OR COALESCE(action_type,'') IN ('መሸጥ','SELL','sell') OR COALESCE(req_type,'') = '')",
+        ]
+        params = []
+        token_clauses = []
+        for tok in tokens:
+            token_clauses.append(
+                f"(CAST(COALESCE(description,'') AS TEXT) {like} {p} "
+                f"OR CAST(COALESCE(sub_category,'') AS TEXT) {like} {p} "
+                f"OR CAST(COALESCE(main_category,'') AS TEXT) {like} {p} "
+                f"OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p} "
+                f"OR CAST(COALESCE(price,'') AS TEXT) {like} {p})"
+            )
+            params.extend([f"%{tok}%"] * 5)
+        if token_clauses:
+            where.append("(" + " OR ".join(token_clauses) + ")")
+        sql = (
+            f"SELECT id, main_category, sub_category, price, description, req_type, action_type, extra_data, status "
+            f"FROM listings WHERE {' AND '.join(where)} ORDER BY id DESC LIMIT {p}"
+        )
+        cur.execute(sql, list(params) + [limit])
+        rows = cur.fetchall() or []
+        for row in rows:
+            item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
+            if isinstance(item.get("extra_data"), str):
+                try:
+                    item["extra_data"] = json.loads(item["extra_data"])
+                except Exception:
+                    item["extra_data"] = {}
+            results.append(item)
+        conn.close()
+    except Exception as e:
+        logger.debug(f"search_live_listings: {e}")
+    return results
+
+
+
+try:
+    from data_catalog import KNOWLEDGE_BASE_STORE as _KB_STORE
+    KNOWLEDGE_BASE_STORE = _KB_STORE
+except Exception:
+    KNOWLEDGE_BASE_STORE = {}
 
 def fetch_dynamic_knowledge(user_message: str) -> str:
     """
@@ -537,101 +630,84 @@ def fetch_dynamic_knowledge(user_message: str) -> str:
 
 def build_system_prompt(user_message: str) -> str:
     """
-    Construct ground-truth augmented system prompt adhering strictly to:
-    1. DATABASE RETRIEVAL ORDER (WATERFALL LOGIC):
-       `listings` (active market) -> `ethiopia_vehicles` (car analysis) -> `knowledge_base` -> (secondary dynamic tables).
-    2. DUAL FALLBACK LOGIC:
-       A. PRICE & TRANSACTION QUERIES: Missing data -> Strict NO price guessing -> Direct to @AdikaMarketplace.
-       B. GENERAL & TECHNICAL QUERIES: Missing data -> Provide professional technical analysis in Amharic.
-    3. Natural, direct, professional Amharic with no introductory fluff.
+    Waterfall: live listings -> ethiopia_vehicles -> knowledge_base.
+    Never invent prices missing from DB.
     """
-    msg_lower = str(user_message or "").lower()
+    msg = str(user_message or "").strip()
+    msg_lower = msg.lower()
     is_price_query = any(k in msg_lower for k in [
-        'ዋጋ', 'ስንት ነው', 'ስንት', 'በስንት', 'መግዛት', 'መሸጥ', 'ግዢ', 'ሽያጭ', 'ገበያ', 'ዋጋው',
-        'price', 'cost', 'valuation', 'buy', 'sell', 'how much', 'rate', 'etb', 'ብር'
+        "ዋጋ", "ስንት", "በስንት", "መግዛት", "መሸጥ", "ግዢ", "ሽያጭ", "ገበያ", "ዋጋው",
+        "price", "cost", "how much", "etb", "ብር", "ሚሊዮን", "ሺህ"
     ])
+    live_items = []
+    try:
+        live_items = search_live_listings(msg, limit=6)
+    except Exception:
+        live_items = []
+    car_data = None
+    try:
+        car_data = search_vehicle_in_db(msg)
+    except Exception:
+        car_data = None
+    retrieved_knowledge = ""
+    try:
+        retrieved_knowledge = fetch_dynamic_knowledge(msg) or ""
+    except Exception:
+        retrieved_knowledge = ""
 
-    retrieved_knowledge = fetch_dynamic_knowledge(user_message)
-    matched_data = search_vehicle_in_db(user_message)
+    live_block = ""
+    if live_items:
+        lines = []
+        for it in live_items:
+            extra = it.get("extra_data") or {}
+            if not isinstance(extra, dict):
+                extra = {}
+            title = extra.get("car_model") or it.get("sub_category") or extra.get("house_type") or it.get("main_category") or "ንብረት"
+            price = it.get("price") or "—"
+            cat = it.get("main_category") or ""
+            desc = (it.get("description") or "")[:80]
+            lines.append(f"- #ADK-{it.get('id','')} | {title} | {cat} | ዋጋ: {price} ብር | {desc}")
+        live_block = "የአዲካ ቀጥታ ገበያ (public listings):\n" + "\n".join(lines)
 
-    if matched_data:
-        source_type = matched_data.get('source', 'database')
-        name = matched_data.get('full_model') or matched_data.get('name') or matched_data.get('sub_category') or "የተገኘ መረጃ"
-        price = matched_data.get('current_price_range_etb') or matched_data.get('price') or 'በዕለታዊ የዋጋ ማስተካከያ ላይ'
-        cat = matched_data.get('category') or matched_data.get('main_category') or 'አጠቃላይ'
-        adv = matched_data.get('core_advantage') or matched_data.get('description') or 'አስተማማኝ አገልግሎት'
-        collateral = matched_data.get('bank_collateral_appeal') or 'መካከለኛ/ከፍተኛ'
-        fuel = matched_data.get('fuel_economy') or 'ቆጣቢ'
-        clearance = matched_data.get('ground_clearance') or 'መደበኛ'
-        use_case = matched_data.get('primary_use_case') or 'ለከተማና ለቤተሰብ'
-        parts = matched_data.get('spare_parts_availability') or 'በስፋት የሚገኝ'
-        liquidity = matched_data.get('resale_liquidity') or 'ፈጣን'
+    vehicle_block = ""
+    if car_data:
+        vehicle_block = (
+            f"ካታሎግ ({car_data.get('source','ethiopia_vehicles')}): "
+            f"{car_data.get('full_model') or car_data.get('name')} | "
+            f"ክልል: {car_data.get('current_price_range_etb') or 'የለም'} | "
+            f"{car_data.get('core_advantage') or ''}"
+        )
 
-        system_instruction = f"""
-የተገኘው ይፋዊ የዳታቤዝ መረጃ ({source_type}):
-- ስም/ሞዴል (Name/Model): {name}
-- ይፋዊ የገበያ ዋጋ/ክልል (Official Price): {price}
-- ምድብ (Category): {cat}
-- ዋና ጠቀሜታ (Core Specs/Advantage): {adv}
-- የባንክ ዋስትና ተቀባይነት (Bank Collateral): {collateral}
-- የነዳጅ/ኃይል ቁጠባ (Fuel Economy): {fuel}
-- የመሬት ከፍታ (Ground Clearance): {clearance}
-- ዋና የአገልግሎት መስክ (Primary Use): {use_case}
-- የመለዋወጫ አቅርቦት (Spare Parts): {parts}
-- የዳግም ሽያጭ ፍጥነት (Resale Liquidity): {liquidity}
+    has_live_price = bool(live_items and any(str(it.get("price") or "").strip() not in ("", "—", "EMPTY", "empty") for it in live_items))
+    has_catalog_price = bool(car_data and car_data.get("current_price_range_etb"))
 
-ትዕዛዝ:
-1. ከዳታቤዙ በተገኘው መረጃ ላይ ብቻ ተመስርተህ የተዋቀረና ግልጽ ምላሽ በንጹህ አማርኛ አቅርብ።
-2. ዋጋውን ስትጠቅስ ከላይ ከተጠቀሰው '{price}' ውጪ ምንም አይነት ግምት እንዳትሰጥ።
-"""
+    if is_price_query and not has_live_price and not has_catalog_price:
+        price_rule = (
+            "ዋጋ ጥያቄ ነው ግን በዳታቤዝ ዋጋ የለም። በፍጹም አትገምት። "
+            "በአማርኛ ንገር፦ ይህ ሞዴል አሁን በአዲካ ገበያ ላይ ትክክለኛ የተለጠፈ ዋጋ ስላልተገኘ "
+            "Mini App ወይም @AdikaMarketplace ላይ ያሉትን አዳዲስ ማስታወቂያዎች ይመልከቱ።"
+        )
+    elif is_price_query and has_live_price:
+        price_rule = "የቀጥታ ገበያ #ADK ዋጋዎችን ብቻ ተጠቀም። ከዳታቤዝ ውጭ ቁጥር አትጨምር።"
+    elif is_price_query and has_catalog_price:
+        price_rule = "ካታሎግ ክልል ብቻ አለ — እንደ ግምታዊ ክልል ንገር፣ ለትክክለኛ ዋጋ ወደ አዲካ ገበያ አመልክት። አዲስ ቁጥር አትፍጠር።"
     else:
-        if is_price_query:
-            system_instruction = """
-ሁኔታ: ተጠቃሚው የጠየቀው የተሽከርካሪ ወይም የንብረት ዋጋ ዳታቤዝ ውስጥ አልተገኘም።
-DUAL FALLBACK DIRECTIVE (PRICE & TRANSACTION QUERY):
-- ጥብቅ ህግ: በራስህ ግምት ወይም አጠቃላይ AI እውቀት በፍፁም ዋጋ እንዳትገምት ወይም እንዳትፈጥር!
-- ምላሽ መመሪያ: ይህ ንብረት በቋሚ ዳታቤዛችን ላይ በዕለታዊ የቀጥታ ዋጋ ማስተካከያ ላይ መሆኑን በአክብሮት በአማርኛ ግለጽ፤ ወቅታዊ የቀጥታ ሽያጭ መረጃዎችን ለማግኘት ወዲያውኑ ወደ ይፋዊው አዲካ ቴሌግራም ቻናል (@AdikaMarketplace) እንዲሄዱ ወይም ከአዲካ ኤጀንቶች ጋር እንዲገናኙ ምራቸው።
-- የአማርኛ ምላሽ ምሳሌ:
-"ይህ ተሽከርካሪ በቋሚ ዳታቤዛችን ላይ በዕለታዊ የዋጋ ማስተካከያ ላይ ስለሆነ፣ እባክዎን አዲስ የተለቀቁ የቀጥታ የገበያ ዋጋዎችንና ሽያጮችን ለማየት በይፋዊው አዲካ ቴሌግራም ቻናል (@AdikaMarketplace) ይመልከቱ ወይም በቀጥታ ከአዲካ ኤጀንቶች ጋር ይገናኙ።"
-"""
-        else:
-            system_instruction = """
-ሁኔታ: ተጠቃሚው የጠየቀው ቴክኒካዊ መረጃ፣ ንጽጽር ወይም ምክር ዳታቤዝ ውስጥ በቀጥታ አልተገኘም።
-DUAL FALLBACK DIRECTIVE (GENERAL & TECHNICAL QUERY):
-- ምላሽ መመሪያ: የውስጥ ሙያዊ እውቀትህን ተጠቅመህ የተሟላ፣ አጋዥ እና እጅግ ትክክለኛ የሆነ ቴክኒካዊ ትንተና፣ የሞተር ዝርዝር፣ ጥቅምና ጉዳት በንጹህ አማርኛ አቅርብ።
-"""
+        price_rule = "ዋጋ ካልተጠየቀ ቴክኒካዊ/ፋይናንስ ምክር በአማርኛ ስጥ። ዋጋ አትገምት።"
 
-    return f"""You are the official Adika Marketplace Senior AI Advisor.
-Your task is to process user queries by evaluating database search results retrieved from tables (`listings`, `ethiopia_vehicles`, `knowledge_base`, and future system tables).
-
-1. DATABASE RETRIEVAL ORDER (WATERFALL LOGIC):
-   - The backend searches tables in priority sequence: `listings` (active market) -> `ethiopia_vehicles` (car analysis) -> `knowledge_base` -> (any secondary dynamic tables).
-   - If relevant data is returned from ANY of these tables, construct a clear, accurate response based strictly on that retrieved data.
-
-2. DUAL FALLBACK LOGIC (WHEN DATA IS NOT FOUND IN DATABASE):
-   A. PRICE & TRANSACTION QUERIES (Price, Buy/Sell, Valuation, Cost):
-      - If the user query is asking for a specific vehicle price or transaction detail AND the data is MISSING from all database tables:
-      - STRICT RULE: DO NOT estimate, fabricate, or guess prices using general knowledge.
-      - Response Directive: Politely inform the user in Amharic that the price for this item is currently updating in live inventory, and direct them immediately to the official Telegram channel (@AdikaMarketplace) or human agents for current listings.
-   B. GENERAL & TECHNICAL QUERIES (Specs, Comparisons, Features, Advice):
-      - If the user query is asking for technical parameters, general advice, maintenance tips, or feature breakdowns AND the data is MISSING from database tables:
-      - Response Directive: Use your internal professional knowledge base to provide a detailed, helpful, and highly accurate analysis in clear Amharic.
-
-3. RESPONSE STYLE & TONE:
-   - Always respond in natural, direct, and professional Amharic (ኢትዮጵያዊ የከፍተኛ ገበያና ፋይናንስ አማካሪ ስልጣን ባለው አነጋገር).
-   - Avoid generic introductory fluff (e.g., 'ሰላም እንዴት ነህ...'). Jump straight into structured data or clear explanations.
-   - Always maintain professional clarity and precision.
-
-SEARCH CONTEXT & ACTIVE DIRECTIVE:
-{system_instruction.strip()}
-
-GROUND TRUTH CONTEXT FROM `knowledge_base`:
-{retrieved_knowledge if retrieved_knowledge else "Verified Ethiopian financial, real estate, automotive, and legal standards."}"""
+    kb = (retrieved_knowledge or "")[:1600]
+    return (
+        "አንተ የ Adika Marketplace Senior Financial Advisor ነህ። "
+        "ሁልጊዜ በንጹህ፣ ጓደኛማ፣ አጭር አማርኛ መልስ ስጥ። እንግሊዝኛ አትጀምር።\n\n"
+        f"{price_rule}\n\n"
+        f"--- LIVE LISTINGS ---\n{live_block or 'ምንም ቀጥታ ማስታወቂያ አልተገኘም።'}\n\n"
+        f"--- VEHICLE CATALOG ---\n{vehicle_block or 'ተዛማጅ ካታሎግ የለም።'}\n\n"
+        f"--- KNOWLEDGE ---\n{kb or 'አጠቃላይ የኢትዮጵያ ባንክ/ሊጋል እውቀት (ዋጋ አትገምት)።'}\n\n"
+        "ህጎች: (1) ዋጋ ከ listings/ethiopia_vehicles ካልመጣ አትገምት። "
+        "(2) መልስ አጭር በአማርኛ ብቻ። (3) አስፈላጊ ከሆነ ብቻ @AdikaMarketplace አመልክት።"
+    )
 
 
-# =======================================================
-# 2. MASTER SYSTEM PROMPT (ለአማርኛ ብቻ)
-# =======================================================
+
 SYSTEM_PROMPT = """
 አንተ የ Adika Marketplace ይፋዊ Senior AI Advisor (ከፍተኛ የገበያና የተሽከርካሪ አማካሪ) ነህ።
 
@@ -654,136 +730,6 @@ SYSTEM_PROMPT = """
 ADVISOR_SYSTEM_PROMPT = SYSTEM_PROMPT
 
 
-def is_valid_openrouter_key(key: Optional[str]) -> bool:ከተል (Waterfall Logic):
-   - `listings` (የቀጥታ ገበያ) -> `ethiopia_vehicles` (የተሽከርካሪ ዝርዝር) -> `knowledge_base` (የባንክ፣ ውል፣ ቀረጥ)
-   - መረጃ ከነዚህ ሰንጠረዦች ሲገኝ በተገኘው መረጃ ላይ ብቻ ተመስርተህ ቀጥተኛ መልስ ስጥ።
-
-2. ዳታቤዝ ላይ ካልተገኘ (Dual Fallback Logic):
-   ሀ. የዋጋና የሽያጭ/ግዢ ጥያቄዎች (Price & Transaction Queries):
-      - በግምት ዋጋ በፍፁም እንዳትናገር!
-      - ይልቁንም ንብረቱ በዕለታዊ የቀጥታ ዋጋ ማስተካከያ ላይ መሆኑን ገልጸህ ወደ @AdikaMarketplace ቴሌግራም ቻናል ምራ።
-   ለ. አጠቃላይና ቴክኒካዊ ጥያቄዎች (General & Technical Specs):
-      - የውስጥ ሙያዊ እውቀትህን ተጠቅመህ የተሟላና ትክክለኛ ትንተና በግልጽ አማርኛ አቅርብ።
-
-3. የአነጋገር ዘይቤ:
-   - አላስፈላጊ መግቢያ ሳታበዛ ቀጥታ ወደ ዝርዝሩ ግባ።
-   - 100% በንጹህ እና ሙያዊ አማርኛ መልስ።
-"""
-
-ADVISOR_SYSTEM_PROMPT = SYSTEM_PROMPT
-
-
-def is_valid_openrouter_key(key: Optional[str]) -> bool:d('real_estate')
-    if any(k in msg for k in ['መኪና', 'ሊብሬ', 'ቦሎ', 'ቪትስ', 'ev', 'ባለቤትነት', 'ሻሲ', 'ተሽከርካሪ', 'ቀረጥ']):
-        categories.append('automotive')
-    if any(k in msg for k in ['ታክስ', 'ግብር', 'tin', 'ውል', 'ህግ', 'ካፒታል', 'dara', 'ውርስ']):
-        categories.append('legal')
-    if any(k in msg for k in ['አዲካ', 'ኮሚሽን', 'ማስታወቂያ', 'መለጠፍ', 'ደላላ']):
-        categories.append('platform')
-
-    if categories and supabase is not None:
-        try:
-            res = supabase.table('knowledge_base').select('topic, content').in_('category', categories).execute()
-            if res and hasattr(res, 'data') and res.data:
-                for item in res.data:
-                    if item.get('topic') and item.get('content'):
-                        remote_snippet = f"- {item['topic']}: {item['content']}"
-                        if remote_snippet not in snippets:
-                            snippets.append(remote_snippet)
-        except Exception:
-            pass
-
-    return "\n\n".join(snippets)
-
-
-def build_system_prompt(user_message: str) -> str:
-    """Construct ground-truth augmented system prompt with vehicle search and dynamic context."""
-    retrieved_knowledge = fetch_dynamic_knowledge(user_message)
-    car_data = search_vehicle_in_db(user_message)
-
-    if car_data:
-        # ዳታቤዝ ላይ ሲገኝ የሚላክ
-        car_name = car_data.get('full_model') or car_data.get('model') or car_data.get('name') or "የተሽከርካሪ መረጃ"
-        price = car_data.get('current_price_range_etb', 'በዕለታዊ የዋጋ ማስተካከያ ላይ')
-        cat = car_data.get('category', 'አጠቃላይ')
-        adv = car_data.get('core_advantage', 'አስተማማኝ አገልግሎት')
-        collateral = car_data.get('bank_collateral_appeal', 'መካከለኛ/ከፍተኛ')
-        fuel = car_data.get('fuel_economy', 'ቆጣቢ')
-        clearance = car_data.get('ground_clearance', 'መደበኛ')
-        use_case = car_data.get('primary_use_case', 'ለከተማና ለቤተሰብ')
-        parts = car_data.get('spare_parts_availability', 'በስፋት የሚገኝ')
-        liquidity = car_data.get('resale_liquidity', 'ፈጣን')
-
-        system_instruction = f"""
-የተሽከርካሪው ትክክለኛ የዳታቤዝ መረጃ ይህ ነው:
-- ስም/ሞዴል: {car_name}
-- ይፋዊ የገበያ ዋጋ ክልል: {price}
-- ምድብ: {cat}
-- ዋና ጠቀሜታ: {adv}
-- የባንክ ዋስትና ተቀባይነት: {collateral}
-- የነዳጅ/ኃይል ቁጠባ: {fuel}
-- የመሬት ከፍታ: {clearance}
-- ዋና የአገልግሎት መስክ: {use_case}
-- የመለዋወጫ አቅርቦት: {parts}
-- የዳግም ሽያጭ ፍጥነት: {liquidity}
-
-ህጎች:
-1. ለተጠቃሚው ዋጋ ስትነግር ከላይ ከተጠቀሰው '{price}' ውጪ በግምት ምንም አይነት ሌላ ዋጋ እንዳትናገር።
-2. ሁሉንም ዝርዝር መረጃዎች በአጭሩ እና በግልጽ አማርኛ አቅርብ።
-"""
-    else:
-        # ዳታቤዝ ላይ ሳይገኝ ሲቀር የሚላክ
-        system_instruction = """
-ተጠቃሚው የጠየቀው የተሽከርካሪ ሞዴል ዳታቤዝ ውስጥ አልተገኘም።
-ህግ:
-በፍፁም በራስህ ግምት ዋጋ እንዳትሰጥ! በምትኩ ይህ ተሽከርካሪ በቋሚ ዳታቤዛችን ላይ በዕለታዊ የዋጋ ማስተካከያ ላይ ስለሆነ፣ አዲስ የተለቀቁ የቀጥታ ሽያጭ መረጃዎችን ለማግኘት ወደ አዲካ ቴሌግራም ቻናል (@AdikaMarketplace) እንዲሄዱ ወይም ከአዲካ ኤጀንቶች ጋር እንዲገናኙ በአክብሮት ንገራቸው።
-"""
-
-    return f"""You are the official Adika Marketplace AI Assistant & Senior Automotive Advisor.
-Your core task is to provide fast, highly accurate, and professionally structured information about vehicles in Ethiopia by directly reading context from two primary tables: `ethiopia_vehicles` and `knowledge_base`.
-
-VEHICLE SEARCH CONTEXT & SYSTEM DIRECTIVE:
-{system_instruction.strip()}
-
-GROUND TRUTH CONTEXT FROM `knowledge_base`:
-{retrieved_knowledge if retrieved_knowledge else "Rely strictly on verified Ethiopian financial and legal standards."}
-
-STRICT DIRECTIVES & OPERATIONAL RULES:
-
-1. PRIMARY DATA RETRIEVAL (FAST & PRECISE):
-   - When vehicle data is retrieved from `ethiopia_vehicles`, process and format it immediately.
-   - Always output the exact value from `current_price_range_etb` as the official current market price range.
-   - Summarize key features politely in clean, professional Amharic using data from: `category`, `core_advantage`, `bank_collateral_appeal`, `fuel_economy`, `ground_clearance`, `primary_use_case`, `spare_parts_availability`, and `resale_liquidity`.
-
-2. MISSING DATA & FALLBACK PROTOCOL (NO GENERAL KNOWLEDGE GUESSING):
-   - If a requested vehicle model or specific price is NOT found in `ethiopia_vehicles` or `knowledge_base`, DO NOT invent or guess market prices using general AI knowledge.
-   - Instead, inform the user directly and politely in Amharic that the specific model is currently undergoing daily price verification due to market fluctuations.
-   - Direct the user immediately to check newly posted live listings on the official Adika Telegram Channel or contact human support agents:
-     "ይህ ተሽከርካሪ በቋሚ ዳታቤዛችን ላይ በዕለታዊ የዋጋ ማስተካከያ ላይ ስለሆነ፣ እባክዎን አዲስ የተለቀቁ የገበያ መረጃዎችን እና የቀጥታ ሽያጮችን ለማየት በ አዲካ ቴሌግራም ቻናል (@AdikaMarketplace) ይመልከቱ ወይም በቀጥታ ከአዲካ ኤጀንቶች ጋር ይገናኙ።"
-
-3. RESPONSE STYLE:
-   - Concise, respectful, and direct Amharic (ኢትዮጵያዊ የንግድና የፋይናንስ አማካሪ ስልጣን ባለው አነጋገር).
-   - Minimize fluff and conversational preamble. Jump straight to structured data delivery.
-   - Always maintain professional clarity to save API tokens and user response time.
-   - Never fabricate user names unless explicitly provided.
-   - Always respond 100% in natural Amharic."""
-
-
-# =======================================================
-# 2. MASTER SYSTEM PROMPT (ለአማርኛ ብቻ)
-# =======================================================
-SYSTEM_PROMPT = """
-አንተ የ Adika Marketplace ይፋዊ የ AI ረዳት እና ከፍተኛ የተሽከርካሪ አማካሪ ነህ።
-የማይቀሩ ህጎች:
-1. ሁሉንም መልሶችህን በንጹህ አማርኛ ቋንቋ ብቻ ስጥ።
-2. የ `ethiopia_vehicles` እና `knowledge_base` ዳታዎችን በጥብቅ ተጠቀም።
-3. ዳታቤዝ ላይ የሌለ የመኪና ዋጋ በግምት አትስጥ። በምትኩ ወደ @AdikaMarketplace ቴሌግራም ቻናል ምራ።
-4. እንደ እውነተኛ የፋይናንስና የተሽከርካሪ ባለሙያ አጭር እና የተዋቀረ መልስ ስጥ።
-"""
-
-ADVISOR_SYSTEM_PROMPT = SYSTEM_PROMPT
-
-
 def is_valid_openrouter_key(key: Optional[str]) -> bool:
     """Validate OpenRouter API key to prevent invalid headers and encoding crashes."""
     if not key or not isinstance(key, str):
@@ -792,7 +738,7 @@ def is_valid_openrouter_key(key: Optional[str]) -> bool:
     if not (k.startswith("sk-") or k.startswith("sk-or-")):
         return False
     try:
-        k.encode('latin-1')
+        k.encode("latin-1")
         return len(k) >= 20
     except (UnicodeEncodeError, Exception):
         return False
@@ -802,20 +748,16 @@ def clean_model_output(raw_text: str) -> str:
     """Removes thinking tags, markdown asterisks, or unwanted metadata from output."""
     if not raw_text:
         return ""
-    cleaned = re.sub(r'<thought>.*?</thought>', '', raw_text, flags=re.DOTALL | re.IGNORECASE)
-    cleaned = re.sub(r'<think>.*?</think>', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
-    cleaned = re.sub(r'</?response>', '', cleaned, flags=re.IGNORECASE)
-    # Clean any raw markdown symbols
-    cleaned = cleaned.replace('**', '').replace('*', '').replace('###', '').replace('#', '').strip()
-    cleaned = re.sub(r'\bAI\b', 'እኛ', cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r'\bbot\b', 'እኛ', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"<thought>.*?</thought>", "", raw_text, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r"</?response>", "", cleaned, flags=re.IGNORECASE)
+    cleaned = cleaned.replace("**", "").replace("*", "").replace("###", "").replace("#", "").strip()
+    cleaned = re.sub(r"\bAI\b", "እኛ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bbot\b", "እኛ", cleaned, flags=re.IGNORECASE)
     return cleaned.strip()
 
 
-# =======================================================
-# 3. የታሪክ አስተዳደር (Token Saver)
-# =======================================================
-def trim_history(history: Optional[List[Dict]], max_messages: int = 5) -> List[Dict]:
+def trim_history(history: Optional[List[Dict]], max_messages: int = 3) -> List[Dict]:
     """Trim conversation history to keep context token usage low."""
     if not history:
         return []
@@ -833,12 +775,9 @@ def trim_history(history: Optional[List[Dict]], max_messages: int = 5) -> List[D
     return cleaned_history
 
 
-# =======================================================
-# 4. ሞዴሉን የሚጠራው ዋናው ተግባር (Function)
-# =======================================================
 def call_llm_api(model_name: str, user_message: str, history: Optional[List[Dict]] = None, is_retry: bool = False, budget: float = 0.0) -> Optional[str]:
     """በተሰጠው ሞዴል ስም ወደ OpenRouter API ይልካል"""
-    trimmed_history = trim_history(history, max_messages=5)
+    trimmed_history = trim_history(history, max_messages=3)
     
     api_key = os.environ.get("OPENROUTER_API_KEY") or API_KEY
     if not is_valid_openrouter_key(api_key):
@@ -874,7 +813,7 @@ def call_llm_api(model_name: str, user_message: str, history: Optional[List[Dict
 
     try:
         if requests is not None:
-            response = requests.post(BASE_URL, headers=headers, json=payload, timeout=12)
+            response = requests.post(BASE_URL, headers=headers, json=payload, timeout=8)
             response.raise_for_status()
             data = response.json()
             raw_text = data["choices"][0]["message"]["content"]
@@ -882,7 +821,7 @@ def call_llm_api(model_name: str, user_message: str, history: Optional[List[Dict
         else:
             req_data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(BASE_URL, data=req_data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with urllib.request.urlopen(req, timeout=8) as resp:
                 if resp.status == 200:
                     resp_body = resp.read().decode("utf-8")
                     data = json.loads(resp_body)
@@ -904,29 +843,45 @@ def call_llm_api(model_name: str, user_message: str, history: Optional[List[Dict
 # 5. ተለዋዋጭ (Dynamic) ጥሪ ከ Fallback ጋር
 # =======================================================
 def get_user_response(user_message: str, history: Optional[List[Dict]] = None, budget: float = 0.0) -> str:
-    """Qwen3 ብቻ ሳይሆን DeepSeekን እንደ መጠባበቂያ የሚጠቀም"""
+    """Primary model first; single fallback; live-listings fast path for price questions."""
     msg_str = str(user_message or "").strip()
     if not msg_str:
         return "ሰላም! ስለ መኪና፣ ስለ ቤት ግዢ፣ ስለ ቀረጥ ወይም ስለ ባንክ ብድር ማንኛውንም ጥያቄ ይጠይቁኝ፤ በደስታ እመልስልዎታለሁ።"
 
-    # 1. Qwen3 ን እንሞክር
+    # Fast path: answer pure price lookups from live listings without LLM latency
+    try:
+        price_keys = ["ዋጋ", "ስንት", "price", "ብር", "etb"]
+        if any(k in msg_str.lower() for k in price_keys):
+            live = search_live_listings(msg_str, limit=5)
+            if live:
+                lines = []
+                for it in live[:4]:
+                    extra = it.get("extra_data") or {}
+                    if not isinstance(extra, dict):
+                        extra = {}
+                    title = extra.get("car_model") or it.get("sub_category") or it.get("main_category") or "ንብረት"
+                    price = it.get("price") or "—"
+                    lines.append(f"• {title} — {price} ብር (#ADK-{it.get('id','')})")
+                if lines:
+                    return (
+                        "በአዲካ ገበያ ላይ አሁን የተገኙ ተዛማጅ ማስታወቂያዎች:\n"
+                        + "\n".join(lines)
+                        + "\n\nለተጨማሪ ዝርዝር Mini App ወይም @AdikaMarketplace ይመልከቱ።"
+                    )
+    except Exception:
+        pass
+
     answer = call_llm_api(DEFAULT_MODEL, msg_str, history, is_retry=False, budget=budget)
-    
-    # ባዶ ስህተት ከሆነ
     if not answer:
-        print("Switching to DeepSeek (Fallback 1)...")
         answer = call_llm_api(FALLBACK_MODEL, msg_str, history, is_retry=True, budget=budget)
-    
-    # Qwen በእንግሊዝኛ መልስ ከሰጠ
-    suspicious_words = ["Hello", "The", "Bank", "Loan", "Please", "If", "You", "I'm sorry"]
-    if answer and any(word in answer for word in suspicious_words):
-        print("Qwen gave English. Switching to DeepSeek...")
-        answer = call_llm_api(FALLBACK_MODEL, msg_str, history, is_retry=True, budget=budget)
+
+    if answer:
+        has_ethiopic = any("\u1200" <= ch <= "\u137F" for ch in answer)
+        if (not has_ethiopic) and any(w in answer for w in ("Hello", "I'm sorry", "Unfortunately", "Based on my knowledge")):
+            answer = call_llm_api(FALLBACK_MODEL, msg_str, history, is_retry=True, budget=budget) or answer
 
     if answer and len(answer.strip()) > 5:
         return answer
-
-    # Gemini ወይም የውስጥ አማካሪ ተተኪ
     return _fallback_gemini_advisor(msg_str, history, budget)
 
 
@@ -1431,37 +1386,86 @@ def register_api_routes(web_app):
 
                 where = ["1=1"]
                 params = []
-                where.append(f"(status IS NULL OR status != {p})")
+                where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) != {p})")
                 params.append('deleted')
                 if active_only:
                     where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
                     params.extend(['sold', 'rented', 'expired'])
-                if req_type in ('SELL', 'BUY'):
-                    where.append(f"UPPER(COALESCE(req_type,'')) = UPPER({p})")
-                    params.append(req_type)
+                # Match req_type OR Amharic/English action_type (many rows only have action_type)
+                if req_type == 'SELL':
+                    where.append(
+                        f"(UPPER(COALESCE(req_type,'')) = 'SELL' "
+                        f"OR COALESCE(action_type,'') IN ({p},{p},{p},{p}) "
+                        f"OR (COALESCE(req_type,'') = '' AND COALESCE(action_type,'') NOT IN ({p},{p},{p})))"
+                    )
+                    params.extend(['መሸጥ', 'SELL', 'sell', 'ለመሸጥ', 'መግዛት', 'BUY', 'buy'])
+                elif req_type == 'BUY':
+                    where.append(
+                        f"(UPPER(COALESCE(req_type,'')) = 'BUY' "
+                        f"OR COALESCE(action_type,'') IN ({p},{p},{p},{p}))"
+                    )
+                    params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት'])
+                like = "ILIKE" if is_postgres() else "LIKE"
                 if category:
-                    where.append(f"(main_category = {p} OR category = {p})")
-                    params.extend([category, category])
+                    # only main_category — column `category` may not exist
+                    where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
+                    params.extend([category, f"%{category}%"])
                 if search:
-                    like = "ILIKE" if is_postgres() else "LIKE"
-                    where.append(f"(CAST(description AS TEXT) {like} {p} OR CAST(price AS TEXT) {like} {p} OR CAST(sub_category AS TEXT) {like} {p})")
-                    params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+                    where.append(
+                        f"(CAST(COALESCE(description,'') AS TEXT) {like} {p} "
+                        f"OR CAST(COALESCE(price,'') AS TEXT) {like} {p} "
+                        f"OR CAST(COALESCE(sub_category,'') AS TEXT) {like} {p} "
+                        f"OR CAST(COALESCE(main_category,'') AS TEXT) {like} {p} "
+                        f"OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p})"
+                    )
+                    params.extend([f"%{search}%"] * 5)
 
                 where_sql = " AND ".join(where)
                 total = 0
+                rows = []
                 try:
                     cur.execute(f"SELECT COUNT(*) AS cnt FROM listings WHERE {where_sql}", params)
                     total_row = cur.fetchone()
                     total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
-                except Exception:
-                    total = 0
-
-                cur.execute(
-                    f"SELECT * FROM listings WHERE {where_sql} "
-                    f"ORDER BY id DESC LIMIT {p} OFFSET {p}",
-                    list(params) + [limit, offset],
-                )
-                rows = cur.fetchall() or []
+                    cur.execute(
+                        f"SELECT * FROM listings WHERE {where_sql} "
+                        f"ORDER BY id DESC LIMIT {p} OFFSET {p}",
+                        list(params) + [limit, offset],
+                    )
+                    rows = cur.fetchall() or []
+                except Exception as qerr:
+                    logger.warning(f"api_explorer_listings primary query failed, fallback: {qerr}")
+                    try:
+                        fb = ["(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))"]
+                        fp = []
+                        if req_type == 'SELL':
+                            fb.append(f"(UPPER(COALESCE(req_type,''))='SELL' OR COALESCE(action_type,'') IN ({p},{p}) OR COALESCE(req_type,'')='')")
+                            fp.extend(['መሸጥ', 'SELL'])
+                        elif req_type == 'BUY':
+                            fb.append(f"(UPPER(COALESCE(req_type,''))='BUY' OR COALESCE(action_type,'') IN ({p},{p}))")
+                            fp.extend(['መግዛት', 'BUY'])
+                        if category:
+                            fb.append(f"main_category = {p}")
+                            fp.append(category)
+                        fb_sql = " AND ".join(fb)
+                        cur.execute(f"SELECT COUNT(*) AS cnt FROM listings WHERE {fb_sql}", fp)
+                        total_row = cur.fetchone()
+                        total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
+                        cur.execute(f"SELECT * FROM listings WHERE {fb_sql} ORDER BY id DESC LIMIT {p} OFFSET {p}", list(fp)+[limit, offset])
+                        rows = cur.fetchall() or []
+                    except Exception as qerr2:
+                        logger.error(f"api_explorer_listings fallback failed: {qerr2}")
+                        try:
+                            cur.execute(
+                                f"SELECT * FROM listings WHERE (status IS NULL OR status != 'deleted') ORDER BY id DESC LIMIT {p} OFFSET {p}",
+                                [limit, offset],
+                            )
+                            rows = cur.fetchall() or []
+                            total = len(rows)
+                        except Exception as qerr3:
+                            logger.error(f"api_explorer_listings last-resort failed: {qerr3}")
+                            rows = []
+                            total = 0
 
                 items = []
                 for row in rows:
@@ -4089,6 +4093,3 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_post_to_channel error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
-
-
-
