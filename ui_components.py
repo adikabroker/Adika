@@ -806,25 +806,30 @@ EXPLORER_HTML = r"""
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* Executive hero carousel */
+    /* Executive hero carousel — compact max 110px */
     .hero-carousel {
-      display: flex; gap: 0.5rem; overflow-x: auto; scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch; padding-bottom: 2px;
+      display: flex; gap: 0.4rem; overflow-x: auto; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; padding-bottom: 0;
+      max-height: 110px;
     }
     .hero-carousel::-webkit-scrollbar { display: none; }
     .hero-slide {
-      scroll-snap-align: start; flex: 0 0 78%; min-width: 78%;
-      border-radius: 0.85rem; border: 1px solid rgb(30 41 59);
+      scroll-snap-align: start; flex: 0 0 72%; min-width: 72%;
+      max-height: 96px; border-radius: 0.7rem; border: 1px solid rgb(30 41 59);
       background: linear-gradient(90deg, #020617 0%, #0f172a 50%, #020617 100%);
-      padding: 0.65rem 0.85rem; color: #f8fafc;
-      box-shadow: 0 6px 18px rgba(2, 6, 23, 0.35);
+      padding: 0.4rem 0.65rem; color: #f8fafc;
+      box-shadow: 0 4px 12px rgba(2, 6, 23, 0.28);
       transition: transform 0.12s ease;
+      display: flex; flex-direction: column; justify-content: center;
     }
     .hero-slide:active { transform: scale(0.985); }
-    .hero-slide .accent { color: #fbbf24; }
-    .hero-dots { display: flex; justify-content: center; gap: 5px; margin-top: 6px; }
-    .hero-dot { width: 5px; height: 5px; border-radius: 999px; background: rgba(15,23,42,0.25); }
-    .hero-dot.active { background: #0e7490; width: 14px; }
+    .hero-slide .accent { color: #fbbf24; font-size: 9px; }
+    .hero-slide .hero-title { font-size: 11px; font-weight: 900; line-height: 1.2; }
+    .hero-slide .hero-sub { font-size: 8px; color: #94a3b8; line-height: 1.25; margin-top: 2px; }
+    .hero-slide .hero-cta-line { font-size: 8px; font-weight: 700; margin-top: 4px; }
+    .hero-dots { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
+    .hero-dot { width: 4px; height: 4px; border-radius: 999px; background: rgba(15,23,42,0.25); }
+    .hero-dot.active { background: #0e7490; width: 12px; }
 
     /* Glass chat bubbles */
     .chat-bubble-user {
@@ -865,34 +870,65 @@ EXPLORER_HTML = r"""
 
     /* Corporate tool cards */
     .tool-card-pro {
-      padding: 0.75rem; border-radius: 0.9rem; text-align: left;
-      background: rgba(15, 23, 42, 0.72); border: 1px solid rgb(30 41 59);
+      padding: 0.5rem 0.55rem; border-radius: 0.7rem; text-align: left;
+      background: rgba(15, 23, 42, 0.6); border: 1px solid rgb(30 41 59);
       color: #e2e8f0; transition: background 0.15s ease, transform 0.1s ease;
-      display: flex; flex-direction: column; gap: 0.35rem;
-      box-shadow: 0 6px 16px rgba(2, 6, 23, 0.2);
+      display: flex; flex-direction: column; gap: 0.2rem;
+      box-shadow: 0 3px 10px rgba(2, 6, 23, 0.15);
+      min-height: 0;
     }
     .tool-card-pro:hover, .tool-card-pro:active {
-      background: rgba(30, 41, 59, 0.9); transform: scale(0.98);
+      background: rgba(30, 41, 59, 0.85); transform: scale(0.98);
     }
-    .tool-card-pro .tool-title { font-weight: 800; font-size: 11px; color: #f1f5f9; }
-    .tool-card-pro .tool-sub { font-size: 9px; color: #94a3b8; }
+    .tool-card-pro .tool-title { font-weight: 800; font-size: 10px; color: #f1f5f9; line-height: 1.2; }
+    .tool-card-pro .tool-sub { font-size: 8px; color: #94a3b8; line-height: 1.2; }
     .tool-icon-wrap {
-      width: 28px; height: 28px; border-radius: 0.5rem;
+      width: 22px; height: 22px; border-radius: 0.4rem;
       display: flex; align-items: center; justify-content: center;
       background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.25);
       color: #fbbf24;
     }
+    .tool-icon-wrap svg { width: 12px; height: 12px; }
+    .tools-grid-compact {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
+    }
+    @media (max-width: 340px) {
+      .tools-grid-compact { grid-template-columns: repeat(2, 1fr); }
+    }
     .opp-card {
-      border-radius: 0.9rem; padding: 0.75rem;
+      border-radius: 0.65rem; padding: 0.45rem 0.55rem;
       background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
       border: 1px solid #334155; color: #e2e8f0;
-      box-shadow: 0 8px 20px rgba(2,6,23,0.25);
+      box-shadow: 0 4px 12px rgba(2,6,23,0.2);
     }
+    .opp-card .opp-label { font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .opp-card .opp-title { font-size: 11px; font-weight: 900; color: #fff; margin-top: 1px; line-height: 1.2; }
+    .opp-card .opp-body { font-size: 9px; color: #94a3b8; margin-top: 3px; line-height: 1.35; }
     .opp-card .opp-cta {
-      margin-top: 0.55rem; width: 100%; padding: 0.45rem 0.5rem;
-      border-radius: 0.55rem; font-size: 10px; font-weight: 800;
+      margin-top: 0.35rem; width: 100%; padding: 0.35rem 0.4rem;
+      border-radius: 0.45rem; font-size: 8px; font-weight: 800; line-height: 1.25;
       background: linear-gradient(90deg, #0d9488, #0891b2); color: #fff;
-      border: none;
+      border: none; text-align: center;
+    }
+    /* Sticky chat input at absolute bottom of analysis view */
+    #analysisView { display: none; flex-direction: column; }
+    #analysisView.flex { display: flex !important; }
+    #analysisView .chat-shell {
+      flex: 1; display: flex; flex-direction: column; min-height: 0;
+      position: relative; padding-bottom: 0;
+    }
+    #analysisView .chat-input-sticky {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      max-width: 28rem; margin: 0 auto;
+      z-index: 70;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(226,232,240,0.95);
+      padding: 0.5rem 0.65rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -4px 16px rgba(15,23,42,0.08);
+    }
+    #analysisView #advisorChatLog {
+      padding-bottom: 5.5rem !important;
     }
   </style>
 </head>
@@ -970,47 +1006,41 @@ EXPLORER_HTML = r"""
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <!-- HOME HERO: Executive horizontal carousel (compact) -->
-    <div id="homeHero" class="mb-2">
+    <!-- HOME HERO: Ultra-compact horizontal carousel (max 110px) -->
+    <div id="homeHero" class="mb-1.5">
       <div id="heroCarousel" class="hero-carousel">
         <button id="heroAdvisorBtn" type="button" class="hero-slide text-left">
-          <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center justify-between gap-1.5">
             <div class="min-w-0">
-              <div class="text-[9px] font-bold tracking-wide uppercase text-slate-400">Adika Intelligence</div>
-              <div class="font-black text-[12px] leading-tight mt-0.5">ዲጂታል የፋይናንስ አማካሪ</div>
-              <div class="text-[9px] text-slate-300 mt-1 leading-snug">በጀትዎን በባንክ ብድርና የገበያ ዋጋ ያስተካክሉ</div>
+              <div class="text-[7px] font-bold tracking-wide uppercase text-slate-500">Adika Intelligence</div>
+              <div class="hero-title">ዲጂታል የፋይናንስ አማካሪ</div>
+              <div class="hero-sub">በጀት · ብድር · የገበያ ዋጋ</div>
             </div>
-            <span class="accent text-[10px] font-black shrink-0">AI</span>
+            <span class="accent font-black shrink-0">AI</span>
           </div>
-          <div class="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-teal-300">ትንተና ጀምር
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-          </div>
+          <div class="hero-cta-line text-teal-300 inline-flex items-center gap-0.5">ትንተና ጀምር →</div>
         </button>
         <button id="heroPoaBtn" type="button" class="hero-slide text-left">
-          <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center justify-between gap-1.5">
             <div class="min-w-0">
-              <div class="text-[9px] font-bold tracking-wide uppercase text-slate-400">Legal Desk</div>
-              <div class="font-black text-[12px] leading-tight mt-0.5">የሰነድ ማረጋገጫ</div>
-              <div class="text-[9px] text-slate-300 mt-1 leading-snug">ውክልና (POA) ዲጂታል ማጣሪያ</div>
+              <div class="text-[7px] font-bold tracking-wide uppercase text-slate-500">Legal Desk</div>
+              <div class="hero-title">የሰነድ ማረጋገጫ</div>
+              <div class="hero-sub">ውክልና (POA) ዲጂታል ማጣሪያ</div>
             </div>
-            <span class="accent text-[10px] font-black shrink-0">ID</span>
+            <span class="accent font-black shrink-0">ID</span>
           </div>
-          <div class="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-amber-300">አሁን ያረጋግጡ
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-          </div>
+          <div class="hero-cta-line text-amber-300 inline-flex items-center gap-0.5">አሁን ያረጋግጡ →</div>
         </button>
         <button id="heroToolsBtn" type="button" class="hero-slide text-left">
-          <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center justify-between gap-1.5">
             <div class="min-w-0">
-              <div class="text-[9px] font-bold tracking-wide uppercase text-slate-400">Tools Suite</div>
-              <div class="font-black text-[12px] leading-tight mt-0.5">የፋይናንስና የህግ መሳሪያዎች</div>
-              <div class="text-[9px] text-slate-300 mt-1 leading-snug">ቀረጥ · ብድር · ውል · ንጽጽር</div>
+              <div class="text-[7px] font-bold tracking-wide uppercase text-slate-500">Tools Suite</div>
+              <div class="hero-title">ፋይናንስና ህግ መሳሪያዎች</div>
+              <div class="hero-sub">ቀረጥ · ብድር · ውል · ንጽጽር</div>
             </div>
-            <span class="accent text-[10px] font-black shrink-0">PRO</span>
+            <span class="accent font-black shrink-0">PRO</span>
           </div>
-          <div class="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-sky-300">መሳሪያዎች ክፈት
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-          </div>
+          <div class="hero-cta-line text-sky-300 inline-flex items-center gap-0.5">መሳሪያዎች ክፈት →</div>
         </button>
       </div>
       <div class="hero-dots" id="heroDots">
@@ -1103,34 +1133,33 @@ EXPLORER_HTML = r"""
 
 
   <!-- DEDICATED LIVE ADVISOR CHAT (full-screen view state) -->
-  <div id="analysisView" class="fixed inset-0 z-[60] bg-[#b5eff3] hidden flex-col max-w-md mx-auto">
-    <div class="shrink-0 px-3 py-2.5 bg-[#16acbd] text-white flex items-center justify-between shadow-md">
+  <div id="analysisView" class="fixed inset-0 z-[60] bg-[#b5eff3] hidden flex-col max-w-md mx-auto w-full">
+    <div class="shrink-0 px-3 py-2 bg-[#16acbd] text-white flex items-center justify-between shadow-md">
       <div class="flex items-center gap-2 min-w-0">
         <button id="analysisBackBtn" type="button" class="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-bold">← ወደ ዋና ገጽ</button>
         <div class="min-w-0 flex-1">
           <div class="font-black text-xs truncate">Adika Senior Financial Advisor</div>
-          <div class="text-[10px] text-white/85 truncate">ከአማካሪ ጋር የቀጥታ ውይይት (Live Advisor)</div>
+          <div class="text-[10px] text-white/85 truncate">Live Advisor Chat</div>
         </div>
       </div>
-      <span class="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 shadow-xs">ዝግጁ</span>
+      <span class="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">ዝግጁ</span>
     </div>
-    <div class="flex-1 flex flex-col min-h-0 bg-slate-50/70 p-3 space-y-3 pb-24">
-      <!-- Live advisor chat — glassmorphic -->
-      <div class="rounded-2xl shadow-xl border border-white/30 overflow-hidden flex-1 flex flex-col min-h-0 bg-white/40 backdrop-blur-md">
-        <div class="px-3.5 py-2 border-b border-white/30 flex items-center justify-between shrink-0 bg-slate-900/80 text-white">
+    <div class="chat-shell flex-1 flex flex-col min-h-0 bg-slate-50/70">
+      <div class="px-3 pt-2 pb-1 shrink-0">
+        <div class="rounded-xl px-3 py-1.5 bg-slate-900/80 text-white flex items-center justify-between">
           <div class="text-[11px] font-black flex items-center gap-1.5">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
-            <span>የቀጥታ ውይይት (Live Chat)</span>
+            <span>የቀጥታ ውይይት</span>
           </div>
           <span class="text-[9px] font-bold text-emerald-300">ፈጣን ምላሽ</span>
         </div>
-        <div id="advisorChatLog" class="flex-1 overflow-y-auto p-3.5 space-y-3 text-xs scroll-smooth"></div>
-        <div class="chat-input-bar shrink-0">
-          <textarea id="advisorChatInput" rows="1" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር ይጠይቁ..."></textarea>
-          <button id="advisorChatSend" type="button" class="chat-send-btn" aria-label="Send">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-          </button>
-        </div>
+      </div>
+      <div id="advisorChatLog" class="flex-1 overflow-y-auto px-3 pt-2 space-y-2.5 text-xs scroll-smooth"></div>
+      <div class="chat-input-sticky chat-input-bar">
+        <textarea id="advisorChatInput" rows="1" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር ይጠይቁ..."></textarea>
+        <button id="advisorChatSend" type="button" class="chat-send-btn" aria-label="Send">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
       </div>
     </div>
   </div>
@@ -1210,24 +1239,24 @@ EXPLORER_HTML = r"""
           </button>
 
           <!-- 3 Investment Opportunity Cards -->
-          <div id="opportunityCards" class="hidden space-y-2">
+          <div id="opportunityCards" class="hidden space-y-1.5">
             <div class="opp-card" data-opp="auto">
-              <div class="text-[9px] font-bold uppercase tracking-wide text-amber-400">A · Automotive</div>
-              <div class="font-black text-[12px] text-white mt-0.5">ተሽከርካሪ + የባንክ ብድር</div>
-              <div id="oppAutoBody" class="text-[10px] text-slate-300 mt-1 leading-relaxed">በበጀትዎ የሚገኙ ተሽከርካሪዎችና የብድር አማራጭ።</div>
-              <button type="button" class="opp-cta opp-chat-cta" data-context="auto">ጥልቅ የፋይናንስ ትንተና በ AI Chat አግኝ →</button>
+              <div class="opp-label text-amber-400">A · Automotive</div>
+              <div class="opp-title">ተሽከርካሪ + የባንክ ብድር</div>
+              <div id="oppAutoBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="auto">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="property">
-              <div class="text-[9px] font-bold uppercase tracking-wide text-sky-400">B · Real Estate</div>
-              <div class="font-black text-[12px] text-white mt-0.5">ሪል እስቴት · ቅድመ ክፍያ</div>
-              <div id="oppPropBody" class="text-[10px] text-slate-300 mt-1 leading-relaxed">የመግቢያ ደረጃ የቤት/መሬት ቅድመ ክፍያ አማራጮች።</div>
-              <button type="button" class="opp-cta opp-chat-cta" data-context="property">ጥልቅ የፋይናንስ ትንተና በ AI Chat አግኝ →</button>
+              <div class="opp-label text-sky-400">B · Real Estate</div>
+              <div class="opp-title">ሪል እስቴት · ቅድመ ክፍያ</div>
+              <div id="oppPropBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="property">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="roi">
-              <div class="text-[9px] font-bold uppercase tracking-wide text-emerald-400">C · Business ROI</div>
-              <div class="font-black text-[12px] text-white mt-0.5">ዓመታዊ ምርት / ROI</div>
-              <div id="oppRoiBody" class="text-[10px] text-slate-300 mt-1 leading-relaxed">የንግድ/ኪራይ ገቢ ግምታዊ ዓመታዊ ምርት።</div>
-              <button type="button" class="opp-cta opp-chat-cta" data-context="roi">ጥልቅ የፋይናንስ ትንተና በ AI Chat አግኝ →</button>
+              <div class="opp-label text-emerald-400">C · Business ROI</div>
+              <div class="opp-title">ንግድ / Startup · ዓመታዊ ROI</div>
+              <div id="oppRoiBody" class="opp-body">ከበጀት ቀመር እየተሰላ…</div>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="roi">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button>
             </div>
           </div>
 
@@ -1275,7 +1304,7 @@ EXPLORER_HTML = r"""
             <span class="lang-am">ተጨማሪ የፋይናንስና የህግ መሳሪያዎች</span>
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
           </h4>
-          <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="tools-grid-compact text-xs">
             <button id="toolDutyBtn" type="button" class="tool-card-pro">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
               <span class="tool-title">የቀረጥ ስሌት</span>
@@ -2334,32 +2363,154 @@ EXPLORER_HTML = r"""
       var incomeEl = document.getElementById("advisorMonthlyIncome");
       var budget = Math.max(0, Number(budgetEl && budgetEl.value) || 0);
       var income = Math.max(0, Number(incomeEl && incomeEl.value) || 0);
-      var purchase = Math.round(budget * 0.70);
-      var down20 = Math.round(budget * 0.20);
-      var down30 = Math.round(budget * 0.30);
-      var loanAmt = Math.max(0, purchase - down30);
-      var monthlyLoan = income > 0 ? Math.min(Math.round(income * 0.35), Math.round(loanAmt / 48)) : Math.round(loanAmt / 48);
       var autoBody = document.getElementById("oppAutoBody");
       var propBody = document.getElementById("oppPropBody");
       var roiBody = document.getElementById("oppRoiBody");
-      if (autoBody) {
-        autoBody.innerHTML = "በ <b>" + formatEtb(purchase) + "</b> (70% የበጀት) ተሽከርካሪ መምረጥ ይቻላል። " +
-          "ቅድመ ክፍያ ~" + formatEtb(down30) + " · የብድር ክፍል ~" + formatEtb(loanAmt) +
-          (income ? " · ግምታዊ ወርሃዊ ክፍያ ≤ " + formatEtb(monthlyLoan) : "") + "።";
-      }
-      if (propBody) {
-        propBody.innerHTML = "የመግቢያ ቅድመ ክፍያ 20–30%: <b>" + formatEtb(down20) + " – " + formatEtb(down30) + "</b>። " +
-          "ቀሪው በባንክ ብድር ሊሸፈን ይችላል። ለኮንዶሚኒየም/አፓርትመንት መግቢያ ደረጃ ተስማሚ።";
-      }
-      if (roiBody) {
-        var rentYear = Math.round((income || budget * 0.01) * 12 * 0.4);
-        var roiPct = budget > 0 ? ((rentYear / budget) * 100).toFixed(1) : "—";
-        roiBody.innerHTML = "ግምታዊ ዓመታዊ የኪራይ/ንግድ ምርት ~<b>" + formatEtb(rentYear) + "</b> · ROI ~<b>" + roiPct + "%</b>። " +
-          "ትክክለኛ ትንተና ለማግኘት AI Chat ይጠቀሙ።";
-      }
       var box = document.getElementById("opportunityCards");
       if (box) box.classList.remove("hidden");
+      if (autoBody) autoBody.innerHTML = "ከአዲካ ገበያ እየተጫነ…";
+      if (propBody) propBody.innerHTML = "ከአዲካ ገበያ እየተጫነ…";
+      if (roiBody) roiBody.innerHTML = "እየተሰላ…";
+
+      // Ethiopian commercial bank defaults
+      var DOWN_PCT = 0.30;
+      var APR = 0.18;
+      var AUTO_YEARS = 5;
+      var MORTGAGE_YEARS = 15;
+
+      function parsePrice(v) {
+        if (v == null) return 0;
+        var n = Number(String(v).replace(/[^\d.]/g, ""));
+        return isFinite(n) ? n : 0;
+      }
+      function fmt(n) {
+        n = Math.round(Number(n) || 0);
+        return n.toLocaleString() + " ብር";
+      }
+      // Standard amortization: M = P * r(1+r)^n / ((1+r)^n - 1)
+      function monthlyPayment(principal, annualRate, years) {
+        if (principal <= 0) return 0;
+        var r = annualRate / 12;
+        var n = years * 12;
+        if (r === 0) return principal / n;
+        var factor = Math.pow(1 + r, n);
+        return principal * (r * factor) / (factor - 1);
+      }
+      function titleOf(it) {
+        var extra = it.extra_data || {};
+        if (typeof extra === "string") {
+          try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+        }
+        return extra.car_model || it.sub_category || extra.house_type || it.main_category || ("#ADK-" + (it.id || ""));
+      }
+      function isCar(it) {
+        var c = String(it.main_category || it.category || "");
+        return c === "መኪና" || /car|vehicle/i.test(c);
+      }
+      function isHouse(it) {
+        var c = String(it.main_category || it.category || "");
+        return c === "ቤት" || c === "house" || /ቤት|property|house|land|መሬት/i.test(c);
+      }
+
+      // Fetch live SELL listings (real Adika DB via existing API)
+      fetch("/api/explorer/listings?page=1&limit=40&order=DESC&active_only=1&type=SELL")
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          var items = data.items || data.listings || [];
+          var cars = [];
+          var props = [];
+          for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            var price = parsePrice(it.price);
+            if (price <= 0) continue;
+            if (isCar(it) && price <= budget) cars.push(it);
+            if (isHouse(it) && (price <= budget || price * DOWN_PCT <= budget)) props.push(it);
+          }
+          cars.sort(function(a,b){ return parsePrice(b.price) - parsePrice(a.price); });
+          props.sort(function(a,b){ return parsePrice(b.price) - parsePrice(a.price); });
+
+          // --- Option A: Automotive ---
+          if (autoBody) {
+            if (cars.length === 0) {
+              autoBody.innerHTML = budget > 0
+                ? "በ <b>" + fmt(budget) + "</b> በጀት ውስጥ በአሁኑ ገበያ ላይ ተሽከርካሪ አልተገኘም። Mini App ገበያውን ይመልከቱ።"
+                : "በጀት ያስገቡ።";
+            } else {
+              var top = cars.slice(0, 3);
+              var lines = top.map(function(it){
+                var p = parsePrice(it.price);
+                var down = p * DOWN_PCT;
+                var loan = p - down;
+                var mpay = monthlyPayment(loan, APR, AUTO_YEARS);
+                return "• <b>" + titleOf(it) + "</b> — " + fmt(p) +
+                  "<br><span style='opacity:.85'>ቅድመ 30%: " + fmt(down) + " · ብድር: " + fmt(loan) +
+                  " · ወርሃዊ (~18%/5ዓመት): " + fmt(mpay) + "</span>";
+              });
+              autoBody.innerHTML = "ከአዲካ ገበያ (" + cars.length + " ተሽከርካሪ ≤ በጀት):<br>" + lines.join("<br>");
+            }
+          }
+
+          // --- Option B: Real Estate ---
+          if (propBody) {
+            if (props.length === 0) {
+              propBody.innerHTML = budget > 0
+                ? "በ <b>" + fmt(budget) + "</b> (ዋጋ ወይም 30% ቅድመ ክፍያ) የሚገኝ ቤት/መሬት በአሁኑ ገበያ አልተገኘም።"
+                : "በጀት ያስገቡ።";
+            } else {
+              var topP = props.slice(0, 3);
+              var linesP = topP.map(function(it){
+                var p = parsePrice(it.price);
+                var down = p * DOWN_PCT;
+                var loan = Math.max(0, p - down);
+                var mpay = monthlyPayment(loan, APR, MORTGAGE_YEARS);
+                return "• <b>" + titleOf(it) + "</b> — " + fmt(p) +
+                  "<br><span style='opacity:.85'>ቅድመ 30%: " + fmt(down) + " · ብድር: " + fmt(loan) +
+                  " · ወርሃዊ (~18%/15ዓመት): " + fmt(mpay) + "</span>";
+              });
+              propBody.innerHTML = "ከአዲካ ገበያ (" + props.length + " ንብረት):<br>" + linesP.join("<br>");
+            }
+          }
+
+          // --- Option C: Business ROI (formula-based Ethiopian benchmarks 15–35%) ---
+          if (roiBody) {
+            if (budget <= 0) {
+              roiBody.innerHTML = "በጀት ያስገቡ።";
+            } else {
+              // Tier by budget size using fixed benchmark bands (not random)
+              var lowY = 0.15, midY = 0.22, highY = 0.30;
+              if (budget < 200000) { lowY = 0.20; midY = 0.28; highY = 0.35; }
+              else if (budget < 1000000) { lowY = 0.18; midY = 0.25; highY = 0.32; }
+              else { lowY = 0.15; midY = 0.22; highY = 0.28; }
+              var ideas = [];
+              if (budget < 150000) {
+                ideas = ["ትንሽ የቁሳቁስ/ሞባይል መለዋወጫ ንግድ", "የምግብ/ጭማቂ ማስረጃ ኪዮስክ", "የመላኪያ (delivery) አገልግሎት"];
+              } else if (budget < 800000) {
+                ideas = ["የመኪና ኪራይ (ride) አንድ ተሽከርካሪ", "ትንሽ ሱፐርማርኬት/ሱቅ", "የጋራዥ ቀላል ጥገና አገልግሎት"];
+              } else {
+                ideas = ["ባለብዙ መኪና የኪራይ መርሃግብር", "ትንሽ የማከማቻ/ዌርሃውስ ኪራይ", "የሪል እስቴት ኪራይ ፖርትፎሊዮ"];
+              }
+              var yLow = Math.round(budget * lowY);
+              var yMid = Math.round(budget * midY);
+              var yHigh = Math.round(budget * highY);
+              roiBody.innerHTML =
+                "በጀት <b>" + fmt(budget) + "</b> — የኢትዮጵያ ገበያ ባንድ (15–35% ዓመታዊ):<br>" +
+                "• " + ideas[0] + " · ROI ~" + Math.round(lowY*100) + "% → <b>" + fmt(yLow) + "/ዓመት</b><br>" +
+                "• " + ideas[1] + " · ROI ~" + Math.round(midY*100) + "% → <b>" + fmt(yMid) + "/ዓመት</b><br>" +
+                "• " + ideas[2] + " · ROI ~" + Math.round(highY*100) + "% → <b>" + fmt(yHigh) + "/ዓመት</b>" +
+                (income > 0 ? "<br><span style='opacity:.85'>የእርስዎ ወርሃዊ ገቢ: " + fmt(income) + " (DTI ≤35% ለብድር)</span>" : "");
+            }
+          }
+        })
+        .catch(function(){
+          if (autoBody) autoBody.innerHTML = "ገበያውን ማግኘት አልተቻለም። እንደገና ይሞክሩ ወይም Mini App ገበያ ይመልከቱ።";
+          if (propBody) propBody.innerHTML = "ገበያውን ማግኘት አልተቻለም።";
+          if (roiBody && budget > 0) {
+            var y = Math.round(budget * 0.22);
+            roiBody.innerHTML = "ግምታዊ መካከለኛ ROI 22%: <b>" + Math.round(budget * 0.22).toLocaleString() + " ብር/ዓመት</b> (ከበጀት ቀመር)።";
+          }
+        });
     }
+
     var advBtnEl = document.getElementById("advisorBtn");
     if (advBtnEl) {
       advBtnEl.onclick = function() {
