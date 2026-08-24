@@ -3591,6 +3591,36 @@ def register_api_routes(web_app):
             "monthly_loan": {"item_1": mpay_1, "item_2": mpay_2, "unit": "ETB", "winner": winner(mpay_1, mpay_2, False)},
             "ground_clearance": {"item_1": item_1['ground_clearance_mm'], "item_2": item_2['ground_clearance_mm'], "unit": "mm", "winner": winner(item_1['ground_clearance_mm'], item_2['ground_clearance_mm'], True)},
         }
+        # 5-Year TCO & depreciation (deterministic)
+        def dep_rate(parts_score, resale_idx):
+            # Higher parts/resale -> lower annual depreciation
+            base = 0.14  # 14% default Ethiopia used-market
+            adj = (100 - (parts_score * 0.4 + resale_idx * 0.6)) / 1000.0
+            return max(0.08, min(0.20, base + adj))
+
+        def tco_5yr(price, fuel_kml, parts_score, resale_idx):
+            d_rate = dep_rate(parts_score, resale_idx)
+            fuel_5 = round((KM_PER_YEAR / max(fuel_kml, 1)) * FUEL_PRICE_ETB * 5)
+            maint_5 = round((100 - parts_score) * (price / 100000) * 0.8 * (5 / 3))
+            residual = round(price * ((1 - d_rate) ** 5))
+            depreciation = price - residual
+            insurance_5 = round(price * 0.025 * 5)  # ~2.5%/yr benchmark
+            tco = depreciation + fuel_5 + maint_5 + insurance_5
+            return {
+                "tco_5yr": tco,
+                "depreciation_5yr": depreciation,
+                "depreciation_annual_pct": round(d_rate * 100, 1),
+                "residual_value_5yr": residual,
+                "fuel_5yr": fuel_5,
+                "maint_5yr": maint_5,
+                "insurance_5yr": insurance_5,
+            }
+
+        tco1 = tco_5yr(p1, f1, item_1['parts_score'], item_1['resale_index'])
+        tco2 = tco_5yr(p2, f2, item_2['parts_score'], item_2['resale_index'])
+        item_1.update({k: tco1[k] for k in tco1})
+        item_2.update({k: tco2[k] for k in tco2})
+
         calculated = {
             "fuel_savings_3yr_etb": abs(fuel_1_3yr - fuel_2_3yr),
             "price_delta_etb": abs(p1 - p2),
@@ -3602,24 +3632,67 @@ def register_api_routes(web_app):
             "op_cost_3yr_item_1": op_1,
             "op_cost_3yr_item_2": op_2,
             "op_cost_delta_3yr": abs(op_1 - op_2),
-            "assumptions": {"downpayment_pct": DOWN_PCT, "apr": APR, "loan_years": AUTO_YEARS, "fuel_price_etb_per_liter": FUEL_PRICE_ETB, "km_per_year": KM_PER_YEAR},
+            "tco_5yr_item_1": tco1["tco_5yr"],
+            "tco_5yr_item_2": tco2["tco_5yr"],
+            "tco_5yr_delta": abs(tco1["tco_5yr"] - tco2["tco_5yr"]),
+            "depreciation_pct_item_1": tco1["depreciation_annual_pct"],
+            "depreciation_pct_item_2": tco2["depreciation_annual_pct"],
+            "assumptions": {
+                "downpayment_pct": DOWN_PCT, "apr": APR, "loan_years": AUTO_YEARS,
+                "fuel_price_etb_per_liter": FUEL_PRICE_ETB, "km_per_year": KM_PER_YEAR,
+                "insurance_annual_pct": 0.025,
+            },
+        }
+        metrics["tco_5yr"] = {
+            "item_1": tco1["tco_5yr"], "item_2": tco2["tco_5yr"], "unit": "ETB",
+            "winner": winner(tco1["tco_5yr"], tco2["tco_5yr"], False),
+        }
+        metrics["depreciation_pct"] = {
+            "item_1": tco1["depreciation_annual_pct"], "item_2": tco2["depreciation_annual_pct"], "unit": "%/yr",
+            "winner": winner(tco1["depreciation_annual_pct"], tco2["depreciation_annual_pct"], False),
         }
 
-        def score(it, mpay, op):
-            s = it['parts_score'] * 0.25 + it['resale_index'] * 0.20 + min(it['fuel_efficiency'] * 4, 100) * 0.20
-            s += max(0, 100 - (mpay / 5000)) * 0.15 + max(0, 100 - (op / 50000)) * 0.20
+        def score(it, mpay, op, tco):
+            s = it['parts_score'] * 0.20 + it['resale_index'] * 0.20 + min(it['fuel_efficiency'] * 4, 100) * 0.15
+            s += max(0, 100 - (mpay / 5000)) * 0.10 + max(0, 100 - (op / 50000)) * 0.10
+            s += max(0, 100 - (tco / 200000)) * 0.25
             return round(s, 1)
 
-        sc1, sc2 = score(item_1, mpay_1, op_1), score(item_2, mpay_2, op_2)
+        sc1 = score(item_1, mpay_1, op_1, tco1["tco_5yr"])
+        sc2 = score(item_2, mpay_2, op_2, tco2["tco_5yr"])
         winner_key = 'item_1' if sc1 >= sc2 else 'item_2'
         winner_name = item_1['name'] if winner_key == 'item_1' else item_2['name']
         est_note = ""
         if item_1.get('is_estimate') or item_2.get('is_estimate'):
-            est_note = " (አንዳንድ እሴቶች AI ግምት ናቸው — በvehicles_db ያልተገኙ)"
+            est_note = " አንዳንድ እሴቶች AI ግምት ናቸው።"
         summary_am = (
-            f"{winner_name} በአጠቃላይ ነጥብ ይበልጣል (A:{sc1} / B:{sc2})። "
-            f"የ3-ዓመት የስራ ወጪ ልዩነት ~{abs(op_1-op_2):,.0f} ብር፤ ብድር 30% ቅድመ · 18% APR · 5ዓመት።{est_note}"
+            f"{winner_name} በ5-ዓመት TCO እና አጠቃላይ ነጥብ ይበልጣል (A:{sc1} / B:{sc2})። "
+            f"TCO ልዩነት ~{abs(tco1['tco_5yr']-tco2['tco_5yr']):,.0f} ብር፤ ብድር 30% ቅድመ · 18% APR · 5ዓመት።{est_note}"
         )
+        # Optional LLM: polish to fluent 2-sentence Amharic from numeric payload only
+        try:
+            if os.environ.get("GEMINI_API_KEY"):
+                payload_llm = {
+                    "winner": winner_name,
+                    "scores": {"A": sc1, "B": sc2},
+                    "tco_5yr": {"A": tco1["tco_5yr"], "B": tco2["tco_5yr"]},
+                    "names": {"A": item_1["name"], "B": item_2["name"]},
+                }
+                prompt = (
+                    "ከዚህ JSON ቁጥሮች ብቻ በመጠቀም በውብ፣ ግልጽ እና ፕሮፌሽናል አማርኛ ትክክል 2 አረፍተ ነገር Executive Summary ጻፍ። "
+                    "አዲስ ዋጋ ወይም ስፔክ አትፍጠር።\n" + json.dumps(payload_llm, ensure_ascii=False)
+                )
+                model = _AdikaGeminiModel(
+                    model_name="gemini-2.0-flash",
+                    generation_config={"temperature": 0.2, "max_output_tokens": 160},
+                )
+                res = model.generate_content(prompt)
+                polished = (res.text or "").strip()
+                if polished and len(polished) > 30:
+                    summary_am = polished
+        except Exception as _pe:
+            logger.debug(f"summary polish skip: {_pe}")
+
         return jsonify({
             "status": "success",
             "category": "vehicles",
