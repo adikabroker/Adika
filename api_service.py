@@ -3383,80 +3383,275 @@ def register_api_routes(web_app):
     @web_app.route('/api/compare-cars', methods=['POST', 'OPTIONS'])
     def api_compare_cars():
         """
-        VEHICLE COMPARISON ENGINE (/api/compare-cars)
-        Compares two vehicle models on fuel economy, maintenance costs, parts availability, and resale value.
+        HYBRID VEHICLE COMPARISON ENGINE
+        Specs from ETHIOPIA_VEHICLES_DATABASE / ethiopia_vehicles only.
+        Financial metrics computed programmatically (no LLM hallucination).
+        Optional LLM: 2-sentence executive summary from numeric payload only.
         """
         if request.method == 'OPTIONS':
             return ('', 204)
         try:
             data = request.json or {}
-            car_1 = data.get('car_1') or 'Toyota Vitz 2018'
-            car_2 = data.get('car_2') or 'Suzuki Dzire 2020'
+            car_1_q = (data.get('car_1') or data.get('item_1') or 'Toyota Vitz').strip()
+            car_2_q = (data.get('car_2') or data.get('item_2') or 'Toyota Corolla').strip()
+            category = (data.get('category') or 'vehicles').strip().lower()
 
-            api_key = os.environ.get("GEMINI_API_KEY")
-            comparison = None
+            # ----- helpers: parse verified DB fields only -----
+            def parse_fuel_kml(s):
+                s = str(s or "")
+                # EV range "400 KM" -> treat as high efficiency proxy (km per charge ~ not kml)
+                nums = re.findall(r'(\d+(?:\.\d+)?)', s.replace(',', ''))
+                if not nums:
+                    return None
+                vals = [float(x) for x in nums]
+                if 'EV' in s.upper() or 'CHARGE' in s.upper() or 'ቻርጅ' in s:
+                    # map range km to approximate cost-efficiency score later; kml proxy
+                    return max(vals) / 25.0  # rough: 400km ~ 16 kml-equivalent units for ranking
+                if len(vals) >= 2:
+                    return (vals[0] + vals[1]) / 2.0
+                return vals[0]
 
-            if api_key:
-                try:
-                    # Gemini routed through _AdikaGeminiModel (google.genai Client)
-                    prompt = (
-                        "You are a leading Ethiopian automotive market expert and mechanic based in Addis Ababa.\\n"
-                        f"Compare these two vehicles thoroughly for the Ethiopian market: '{car_1}' vs '{car_2}'.\\n\\n"
-                        "Generate strictly valid JSON with keys:\\n"
-                        "1. 'car_1': {'name', 'engine', 'fuel_consumption_kml', 'monthly_fuel_cost_etb', 'parts_availability_rating', 'resale_retention_pct', 'pros': [...], 'cons': [...]}\\n"
-                        "2. 'car_2': {'name', 'engine', 'fuel_consumption_kml', 'monthly_fuel_cost_etb', 'parts_availability_rating', 'resale_retention_pct', 'pros': [...], 'cons': [...]}\\n"
-                        "3. 'verdict_winner': name of the best buy\\n"
-                        "4. 'verdict_summary_amharic': detailed Amharic breakdown advising the buyer which car to choose and why based on road conditions and fuel costs in Ethiopia.\\n"
-                        "5. 'verdict_summary_english': concise English summary.\\n"
-                        "Return ONLY JSON."
-                    )
-                    model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
-                        generation_config={"response_mime_type": "application/json", "temperature": 0.2}
-                    )
-                    res = model.generate_content(prompt)
-                    txt = (res.text or "").strip()
-                    if txt.startswith("```json"): txt = txt[7:]
-                    if txt.startswith("```"): txt = txt[3:]
-                    if txt.endswith("```"): txt = txt[:-3]
-                    comparison = json.loads(txt.strip())
-                except Exception as e:
-                    logger.warning(f"Car compare Gemini error: {e}")
+            def parse_parts_score(s):
+                s = str(s or "")
+                m = re.search(r'(\d+(?:\.\d+)?)\s*/\s*5', s)
+                if m:
+                    return round(float(m.group(1)) / 5.0 * 100)
+                m = re.search(r'(\d+(?:\.\d+)?)', s)
+                if m:
+                    v = float(m.group(1))
+                    return int(v * 20) if v <= 5 else int(min(v, 100))
+                return 50
 
-            if not comparison:
-                comparison = {
-                    "car_1": {
-                        "name": car_1,
-                        "engine": "1.0L - 1.3L 4-Cylinder Petrol",
-                        "fuel_consumption_kml": "16 - 18 KM/L",
-                        "monthly_fuel_cost_etb": "5,500 ETB",
-                        "parts_availability_rating": "5/5 (በጣም ቀላል በሁሉም መለዋወጫ መደብር)",
-                        "resale_retention_pct": "92%",
-                        "pros": ["መለዋወጫ በብዛት መገኘቱ", "በጣም ከፍተኛ የመሸጫ ዋጋ (Resale value)", "ለከተማ መንዳት ምቹ"],
-                        "cons": ["የመሬት ከፍታው ዝቅተኛ መሆኑ", "ዋጋው ከዓመቱ አንጻር ውድ መሆኑ"]
-                    },
-                    "car_2": {
-                        "name": car_2,
-                        "engine": "1.2L K12M DualJet Petrol",
-                        "fuel_consumption_kml": "19 - 22 KM/L",
-                        "monthly_fuel_cost_etb": "4,200 ETB",
-                        "parts_availability_rating": "4.2/5 (በአዲስ አበባ በስፋት የሚገኝ)",
-                        "resale_retention_pct": "88%",
-                        "pros": ["እጅግ የላቀ የነዳጅ ቆጣቢነት", "ሰፊ የሻንጣ መጫኛ (Trunk)", "አዳዲስ ቴክኖሎጂዎች ያሉት"],
-                        "cons": ["የአካል ክፍሎች ጥንካሬ ከToyota ያነሰ መሆኑ"]
-                    },
-                    "verdict_winner": car_2 if "dzire" in car_2.lower() or "electric" in car_2.lower() else car_1,
-                    "verdict_summary_amharic": f"በነዳጅ ቆጣቢነትና በአዲስ ሞዴልነት {car_2} የተሻለ ምርጫ ሲሆን፤ በመለዋወጫ በቀላሉ መገኘት እና በፈጣን ሽያጭ (Resale) {car_1} ተመራጭ ነው።",
-                    "verdict_summary_english": f"{car_2} leads in modern fuel economy, while {car_1} holds exceptional resale demand and spare part access across Ethiopia."
+            def parse_price_mid(s):
+                s = str(s or "").replace(',', '')
+                nums = [float(x) for x in re.findall(r'(\d+(?:\.\d+)?)', s)]
+                if not nums:
+                    return 0
+                if len(nums) >= 2:
+                    return (nums[0] + nums[1]) / 2.0
+                return nums[0]
+
+            def parse_clearance_mm(s):
+                nums = re.findall(r'(\d+(?:\.\d+)?)', str(s or ""))
+                return float(nums[0]) if nums else 0
+
+            def resale_index(s):
+                s = str(s or "").lower()
+                if any(k in s for k in ['እጅግ', 'ፈጣን', 'prime', 'very high', 'ወዲያውኑ']):
+                    return 95
+                if any(k in s for k in ['ከፍተኛ', 'high', 'በጣም']):
+                    return 85
+                if any(k in s for k in ['መካከለኛ', 'medium', 'moderate']):
+                    return 70
+                if any(k in s for k in ['ዝቅተኛ', 'low']):
+                    return 55
+                return 75
+
+            def build_item(query):
+                row = search_vehicle_in_db(query)
+                if not row:
+                    # try stripping year tokens
+                    cleaned = re.sub(r'\b(19|20)\d{2}\b', '', query).strip()
+                    if cleaned and cleaned != query:
+                        row = search_vehicle_in_db(cleaned)
+                if not row:
+                    return None
+                fuel_raw = row.get('fuel_economy') or row.get('fuel_consumption') or ''
+                parts_raw = row.get('spare_parts_availability') or ''
+                price_raw = row.get('current_price_range_etb') or row.get('price_range') or ''
+                fuel_kml = parse_fuel_kml(fuel_raw) or 12.0
+                parts = parse_parts_score(parts_raw)
+                price = parse_price_mid(price_raw)
+                return {
+                    "name": row.get('name') or row.get('full_model') or query,
+                    "brand": row.get('brand') or '',
+                    "category": row.get('category') or '',
+                    "price": round(price),
+                    "price_range_raw": price_raw,
+                    "fuel_efficiency": round(fuel_kml, 1),
+                    "fuel_economy_raw": fuel_raw,
+                    "parts_score": parts,
+                    "parts_raw": parts_raw,
+                    "ground_clearance_mm": parse_clearance_mm(row.get('ground_clearance')),
+                    "resale_index": resale_index(row.get('resale_liquidity')),
+                    "resale_raw": row.get('resale_liquidity') or '',
+                    "core_advantage": row.get('core_advantage') or '',
+                    "primary_use_case": row.get('primary_use_case') or '',
+                    "source": row.get('source') or 'ethiopia_vehicles',
+                    "found": True,
                 }
+
+            # Ethiopian bank defaults
+            DOWN_PCT = 0.30
+            APR = 0.18
+            AUTO_YEARS = 5
+            FUEL_PRICE_ETB = 80.0  # petrol benchmark ETB/L
+            KM_PER_YEAR = 15000
+
+            def monthly_payment(principal, annual_rate, years):
+                if principal <= 0:
+                    return 0.0
+                r = annual_rate / 12.0
+                n = years * 12
+                if r == 0:
+                    return principal / n
+                f = (1 + r) ** n
+                return principal * (r * f) / (f - 1)
+
+            def fuel_cost_3yr(kml):
+                if not kml or kml <= 0:
+                    return 0
+                liters_yr = KM_PER_YEAR / kml
+                return round(liters_yr * FUEL_PRICE_ETB * 3)
+
+            item_1 = build_item(car_1_q)
+            item_2 = build_item(car_2_q)
+
+            if not item_1 or not item_2:
+                missing = []
+                if not item_1:
+                    missing.append(car_1_q)
+                if not item_2:
+                    missing.append(car_2_q)
+                return jsonify({
+                    "status": "error",
+                    "message": "ተሽከርካሪ በአዲካ vehicles_db አልተገኘም: " + ", ".join(missing),
+                    "missing": missing,
+                }), 404
+
+            # Programmatic metrics
+            f1, f2 = item_1['fuel_efficiency'], item_2['fuel_efficiency']
+            fuel_1_3yr = fuel_cost_3yr(f1)
+            fuel_2_3yr = fuel_cost_3yr(f2)
+            fuel_savings_3yr = abs(fuel_1_3yr - fuel_2_3yr)
+            cheaper_fuel = item_1['name'] if fuel_1_3yr < fuel_2_3yr else item_2['name']
+
+            p1, p2 = item_1['price'], item_2['price']
+            price_delta = abs(p1 - p2)
+            down_1 = round(p1 * DOWN_PCT)
+            down_2 = round(p2 * DOWN_PCT)
+            loan_1 = max(0, p1 - down_1)
+            loan_2 = max(0, p2 - down_2)
+            mpay_1 = round(monthly_payment(loan_1, APR, AUTO_YEARS))
+            mpay_2 = round(monthly_payment(loan_2, APR, AUTO_YEARS))
+
+            # Maintenance proxy from inverse parts score (higher parts = lower maintenance index)
+            maint_1 = round((100 - item_1['parts_score']) * (p1 / 100000) * 0.8)
+            maint_2 = round((100 - item_2['parts_score']) * (p2 / 100000) * 0.8)
+            op_cost_1 = fuel_1_3yr + maint_1
+            op_cost_2 = fuel_2_3yr + maint_2
+
+            # Winners per metric
+            def winner(a, b, higher_better=True):
+                if higher_better:
+                    return 'item_1' if a > b else ('item_2' if b > a else 'tie')
+                return 'item_1' if a < b else ('item_2' if b < a else 'tie')
+
+            metrics = {
+                "fuel_efficiency": {"item_1": f1, "item_2": f2, "unit": "KM/L", "winner": winner(f1, f2, True)},
+                "parts_score": {"item_1": item_1['parts_score'], "item_2": item_2['parts_score'], "unit": "/100", "winner": winner(item_1['parts_score'], item_2['parts_score'], True)},
+                "resale_index": {"item_1": item_1['resale_index'], "item_2": item_2['resale_index'], "unit": "/100", "winner": winner(item_1['resale_index'], item_2['resale_index'], True)},
+                "price": {"item_1": p1, "item_2": p2, "unit": "ETB", "winner": winner(p1, p2, False)},
+                "fuel_cost_3yr": {"item_1": fuel_1_3yr, "item_2": fuel_2_3yr, "unit": "ETB", "winner": winner(fuel_1_3yr, fuel_2_3yr, False)},
+                "monthly_loan": {"item_1": mpay_1, "item_2": mpay_2, "unit": "ETB", "winner": winner(mpay_1, mpay_2, False)},
+                "ground_clearance": {"item_1": item_1['ground_clearance_mm'], "item_2": item_2['ground_clearance_mm'], "unit": "mm", "winner": winner(item_1['ground_clearance_mm'], item_2['ground_clearance_mm'], True)},
+            }
+
+            calculated = {
+                "fuel_savings_3yr_etb": fuel_savings_3yr,
+                "cheaper_fuel_name": cheaper_fuel,
+                "price_delta_etb": price_delta,
+                "loan_downpayment_min": min(down_1, down_2),
+                "loan_downpayment_item_1": down_1,
+                "loan_downpayment_item_2": down_2,
+                "monthly_loan_item_1": mpay_1,
+                "monthly_loan_item_2": mpay_2,
+                "op_cost_3yr_item_1": op_cost_1,
+                "op_cost_3yr_item_2": op_cost_2,
+                "op_cost_delta_3yr": abs(op_cost_1 - op_cost_2),
+                "assumptions": {
+                    "downpayment_pct": DOWN_PCT,
+                    "apr": APR,
+                    "loan_years": AUTO_YEARS,
+                    "fuel_price_etb_per_liter": FUEL_PRICE_ETB,
+                    "km_per_year": KM_PER_YEAR,
+                },
+            }
+
+            # Simple score: weighted (no LLM)
+            def score(it, fuel_3yr, mpay, op):
+                # lower price/op/loan better; higher fuel/parts/resale better
+                s = 0
+                s += it['parts_score'] * 0.25
+                s += it['resale_index'] * 0.20
+                s += min(it['fuel_efficiency'] * 4, 100) * 0.20
+                # normalize cost terms roughly
+                s += max(0, 100 - (mpay / 5000)) * 0.15
+                s += max(0, 100 - (op / 50000)) * 0.20
+                return round(s, 1)
+
+            sc1 = score(item_1, fuel_1_3yr, mpay_1, op_cost_1)
+            sc2 = score(item_2, fuel_2_3yr, mpay_2, op_cost_2)
+            winner_key = 'item_1' if sc1 >= sc2 else 'item_2'
+            winner_name = item_1['name'] if winner_key == 'item_1' else item_2['name']
+
+            # Executive summary: prefer short template from numbers (no hallucinated specs)
+            if winner_key == 'item_1':
+                summary_am = (
+                    f"{item_1['name']} በአጠቃላይ ነጥብ ({sc1}) ከ {item_2['name']} ({sc2}) ይበልጣል። "
+                    f"የ3-ዓመት የነዳጅ/ስራ ወጪ ልዩነት ~{abs(op_cost_1-op_cost_2):,.0f} ብር ሲሆን፣ ቅድመ ክፍያ 30% እና 18% APR/5ዓመት ብድር ተሰልቷል።"
+                )
+            else:
+                summary_am = (
+                    f"{item_2['name']} በአጠቃላይ ነጥብ ({sc2}) ከ {item_1['name']} ({sc1}) ይበልጣል። "
+                    f"የ3-ዓመት የነዳጅ/ስራ ወጪ ልዩነት ~{abs(op_cost_1-op_cost_2):,.0f} ብር ሲሆን፣ ቅድመ ክፍያ 30% እና 18% APR/5ዓመት ብድር ተሰልቷል።"
+                )
+
+            # Optional LLM polish of the SAME numbers only (never invent specs)
+            api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENROUTER_API_KEY")
+            if api_key and data.get('polish_summary'):
+                try:
+                    payload_for_llm = {
+                        "item_1": {"name": item_1['name'], "price": p1, "fuel_efficiency": f1, "parts_score": item_1['parts_score']},
+                        "item_2": {"name": item_2['name'], "price": p2, "fuel_efficiency": f2, "parts_score": item_2['parts_score']},
+                        "calculated_metrics": calculated,
+                        "winner": winner_name,
+                        "scores": {"item_1": sc1, "item_2": sc2},
+                    }
+                    prompt = (
+                        "You are Adika Financial Advisor. Write EXACTLY 2 professional Amharic sentences as executive summary. "
+                        "Use ONLY the numbers in this JSON. Do NOT invent specs, prices, or features.\n"
+                        + json.dumps(payload_for_llm, ensure_ascii=False)
+                    )
+                    if os.environ.get("GEMINI_API_KEY"):
+                        model = _AdikaGeminiModel(
+                            model_name="gemini-2.0-flash",
+                            generation_config={"temperature": 0.1, "max_output_tokens": 180},
+                        )
+                        res = model.generate_content(prompt)
+                        polished = (res.text or "").strip()
+                        if polished and len(polished) > 20:
+                            summary_am = polished
+                except Exception as e:
+                    logger.warning(f"compare summary polish skipped: {e}")
 
             return jsonify({
                 "status": "success",
-                "comparison": comparison
+                "category": "vehicles",
+                "item_1": item_1,
+                "item_2": item_2,
+                "metrics": metrics,
+                "calculated_metrics": calculated,
+                "scores": {"item_1": sc1, "item_2": sc2},
+                "winner": winner_key,
+                "winner_name": winner_name,
+                "executive_summary_amharic": summary_am,
+                "data_source": "ethiopia_vehicles / ETHIOPIA_VEHICLES_DATABASE",
             })
         except Exception as e:
             logger.error(f"api_compare_cars error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
+
 
 
     # Official DARA (የፌደራል ሰነዶች ማረጋገጫና ምዝገባ ኤጀንሲ) Central Registry Records
@@ -4093,3 +4288,6 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_post_to_channel error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
+
+
+
