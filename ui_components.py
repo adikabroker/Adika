@@ -1528,26 +1528,95 @@ EXPLORER_HTML = r"""
     </div>
   </div>
 
-  <!-- Modal: Vehicle Comparison Engine -->
+  <!-- Modal: Executive Metric Comparison Dashboard -->
   <div id="compareModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-      <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
-        <h3 class="font-extrabold text-xs tracking-wide">⚖️ የመኪኖች ንጽጽር (Car Comparison)</h3>
-        <button onclick="closeToolModal('compareModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm">✕</button>
+    <div class="w-full max-w-md bg-slate-950 rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-800">
+      <div class="px-3 py-2.5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
+        <div class="min-w-0">
+          <div class="text-[9px] font-bold tracking-wide uppercase text-amber-400/90">Adika Analytics</div>
+          <h3 class="font-black text-xs tracking-wide truncate">Executive Comparison Dashboard</h3>
+        </div>
+        <button onclick="closeToolModal('compareModal')" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm">✕</button>
       </div>
-      <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">መኪና 1</label>
-            <input id="compareCar1" type="text" value="Toyota Vitz 2018" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">መኪና 2</label>
-            <input id="compareCar2" type="text" value="Suzuki Dzire 2020" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+
+      <div class="px-3 pt-2.5 shrink-0">
+        <div class="flex p-0.5 rounded-full bg-slate-900 border border-slate-800 gap-0.5" id="compareTabs">
+          <button type="button" data-ctab="vehicles" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all bg-teal-600 text-white shadow">ተሽከርካሪ</button>
+          <button type="button" data-ctab="property" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">ሪል እስቴት</button>
+          <button type="button" data-ctab="business" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">Business ROI</button>
+        </div>
+      </div>
+
+      <div class="p-3 overflow-y-auto space-y-2.5 flex-1 text-xs">
+        <div id="comparePanelVehicles" class="space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[9px] font-bold text-slate-400 block mb-1">ንብረት A (Model)</label>
+              <select id="compareCar1" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500">
+                <option value="Toyota Vitz">Toyota Vitz</option>
+                <option value="Toyota Yaris">Toyota Yaris</option>
+                <option value="Toyota Corolla">Toyota Corolla</option>
+                <option value="Toyota RAV4">Toyota RAV4</option>
+                <option value="Toyota Fortuner">Toyota Fortuner</option>
+                <option value="Toyota Hilux">Toyota Hilux</option>
+                <option value="Toyota Land Cruiser Prado">Land Cruiser Prado</option>
+                <option value="Toyota Land Cruiser 70">Land Cruiser 70</option>
+                <option value="Toyota Hiace">Toyota Hiace</option>
+                <option value="BYD Seagull">BYD Seagull</option>
+                <option value="BYD Dolphin">BYD Dolphin</option>
+                <option value="BYD Song Plus">BYD Song Plus</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[9px] font-bold text-slate-400 block mb-1">ንብረት B (Model)</label>
+              <select id="compareCar2" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500">
+                <option value="Toyota Corolla">Toyota Corolla</option>
+                <option value="Toyota Vitz">Toyota Vitz</option>
+                <option value="Toyota Yaris">Toyota Yaris</option>
+                <option value="Toyota RAV4">Toyota RAV4</option>
+                <option value="Toyota Fortuner">Toyota Fortuner</option>
+                <option value="Toyota Hilux">Toyota Hilux</option>
+                <option value="Toyota Land Cruiser Prado">Land Cruiser Prado</option>
+                <option value="Toyota Land Cruiser 70">Land Cruiser 70</option>
+                <option value="Toyota Hiace">Toyota Hiace</option>
+                <option value="BYD Seagull">BYD Seagull</option>
+                <option value="BYD Dolphin" selected>BYD Dolphin</option>
+                <option value="BYD Song Plus">BYD Song Plus</option>
+              </select>
+            </div>
           </div>
         </div>
-        <button id="compareBtn" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow active:scale-95">ንጽጽር አፍልቅ (Compare)</button>
-        <div id="compareResult" class="hidden p-3 bg-slate-50 rounded-xl border space-y-2 font-medium"></div>
+
+        <div id="comparePanelProperty" class="hidden space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[9px] font-bold text-slate-400 block mb-1">በጀት A (ETB)</label>
+              <input id="comparePropBudget1" type="number" value="3000000" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white" />
+            </div>
+            <div>
+              <label class="text-[9px] font-bold text-slate-400 block mb-1">በጀት B (ETB)</label>
+              <input id="comparePropBudget2" type="number" value="5000000" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white" />
+            </div>
+          </div>
+          <p class="text-[9px] text-slate-500">ከአዲካ ገበያ ሪል እስቴት listing (ዋጋ ≤ በጀት)።</p>
+        </div>
+
+        <div id="comparePanelBusiness" class="hidden space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[9px] font-bold text-slate-400 block mb-1">ኢንቨስትመንት A (ETB)</label>
+              <input id="compareBiz1" type="number" value="500000" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white" />
+            </div>
+            <div>
+              <label class="text-[9px] font-bold text-slate-400 block mb-1">ኢንቨስትመንት B (ETB)</label>
+              <input id="compareBiz2" type="number" value="1500000" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white" />
+            </div>
+          </div>
+          <p class="text-[9px] text-slate-500">ROI 15–35% የኢትዮጵያ ገበያ ቀመር።</p>
+        </div>
+
+        <button id="compareBtn" type="button" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white font-black text-xs shadow-lg active:scale-[0.98]">Metric Dashboard አስላ →</button>
+        <div id="compareResult" class="hidden space-y-2.5"></div>
       </div>
     </div>
   </div>
@@ -2723,86 +2792,196 @@ EXPLORER_HTML = r"""
     };
 
     // Compare Cars Action
+    // Compare category tabs
+    var compareActiveTab = "vehicles";
+    document.querySelectorAll(".compare-tab").forEach(function(tab) {
+      tab.onclick = function() {
+        compareActiveTab = tab.getAttribute("data-ctab") || "vehicles";
+        document.querySelectorAll(".compare-tab").forEach(function(x) {
+          x.className = "compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white";
+        });
+        tab.className = "compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all bg-teal-600 text-white shadow";
+        var pv = document.getElementById("comparePanelVehicles");
+        var pp = document.getElementById("comparePanelProperty");
+        var pb = document.getElementById("comparePanelBusiness");
+        if (pv) pv.classList.toggle("hidden", compareActiveTab !== "vehicles");
+        if (pp) pp.classList.toggle("hidden", compareActiveTab !== "property");
+        if (pb) pb.classList.toggle("hidden", compareActiveTab !== "business");
+        var res = document.getElementById("compareResult");
+        if (res) { res.classList.add("hidden"); res.innerHTML = ""; }
+      };
+    });
+
+    function fmtEtb(n) {
+      return Math.round(Number(n) || 0).toLocaleString() + " ብር";
+    }
+    function metricBarRow(label, v1, v2, unit, winner, higherBetter) {
+      var max = Math.max(Number(v1) || 0, Number(v2) || 0, 1);
+      var p1 = Math.round((Number(v1) || 0) / max * 100);
+      var p2 = Math.round((Number(v2) || 0) / max * 100);
+      var badge1 = winner === "item_1" ? '<span class="ml-1 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/15 text-emerald-400">WIN</span>' : '';
+      var badge2 = winner === "item_2" ? '<span class="ml-1 px-1.5 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/15 text-emerald-400">WIN</span>' : '';
+      return (
+        '<div class="space-y-1">' +
+          '<div class="flex justify-between text-[9px] text-slate-400 font-bold"><span>' + label + '</span><span class="text-slate-500">' + unit + '</span></div>' +
+          '<div class="flex items-center gap-2">' +
+            '<div class="w-8 text-[9px] font-black text-teal-300 shrink-0">A</div>' +
+            '<div class="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all duration-700" style="width:' + p1 + '%"></div></div>' +
+            '<div class="text-[9px] font-bold text-white w-16 text-right">' + (Number(v1)||0).toLocaleString() + badge1 + '</div>' +
+          '</div>' +
+          '<div class="flex items-center gap-2">' +
+            '<div class="w-8 text-[9px] font-black text-amber-300 shrink-0">B</div>' +
+            '<div class="flex-1 h-2 rounded-full bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-400 transition-all duration-700" style="width:' + p2 + '%"></div></div>' +
+            '<div class="text-[9px] font-bold text-white w-16 text-right">' + (Number(v2)||0).toLocaleString() + badge2 + '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }
+    function renderVehicleDashboard(d) {
+      var a = d.item_1 || {}, b = d.item_2 || {};
+      var m = d.metrics || {};
+      var c = d.calculated_metrics || {};
+      var html = '';
+      html += '<div class="grid grid-cols-2 gap-2">';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5"><div class="text-[8px] font-bold text-teal-400 uppercase">A</div><div class="text-[11px] font-black text-white leading-tight mt-0.5">' + (a.name||'') + '</div><div class="text-[10px] text-slate-400 mt-1">' + fmtEtb(a.price) + '</div></div>';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5"><div class="text-[8px] font-bold text-amber-400 uppercase">B</div><div class="text-[11px] font-black text-white leading-tight mt-0.5">' + (b.name||'') + '</div><div class="text-[10px] text-slate-400 mt-1">' + fmtEtb(b.price) + '</div></div>';
+      html += '</div>';
+
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 space-y-2.5">';
+      html += '<div class="text-[9px] font-black text-slate-300 uppercase tracking-wide">Metric Progress</div>';
+      if (m.fuel_efficiency) html += metricBarRow("Fuel Efficiency", m.fuel_efficiency.item_1, m.fuel_efficiency.item_2, "KM/L", m.fuel_efficiency.winner, true);
+      if (m.parts_score) html += metricBarRow("Spare Parts Score", m.parts_score.item_1, m.parts_score.item_2, "/100", m.parts_score.winner, true);
+      if (m.resale_index) html += metricBarRow("Resale Index", m.resale_index.item_1, m.resale_index.item_2, "/100", m.resale_index.winner, true);
+      if (m.ground_clearance) html += metricBarRow("Ground Clearance", m.ground_clearance.item_1, m.ground_clearance.item_2, "mm", m.ground_clearance.winner, true);
+      html += '</div>';
+
+      html += '<div class="grid grid-cols-3 gap-1.5">';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2"><div class="text-[8px] text-slate-500 font-bold">Price Δ</div><div class="text-[11px] font-black text-white mt-0.5">' + fmtEtb(c.price_delta_etb) + '</div></div>';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2"><div class="text-[8px] text-slate-500 font-bold">3yr Fuel Δ</div><div class="text-[11px] font-black text-emerald-400 mt-0.5">' + fmtEtb(c.fuel_savings_3yr_etb) + '</div></div>';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2"><div class="text-[8px] text-slate-500 font-bold">Min Down 30%</div><div class="text-[11px] font-black text-amber-300 mt-0.5">' + fmtEtb(c.loan_downpayment_min) + '</div></div>';
+      html += '</div>';
+
+      html += '<div class="grid grid-cols-2 gap-1.5">';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2"><div class="text-[8px] text-slate-500 font-bold">A Loan / mo</div><div class="text-[11px] font-black text-white">' + fmtEtb(c.monthly_loan_item_1) + '</div><div class="text-[8px] text-slate-500">18% · 5yr</div></div>';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2"><div class="text-[8px] text-slate-500 font-bold">B Loan / mo</div><div class="text-[11px] font-black text-white">' + fmtEtb(c.monthly_loan_item_2) + '</div><div class="text-[8px] text-slate-500">18% · 5yr</div></div>';
+      html += '</div>';
+
+      html += '<div class="rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 p-3">';
+      html += '<div class="flex items-center justify-between mb-1.5"><div class="text-[9px] font-black uppercase tracking-wide text-amber-400">Executive Summary</div>';
+      html += '<span class="px-2 py-0.5 rounded-full text-[8px] font-black bg-emerald-500/15 text-emerald-400">★ ' + (d.winner_name || "") + '</span></div>';
+      html += '<p class="text-[11px] text-slate-200 leading-relaxed font-medium">' + (d.executive_summary_amharic || "") + '</p>';
+      html += '<div class="text-[8px] text-slate-500 mt-2">Source: ' + (d.data_source || "vehicles_db") + ' · scores A:' + ((d.scores||{}).item_1||"—") + ' B:' + ((d.scores||{}).item_2||"—") + '</div>';
+      html += '</div>';
+      return html;
+    }
+    function renderPropertyDashboard(listingsA, listingsB, budgetA, budgetB) {
+      var a = listingsA[0], b = listingsB[0];
+      var html = '<div class="grid grid-cols-2 gap-2">';
+      if (a) {
+        html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5"><div class="text-[8px] font-bold text-teal-400">A ≤ ' + fmtEtb(budgetA) + '</div><div class="text-[11px] font-black text-white mt-0.5">' + (a.title||a.sub_category||a.main_category||"Listing") + '</div><div class="text-[10px] text-slate-400 mt-1">' + fmtEtb(a.price) + '</div></div>';
+      } else {
+        html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 text-slate-500 text-[10px]">በበጀት A listing አልተገኘም</div>';
+      }
+      if (b) {
+        html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5"><div class="text-[8px] font-bold text-amber-400">B ≤ ' + fmtEtb(budgetB) + '</div><div class="text-[11px] font-black text-white mt-0.5">' + (b.title||b.sub_category||b.main_category||"Listing") + '</div><div class="text-[10px] text-slate-400 mt-1">' + fmtEtb(b.price) + '</div></div>';
+      } else {
+        html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 text-slate-500 text-[10px]">በበጀት B listing አልተገኘም</div>';
+      }
+      html += '</div>';
+      var pa = a ? Number(a.price)||0 : 0, pb = b ? Number(b.price)||0 : 0;
+      var downA = Math.round(pa * 0.3), downB = Math.round(pb * 0.3);
+      html += '<div class="grid grid-cols-2 gap-1.5">';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2"><div class="text-[8px] text-slate-500 font-bold">A Down 30%</div><div class="text-[11px] font-black text-white">' + fmtEtb(downA) + '</div></div>';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2"><div class="text-[8px] text-slate-500 font-bold">B Down 30%</div><div class="text-[11px] font-black text-white">' + fmtEtb(downB) + '</div></div>';
+      html += '</div>';
+      html += '<div class="rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 p-3"><div class="text-[9px] font-black uppercase text-amber-400 mb-1">Executive Summary</div>';
+      if (a && b) {
+        var better = pa <= pb ? "A" : "B";
+        html += '<p class="text-[11px] text-slate-200 leading-relaxed">ከአዲካ ገበያ በተመረጡ ሪል እስቴት listingዎች ላይ ንጽጽር። ቅድመ ክፍያ 30% ተሰልቷል። ዝቅተኛ ዋጋ ያለው አማራጭ: <b>' + better + '</b>።</p>';
+      } else {
+        html += '<p class="text-[11px] text-slate-200">በተመረጠው በጀት ውስጥ በቂ ሪል እስቴት listing አልተገኘም። ገበያውን ይመልከቱ።</p>';
+      }
+      html += '</div>';
+      return html;
+    }
+    function renderBusinessDashboard(capA, capB) {
+      function band(cap) {
+        if (cap < 200000) return { low: 0.20, mid: 0.28, high: 0.35 };
+        if (cap < 1000000) return { low: 0.18, mid: 0.25, high: 0.32 };
+        return { low: 0.15, mid: 0.22, high: 0.28 };
+      }
+      var ba = band(capA), bb = band(capB);
+      var html = '<div class="grid grid-cols-2 gap-2">';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5"><div class="text-[8px] font-bold text-teal-400">Capital A</div><div class="text-[12px] font-black text-white">' + fmtEtb(capA) + '</div><div class="text-[9px] text-slate-400 mt-1">ROI mid ' + Math.round(ba.mid*100) + '% → ' + fmtEtb(capA*ba.mid) + '/ዓመት</div></div>';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5"><div class="text-[8px] font-bold text-amber-400">Capital B</div><div class="text-[12px] font-black text-white">' + fmtEtb(capB) + '</div><div class="text-[9px] text-slate-400 mt-1">ROI mid ' + Math.round(bb.mid*100) + '% → ' + fmtEtb(capB*bb.mid) + '/ዓመት</div></div>';
+      html += '</div>';
+      html += '<div class="rounded-xl bg-slate-900/60 border border-slate-800 p-2.5 space-y-2">';
+      html += metricBarRow("Mid ROI Yield / yr", Math.round(capA*ba.mid), Math.round(capB*bb.mid), "ETB", (capA*ba.mid >= capB*bb.mid ? "item_1" : "item_2"), true);
+      html += metricBarRow("High ROI Yield / yr", Math.round(capA*ba.high), Math.round(capB*bb.high), "ETB", (capA*ba.high >= capB*bb.high ? "item_1" : "item_2"), true);
+      html += '</div>';
+      var win = (capA*ba.mid) >= (capB*bb.mid) ? "A" : "B";
+      html += '<div class="rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 p-3"><div class="text-[9px] font-black uppercase text-amber-400 mb-1">Executive Summary</div>';
+      html += '<p class="text-[11px] text-slate-200 leading-relaxed">የኢትዮጵያ ገበያ ROI ባንድ (15–35%) በካፒታል ደረጃ ተሰልቷል። መካከለኛ ምርት ላይ አማራጭ <b>' + win + '</b> ይበልጣል። ቁጥሮች ቀመር ናቸው — random የለም።</p></div>';
+      return html;
+    }
+
     document.getElementById("compareBtn").onclick = function() {
-      var c1 = document.getElementById("compareCar1").value || "Toyota Vitz 2018";
-      var c2 = document.getElementById("compareCar2").value || "Suzuki Dzire 2020";
       var resEl = document.getElementById("compareResult");
       resEl.classList.remove("hidden");
-      resEl.innerHTML = "⏳ AI ንጽጽሩን እያዘጋጀ ነው...";
+      resEl.innerHTML = '<div class="text-center text-slate-400 py-4 text-[11px] font-bold">እየተሰላ…</div>';
 
-      fetch("/api/compare-cars", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ car1: c1, car2: c2 })
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var cmp = d.comparison || d;
-        var car1 = cmp.car_1 || {};
-        var car2 = cmp.car_2 || {};
-        var winner = cmp.verdict_winner || "";
-        var verdictAm = cmp.verdict_summary_amharic || "";
+      if (compareActiveTab === "vehicles") {
+        var c1 = document.getElementById("compareCar1").value;
+        var c2 = document.getElementById("compareCar2").value;
+        fetch("/api/compare-cars", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ car_1: c1, car_2: c2, category: "vehicles" })
+        })
+        .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, d: d }; }); })
+        .then(function(x){
+          if (!x.ok || x.d.status === "error") {
+            resEl.innerHTML = '<div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">' + (x.d.message || "ንጽጽር አልተሳካም") + '</div>';
+            return;
+          }
+          resEl.innerHTML = renderVehicleDashboard(x.d);
+        })
+        .catch(function(){
+          resEl.innerHTML = '<div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">ግንኙነት አልተሳካም።</div>';
+        });
+        return;
+      }
 
-        resEl.innerHTML =
-          '<div class="space-y-3">' +
-            '<div class="grid grid-cols-2 gap-2">' +
-              // Car 1 Card
-              '<div class="p-2.5 rounded-2xl bg-white border border-[#16acbd]/30 shadow-sm flex flex-col justify-between space-y-2">' +
-                '<div>' +
-                  '<div class="font-extrabold text-xs text-slate-900 truncate flex items-center gap-1">' +
-                    '<span>🚗</span>' +
-                    '<span class="truncate">' + esc(car1.name || c1) + '</span>' +
-                  '</div>' +
-                  (winner && car1.name && winner.toLowerCase().indexOf(car1.name.toLowerCase().split(" ")[0]) !== -1 ? '<span class="inline-block mt-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-[8px] border border-emerald-200">🏆 ተመራጭ</span>' : '') +
-                  '<div class="mt-2 space-y-1 text-[10px] text-slate-600">' +
-                    '<div>⚙️ <b>ሞተር:</b> ' + esc(car1.engine || "1.3L Petrol") + '</div>' +
-                    '<div>⛽ <b>ፍጆታ:</b> <span class="text-emerald-600 font-bold">' + esc(car1.fuel_consumption_kml || "16 KM/L") + '</span></div>' +
-                    '<div>💵 <b>ወርሃዊ ነዳጅ:</b> ' + esc(car1.monthly_fuel_cost_etb || "5,000 ETB") + '</div>' +
-                    '<div>🛠️ <b>መለዋወጫ:</b> ' + esc(car1.parts_availability_rating || "5/5") + '</div>' +
-                    '<div>📈 <b>የመሸጫ እሴት:</b> ' + esc(car1.resale_retention_pct || "92%") + '</div>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="pt-1.5 border-t border-slate-100 text-[9px] space-y-1">' +
-                  '<div class="font-bold text-emerald-700">ጥንካሬዎች (Pros):</div>' +
-                  ((car1.pros || []).map(function(p){ return '<div class="text-slate-600 flex items-start gap-0.5 leading-tight"><span class="text-emerald-500">✔</span><span>' + esc(p) + '</span></div>'; }).join('')) +
-                  '<div class="font-bold text-rose-600 mt-1">ጉድለቶች (Cons):</div>' +
-                  ((car1.cons || []).map(function(c){ return '<div class="text-slate-600 flex items-start gap-0.5 leading-tight"><span class="text-rose-500">•</span><span>' + esc(c) + '</span></div>'; }).join('')) +
-                '</div>' +
-              '</div>' +
-              // Car 2 Card
-              '<div class="p-2.5 rounded-2xl bg-white border border-[#16acbd]/30 shadow-sm flex flex-col justify-between space-y-2">' +
-                '<div>' +
-                  '<div class="font-extrabold text-xs text-slate-900 truncate flex items-center gap-1">' +
-                    '<span>🚗</span>' +
-                    '<span class="truncate">' + esc(car2.name || c2) + '</span>' +
-                  '</div>' +
-                  (winner && car2.name && winner.toLowerCase().indexOf(car2.name.toLowerCase().split(" ")[0]) !== -1 ? '<span class="inline-block mt-1 px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold text-[8px] border border-emerald-200">🏆 ተመራጭ</span>' : '') +
-                  '<div class="mt-2 space-y-1 text-[10px] text-slate-600">' +
-                    '<div>⚙️ <b>ሞተር:</b> ' + esc(car2.engine || "1.2L Petrol") + '</div>' +
-                    '<div>⛽ <b>ፍጆታ:</b> <span class="text-emerald-600 font-bold">' + esc(car2.fuel_consumption_kml || "20 KM/L") + '</span></div>' +
-                    '<div>💵 <b>ወርሃዊ ነዳጅ:</b> ' + esc(car2.monthly_fuel_cost_etb || "4,200 ETB") + '</div>' +
-                    '<div>🛠️ <b>መለዋወጫ:</b> ' + esc(car2.parts_availability_rating || "4.2/5") + '</div>' +
-                    '<div>📈 <b>የመሸጫ እሴት:</b> ' + esc(car2.resale_retention_pct || "88%") + '</div>' +
-                  '</div>' +
-                '</div>' +
-                '<div class="pt-1.5 border-t border-slate-100 text-[9px] space-y-1">' +
-                  '<div class="font-bold text-emerald-700">ጥንካሬዎች (Pros):</div>' +
-                  ((car2.pros || []).map(function(p){ return '<div class="text-slate-600 flex items-start gap-0.5 leading-tight"><span class="text-emerald-500">✔</span><span>' + esc(p) + '</span></div>'; }).join('')) +
-                  '<div class="font-bold text-rose-600 mt-1">ጉድለቶች (Cons):</div>' +
-                  ((car2.cons || []).map(function(c){ return '<div class="text-slate-600 flex items-start gap-0.5 leading-tight"><span class="text-rose-500">•</span><span>' + esc(c) + '</span></div>'; }).join('')) +
-                '</div>' +
-              '</div>' +
-            '</div>' +
-            // Amharic Summary Card
-            (verdictAm ? 
-              '<div class="p-3 bg-[#b5eff3]/40 rounded-2xl border border-[#16acbd]/40 text-slate-800 text-[11px] leading-relaxed">' +
-                '<div class="font-extrabold text-[#0e7490] text-xs mb-1 flex items-center gap-1"><span>💡</span><span>የባለሙያ ውሳኔና ምክረ-ሀሳብ:</span></div>' +
-                '<p class="whitespace-pre-line">' + esc(verdictAm) + '</p>' +
-              '</div>' : '') +
-          '</div>';
-      })
-      .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ንጽጽሩን ማመንጨት አልተቻለም። እባክዎ እንደገና ይሞክሩ።</div>'; });
+      if (compareActiveTab === "property") {
+        var b1 = Number(document.getElementById("comparePropBudget1").value) || 0;
+        var b2 = Number(document.getElementById("comparePropBudget2").value) || 0;
+        fetch("/api/explorer/listings?page=1&limit=40&order=DESC&active_only=1&type=SELL")
+          .then(function(r){ return r.json(); })
+          .then(function(data){
+            var items = data.items || data.listings || [];
+            function isHouse(it) {
+              var c = String(it.main_category || it.category || "");
+              return c === "ቤት" || /ቤት|property|house|land|መሬት/i.test(c);
+            }
+            function parseP(v){ var n = Number(String(v||"").replace(/[^\d.]/g,"")); return isFinite(n)?n:0; }
+            var houses = items.filter(isHouse);
+            var listA = houses.filter(function(it){ return parseP(it.price) > 0 && parseP(it.price) <= b1; }).sort(function(a,b){ return parseP(b.price)-parseP(a.price); });
+            var listB = houses.filter(function(it){ return parseP(it.price) > 0 && parseP(it.price) <= b2; }).sort(function(a,b){ return parseP(b.price)-parseP(a.price); });
+            resEl.innerHTML = renderPropertyDashboard(listA, listB, b1, b2);
+          })
+          .catch(function(){
+            resEl.innerHTML = '<div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[11px]">ገበያውን ማግኘት አልተቻለም።</div>';
+          });
+        return;
+      }
+
+      if (compareActiveTab === "business") {
+        var capA = Number(document.getElementById("compareBiz1").value) || 0;
+        var capB = Number(document.getElementById("compareBiz2").value) || 0;
+        resEl.innerHTML = renderBusinessDashboard(capA, capB);
+      }
     };
+
 
     // Contract Generate Action
     document.getElementById("contractGenerateBtn").onclick = function() {
