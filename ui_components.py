@@ -167,6 +167,27 @@ SELLER_FORM_HTML = r"""
       const canNext1 = category && (category === 'መኪና' ? (carModel || carType || condition) : (houseType || locationArea));
       const canSubmit = Boolean(description && description.trim());
 
+      const resetForm = () => {
+        setStep(1);
+        setCarModel('');
+        setFuel('');
+        setTransmission('');
+        setMileage('');
+        setCondition('');
+        setCarType('');
+        setLocationArea('');
+        setBedrooms('');
+        setBathrooms('');
+        setParking(false);
+        setHouseCondition('');
+        setHouseType('');
+        setPrice('');
+        setNegotiable(true);
+        setUrgent(false);
+        setDescription('');
+        setPhotos([]);
+      };
+
       const submit = async () => {
         if (!canSubmit || submitting) return;
         setSubmitting(true);
@@ -200,9 +221,15 @@ SELLER_FORM_HTML = r"""
             body: JSON.stringify(data)
           });
           const result = await res.json();
-          if (result.status === 'success') {
+          if (result.status === 'success' || res.ok) {
             setStatus('ok');
-            setTimeout(() => tg.close(), 2500);
+            resetForm();
+            try { localStorage.removeItem('adika_draft_seller'); } catch (e) {}
+            setTimeout(() => {
+              if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
+                try { window.Telegram.WebApp.close(); } catch(e) {}
+              }
+            }, 3000);
           } else {
             setStatus(result.message || 'Error');
             setSubmitting(false);
@@ -216,16 +243,28 @@ SELLER_FORM_HTML = r"""
       if (status === 'ok') {
         return (
           <div className="min-h-screen flex items-center justify-center p-6 bg-[#b5eff3]">
-            <div className="bg-white rounded-3xl p-6 text-center space-y-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/60 max-w-sm">
+            <div className="bg-white rounded-3xl p-6 text-center space-y-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/60 max-w-sm w-full">
               <div className="w-16 h-16 rounded-full bg-[#16acbd]/15 text-[#16acbd] flex items-center justify-center text-3xl mx-auto">✓</div>
               <h2 className="font-bold text-base text-slate-800">
-                <span className="lang-am">ማስታወቂያዎ ተመዝግቧል!</span>
-                <span className="lang-en">Successfully Posted!</span>
+                <span className="lang-am">ማስታወቂያዎ በተሳካ ሁኔታ ተመዝግቧል!</span>
+                <span className="lang-en">Listing Successfully Posted!</span>
               </h2>
               <p className="font-medium text-xs text-slate-600 leading-relaxed px-2">
                 <span className="lang-am">ንብረትዎ ለተረጋገጡ ደላሎችና ገዢዎች ተሰራጭቷል።</span>
-                <span className="lang-en">Your listing has been submitted and broadcasted to verified brokers.</span>
+                <span className="lang-en">Your listing has been submitted and broadcasted to verified buyers & brokers.</span>
               </p>
+              <div className="flex flex-col gap-2 pt-2">
+                <a href="/explorer"
+                  className="w-full py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md text-center block">
+                  <span className="lang-am">ወደ ገበያ ሂድ</span>
+                  <span className="lang-en">View Marketplace</span>
+                </a>
+                <button type="button" onClick={() => { setStatus(''); resetForm(); }}
+                  className="w-full py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">
+                  <span className="lang-am">+ ሌላ ማስታወቂያ ልቀቅ</span>
+                  <span className="lang-en">+ Post Another</span>
+                </button>
+              </div>
             </div>
           </div>
         );
@@ -489,8 +528,17 @@ SELLER_FORM_HTML = r"""
               </button>
             ) : (
               <button type="button" onClick={submit} disabled={!canSubmit || submitting}
-                className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1">
-                {submitting ? '...' : <><span className="lang-am">🚀 ማስታወቂያ መዝግብ</span><span className="lang-en">🚀 Submit Listing</span></>}
+                className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
+                {submitting ? (
+                  <span className="flex items-center gap-1.5">
+                    <span>Posting... ⏳</span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="lang-am">🚀 ማስታወቂያ መዝግብ</span>
+                    <span className="lang-en">🚀 Submit Listing</span>
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -584,6 +632,13 @@ BUYER_FORM_HTML = r"""
       const [status, setStatus] = useState('');
       const [submitting, setSubmitting] = useState(false);
 
+      const resetForm = () => {
+        setBudgetMin('');
+        setBudgetMax('');
+        setCreateAlert(true);
+        setDetails('');
+      };
+
       const submit = async () => {
         if (!details || submitting) return;
         setSubmitting(true);
@@ -604,9 +659,15 @@ BUYER_FORM_HTML = r"""
             body: JSON.stringify(data)
           });
           const result = await res.json();
-          if (result.status === 'success') {
+          if (result.status === 'success' || res.ok) {
             setStatus('ok');
-            setTimeout(() => tg.close(), 2500);
+            resetForm();
+            try { localStorage.removeItem('adika_draft_buyer'); } catch (e) {}
+            setTimeout(() => {
+              if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
+                try { window.Telegram.WebApp.close(); } catch(e) {}
+              }
+            }, 3000);
           } else {
             setStatus(result.message || 'Submission error');
             setSubmitting(false);
@@ -620,16 +681,28 @@ BUYER_FORM_HTML = r"""
       if (status === 'ok') {
         return (
           <div className="min-h-screen flex items-center justify-center p-6 bg-[#b5eff3]">
-            <div className="bg-white rounded-3xl p-6 text-center space-y-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/60 max-w-sm">
+            <div className="bg-white rounded-3xl p-6 text-center space-y-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/60 max-w-sm w-full">
               <div className="w-16 h-16 rounded-full bg-[#16acbd]/15 text-[#16acbd] flex items-center justify-center text-3xl mx-auto">✓</div>
               <h2 className="font-bold text-base text-slate-800">
-                <span className="lang-am">ጥያቄዎ ተመዝግቧል!</span>
+                <span className="lang-am">ጥያቄዎ በተሳካ ሁኔታ ተመዝግቧል!</span>
                 <span className="lang-en">Request Broadcasted!</span>
               </h2>
               <p className="font-medium text-xs text-slate-600 leading-relaxed px-2">
-                <span className="lang-am">የፍላጎት ጥያቄዎ ለተረጋገጡ ደላሎች ተሰራጭቷል።</span>
-                <span className="lang-en">Your request has been saved and shared with certified brokers.</span>
+                <span className="lang-am">የፍላጎት ጥያቄዎ ለተረጋገጡ ደላሎችና ሻጮች ተሰራጭቷል።</span>
+                <span className="lang-en">Your request has been saved and shared with certified brokers and sellers.</span>
               </p>
+              <div className="flex flex-col gap-2 pt-2">
+                <a href="/explorer"
+                  className="w-full py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md text-center block">
+                  <span className="lang-am">ወደ ገበያ ሂድ</span>
+                  <span className="lang-en">View Marketplace</span>
+                </a>
+                <button type="button" onClick={() => { setStatus(''); resetForm(); }}
+                  className="w-full py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">
+                  <span className="lang-am">+ ሌላ ጥያቄ ላክ</span>
+                  <span className="lang-en">+ Submit Another</span>
+                </button>
+              </div>
             </div>
           </div>
         );
@@ -747,8 +820,17 @@ BUYER_FORM_HTML = r"""
               <span className="lang-am">ሰርዝ</span><span className="lang-en">Cancel</span>
             </button>
             <button type="button" onClick={submit} disabled={!details || submitting}
-              className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1">
-              {submitting ? '...' : <><span className="lang-am">📨 ጥያቄውን ላክ</span><span className="lang-en">📨 Broadcast</span></>}
+              className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
+              {submitting ? (
+                <span className="flex items-center gap-1.5">
+                  <span>Broadcasting... ⏳</span>
+                </span>
+              ) : (
+                <>
+                  <span className="lang-am">📨 ጥያቄውን ላክ</span>
+                  <span className="lang-en">📨 Broadcast Request</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -1860,11 +1942,12 @@ EXPLORER_HTML = r"""
       if (!iso) return "";
       try {
         var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-        if (secs < 60) return "አሁን";
-        if (secs < 3600) return "ከ " + Math.floor(secs / 60) + " ደቂቃ በፊት";
-        if (secs < 86400) return "ከ " + Math.floor(secs / 3600) + " ሰዓት በፊት";
-        if (secs < 86400 * 7) return "ከ " + Math.floor(secs / 86400) + " ቀን በፊት";
-        return "ከ " + Math.floor(secs / 86400) + " ቀን በፊት";
+        if (secs < 60) return "Just now";
+        if (secs < 3600) return Math.floor(secs / 60) + "m ago";
+        if (secs < 86400) return Math.floor(secs / 3600) + "h ago";
+        if (secs < 86400 * 30) return Math.floor(secs / 86400) + "d ago";
+        if (secs < 86400 * 365) return Math.floor(secs / (86400 * 7)) + "w ago";
+        return Math.floor(secs / (86400 * 365)) + "y ago";
       } catch (e) { return ""; }
     }
 
@@ -2241,7 +2324,18 @@ EXPLORER_HTML = r"""
       if (!items || !items.length) {
         if (!append) {
           statusEl.style.display = "block";
-          statusEl.innerHTML = '<div class="text-2xl mb-1">📭</div><div class="text-slate-600 font-bold text-xs"><span class="lang-am">ምንም ንብረት አልተገኘም</span><span class="lang-en">No listings found</span></div>';
+          statusEl.innerHTML =
+            '<div class="py-12 px-4 text-center">' +
+              '<div class="text-4xl mb-2">📭</div>' +
+              '<div class="text-slate-700 font-bold text-sm mb-1">' +
+                '<span class="lang-am">ምንም አይነት ማስታወቂያ አልተገኘም</span>' +
+                '<span class="lang-en">No listings found</span>' +
+              '</div>' +
+              '<p class="text-slate-500 text-xs">' +
+                '<span class="lang-am">እባክዎ ሌላ ምድብ ወይም የፍለጋ ቃል ይሞክሩ</span>' +
+                '<span class="lang-en">Please try a different category or search term</span>' +
+              '</p>' +
+            '</div>';
         }
         moreBtn.classList.add("hidden");
         return;
@@ -2325,20 +2419,25 @@ EXPLORER_HTML = r"""
       load(false);
     };
 
-    catsEl.onclick = function (ev) {
-      var el = ev.target;
-      while (el && el !== catsEl && !el.getAttribute("data-id")) el = el.parentNode;
-      if (!el || el === catsEl) return;
-      state.category = el.getAttribute("data-id") || "";
+    function selectCategory(catId) {
+      state.category = (!catId || catId === "all" || catId === "null" || catId === "undefined" || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም") ? "" : catId;
       var buttons = catsEl.querySelectorAll("button");
       buttons.forEach(function(b) {
-        if ((b.getAttribute("data-id") || "") === state.category) {
+        var bId = b.getAttribute("data-id") || "";
+        if ((!state.category && (!bId || bId === "all")) || (state.category && bId === state.category)) {
           b.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm";
         } else {
           b.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
         }
       });
       load(false);
+    }
+
+    catsEl.onclick = function (ev) {
+      var btn = ev.target.closest("button");
+      if (!btn || !catsEl.contains(btn)) return;
+      var catId = btn.getAttribute("data-id") || "";
+      selectCategory(catId);
     };
 
     moreBtn.onclick = function () { load(true); };
@@ -3501,7 +3600,7 @@ EXPLORER_HTML = r"""
       qInput.value = "";
       aiPrompt.value = "";
       filterBanner.classList.add("hidden");
-      load(false);
+      selectCategory("");
     };
 
     // Bottom Navigation Handlers
