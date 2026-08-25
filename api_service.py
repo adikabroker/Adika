@@ -20,7 +20,7 @@ from flask import request, jsonify, Response
 from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY
 from models import (
     LAST_DB_ERROR,
-    get_db_connection, get_placeholder, add_listing, get_listing_by_id,
+    get_db_connection, get_placeholder, is_postgres, add_listing, get_listing_by_id,
     update_listing_status, save_search_alert, expire_old_listings,
     get_active_brokers, get_platform_stats, count_listings, count_brokers,
 )
@@ -1391,6 +1391,16 @@ def register_api_routes(web_app):
             if req_id:
                 notification_text = f"🛍️ **New Listing (#ADK-{req_id})**\n\n{full_desc}"
                 _send_notification_safe(notification_text, req_id, uid)
+                try:
+                    _dispatch_listing_alerts(
+                        category=(category or "መኪና"),
+                        price=str(price or ""),
+                        title=(resolved_sub or car_model or "ንብረት"),
+                        listing_id=req_id,
+                        model_hint=(car_model or resolved_sub or ""),
+                    )
+                except Exception as _al_err:
+                    logger.warning("alert dispatch: %s", _al_err)
                 return jsonify({
                     "success": True,
                     "status": "success",
@@ -1402,6 +1412,201 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"submit_listing error: {e}", exc_info=True)
             return jsonify({"success": False, "status": "error", "message": str(e)}), 500
+
+
+
+    @web_app.route('/api/recommendations', methods=['POST', 'OPTIONS'])
+    def api_recommendations():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            history = data.get('viewHistory') or data.get('history') or []
+            exclude_id = data.get('exclude_id')
+            items = []
+            intent = "recent"
+            intent_label = "የቅርብ ጊዜ ዝርዝሮች"
+            conn = get_db_connection()
+            cur = conn.cursor()
+            p = get_placeholder()
+            like = "ILIKE" if is_postgres() else "LIKE"
+
+            def _row_dict(row):
+                if isinstance(row, dict):
+                    return dict(row)
+                return dict(zip([c[0] for c in cur.description], row))
+
+            def _price_num(v):
+                try:
+                    return float(str(v or "0").replace(",", "").replace("ETB", "").strip() or 0)
+                except Exception:
+                    return 0.0
+
+            prices = [_price_num(h.get("price")) for h in history if h]
+            prices = [x for x in prices if x > 0]
+            categories = [str(h.get("category") or "") for h in history if h and h.get("category")]
+            models = [str(h.get("model") or h.get("brand") or "").strip() for h in history if h]
+            models = [m for m in models if m]
+            fuels = [str(h.get("fuel_type") or "").strip() for h in history if h and h.get("fuel_type")]
+
+            avg_price = sum(prices) / len(prices) if prices else 0
+            # Intent detection
+            price_focus = False
+            model_focus = False
+            if len(prices) >= 2:
+                mn, mx = min(prices), max(prices)
+                mid = (mn + mx) / 2 or 1
+                if (mx - mn) / mid <= 0.15:
+                    price_focus = True
+            # same model twice
+            from collections import Counter
+            mc = Counter([m.lower() for m in models])
+            top_model = None
+            if mc:
+                top_model, cnt = mc.most_common(1)[0]
+                if cnt >= 2:
+                    model_focus = True
+            target_cat = None
+            if categories:
+                target_cat = Counter(categories).most_common(1)[0][0]
+
+            where = ["(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))"]
+            params = []
+            if exclude_id:
+                where.append(f"id <> {p}")
+                params.append(exclude_id)
+
+            if model_focus and top_model:
+                intent = "model"
+                intent_label = "በተመሳሳይ ሞዴል/ብራንድ"
+                where.append(f"(CAST(COALESCE(sub_category,'') AS TEXT) {like} {p} OR CAST(COALESCE(description,'') AS TEXT) {like} {p} OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p})")
+                params.extend([f"%{top_model}%"] * 3)
+            elif price_focus and avg_price > 0:
+                intent = "price"
+                intent_label = "በተመሳሳይ የዋጋ ክልል"
+                if target_cat:
+                    where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
+                    params.extend([target_cat, f"%{target_cat}%"])
+            elif target_cat:
+                intent = "category"
+                intent_label = "በተመሳሳይ ምድብ"
+                where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
+                params.extend([target_cat, f"%{target_cat}%"])
+
+            where_sql = " AND ".join(where)
+            try:
+                cur.execute(
+                    f"SELECT * FROM listings WHERE {where_sql} ORDER BY id DESC LIMIT {p}",
+                    list(params) + [40],
+                )
+                rows = cur.fetchall() or []
+            except Exception as qe:
+                logger.warning("recommendations query: %s", qe)
+                cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p}", (12,))
+                rows = cur.fetchall() or []
+
+            lo = avg_price * 0.85 if avg_price else 0
+            hi = avg_price * 1.15 if avg_price else 0
+            scored = []
+            for row in rows:
+                it = _row_dict(row)
+                pr = _price_num(it.get("price"))
+                if avg_price and (price_focus or intent in ("price", "category", "model")):
+                    if lo and hi and pr and not (lo <= pr <= hi * 1.25):
+                        # soft filter: keep some outside
+                        if intent == "price" and not (lo * 0.9 <= pr <= hi * 1.2):
+                            continue
+                scored.append(it)
+            items = scored[:6]
+            if len(items) < 6:
+                # pad with latest
+                try:
+                    cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p}", (12,))
+                    for row in cur.fetchall() or []:
+                        it = _row_dict(row)
+                        if exclude_id and str(it.get("id")) == str(exclude_id):
+                            continue
+                        if any(str(x.get("id")) == str(it.get("id")) for x in items):
+                            continue
+                        items.append(it)
+                        if len(items) >= 6:
+                            break
+                except Exception:
+                    pass
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+            # Serialize minimally for cards
+            out = []
+            for it in items[:6]:
+                extra = it.get("extra_data") or {}
+                if isinstance(extra, str):
+                    try:
+                        extra = json.loads(extra)
+                    except Exception:
+                        extra = {}
+                out.append({
+                    "id": it.get("id"),
+                    "title": it.get("sub_category") or it.get("main_category") or "ንብረት",
+                    "main_category": it.get("main_category"),
+                    "sub_category": it.get("sub_category"),
+                    "price": it.get("price"),
+                    "photo_urls": it.get("photo_id") or it.get("photo_urls"),
+                    "listing_photos": it.get("photo_id"),
+                    "created_at": str(it.get("created_at") or ""),
+                    "extra_data": extra,
+                    "req_type": it.get("req_type"),
+                    "action_type": it.get("action_type"),
+                    "description": (it.get("description") or "")[:200],
+                })
+            return jsonify({
+                "success": True,
+                "intent": intent,
+                "intent_label": intent_label,
+                "items": out,
+            })
+        except Exception as e:
+            logger.error(f"api_recommendations: {e}", exc_info=True)
+            return jsonify({"success": False, "items": [], "message": str(e)}), 500
+
+    @web_app.route('/api/save-alert', methods=['POST', 'OPTIONS'])
+    def api_save_alert():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            user_id = data.get("user_id") or data.get("chat_id") or 0
+            try:
+                uid = int(user_id) if str(user_id).isdigit() else 0
+            except Exception:
+                uid = 0
+            # Telegram WebApp user id from initData if provided
+            if not uid:
+                try:
+                    tg_user = (data.get("telegram_user") or {})
+                    if isinstance(tg_user, dict) and tg_user.get("id"):
+                        uid = int(tg_user["id"])
+                except Exception:
+                    pass
+            category = data.get("target_category") or data.get("category") or "መኪና"
+            min_price = str(data.get("min_price") or data.get("budget_min") or "0")
+            max_price = str(data.get("max_price") or data.get("budget_max") or "999999999")
+            model = (data.get("model") or data.get("target_model") or "")[:120]
+            if not uid:
+                return jsonify({"success": False, "message": "user_id / chat_id ያስፈልጋል (Telegram Login)"}), 400
+            alert_id = save_search_alert(uid, category, min_price, max_price, target_model=model)
+            if not alert_id:
+                return jsonify({"success": False, "message": "Alert ማስቀመጥ አልተቻለም"}), 500
+            return jsonify({
+                "success": True,
+                "alert_id": alert_id,
+                "message": "🔔 ማሳወቂያ ተመዝግቧል! ተመሳሳይ ንብረት ሲለቀቅ በቴሌግራም ይደርስዎታል።",
+            })
+        except Exception as e:
+            logger.error(f"api_save_alert: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
 
 
     @web_app.route('/api/submit-request', methods=['POST'])
