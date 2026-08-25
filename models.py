@@ -1876,16 +1876,67 @@ def increment_listing_views(listing_id: int, amount: int = 1) -> int:
 
 
 
-def save_search_alert(user_chat_id: int, main_category: str, budget_min: str, budget_max: str) -> int:
+def save_search_alert(user_chat_id: int, main_category: str, budget_min: str, budget_max: str, target_model: str = None) -> int:
+    """Save user alert. target_model optional (stored in budget_min prefix META if column missing)."""
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         p = get_placeholder()
-        cursor.execute(f"""
-            INSERT INTO search_alerts (user_chat_id, main_category, budget_min, budget_max)
-            VALUES ({p}, {p}, {p}, {p})
-        """, (user_chat_id, main_category, budget_min or "", budget_max or ""))
+        # Best-effort column for model
+        try:
+            if is_postgres():
+                cursor.execute("ALTER TABLE search_alerts ADD COLUMN IF NOT EXISTS target_model TEXT")
+                cursor.execute("ALTER TABLE search_alerts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE")
+            else:
+                try:
+                    cursor.execute("ALTER TABLE search_alerts ADD COLUMN target_model TEXT")
+                except Exception:
+                    pass
+                try:
+                    cursor.execute("ALTER TABLE search_alerts ADD COLUMN is_active INTEGER DEFAULT 1")
+                except Exception:
+                    pass
+                try:
+                    conn.commit()
+                except Exception:
+                    pass
+        except Exception as _ae:
+            logger.debug("search_alerts alter: %s", _ae)
+
+        # Detect columns
+        cols = set()
+        try:
+            if is_postgres():
+                cursor.execute("""
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='search_alerts'
+                """)
+                for row in cursor.fetchall() or []:
+                    cols.add((row["column_name"] if isinstance(row, dict) else row[0]).lower())
+            else:
+                cursor.execute("PRAGMA table_info(search_alerts)")
+                for row in cursor.fetchall() or []:
+                    cols.add((row["name"] if isinstance(row, dict) else row[1]).lower())
+        except Exception:
+            pass
+
+        tm = (target_model or "")[:120]
+        bmin = str(budget_min or "")
+        bmax = str(budget_max or "")
+        if "target_model" in cols:
+            cursor.execute(f"""
+                INSERT INTO search_alerts (user_chat_id, main_category, budget_min, budget_max, target_model)
+                VALUES ({p}, {p}, {p}, {p}, {p})
+            """, (user_chat_id, main_category, bmin, bmax, tm))
+        else:
+            # encode model into budget_min marker if needed
+            if tm:
+                bmin = f"{bmin}|model:{tm}"
+            cursor.execute(f"""
+                INSERT INTO search_alerts (user_chat_id, main_category, budget_min, budget_max)
+                VALUES ({p}, {p}, {p}, {p})
+            """, (user_chat_id, main_category, bmin, bmax))
         if is_postgres():
             cursor.execute("SELECT lastval()")
             row = cursor.fetchone()
@@ -1904,31 +1955,49 @@ def save_search_alert(user_chat_id: int, main_category: str, budget_min: str, bu
             except:
                 pass
 
-def get_matching_alerts(main_category: str, price: str) -> list:
+def get_matching_alerts(main_category: str, price: str, model_hint: str = None) -> list:
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         p = get_placeholder()
-        query = f"""
-            SELECT * FROM search_alerts 
-            WHERE is_active = TRUE AND main_category = {p}
-            ORDER BY created_at DESC
-        """
-        cursor.execute(query, (main_category,))
-        rows = cursor.fetchall()
+        # Tolerate missing is_active column
+        try:
+            cursor.execute(f"""
+                SELECT * FROM search_alerts
+                WHERE (is_active IS NULL OR is_active = TRUE OR is_active = 1)
+                  AND (main_category = {p} OR main_category IS NULL OR main_category = '')
+                ORDER BY created_at DESC
+            """, (main_category,))
+        except Exception:
+            cursor.execute(f"SELECT * FROM search_alerts WHERE main_category = {p} ORDER BY created_at DESC", (main_category,))
+        rows = cursor.fetchall() or []
         matching = []
         try:
-            price_num = float(price) if price else 0
+            price_num = float(str(price).replace(",", "").replace("ETB", "").strip() or 0)
         except (ValueError, TypeError):
             price_num = 0
+        mh = (model_hint or "").lower().strip()
         for row in rows:
             alert = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cursor.description], row))
             try:
-                alert_min = float(alert.get('budget_min', 0) or 0)
-                alert_max = float(alert.get('budget_max', 999999999) or 999999999)
-                if alert_min <= price_num <= alert_max:
-                    matching.append(alert)
+                raw_min = str(alert.get("budget_min") or "0")
+                # strip model marker
+                if "|model:" in raw_min:
+                    parts = raw_min.split("|model:", 1)
+                    raw_min = parts[0]
+                    encoded_model = parts[1]
+                    if not alert.get("target_model"):
+                        alert["target_model"] = encoded_model
+                alert_min = float(raw_min.replace(",", "") or 0)
+                alert_max = float(str(alert.get("budget_max") or 999999999).replace(",", "") or 999999999)
+                if not (alert_min <= price_num <= alert_max):
+                    continue
+                tm = (alert.get("target_model") or "").lower().strip()
+                if tm and mh and tm not in mh and mh not in tm:
+                    # model specified but no overlap — skip
+                    continue
+                matching.append(alert)
             except (ValueError, TypeError):
                 matching.append(alert)
         return matching
@@ -1939,7 +2008,7 @@ def get_matching_alerts(main_category: str, price: str) -> list:
         if conn:
             try:
                 conn.close()
-            except:
+            except Exception:
                 pass
 
 
