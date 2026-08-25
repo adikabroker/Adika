@@ -190,7 +190,8 @@ SELLER_FORM_HTML = r"""
         setPhotos([]);
       };
 
-      const submit = async () => {
+      const submitListing = async (event) => {
+        if (event && event.preventDefault) event.preventDefault();
         if (!canSubmit || submitting) return;
         setSubmitting(true);
         setStatus('');
@@ -223,25 +224,32 @@ SELLER_FORM_HTML = r"""
             method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify(data)
           });
-          const result = await res.json();
-          if (result.status === 'success' || res.ok) {
+          const result = await res.json().catch(() => ({}));
+          if (res.ok && (result.status === 'success' || !result.status)) {
             setStatus('ok');
             resetForm();
             try { localStorage.removeItem('adika_draft_seller'); } catch (e) {}
             setTimeout(() => {
               if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
                 try { window.Telegram.WebApp.close(); } catch(e) {}
+              } else {
+                window.location.href = "/";
               }
             }, 3000);
           } else {
-            setStatus(result.message || 'Error');
+            const msg = result.message || 'የማስታወቂያ ምዝገባው አልተሳካም። እባክዎ እንደገና ይሞክሩ።';
+            setStatus(msg);
+            alert(msg);
             setSubmitting(false);
           }
         } catch (e) {
-          setStatus('Network error');
+          const errMsg = 'የኔትወርክ ስህተት አጋጥሟል። እባክዎ እንደገና ይሞክሩ።';
+          setStatus(errMsg);
+          alert(errMsg);
           setSubmitting(false);
         }
       };
+      window.submitListing = submitListing;
 
       if (status === 'ok') {
         return (
@@ -545,7 +553,7 @@ SELLER_FORM_HTML = r"""
                 <span className="lang-am">ቀጣይ →</span><span className="lang-en">Next →</span>
               </button>
             ) : (
-              <button type="button" onClick={submit} disabled={!canSubmit || submitting}
+              <button id="submitBtn" type="button" onClick={(e) => submitListing(e)} disabled={!canSubmit || submitting}
                 className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
                 {submitting ? (
                   <span className="flex items-center gap-1.5 font-bold">
