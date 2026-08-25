@@ -164,6 +164,53 @@ SELLER_FORM_HTML = r"""
       };
 
       const removePhoto = (i) => setPhotos(prev => prev.filter((_, idx) => idx !== i));
+
+      const aiAutofillFromPhoto = async () => {
+        if (!photos.length) { setPhotoError('መጀመሪያ ፎቶ ይጫኑ'); return; }
+        setPhotoBusy(true); setPhotoError('');
+        try {
+          const res = await fetch('/api/ai-autofill', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ image: photos[0] })
+          });
+          const d = await res.json();
+          const f = d.autofill || d.data || d;
+          if (d.status === 'error') { setPhotoError(d.message || 'AI failed'); return; }
+          if (f.category === 'property' || f.category === 'ቤት') setCategory('ቤት');
+          else if (f.category) setCategory('መኪና');
+          if (f.title || f.car_model || f.model) setCarModel(f.title || f.car_model || f.model || '');
+          if (f.transmission) setTransmission(f.transmission);
+          if (f.fuel_type || f.fuel) setFuel(f.fuel_type || f.fuel);
+          if (f.condition) setCondition(f.condition);
+          if (f.mileage) setMileage(String(f.mileage));
+          if (f.location || f.location_area) setLocationArea(f.location || f.location_area);
+          if (f.bedrooms) setBedrooms(String(f.bedrooms));
+          if (f.house_type) setHouseType(f.house_type);
+          if (f.suggested_price || f.price) setPrice(formatPrice(String(f.suggested_price || f.price)));
+          if (f.description) setDescription(f.description);
+        } catch (e) {
+          setPhotoError('AI autofill network error');
+        } finally { setPhotoBusy(false); }
+      };
+
+      const aiGenerateDescription = async () => {
+        setPhotoBusy(true);
+        try {
+          const res = await fetch('/api/generate-description', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              category, car_model: carModel, price: parsePrice(price),
+              fuel_type: fuel, transmission, condition, mileage,
+              location_area: locationArea, bedrooms, house_type: houseType,
+              notes: description
+            })
+          });
+          const d = await res.json();
+          if (d.description) setDescription(d.description);
+        } catch (e) {}
+        finally { setPhotoBusy(false); }
+      };
+
       const canNext1 = category && (category === 'መኪና' ? (carModel || carType || condition) : (houseType || locationArea));
       const canSubmit = Boolean(description && description.trim());
 
@@ -385,10 +432,16 @@ SELLER_FORM_HTML = r"""
                   )}
 
                   <div>
-                    <label className="text-xs font-bold text-slate-700 mb-1 block">
-                      <span className="lang-am">📝 ዝርዝር መግለጫ</span>
-                      <span className="lang-en">📝 Description</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1 gap-2">
+                      <label className="text-xs font-bold text-slate-700 block">
+                        <span className="lang-am">📝 ዝርዝር መግለጫ</span>
+                        <span className="lang-en">📝 Description</span>
+                      </label>
+                      <button type="button" onClick={aiGenerateDescription} disabled={photoBusy}
+                        className="text-[10px] font-bold text-[#0e7490] bg-[#16acbd]/10 hover:bg-[#16acbd]/20 px-2 py-1 rounded-lg shrink-0">
+                        ✨ AI መግለጫ
+                      </button>
+                    </div>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
                       placeholder="ስለ ንብረቱ ተጨማሪ መረጃ ይግለጹ / Add specifications..."
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
@@ -440,6 +493,11 @@ SELLER_FORM_HTML = r"""
                         ))}
                       </div>
                     )}
+                    <button type="button" onClick={aiAutofillFromPhoto} disabled={photoBusy || photos.length===0}
+                      className="w-full mt-2 py-2 rounded-xl bg-slate-900 text-white text-[11px] font-bold disabled:opacity-40 active:scale-[0.99]">
+                      🔍 ፎቶ → AI አውቶ-ሞላ (Photo-to-Listing)
+                    </button>
+                    {photoError ? <div className="text-[10px] text-rose-600 font-bold mt-1">{photoError}</div> : null}
                   </div>
                 </div>
               )}
@@ -1433,6 +1491,7 @@ EXPLORER_HTML = r"""
         </div>
 
         <div id="modalSpecs" class="grid grid-cols-2 gap-2 text-xs font-medium text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100"></div>
+        <div id="modalSimilar" class="hidden space-y-1.5"></div>
 
         <div>
           <h4 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
@@ -2150,11 +2209,53 @@ EXPLORER_HTML = r"""
         if (extra.condition) specsHtml += '<div>📊 Condition: <span class="font-bold text-slate-800">' + esc(extra.condition) + '</span></div>';
       }
       modalSpecs.innerHTML = specsHtml || '<div>Status: <span class="font-bold text-slate-800">Active & Verified ✔</span></div>';
+      // Similar / alternative listings
+      (function() {
+        var box = document.getElementById("modalSimilar");
+        if (!box) return;
+        box.classList.add("hidden");
+        box.innerHTML = "";
+        fetch("/api/similar-listings", {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({
+            listing_id: item.id,
+            category: item.main_category || item.category || "",
+            keyword: (extra.car_model || item.sub_category || ""),
+            limit: 4
+          })
+        }).then(function(r){ return r.json(); }).then(function(d){
+          var items = (d && d.items) || [];
+          if (!items.length) return;
+          box.classList.remove("hidden");
+          var html = '<div class="text-[10px] font-bold text-slate-500 uppercase">ተመሳሳይ አማራጮች</div>';
+          html += '<div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">';
+          items.forEach(function(it){
+            html += '<div class="shrink-0 w-28 p-1.5 rounded-xl bg-slate-50 border border-slate-100">';
+            html += '<div class="text-[10px] font-bold text-slate-800 truncate">' + esc(it.sub_category || it.main_category || "ንብረት") + '</div>';
+            html += '<div class="text-[9px] text-[#0e7490] font-black">' + esc(formatListingPrice(it.price)) + '</div>';
+            html += '</div>';
+          });
+          html += '</div>';
+          box.innerHTML = html;
+        }).catch(function(){});
+      })();
+
 
       var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
       var tUser = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
       modalCallBtn.href = phone ? ("tel:" + phone) : "#";
-      modalChatBtn.href = tUser ? ("https://t.me/" + tUser) : (item.user_chat_id ? ("tg://user?id=" + item.user_chat_id) : "#");
+      var inquireText = encodeURIComponent(
+        "ሰላም፣ በAdika Marketplace ላይ ያለውን #" + (item.id || "") + " " +
+        (modalTitleText || "ንብረት") + " ማየት እፈልጋለሁ። ዋጋው " + formatListingPrice(item.price) + " ነው። አሁን ይገኛል?"
+      );
+      if (tUser) {
+        modalChatBtn.href = "https://t.me/" + tUser + "?text=" + inquireText;
+      } else if (item.user_chat_id) {
+        modalChatBtn.href = "tg://user?id=" + item.user_chat_id;
+      } else {
+        modalChatBtn.href = "https://t.me/AdikaMarketplaceBot?text=" + inquireText;
+      }
 
       modalFavBtn.innerHTML = favorites[item.id] ? "❤️" : "🤍";
       modalFavBtn.onclick = function() {
