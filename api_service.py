@@ -19,9 +19,10 @@ from flask import request, jsonify, Response
 
 from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY
 from models import (
+    save_contract, get_contract, get_user_contracts, build_amharic_vehicle_contract, ensure_contracts_table,
     LAST_DB_ERROR,
     get_db_connection, get_placeholder, is_postgres, add_listing, get_listing_by_id,
-    update_listing_status, save_search_alert, expire_old_listings,
+    update_listing_status, save_search_alert, get_matching_alerts, expire_old_listings,
     get_active_brokers, get_platform_stats, count_listings, count_brokers,
 )
 
@@ -1280,6 +1281,40 @@ class _AdikaGeminiModel:
 
 
 
+
+def _dispatch_listing_alerts(category, price, title, listing_id, model_hint=""):
+    """Match search_alerts and push Telegram messages to subscribers."""
+    try:
+        try:
+            matches = get_matching_alerts(category, str(price or "0"), model_hint=model_hint) or []
+        except TypeError:
+            matches = get_matching_alerts(category, str(price or "0")) or []
+    except Exception as e:
+        logger.warning("get_matching_alerts: %s", e)
+        return
+    if not matches:
+        return
+    try:
+        price_fmt = f"{int(float(str(price).replace(',', '') or 0)):,}"
+    except Exception:
+        price_fmt = str(price or "—")
+    msg = (
+        f"🔔 <b>አዲስ ማሳወቂያ!</b>\n\n"
+        f"<b>{title}</b>\n"
+        f"💰 ዋጋ: {price_fmt} ETB\n"
+        f"📦 #{listing_id}\n\n"
+        f"የእርስዎን ፍላጎት መሰረት ያደረገ አዲስ ዝርዝር በ Adika Marketplace ተለጥፏል። Mini App ይመልከቱ።"
+    )
+    for alert in matches:
+        chat_id = alert.get("user_chat_id") or alert.get("chat_id")
+        if not chat_id:
+            continue
+        try:
+            _send_notification_safe(msg, listing_id, chat_id)
+        except Exception as pe:
+            logger.warning("alert push %s: %s", chat_id, pe)
+
+
 def register_api_routes(web_app):
     """Register every /api/* endpoint on the Flask application."""
     def _safe(obj):
@@ -1570,6 +1605,158 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_recommendations: {e}", exc_info=True)
             return jsonify({"success": False, "items": [], "message": str(e)}), 500
+
+
+    @web_app.route('/api/contracts/save', methods=['POST', 'OPTIONS'])
+    def api_contracts_save():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            user_id = data.get('user_id') or 0
+            status = data.get('contract_status') or 'Draft'
+            seller = data.get('seller_info') or {}
+            buyer = data.get('buyer_info') or {}
+            vehicle = data.get('vehicle_info') or {}
+            financial = data.get('financial_info') or {}
+            witnesses = data.get('witnesses') or []
+            cid = data.get('contract_id')
+            text = None
+            if str(status).lower() in ('finalized', 'final', 'done'):
+                text = build_amharic_vehicle_contract(seller, buyer, vehicle, financial, witnesses)
+                status = 'Finalized'
+            new_id = save_contract(
+                user_id=user_id,
+                seller_info=seller,
+                buyer_info=buyer,
+                vehicle_info=vehicle,
+                financial_info=financial,
+                witnesses=witnesses,
+                contract_status=status,
+                contract_text=text,
+                contract_id=cid,
+            )
+            if not new_id:
+                return jsonify({"success": False, "message": "ውል ማስቀመጥ አልተቻለም"}), 500
+            return jsonify({
+                "success": True,
+                "contract_id": new_id,
+                "message": "ረቂቅ ተቀምጧል" if status == "Draft" else "ውል ተጠናቋል",
+                "contract_text": text or "",
+            })
+        except Exception as e:
+            logger.error(f"api_contracts_save: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/contracts/user/<user_id>', methods=['GET', 'OPTIONS'])
+    def api_contracts_user(user_id):
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            items = get_user_contracts(user_id, limit=30)
+            return jsonify({"success": True, "items": items})
+        except Exception as e:
+            return jsonify({"success": False, "items": [], "message": str(e)}), 500
+
+    @web_app.route('/api/contracts/<int:contract_id>/export-pdf', methods=['GET', 'OPTIONS'])
+    def api_contracts_export_pdf(contract_id):
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            c = get_contract(contract_id)
+            if not c:
+                return jsonify({"success": False, "message": "Contract not found"}), 404
+            text = c.get("contract_text") or build_amharic_vehicle_contract(
+                c.get("seller_info"), c.get("buyer_info"), c.get("vehicle_info"),
+                c.get("financial_info"), c.get("witnesses"),
+            )
+            # Prefer simple printable HTML (works without reportlab); browser can Print→PDF
+            do_print = request.args.get("print") == "1"
+            html = f"""<!DOCTYPE html>
+<html lang="am"><head><meta charset="utf-8"/>
+<title>የመኪና ሽያጭ ውል #{contract_id}</title>
+<style>
+  body {{ font-family: 'Noto Sans Ethiopic', 'Nyala', 'Abyssinica SIL', Arial, sans-serif; padding: 24px; line-height: 1.55; color: #111; }}
+  h1 {{ font-size: 18px; text-align: center; }}
+  pre {{ white-space: pre-wrap; font-family: inherit; font-size: 13px; }}
+  .sig {{ margin-top: 28px; display: flex; justify-content: space-between; gap: 12px; }}
+  .sig div {{ flex: 1; border-top: 1px solid #333; padding-top: 6px; text-align: center; font-size: 12px; }}
+  @media print {{ .noprint {{ display: none; }} }}
+</style></head><body>
+<button class="noprint" onclick="window.print()">🖨️ ህትመት / PDF</button>
+<h1>የመኪና ሽያጭ ውል — Adika Marketplace</h1>
+<pre>{text.replace('<','&lt;')}</pre>
+<div class="sig">
+  <div>ሻጭ ፊርማ</div><div>ገዢ ፊርማ</div>
+  <div>ምስክር 1</div><div>ምስክር 2</div>
+</div>
+{"<script>window.onload=function(){window.print();}</script>" if do_print else ""}
+</body></html>"""
+            return Response(html, mimetype="text/html; charset=utf-8")
+        except Exception as e:
+            logger.error(f"export-pdf: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/contracts/scan-libre', methods=['POST', 'OPTIONS'])
+    def api_contracts_scan_libre():
+        """Optional Libre OCR via OpenRouter vision — fills chassis/engine/plate."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            image_data = data.get("image_data")
+            if not image_data:
+                return jsonify({"success": False, "message": "ምስል አልተላከም"}), 400
+            api_key = (os.environ.get("OPENROUTER_API_KEY") or API_KEY or "").strip()
+            if not api_key:
+                return jsonify({"success": False, "message": "OPENROUTER_API_KEY አልተዋቀረም"}), 503
+            image_url = image_data if str(image_data).startswith("data:") or str(image_data).startswith("http") else f"data:image/jpeg;base64,{image_data}"
+            payload = {
+                "model": os.environ.get("OPENROUTER_VISION_MODEL") or "openai/gpt-4o",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "Extract vehicle registration (Libre) fields from the image. "
+                            "Return ONLY JSON: {\"chassis\":\"\",\"engine\":\"\",\"plate\":\"\",\"libre\":\"\",\"model\":\"\"}. "
+                            "If unreadable use empty string. Do not invent values."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Parse this Ethiopian vehicle libre / title photo."},
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    },
+                ],
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
+            }
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": (WEBAPP_URL or "https://adika.app"),
+                "X-Title": "Adika Libre OCR",
+            }
+            if requests is None:
+                return jsonify({"success": False, "message": "requests library missing"}), 500
+            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=45)
+            body = res.json() if res.content else {}
+            if res.status_code >= 400:
+                return jsonify({"success": False, "message": body.get("error", {}).get("message") or res.text[:200]}), 502
+            raw = ((body.get("choices") or [{}])[0].get("message") or {}).get("content") or "{}"
+            raw = str(raw).strip()
+            if raw.startswith("```"):
+                raw = raw.strip("`")
+                if raw.lower().startswith("json"):
+                    raw = raw[4:].strip()
+            parsed = json.loads(raw)
+            return jsonify({"success": True, "data": parsed})
+        except Exception as e:
+            logger.error(f"scan-libre: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
 
     @web_app.route('/api/save-alert', methods=['POST', 'OPTIONS'])
     def api_save_alert():
