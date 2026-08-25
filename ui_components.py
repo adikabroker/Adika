@@ -2042,20 +2042,20 @@ EXPLORER_HTML = r"""
           media +
           (views ? '<span class="absolute bottom-1.5 left-1.5 z-10 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] text-white font-bold">👁️ ' + esc(views) + '</span>' : '') +
         '</div>' +
-        '<div class="p-2 flex-1 flex flex-col gap-1">' +
-          '<div class="font-extrabold text-xs text-slate-800 leading-snug line-clamp-2 flex items-start gap-0.5">' +
-            '<span class="lang-am">' + esc(cardTitleAm) + '</span>' +
-            '<span class="lang-en">' + esc(cardTitleEn) + '</span>' +
-            '<span class="text-emerald-600 text-[10px] shrink-0" title="Verified">✔</span>' +
-          '</div>' +
-          '<div class="text-[11px] font-black text-[#0e7490] leading-tight">' + esc(priceLabel) + '</div>' +
-          (timeLabel ? '<div class="text-[9px] text-slate-400 font-medium">' + esc(timeLabel) + '</div>' : '') +
-          '<div class="flex items-center justify-between gap-1 mt-auto pt-0.5">' +
-            '<div class="flex items-center gap-1 overflow-hidden min-w-0">' +
-              (subBadge1 ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[8px] truncate">' + esc(subBadge1) + '</span>' : '') +
-              (subBadge2 ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[8px] truncate">' + esc(subBadge2) + '</span>' : '') +
+        '<div class="px-2 py-1.5 flex flex-col gap-1">' +
+          /* Top row: Brand-Model left | time right */
+          '<div class="flex items-center justify-between gap-1.5 min-w-0">' +
+            '<div class="font-extrabold text-[11px] text-slate-800 truncate min-w-0 flex items-center gap-0.5">' +
+              '<span class="truncate lang-am">' + esc(cardTitleAm) + '</span>' +
+              '<span class="truncate lang-en">' + esc(cardTitleEn) + '</span>' +
+              '<span class="text-emerald-600 text-[10px] shrink-0">✓</span>' +
             '</div>' +
-            '<button type="button" class="card-fav-btn text-sm p-0.5 transition-transform active:scale-75 shrink-0" data-id="' + esc(item.id) + '">' +
+            (timeLabel ? '<span class="text-[9px] text-slate-400 font-medium whitespace-nowrap shrink-0">' + esc(timeLabel) + '</span>' : '') +
+          '</div>' +
+          /* Bottom row: Price left | heart right */
+          '<div class="flex items-center justify-between gap-1.5 min-w-0">' +
+            '<div class="inline-block px-1.5 py-0.5 rounded bg-[#16acbd]/10 text-[#0e7490] font-black text-[10px] truncate max-w-[85%]">💰 ' + esc(priceLabel) + '</div>' +
+            '<button type="button" class="card-fav-btn text-sm p-0.5 transition-transform active:scale-75 shrink-0 leading-none" data-id="' + esc(item.id) + '">' +
               (isFav ? '❤️' : '🤍') +
             '</button>' +
           '</div>' +
