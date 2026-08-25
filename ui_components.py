@@ -1794,72 +1794,170 @@ EXPLORER_HTML = r"""
 
   <!-- Modal: Legal Contract Generator -->
   <div id="contractModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
-        <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ የሽያጭ ውል ማዘጋጃ (Contract Generator)</h3>
+        <h3 class="font-extrabold text-xs tracking-wide">📜 የመኪና ሽያጭ ውል (Contract Wizard)</h3>
         <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('contractModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('contractModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
+          <button type="button" onclick="navigateBack('contractModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="closeModal('contractModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
-      <div class="p-4 overflow-y-auto space-y-2.5 flex-1 text-xs">
-        <div>
-          <label class="font-bold text-slate-700 block mb-1">የውል ዓይነት</label>
-          <select id="contractType" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
-            <option value="vehicle">የመኪና ሽያጭ ውል (Vehicle Sale)</option>
-            <option value="property">የቤትና ይዞታ ሽያጭ ውል (Property Sale)</option>
-          </select>
+
+      <!-- Step tabs -->
+      <div class="px-3 pt-2 pb-1 bg-slate-50 border-b border-slate-100 shrink-0">
+        <div class="grid grid-cols-3 gap-1 p-0.5 bg-slate-200/60 rounded-xl">
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm" data-step="1">1. ተዋዋዮች</button>
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all text-slate-500" data-step="2">2. መኪና</button>
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all text-slate-500" data-step="3">3. ገንዘብ</button>
+        </div>
+      </div>
+
+      <div class="p-3.5 overflow-y-auto space-y-3 flex-1 text-xs">
+        <!-- STEP 1: Parties -->
+        <div id="contractStep1" class="contract-step space-y-2.5">
+          <div class="text-[11px] font-black text-slate-800">የተዋዋዮች መረጃ (Parties Info)</div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">የሻጭ ሙሉ ስም *</label>
+              <input id="cSellerName" type="text" placeholder="አቶ ተስፋዬ በቀለ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">የገዢ ሙሉ ስም *</label>
+              <input id="cBuyerName" type="text" placeholder="ወ/ሮ ማርታ ደሳለኝ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">የሻጭ ስልክ *</label>
+              <input id="cSellerPhone" type="tel" placeholder="0911..." class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">የገዢ ስልክ *</label>
+              <input id="cBuyerPhone" type="tel" placeholder="0922..." class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">የሻጭ መታወቂያ / Passport</label>
+              <input id="cSellerId" type="text" placeholder="ID / PP" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">የገዢ መታወቂያ / Passport</label>
+              <input id="cBuyerId" type="text" placeholder="ID / PP" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">ክፍለ ከተማ (Sub-City)</label>
+              <select id="cSubCity" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
+                <option value="">— ይምረጡ —</option>
+                <option>አዲስ ከተማ</option>
+                <option>አቃቂ ቃሊቲ</option>
+                <option>አራዳ</option>
+                <option>ቦሌ</option>
+                <option>ጉለሌ</option>
+                <option>ኪርኮስ</option>
+                <option>ኮልፌ ቀራንዮ</option>
+                <option>ልደታ</option>
+                <option>ንፋስ ስልክ ላፍቶ</option>
+                <option>የካ</option>
+                <option>ሌሚ ኩራ</option>
+              </select>
+            </div>
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">ወረዳ (Woreda)</label>
+              <input id="cWoreda" type="number" min="1" max="20" placeholder="1–20" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Vehicle -->
+        <div id="contractStep2" class="contract-step space-y-2.5 hidden">
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-[11px] font-black text-slate-800">የመኪናው ህጋዊ መረጃ</div>
+            <label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold cursor-pointer">
+              📷 ሊብሬ በፎቶ
+              <input id="cLibreFile" type="file" accept="image/*" class="hidden" />
+            </label>
+          </div>
+          <div id="cLibreStatus" class="hidden text-[10px] font-bold text-[#0e7490]"></div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">ሰሌዳ / Folder No. *</label>
+              <input id="cPlate" type="text" placeholder="ኮድ 3 - A12345" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">ሞዴል & ዘመን *</label>
+              <input id="cCarModel" type="text" placeholder="Toyota Vitz 2018" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+          </div>
+          <div>
+            <label class="font-bold text-slate-600 block mb-1">ሻንሲ / Chassis No. *</label>
+            <input id="cChassis" type="text" placeholder="JTDKN36U48..." class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-600 block mb-1">የሞተር ቁጥር (Engine)</label>
+            <input id="cEngine" type="text" placeholder="1NZ-FE-88992" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-600 block mb-1">የሊብሬ ቁጥር</label>
+            <input id="cLibreNo" type="text" placeholder="LIB-AA-998822" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+        </div>
+
+        <!-- STEP 3: Financials & Witnesses -->
+        <div id="contractStep3" class="contract-step space-y-2.5 hidden">
+          <div class="text-[11px] font-black text-slate-800">የገንዘብና የምስክሮች ውል</div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">ጠቅላላ ዋጋ (ETB) *</label>
+              <input id="cTotalPrice" type="text" placeholder="2,200,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+            <div>
+              <label class="font-bold text-slate-600 block mb-1">ቅድመ ክፍያ (ETB)</label>
+              <input id="cAdvance" type="text" placeholder="500,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            </div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+            <span class="font-bold text-emerald-800 text-[10px]">ቀሪ ክፍያ (Balance)</span>
+            <span id="cBalance" class="font-black text-emerald-900 text-sm">0 ETB</span>
+          </div>
+          <div>
+            <label class="font-bold text-slate-600 block mb-1">ቀሪ ክፍያ የሚጠናቀቅበት ቀን</label>
+            <input id="cDeadline" type="date" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+          <details class="rounded-xl border border-slate-200 bg-white open:shadow-sm">
+            <summary class="cursor-pointer px-3 py-2 font-bold text-slate-700 text-[11px]">👥 የ 2 ምስክሮች (አማራጭ)</summary>
+            <div class="p-3 pt-1 space-y-2 border-t border-slate-100">
+              <div class="grid grid-cols-2 gap-2">
+                <input id="cWit1Name" type="text" placeholder="ምስክር 1 ስም" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+                <input id="cWit1Id" type="text" placeholder="መታወቂያ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <input id="cWit2Name" type="text" placeholder="ምስክር 2 ስም" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+                <input id="cWit2Id" type="text" placeholder="መታወቂያ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div id="contractResult" class="hidden p-3 bg-slate-50 rounded-xl border space-y-2 font-medium text-xs"></div>
+      </div>
+
+      <div class="p-2.5 border-t border-slate-100 bg-white shrink-0 space-y-2">
+        <div class="flex gap-2">
+          <button type="button" id="cStepPrev" class="flex-1 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-[11px] hidden">← ቀድሞ</button>
+          <button type="button" id="cStepNext" class="flex-1 py-2 rounded-xl bg-slate-800 text-white font-bold text-[11px]">ቀጣይ →</button>
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">የሻጭ ሙሉ ስም</label>
-            <input id="contractSeller" type="text" placeholder="አቶ ተስፋዬ በቀለ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">የገዢ ሙሉ ስም</label>
-            <input id="contractBuyer" type="text" placeholder="ወ/ሮ ማርታ ደሳለኝ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
+          <button type="button" id="cSaveDraftBtn" class="py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-[11px]">💾 ረቂቅ አስቀምጥ</button>
+          <button type="button" id="cFinalizeBtn" class="py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-[11px] shadow">📄 ውል አጠናቅቅ</button>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">ጠቅላላ ዋጋ (ብር)</label>
-            <input id="contractPrice" type="text" placeholder="2,200,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">ቅድመ ክፍያ (ብር)</label>
-            <input id="contractAdvance" type="text" placeholder="500,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">የሰሌዳ / ሰነድ ቁጥር</label>
-            <input id="contractDocId" type="text" placeholder="ኮድ 3 - A12345" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">ሻንሲ ቁጥር (Chassis)</label>
-            <input id="contractChassis" type="text" placeholder="JTDKN36U48..." class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">የሞተር ቁጥር (Engine)</label>
-            <input id="contractEngine" type="text" placeholder="1NZ-FE-88992" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-          <div>
-            <label class="font-bold text-slate-700 block mb-1">የሊብሬ / የካርታ ቁጥር</label>
-            <input id="contractLibre" type="text" placeholder="LIB-AA-998822" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-        </div>
-        <button id="contractGenerateBtn" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow active:scale-95">📄 ውል አዘጋጅ (Generate Contract)</button>
-        <div id="contractResult" class="hidden p-3 bg-slate-50 rounded-xl border space-y-2 font-medium"></div>
       </div>
     </div>
   </div>
 
+  <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <div id="poaModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
@@ -4151,6 +4249,251 @@ EXPLORER_HTML = r"""
       if (tg && tg.showAlert) tg.showAlert(msg);
       else alert(msg);
     };
+
+
+    // ========== Contract Wizard (3-step) ==========
+    (function initContractWizard() {
+      var step = 1;
+      var draftId = null;
+      var SUB_KEY = "adika_contract_draft_v1";
+
+      function val(id) {
+        var el = document.getElementById(id);
+        return el ? String(el.value || "").trim() : "";
+      }
+      function setVal(id, v) {
+        var el = document.getElementById(id);
+        if (el && v != null) el.value = v;
+      }
+      function parseMoney(s) {
+        return Number(String(s || "").replace(/[^0-9.]/g, "")) || 0;
+      }
+      function fmtMoney(n) {
+        return Math.max(0, Math.round(n)).toLocaleString() + " ETB";
+      }
+      function updateBalance() {
+        var total = parseMoney(val("cTotalPrice"));
+        var adv = parseMoney(val("cAdvance"));
+        var bal = Math.max(0, total - adv);
+        var el = document.getElementById("cBalance");
+        if (el) el.textContent = fmtMoney(bal);
+      }
+      function collectPayload(status) {
+        var userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
+        return {
+          contract_id: draftId,
+          user_id: userId,
+          contract_status: status || "Draft",
+          seller_info: {
+            name: val("cSellerName"),
+            phone: val("cSellerPhone"),
+            id_number: val("cSellerId"),
+            sub_city: val("cSubCity"),
+            woreda: val("cWoreda")
+          },
+          buyer_info: {
+            name: val("cBuyerName"),
+            phone: val("cBuyerPhone"),
+            id_number: val("cBuyerId")
+          },
+          vehicle_info: {
+            plate: val("cPlate"),
+            chassis: val("cChassis"),
+            engine: val("cEngine"),
+            model: val("cCarModel"),
+            libre: val("cLibreNo")
+          },
+          financial_info: {
+            total_price: parseMoney(val("cTotalPrice")),
+            advance: parseMoney(val("cAdvance")),
+            balance: Math.max(0, parseMoney(val("cTotalPrice")) - parseMoney(val("cAdvance"))),
+            deadline: val("cDeadline")
+          },
+          witnesses: [
+            { name: val("cWit1Name"), id_number: val("cWit1Id") },
+            { name: val("cWit2Name"), id_number: val("cWit2Id") }
+          ]
+        };
+      }
+      function showStep(n) {
+        step = n;
+        [1,2,3].forEach(function(i) {
+          var panel = document.getElementById("contractStep" + i);
+          if (panel) panel.classList.toggle("hidden", i !== n);
+        });
+        document.querySelectorAll(".contract-step-tab").forEach(function(btn) {
+          var s = Number(btn.getAttribute("data-step"));
+          if (s === n) {
+            btn.className = "contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm";
+          } else {
+            btn.className = "contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all text-slate-500";
+          }
+        });
+        var prev = document.getElementById("cStepPrev");
+        var next = document.getElementById("cStepNext");
+        if (prev) prev.classList.toggle("hidden", n <= 1);
+        if (next) {
+          next.classList.toggle("hidden", n >= 3);
+          next.textContent = n >= 3 ? "" : "ቀጣይ →";
+        }
+        try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
+      }
+      function restoreDraft() {
+        try {
+          var raw = localStorage.getItem(SUB_KEY);
+          if (!raw) return;
+          var d = JSON.parse(raw);
+          if (!d) return;
+          draftId = d.contract_id || null;
+          var s = d.seller_info || {}, b = d.buyer_info || {}, v = d.vehicle_info || {}, f = d.financial_info || {};
+          setVal("cSellerName", s.name); setVal("cSellerPhone", s.phone); setVal("cSellerId", s.id_number);
+          setVal("cSubCity", s.sub_city); setVal("cWoreda", s.woreda);
+          setVal("cBuyerName", b.name); setVal("cBuyerPhone", b.phone); setVal("cBuyerId", b.id_number);
+          setVal("cPlate", v.plate); setVal("cChassis", v.chassis); setVal("cEngine", v.engine);
+          setVal("cCarModel", v.model); setVal("cLibreNo", v.libre);
+          setVal("cTotalPrice", f.total_price); setVal("cAdvance", f.advance); setVal("cDeadline", f.deadline);
+          var w = d.witnesses || [];
+          if (w[0]) { setVal("cWit1Name", w[0].name); setVal("cWit1Id", w[0].id_number); }
+          if (w[1]) { setVal("cWit2Name", w[1].name); setVal("cWit2Id", w[1].id_number); }
+          updateBalance();
+        } catch (e) {}
+      }
+
+      document.querySelectorAll(".contract-step-tab").forEach(function(btn) {
+        btn.onclick = function() { showStep(Number(btn.getAttribute("data-step")) || 1); };
+      });
+      var prevBtn = document.getElementById("cStepPrev");
+      var nextBtn = document.getElementById("cStepNext");
+      if (prevBtn) prevBtn.onclick = function() { showStep(Math.max(1, step - 1)); };
+      if (nextBtn) nextBtn.onclick = function() { showStep(Math.min(3, step + 1)); };
+
+      ["cTotalPrice", "cAdvance"].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener("input", updateBalance);
+      });
+
+      // Libre OCR optional
+      var libreFile = document.getElementById("cLibreFile");
+      if (libreFile) {
+        libreFile.onchange = function() {
+          var f = libreFile.files && libreFile.files[0];
+          if (!f) return;
+          var st = document.getElementById("cLibreStatus");
+          if (st) { st.classList.remove("hidden"); st.textContent = "⏳ ሊብሬ እየተነበበ ነው..."; }
+          var reader = new FileReader();
+          reader.onload = function() {
+            fetch("/api/contracts/scan-libre", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ image_data: reader.result })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+              var d = (res && res.data) || res || {};
+              if (d.chassis) setVal("cChassis", d.chassis);
+              if (d.engine) setVal("cEngine", d.engine);
+              if (d.plate) setVal("cPlate", d.plate);
+              if (d.libre) setVal("cLibreNo", d.libre);
+              if (d.model) setVal("cCarModel", d.model);
+              if (st) st.textContent = res.success === false ? ("⚠️ " + (res.message || "OCR አልተሳካም")) : "✅ መረጃ ተሞልቷል — እባክዎ ያረጋግጡ";
+            })
+            .catch(function() {
+              if (st) st.textContent = "⚠️ OCR አልተሳካም — በእጅ ያስገቡ";
+            });
+          };
+          reader.readAsDataURL(f);
+        };
+      }
+
+      function saveContract(status) {
+        var payload = collectPayload(status);
+        return fetch("/api/contracts/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }).then(function(r) { return r.json(); });
+      }
+
+      var saveBtn = document.getElementById("cSaveDraftBtn");
+      if (saveBtn) {
+        saveBtn.onclick = function() {
+          saveBtn.disabled = true;
+          saveBtn.textContent = "⏳...";
+          saveContract("Draft")
+            .then(function(res) {
+              if (res.contract_id) draftId = res.contract_id;
+              try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
+              if (tg && tg.showAlert) tg.showAlert(res.message || "ረቂቅ ተቀምጧል");
+              else alert(res.message || "ረቂቅ ተቀምጧል");
+            })
+            .catch(function() { alert("ማስቀመጥ አልተቻለም"); })
+            .finally(function() {
+              saveBtn.disabled = false;
+              saveBtn.textContent = "💾 ረቂቅ አስቀምጥ";
+            });
+        };
+      }
+
+      var finBtn = document.getElementById("cFinalizeBtn");
+      if (finBtn) {
+        finBtn.onclick = function() {
+          var p = collectPayload("Finalized");
+          if (!p.seller_info.name || !p.buyer_info.name || !p.vehicle_info.chassis || !p.financial_info.total_price) {
+            alert("እባክዎ አስፈላጊ መስኮችን ይሙሉ (ሻጭ፣ ገዢ፣ ቻሲ፣ ዋጋ)");
+            showStep(1);
+            return;
+          }
+          finBtn.disabled = true;
+          finBtn.textContent = "⏳ ውል በማዘጋጀት...";
+          saveContract("Finalized")
+            .then(function(res) {
+              if (res.contract_id) draftId = res.contract_id;
+              var result = document.getElementById("contractResult");
+              if (result) {
+                result.classList.remove("hidden");
+                var cid = res.contract_id || draftId || "";
+                result.innerHTML =
+                  '<div class="font-black text-slate-800 text-[11px]">✅ ውል ተጠናቋል</div>' +
+                  '<div class="text-[10px] text-slate-600">የውል ቁጥር: #' + esc(String(cid)) + '</div>' +
+                  '<div class="flex gap-2 pt-1">' +
+                    '<a href="/api/contracts/' + encodeURIComponent(cid) + '/export-pdf" target="_blank" class="flex-1 text-center py-2 rounded-xl bg-slate-900 text-white font-bold text-[10px]">📥 PDF አውርድ</a>' +
+                    '<button type="button" id="cPrintBtn" class="flex-1 py-2 rounded-xl bg-[#16acbd] text-white font-bold text-[10px]">🖨️ ህትመት</button>' +
+                  '</div>' +
+                  '<pre class="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-[10px] bg-white p-2 rounded-lg border">' + esc(res.contract_text || res.message || "") + '</pre>';
+                var pb = document.getElementById("cPrintBtn");
+                if (pb) pb.onclick = function() {
+                  var w = window.open("/api/contracts/" + encodeURIComponent(cid) + "/export-pdf?print=1", "_blank");
+                  if (!w) alert("Popup ተከልክሏል");
+                };
+              }
+              showStep(3);
+            })
+            .catch(function() { alert("ውል ማጠናቀቅ አልተቻለም"); })
+            .finally(function() {
+              finBtn.disabled = false;
+              finBtn.textContent = "📄 ውል አጠናቅቅ";
+            });
+        };
+      }
+
+      // Restore draft when modal opens
+      var origOpen = window.openToolModal;
+      window.openToolModal = function(id) {
+        if (typeof origOpen === "function") origOpen(id);
+        else {
+          var m = document.getElementById(id);
+          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
+        }
+        if (id === "contractModal") {
+          restoreDraft();
+          showStep(1);
+          updateBalance();
+        }
+      };
+      restoreDraft();
+      showStep(1);
+      updateBalance();
+    })();
 
     setTabs();
     load(false);
