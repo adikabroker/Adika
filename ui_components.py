@@ -1396,19 +1396,20 @@ EXPLORER_HTML = r"""
     <div id="modalSheet"
       class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
 
-      <div class="px-4 py-2.5 bg-white border-b border-slate-100 flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-2">
-          <span id="modalCategoryBadge" class="px-2.5 py-0.5 rounded-full bg-[#16acbd]/10 text-[#0e7490] text-xs font-bold">Property</span>
-          <span id="modalIdBadge" class="text-xs text-slate-400 font-semibold">#ADK-</span>
+      <div class="px-3 py-2 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 gap-2">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <button id="modalBackBtn" type="button" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] shrink-0">← ወደ ኋላ</button>
+          <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-[#16acbd]/10 text-[#0e7490] text-[10px] font-bold truncate">Property</span>
+          <span id="modalIdBadge" class="text-[10px] text-slate-400 font-semibold shrink-0">#ADK-</span>
         </div>
-        <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1.5 shrink-0">
           <button id="modalFavBtn" type="button" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-rose-500 font-bold flex items-center justify-center text-sm">❤️</button>
-          <button id="modalClose" type="button" class="w-7 h-7 rounded-full bg-slate-100 text-slate-500 font-bold flex items-center justify-center text-sm">✕</button>
+          <button id="modalClose" type="button" class="w-7 h-7 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-sm shadow-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
-      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-4 space-y-3.5">
-        <div id="modalMediaContainer" class="w-full h-48 rounded-2xl overflow-hidden bg-slate-100 relative"></div>
+      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-4 space-y-3.5 pb-2">
+        <div id="modalMediaContainer" class="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 relative"></div>
 
         <div>
           <div class="flex items-center gap-1">
@@ -1428,7 +1429,7 @@ EXPLORER_HTML = r"""
             <span class="lang-am">ተዛማጅ የAI እና የፋይናንስ አገልግሎቶች</span>
             <span class="lang-en">Smart AI & Financial Utilities</span>
           </div>
-          <div id="modalActionButtonsRow" class="grid grid-cols-3 gap-1.5"></div>
+          <div id="modalActionButtonsRow" class="flex gap-1.5 overflow-x-auto no-scrollbar"></div>
         </div>
 
         <div id="modalSpecs" class="grid grid-cols-2 gap-2 text-xs font-medium text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100"></div>
@@ -1442,8 +1443,8 @@ EXPLORER_HTML = r"""
         </div>
       </div>
 
-      <!-- Pinned 3 Action Buttons (Call, Telegram, Share) -->
-      <div class="p-2.5 bg-white border-t border-slate-100 shrink-0 grid grid-cols-3 gap-2">
+      <!-- Sticky bottom action bar -->
+      <div class="p-2.5 bg-white/95 backdrop-blur-md border-t border-slate-100 shrink-0 grid grid-cols-3 gap-2 sticky bottom-0 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
         <a id="modalCallBtn" href="#"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
           <span>📞</span>
@@ -1551,13 +1552,17 @@ EXPLORER_HTML = r"""
         <!-- VEHICLES: hybrid autocomplete + free text -->
         <div id="comparePanelVehicles" class="space-y-2">
           <div class="grid grid-cols-2 gap-2">
-            <div class="relative">
-              <label class="text-[9px] font-bold text-slate-400 block mb-1">መኪና A (ሞዴል ይጻፉ)</label>
-              <input id="compareCar1" type="text" list="vehicleSuggestions" autocomplete="off" placeholder="e.g. Toyota Belta 2021" value="Toyota Vitz" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
+            <div class="relative space-y-1">
+              <label class="text-[9px] font-bold text-slate-400 block">መኪና A (ሞዴል)</label>
+              <input id="compareCar1" type="text" list="vehicleSuggestions" autocomplete="off" placeholder="e.g. Toyota Belta" value="Toyota Vitz" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
+              <label class="text-[8px] font-bold text-slate-500">የምርት ዘመን (Year)</label>
+              <input id="compareYear1" type="number" min="1990" max="2026" placeholder="2018" value="2018" class="w-full p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
             </div>
-            <div class="relative">
-              <label class="text-[9px] font-bold text-slate-400 block mb-1">መኪና B (ሞዴል ይጻፉ)</label>
-              <input id="compareCar2" type="text" list="vehicleSuggestions" autocomplete="off" placeholder="e.g. BYD Song Plus" value="BYD Dolphin" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
+            <div class="relative space-y-1">
+              <label class="text-[9px] font-bold text-slate-400 block">መኪና B (ሞዴል)</label>
+              <input id="compareCar2" type="text" list="vehicleSuggestions" autocomplete="off" placeholder="e.g. BYD Dolphin" value="BYD Dolphin" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
+              <label class="text-[8px] font-bold text-slate-500">የምርት ዘመን (Year)</label>
+              <input id="compareYear2" type="number" min="1990" max="2026" placeholder="2023" value="2023" class="w-full p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
             </div>
           </div>
           <datalist id="vehicleSuggestions">
@@ -1855,11 +1860,45 @@ EXPLORER_HTML = r"""
       if (!iso) return "";
       try {
         var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-        if (secs < 60) return "Just now";
-        if (secs < 3600) return Math.floor(secs / 60) + "m";
-        if (secs < 86400) return Math.floor(secs / 3600) + "h";
-        return Math.floor(secs / 86400) + "d";
+        if (secs < 60) return "አሁን";
+        if (secs < 3600) return "ከ " + Math.floor(secs / 60) + " ደቂቃ በፊት";
+        if (secs < 86400) return "ከ " + Math.floor(secs / 3600) + " ሰዓት በፊት";
+        if (secs < 86400 * 7) return "ከ " + Math.floor(secs / 86400) + " ቀን በፊት";
+        return "ከ " + Math.floor(secs / 86400) + " ቀን በፊት";
       } catch (e) { return ""; }
+    }
+
+    function formatListingPrice(raw) {
+      if (raw == null || raw === "" || raw === "—" || raw === "Contact") return "ለዋጋ ደውሉ";
+      var cleaned = String(raw).replace(/ETB/gi, "").replace(/ብር/g, "").replace(/,/g, "").trim();
+      var digits = cleaned.replace(/[^\d.]/g, "");
+      var n = Number(digits);
+      if (!isFinite(n) || n <= 0 || n > 300000000) return "ለዋጋ ደውሉ";
+      return Math.round(n).toLocaleString() + " ETB";
+    }
+
+    function extractBrandModel(item, extra) {
+      extra = extra || {};
+      var raw = (extra.car_model || extra.brand_model || item.sub_category || item.title || "").toString().trim();
+      var brands = ["Toyota","BYD","Hyundai","Suzuki","Chery","Jetour","Nissan","Honda","Mercedes","BMW","Audi","Lexus","Kia","Mitsubishi","Isuzu","Ford","Volkswagen","VW","Mazda","Subaru","Geely","Haval","Changan"];
+      var brand = extra.brand || "";
+      var model = raw;
+      if (!brand && raw) {
+        for (var i = 0; i < brands.length; i++) {
+          var b = brands[i];
+          var re = new RegExp("^" + b + "\\b", "i");
+          if (re.test(raw)) {
+            brand = b;
+            model = raw.replace(re, "").trim() || raw;
+            break;
+          }
+        }
+      }
+      if (brand && model && model.toLowerCase().indexOf(brand.toLowerCase()) === 0) {
+        model = model.slice(brand.length).trim();
+      }
+      var display = brand ? (brand + (model ? " " + model : "")) : (raw || "መኪና");
+      return { brand: brand, model: model || raw, display: display };
     }
 
     function renderFavoritesUI() {
@@ -1968,8 +2007,9 @@ EXPLORER_HTML = r"""
       var subBadge2 = "";
 
       if (isCar) {
-        cardTitleAm = extra.car_model || item.sub_category || "መኪና";
-        cardTitleEn = extra.car_model || item.sub_category || "Vehicle";
+        var bm = extractBrandModel(item, extra);
+        cardTitleAm = bm.display || "መኪና";
+        cardTitleEn = bm.display || "Vehicle";
         if (extra.transmission) subBadge1 = extra.transmission.split('/')[0].trim();
         if (extra.fuel_type) subBadge2 = extra.fuel_type.split('/')[0].trim();
       } else {
@@ -1989,38 +2029,33 @@ EXPLORER_HTML = r"""
           '</div>';
       }
 
-      var priceNum = item.price || "—";
-      var priceLabel = priceNum + " ETB";
-      var views = item.view_count || item.views_count || 12;
+      var priceLabel = formatListingPrice(item.price);
+      var views = item.view_count || item.views_count || 0;
       var isFav = Boolean(favorites[item.id]);
+      var timeLabel = relativeTime(item.created_at);
 
       var card = document.createElement("div");
       card.className = "adika-card cursor-pointer";
       card.innerHTML =
-        '<div class="relative w-full h-24 bg-slate-100 overflow-hidden">' +
-          '<!-- Active Online Status Green Pulsing Dot -->' +
+        '<div class="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">' +
           '<div class="absolute top-2 left-2 z-10 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>' +
           media +
-          '<div class="absolute bottom-1 left-1 right-1 flex justify-between items-center text-[8px] text-white font-bold">' +
-            '<span class="bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">👁️ ' + esc(views) + '</span>' +
-            '<span class="bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded">' + esc(relativeTime(item.created_at)) + '</span>' +
-          '</div>' +
+          (views ? '<span class="absolute bottom-1.5 left-1.5 z-10 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] text-white font-bold">👁️ ' + esc(views) + '</span>' : '') +
         '</div>' +
-        '<div class="p-2 flex-1 flex flex-col justify-between">' +
-          '<div>' +
-            '<div class="font-extrabold text-xs text-slate-800 truncate flex items-center gap-0.5">' +
-              '<span class="truncate lang-am">' + esc(cardTitleAm) + '</span>' +
-              '<span class="truncate lang-en">' + esc(cardTitleEn) + '</span>' +
-              '<span class="text-emerald-600 text-[10px] shrink-0" title="Verified">✔</span>' +
-            '</div>' +
-            '<div class="flex items-center gap-1 mt-1 overflow-hidden">' +
+        '<div class="p-2 flex-1 flex flex-col gap-1">' +
+          '<div class="font-extrabold text-xs text-slate-800 leading-snug line-clamp-2 flex items-start gap-0.5">' +
+            '<span class="lang-am">' + esc(cardTitleAm) + '</span>' +
+            '<span class="lang-en">' + esc(cardTitleEn) + '</span>' +
+            '<span class="text-emerald-600 text-[10px] shrink-0" title="Verified">✔</span>' +
+          '</div>' +
+          '<div class="text-[11px] font-black text-[#0e7490] leading-tight">' + esc(priceLabel) + '</div>' +
+          (timeLabel ? '<div class="text-[9px] text-slate-400 font-medium">' + esc(timeLabel) + '</div>' : '') +
+          '<div class="flex items-center justify-between gap-1 mt-auto pt-0.5">' +
+            '<div class="flex items-center gap-1 overflow-hidden min-w-0">' +
               (subBadge1 ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[8px] truncate">' + esc(subBadge1) + '</span>' : '') +
               (subBadge2 ? '<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-semibold text-[8px] truncate">' + esc(subBadge2) + '</span>' : '') +
             '</div>' +
-          '</div>' +
-          '<div class="mt-2 flex items-center justify-between gap-1">' +
-            '<div class="inline-block px-1.5 py-0.5 rounded bg-[#16acbd]/10 text-[#0e7490] font-black text-[10px] truncate max-w-[80%]">💰 ' + esc(priceLabel) + '</div>' +
-            '<button type="button" class="card-fav-btn text-sm p-0.5 transition-transform active:scale-75" data-id="' + esc(item.id) + '">' +
+            '<button type="button" class="card-fav-btn text-sm p-0.5 transition-transform active:scale-75 shrink-0" data-id="' + esc(item.id) + '">' +
               (isFav ? '❤️' : '🤍') +
             '</button>' +
           '</div>' +
@@ -2048,19 +2083,52 @@ EXPLORER_HTML = r"""
       var photos = parsePhotosList(item);
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
 
-      modalCategoryBadge.textContent = (isCar ? "Vehicle" : "Property") + " • Verified ✔";
+      var modalTitleText = "";
+      if (isCar) {
+        var bm = extractBrandModel(item, extra);
+        modalTitleText = bm.display || "መኪና";
+        modalCategoryBadge.textContent = bm.brand || "መኪና";
+      } else {
+        modalTitleText = item.sub_category || extra.house_type || "ቤት";
+        modalCategoryBadge.textContent = "ቤት";
+      }
       modalIdBadge.textContent = "#ADK-" + (item.id || "001");
-
-      var modalTitleText = isCar ? (extra.car_model || item.sub_category || "Vehicle") : (item.sub_category || extra.house_type || "Property");
       modalTitle.textContent = modalTitleText;
 
-      var isSell = String(item.req_type || "").toUpperCase() === "SELL";
-      modalPrice.textContent = (isSell ? "Price: " : "Budget: ") + (item.price || "Contact") + " ETB";
-      modalTime.textContent = "⏱️ " + relativeTime(item.created_at);
+      var isSell = String(item.req_type || item.action_type || "").toUpperCase().indexOf("SELL") >= 0 || String(item.action_type || "") === "መሸጥ";
+      var priceTxt = formatListingPrice(item.price);
+      modalPrice.textContent = priceTxt;
+      modalTime.textContent = relativeTime(item.created_at) ? ("⏱️ " + relativeTime(item.created_at)) : "";
       modalDesc.textContent = item.description || "No further details provided.";
 
+      // Image gallery carousel
       if (photos.length > 0) {
-        modalMediaContainer.innerHTML = '<img src="' + esc(getImageUrl(photos[0]) || photos[0] || "") + '" alt="" class="w-full h-full object-cover" />';
+        var slides = photos.map(function(u, i) {
+          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img src="' + esc(getImageUrl(u) || u || "") + '" alt="" class="w-full h-full object-cover" loading="' + (i === 0 ? "eager" : "lazy") + '" /></div>';
+        }).join("");
+        var dots = photos.length > 1 ? ('<div class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">' +
+          photos.map(function(_, i) {
+            return '<button type="button" class="modal-dot w-1.5 h-1.5 rounded-full ' + (i === 0 ? "bg-white" : "bg-white/50") + '" data-idx="' + i + '"></button>';
+          }).join("") + '</div>') : "";
+        modalMediaContainer.innerHTML =
+          '<div id="modalGalleryTrack" class="flex w-full h-full overflow-x-auto snap-x snap-mandatory no-scrollbar">' + slides + '</div>' + dots;
+        var track = document.getElementById("modalGalleryTrack");
+        if (track && photos.length > 1) {
+          track.onscroll = function() {
+            var idx = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+            var ds = modalMediaContainer.querySelectorAll(".modal-dot");
+            ds.forEach(function(d, i) {
+              d.className = "modal-dot w-1.5 h-1.5 rounded-full " + (i === idx ? "bg-white" : "bg-white/50");
+            });
+          };
+          modalMediaContainer.querySelectorAll(".modal-dot").forEach(function(d) {
+            d.onclick = function(e) {
+              e.stopPropagation();
+              var i = Number(d.getAttribute("data-idx") || 0);
+              track.scrollTo({ left: i * track.clientWidth, behavior: "smooth" });
+            };
+          });
+        }
       } else {
         modalMediaContainer.innerHTML =
           '<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white">' +
@@ -2112,51 +2180,32 @@ EXPLORER_HTML = r"""
       // Populate dynamic category action buttons
       var actionsRow = document.getElementById("modalActionButtonsRow");
       if (actionsRow) {
+        actionsRow.className = "flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5";
+        var chip = function(id, icon, label) {
+          return '<button id="' + id + '" type="button" class="shrink-0 px-2.5 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[#0e7490] font-bold text-[10px] flex items-center gap-1 active:scale-95 whitespace-nowrap">' +
+            '<span>' + icon + '</span><span>' + label + '</span></button>';
+        };
         if (isCar) {
-          actionsRow.innerHTML =
-            '<button id="actCarDuty" type="button" class="p-2 rounded-xl bg-white border border-[#16acbd]/40 text-[#0e7490] font-bold text-[10px] flex flex-col items-center justify-center gap-0.5 active:scale-95 shadow-sm">' +
-              '<span class="text-sm">🧮</span><span>የቀረጥ ስሌት</span>' +
-            '</button>' +
-            '<button id="actCarCompare" type="button" class="p-2 rounded-xl bg-white border border-[#16acbd]/40 text-[#0e7490] font-bold text-[10px] flex flex-col items-center justify-center gap-0.5 active:scale-95 shadow-sm">' +
-              '<span class="text-sm">⚖️</span><span>ንጽጽር</span>' +
-            '</button>' +
-            '<button id="actCarDiag" type="button" class="p-2 rounded-xl bg-white border border-[#16acbd]/40 text-[#0e7490] font-bold text-[10px] flex flex-col items-center justify-center gap-0.5 active:scale-95 shadow-sm">' +
-              '<span class="text-sm">🛠️</span><span>ምርመራ</span>' +
-            '</button>';
+          actionsRow.innerHTML = chip("actCarDuty","🧮","የቀረጥ ስሌት") + chip("actCarCompare","⚖️","ንጽጽር") + chip("actCarDiag","🛠️","ምርመራ");
           document.getElementById("actCarDuty").onclick = function() {
             openToolModal('dutyModal');
             if (extra.cif_price) document.getElementById("dutyCif").value = extra.cif_price;
           };
           document.getElementById("actCarCompare").onclick = function() {
             openToolModal('compareModal');
-            document.getElementById("compareCar1").value = modalTitleText;
+            var c1 = document.getElementById("compareCar1");
+            if (c1) c1.value = modalTitleText;
           };
-          document.getElementById("actCarDiag").onclick = function() {
-            openToolModal('diagModal');
-          };
+          document.getElementById("actCarDiag").onclick = function() { openToolModal('diagModal'); };
         } else {
-          actionsRow.innerHTML =
-            '<button id="actPropLoan" type="button" class="p-2 rounded-xl bg-white border border-[#16acbd]/40 text-[#0e7490] font-bold text-[10px] flex flex-col items-center justify-center gap-0.5 active:scale-95 shadow-sm">' +
-              '<span class="text-sm">🏦</span><span>የባንክ ብድር</span>' +
-            '</button>' +
-            '<button id="actPropPoa" type="button" class="p-2 rounded-xl bg-white border border-[#16acbd]/40 text-[#0e7490] font-bold text-[10px] flex flex-col items-center justify-center gap-0.5 active:scale-95 shadow-sm">' +
-              '<span class="text-sm">🔍</span><span>ውክልና ማጣሪያ</span>' +
-            '</button>' +
-            '<button id="actPropContract" type="button" class="p-2 rounded-xl bg-white border border-[#16acbd]/40 text-[#0e7490] font-bold text-[10px] flex flex-col items-center justify-center gap-0.5 active:scale-95 shadow-sm">' +
-              '<span class="text-sm">📜</span><span>የሽያጭ ውል</span>' +
-            '</button>';
-          document.getElementById("actPropLoan").onclick = function() {
-            openToolModal('loanModal');
-            var rawPrice = parseInt(String(item.price || "").replace(/[^0-9]/g, "")) || 3000000;
-            document.getElementById("loanPrice").value = rawPrice;
-          };
-          document.getElementById("actPropPoa").onclick = function() {
-            openToolModal('poaModal');
-          };
+          actionsRow.innerHTML = chip("actPropLoan","🏦","የባንክ ብድር") + chip("actPropPoa","🔍","ውክልና") + chip("actPropContract","📜","ውል");
+          document.getElementById("actPropLoan").onclick = function() { openToolModal('loanModal'); };
+          document.getElementById("actPropPoa").onclick = function() { openToolModal('poaModal'); };
           document.getElementById("actPropContract").onclick = function() {
             openToolModal('contractModal');
             var rawPrice = parseInt(String(item.price || "").replace(/[^0-9]/g, "")) || "";
-            document.getElementById("contractPrice").value = rawPrice;
+            var cp = document.getElementById("contractPrice");
+            if (cp) cp.value = rawPrice;
           };
         }
       }
@@ -2170,6 +2219,12 @@ EXPLORER_HTML = r"""
       modalOverlay.classList.add("hidden");
       modalOverlay.classList.remove("flex");
       state.selectedItem = null;
+    };
+    var modalBackBtn = document.getElementById("modalBackBtn");
+    if (modalBackBtn) {
+      modalBackBtn.onclick = function() {
+        modalClose.onclick();
+      };
     };
     modalOverlay.onclick = function (e) {
       if (e.target === modalOverlay) modalClose.onclick();
@@ -2206,9 +2261,18 @@ EXPLORER_HTML = r"""
       if (state.loading) return;
       state.loading = true;
       if (!append) {
-        statusEl.style.display = "block";
-        statusEl.innerHTML = '<div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div><div><span class="lang-am">እየጫነ ነው…</span><span class="lang-en">Loading…</span></div>';
-        grid.innerHTML = "";
+        statusEl.style.display = "none";
+        var sk = "";
+        for (var si = 0; si < 6; si++) {
+          sk += '<div class="adika-card animate-pulse">' +
+            '<div class="w-full aspect-[4/3] bg-slate-200"></div>' +
+            '<div class="p-2 space-y-2">' +
+              '<div class="h-3 bg-slate-200 rounded w-4/5"></div>' +
+              '<div class="h-3 bg-slate-200 rounded w-2/5"></div>' +
+              '<div class="h-2 bg-slate-100 rounded w-3/5"></div>' +
+            '</div></div>';
+        }
+        grid.innerHTML = sk;
       }
 
       var page = append ? state.page + 1 : 1;
@@ -3103,6 +3167,12 @@ EXPLORER_HTML = r"""
       if (compareActiveTab === "vehicles") {
         payload.car_1 = (document.getElementById("compareCar1").value || "").trim();
         payload.car_2 = (document.getElementById("compareCar2").value || "").trim();
+        var y1 = (document.getElementById("compareYear1") || {}).value || "";
+        var y2 = (document.getElementById("compareYear2") || {}).value || "";
+        payload.car1_year = String(y1).trim();
+        payload.car2_year = String(y2).trim();
+        if (payload.car1_year && payload.car_1.indexOf(payload.car1_year) < 0) payload.car_1 += " " + payload.car1_year;
+        if (payload.car2_year && payload.car_2.indexOf(payload.car2_year) < 0) payload.car_2 += " " + payload.car2_year;
       } else if (compareActiveTab === "property") {
         payload.asset_1 = document.getElementById("compareAsset1").value;
         payload.asset_2 = document.getElementById("compareAsset2").value;
