@@ -1592,7 +1592,9 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🧮 የኢትዮጵያ ጉምሩክ የቀረጥ ስሌት (Duty Calculator)</h3>
-        <button onclick="closeToolModal('dutyModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm">✕</button>
+        <button type="button" onclick="closeToolModal('dutyModal')" class="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] flex items-center gap-1">
+          <span>✖</span><span>ተመለስ</span>
+        </button>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
         <div>
@@ -1624,7 +1626,9 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🏦 የባንክ ብድርና ወርሃዊ ክፍያ (Bank Loan)</h3>
-        <button onclick="closeToolModal('loanModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm">✕</button>
+        <button type="button" onclick="closeToolModal('loanModal')" class="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] flex items-center gap-1">
+          <span>✖</span><span>ተመለስ</span>
+        </button>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
         <div>
@@ -1655,7 +1659,9 @@ EXPLORER_HTML = r"""
           <div class="text-[9px] font-bold tracking-wide uppercase text-amber-400/90">Adika Institutional Analytics</div>
           <h3 class="font-black text-xs tracking-wide truncate">Comparison Engine</h3>
         </div>
-        <button onclick="closeToolModal('compareModal')" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm">✕</button>
+        <button type="button" onclick="closeToolModal('compareModal')" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] flex items-center gap-1">
+          <span>✖</span><span>ተመለስ</span>
+        </button>
       </div>
 
       <div class="px-3 pt-2.5 shrink-0">
@@ -1752,7 +1758,9 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ የሽያጭ ውል ማዘጋጃ (Contract Generator)</h3>
-        <button onclick="closeToolModal('contractModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm">✕</button>
+        <button type="button" onclick="closeToolModal('contractModal')" class="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] flex items-center gap-1">
+          <span>✖</span><span>ተመለስ</span>
+        </button>
       </div>
       <div class="p-4 overflow-y-auto space-y-2.5 flex-1 text-xs">
         <div>
@@ -1854,7 +1862,9 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🛠️ የምርመራ ወረቀት ተንታኝ (Diagnostic Analyzer)</h3>
-        <button onclick="closeToolModal('diagModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm">✕</button>
+        <button type="button" onclick="closeToolModal('diagModal')" class="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] flex items-center gap-1">
+          <span>✖</span><span>ተመለስ</span>
+        </button>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
         <div>
@@ -1884,7 +1894,9 @@ EXPLORER_HTML = r"""
             <span class="lang-en">Chassis & VIN Verification</span>
           </h3>
         </div>
-        <button onclick="closeToolModal('chassisModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm" aria-label="Close">✕</button>
+        <button type="button" onclick="closeToolModal('chassisModal')" class="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] flex items-center gap-1" aria-label="Close">
+          <span>✖</span><span>ተመለስ</span>
+        </button>
       </div>
       <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs">
         <div>
@@ -1916,6 +1928,11 @@ EXPLORER_HTML = r"""
         </button>
 
         <div id="chassisResult" class="hidden font-medium"></div>
+      </div>
+      <div class="p-2.5 border-t border-slate-100 bg-white shrink-0">
+        <button type="button" onclick="closeToolModal('chassisModal')" class="w-full py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs active:scale-[0.98]">
+          ✖ ተመለስ (Close)
+        </button>
       </div>
     </div>
   </div>
@@ -2571,6 +2588,32 @@ EXPLORER_HTML = r"""
       aiTabTools.className = "py-1 rounded-lg text-white/80 hover:text-white transition-all text-center";
     };
 
+
+    function adikaAdvisorCtaHtml(carModel) {
+      var model = (carModel || "መኪናዎ").toString().trim() || "መኪናዎ";
+      var link = "https://t.me/AdikaSupport";
+      try {
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openTelegramLink) {
+          /* deep link handled on click */
+        }
+      } catch (e) {}
+      return (
+        '<div class="mt-3 p-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 via-cyan-50 to-sky-50 shadow-sm space-y-2">' +
+          '<div class="flex items-start gap-2">' +
+            '<span class="text-lg shrink-0">🤖</span>' +
+            '<p class="text-[11px] text-slate-700 leading-relaxed font-medium">' +
+              'ስለ <span class="font-black text-[#0e7490]">' + esc(model) + '</span> ተጨማሪ መረጃ ወይም የባለሙያ ምክር ይፈልጋሉ? ' +
+              '<span class="font-bold">Adika Digital Adviser</span>ን ያነጋግሩ!' +
+            '</p>' +
+          '</div>' +
+          '<a href="' + link + '" target="_blank" rel="noopener" id="adikaAdvisorCtaBtn" ' +
+            'class="block w-full text-center py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-[11px] shadow-md active:scale-[0.98]">' +
+            '💬 አሁኑኑ አማክር (Chat Now)' +
+          '</a>' +
+        '</div>'
+      );
+    }
+
     window.openToolModal = function(id) {
       var m = document.getElementById(id);
       if (m) {
@@ -2586,6 +2629,14 @@ EXPLORER_HTML = r"""
         m.classList.remove("flex");
       }
     };
+    // Overlay click closes tool modals (no page refresh)
+    ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal"].forEach(function(mid) {
+      var el = document.getElementById(mid);
+      if (!el) return;
+      el.addEventListener("click", function(e) {
+        if (e.target === el) closeToolModal(mid);
+      });
+    });
 
     // Tool Launchers
     document.getElementById("toolDutyBtn").onclick = function() { aiModalClose.onclick(); openToolModal("dutyModal"); };
@@ -3607,6 +3658,7 @@ EXPLORER_HTML = r"""
                   '<div class="font-bold text-emerald-800 mb-0.5">💡 የዋጋ መደራደሪያ ምክር:</div>' +
                   '<div>' + esc(advice) + '</div>' +
                 '</div>' : '') +
+              adikaAdvisorCtaHtml(carModel) +
             '</div>';
         })
         .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ትንተናውን ማጠናቀቅ አልተቻለም።</div>'; });
@@ -3681,6 +3733,7 @@ EXPLORER_HTML = r"""
                   '<div class="font-bold text-emerald-900 mb-0.5">ℹ️ የማረጋገጫ ማጠቃለያ:</div>' +
                   '<div>' + esc(d.details_amharic) + '</div>' +
                 '</div>' : '') +
+              adikaAdvisorCtaHtml(((sp.make || "") + " " + (sp.model || "")).trim() || vin) +
             '</div>';
         })
         .catch(function(){
