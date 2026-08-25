@@ -4676,19 +4676,52 @@ def register_api_routes(web_app):
     @web_app.route('/api/analyze-diagnostic', methods=['POST', 'OPTIONS'])
     def api_analyze_diagnostic():
         """
-        GARAGE DIAGNOSTIC SHEET ANALYZER & OCR ENGINE (/api/analyze-diagnostic)
-        Scans inspection sheets (text or scanned photo) and identifies mechanical issues and estimated repair costs.
-        Enforces strict anti-hallucination guardrails:
-        - If image/text is not a genuine garage inspection/diagnostic report, returns error: "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
-        - No guessing or hallucinating minor faults: if text/values are blurry or unreadable, explicitly states "ያልተነበበ / ግልጽ ያልሆነ መረጃ".
-        - Accurate extraction of critical faults like Blowby, Engine Overhaul, Suspension, Body Repaint with exact costs.
-        - Strict Health Score and Engine Grade D/F calculation for major defects.
+        GARAGE DIAGNOSTIC SHEET ANALYZER via OpenRouter Vision (no direct Gemini).
+        Uses OPENROUTER_API_KEY + openai/gpt-4o (fallback google/gemini-2.0-flash-001).
+        Strict Ethiopian handwriting OCR — never invents costs.
         """
         if request.method == 'OPTIONS':
             return ('', 204)
+
+        DIAGNOSTIC_SYSTEM_PROMPT = (
+            "You are an expert Ethiopian automotive diagnostic sheet reader.\n"
+            "Carefully examine the handwritten text and handwritten numeric values in the document.\n\n"
+            "HANDWRITING REFERENCE & SPECIFIC EXTRACTION RULES:\n"
+            "- Car Model Header: Extract model name precisely (e.g., \"Plata 12-2000\").\n"
+            "- Line items parsing:\n"
+            "  * Check for Engine status: e.g., \"Blowby 120,000 ETB\" or \"Overhaul\".\n"
+            "  * Check for Suspension status: e.g., \"Front Suspension 24,000 ETB\".\n"
+            "  * Check for Body status: e.g., \"Repaint 35,000 ETB\".\n"
+            "  * Check for Wheels status: e.g., \"Total Service\".\n"
+            "- IF handwritten text for a component is blurry or unreadable, mark it explicitly as "
+            "\"ያልተነበበ / ግልጽ ያልሆነ መረጃ\". DO NOT invent minor faults like \"Valve Cover Gasket\" or random numbers.\n\n"
+            "CALCULATION & SCORING RULES:\n"
+            "- If \"Blowby\" or \"Engine Overhaul\" is present: Engine Grade MUST be \"D\" or \"F\", and Health Score MUST be below 50%.\n"
+            "- Only include costs that are explicitly written on the sheet. Sum them for estimated_repair_cost.\n"
+            "- Return valid JSON matching this schema:\n"
+            "{\n"
+            '  "car_model": "Plata 12-2000",\n'
+            '  "health_score": 45,\n'
+            '  "engine_grade": "D",\n'
+            '  "transmission_grade": "A",\n'
+            '  "estimated_repair_cost": 179000,\n'
+            '  "repair_items": [\n'
+            '    {"name": "Engine Blowby (ኦይል መንፋት)", "cost": 120000, "severity": "High"},\n'
+            '    {"name": "Front Suspension (የፊተኛው እግር)", "cost": 24000, "severity": "Medium"},\n'
+            '    {"name": "Body Repaint (ቀለምና ቦዲ)", "cost": 35000, "severity": "Medium"}\n'
+            "  ],\n"
+            '  "unreadable_notes": []\n'
+            "}\n"
+            "If the image is not a diagnostic sheet, return "
+            '{"car_model":"","health_score":0,"engine_grade":"—","transmission_grade":"—",'
+            '"estimated_repair_cost":0,"repair_items":[],"unreadable_notes":["እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"],'
+            '"is_valid_diagnostic":false,"error_message_amharic":"እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"}.\n'
+            "Return ONLY JSON."
+        )
+
         try:
             data = request.json or {}
-            car_model = data.get('car_model') or 'Toyota Vitz 2018'
+            car_model = (data.get('car_model') or '').strip() or 'Unknown'
             diagnostic_text = (data.get('diagnostic_text') or '').strip()
             image_data = data.get('image_data')
 
@@ -4699,83 +4732,267 @@ def register_api_routes(web_app):
                         "is_valid_diagnostic": False,
                         "error_message_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",
                         "health_score_pct": 0,
+                        "engine_grade": "—",
+                        "transmission_grade": "—",
                         "total_estimated_repair_cost_etb": 0,
                         "identified_faults": [],
-                        "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
-                    }
+                        "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",
+                    },
                 })
 
-            api_key = os.environ.get("GEMINI_API_KEY")
-            analysis = None
+            api_key = (
+                os.environ.get("OPENROUTER_API_KEY")
+                or API_KEY
+                or OPENROUTER_API_KEY
+                or ""
+            )
+            api_key = str(api_key).strip().strip('"').strip("'")
+            if not api_key or not (api_key.startswith("sk-") or api_key.startswith("sk-or-")):
+                return jsonify({
+                    "status": "error",
+                    "analysis": {
+                        "is_valid_diagnostic": False,
+                        "error_message_amharic": "OPENROUTER_API_KEY አልተዋቀረም። እባክዎን env var ያረጋግጡ።",
+                        "health_score_pct": 0,
+                        "engine_grade": "—",
+                        "transmission_grade": "—",
+                        "total_estimated_repair_cost_etb": 0,
+                        "identified_faults": [],
+                        "buyer_negotiation_advice_amharic": "OPENROUTER_API_KEY አልተዋቀረም። እባክዎን env var ያረጋግጡ።",
+                    },
+                }), 503
 
-            if api_key and (diagnostic_text or image_data):
+            # Normalize image to data URL for OpenRouter vision
+            image_url = None
+            if image_data:
+                s = str(image_data).strip()
+                if s.startswith("http://") or s.startswith("https://"):
+                    image_url = s
+                elif s.startswith("data:"):
+                    image_url = s
+                else:
+                    image_url = f"data:image/jpeg;base64,{s}"
+
+            user_content = []
+            user_text = (
+                f"Analyze this Ethiopian garage inspection sheet for vehicle: {car_model}.\n"
+                "Extract only explicitly written faults and costs. Never invent items."
+            )
+            if diagnostic_text:
+                user_text += f"\n\nAdditional text notes from user:\n{diagnostic_text}"
+            user_content.append({"type": "text", "text": user_text})
+            if image_url:
+                user_content.append({
+                    "type": "image_url",
+                    "image_url": {"url": image_url},
+                })
+
+            models_try = [
+                os.environ.get("OPENROUTER_VISION_MODEL") or "openai/gpt-4o",
+                "google/gemini-2.0-flash-001",
+                "openai/gpt-4o-mini",
+            ]
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": (WEBAPP_URL or "https://adika.app"),
+                "X-Title": "Adika Marketplace Diagnostic OCR",
+            }
+
+            raw_text = None
+            last_err = None
+            for model_name in models_try:
                 try:
-                    from PIL import Image
-                    import io
-                    import base64
+                    payload = {
+                        "model": model_name,
+                        "messages": [
+                            {"role": "system", "content": DIAGNOSTIC_SYSTEM_PROMPT},
+                            {"role": "user", "content": user_content},
+                        ],
+                        "temperature": 0.1,
+                        "response_format": {"type": "json_object"},
+                    }
+                    if requests is not None:
+                        res = requests.post(
+                            "https://openrouter.ai/api/v1/chat/completions",
+                            headers=headers,
+                            json=payload,
+                            timeout=45,
+                        )
+                        body = res.json() if res.content else {}
+                        if res.status_code >= 400:
+                            last_err = body.get("error", {}).get("message") or res.text[:200]
+                            logger.warning("OpenRouter vision %s HTTP %s: %s", model_name, res.status_code, last_err)
+                            continue
+                        choices = body.get("choices") or []
+                        if not choices:
+                            last_err = "empty choices"
+                            continue
+                        raw_text = (choices[0].get("message") or {}).get("content") or ""
+                    else:
+                        req = urllib.request.Request(
+                            "https://openrouter.ai/api/v1/chat/completions",
+                            data=json.dumps(payload).encode("utf-8"),
+                            headers=headers,
+                            method="POST",
+                        )
+                        with urllib.request.urlopen(req, timeout=45) as resp:
+                            body = json.loads(resp.read().decode("utf-8"))
+                        choices = body.get("choices") or []
+                        raw_text = (choices[0].get("message") or {}).get("content") or ""
+                    if raw_text:
+                        break
+                except Exception as me:
+                    last_err = str(me)
+                    logger.warning("OpenRouter vision model %s failed: %s", model_name, me)
 
-                    prompt = (
-                        "Act as an expert mechanic and certified garage OCR auditor in Addis Ababa, Ethiopia.\n"
-                        "STRICT RULES — NO GUESSING:\n"
-                        "1. If the handwritten/scanned image is blurry, incomplete, or does NOT explicitly state a repair part AND its cost, "
-                        "DO NOT GUESS OR INVENT DATA. For that line use component/description: 'ያልተነበበ / ግልጽ ያልሆነ መረጃ' and estimated_cost_etb: 0.\n"
-                        "2. Only list faults and costs that are EXPLICITLY visible or written on the document or in the provided text.\n"
-                        "3. NEVER invent common items (Brake pads, AC gas, oil, filters, gaskets) unless they appear with a clear cost on the sheet.\n"
-                        "4. If the document is not a real vehicle diagnostic / inspection / OBD report, return ONLY:\n"
-                        '{"is_valid_diagnostic":false,"error_message_amharic":"እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",'
-                        '"health_score_pct":0,"total_estimated_repair_cost_etb":0,"identified_faults":[],'
-                        '"buyer_negotiation_advice_amharic":"እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"}\n'
-                        "5. total_estimated_repair_cost_etb = sum of only explicit numeric costs (0 if none readable).\n"
-                        "6. health_score_pct / grades only from clear evidence; if unclear, health_score_pct=0 and grades='—'.\n"
-                        f"Vehicle context (do not invent specs): {car_model}\n"
-                        f"User text (may be empty):\n{diagnostic_text}\n\n"
-                        "Return ONLY valid JSON with keys: is_valid_diagnostic, error_message_amharic, health_score_pct, "
-                        "engine_grade, transmission_grade, body_and_suspension, identified_faults "
-                        "(list of {component, severity, estimated_cost_etb, description}), "
-                        "total_estimated_repair_cost_etb, buyer_negotiation_advice_amharic.\n"
+            if not raw_text:
+                return jsonify({
+                    "status": "error",
+                    "analysis": {
+                        "is_valid_diagnostic": False,
+                        "error_message_amharic": f"የምርመራ ስህተት፡ {last_err or 'OpenRouter response empty'}",
+                        "health_score_pct": 0,
+                        "engine_grade": "—",
+                        "transmission_grade": "—",
+                        "total_estimated_repair_cost_etb": 0,
+                        "identified_faults": [],
+                        "buyer_negotiation_advice_amharic": "ትንተናው አልተሳካም። እባክዎ እንደገና ይሞክሩ።",
+                    },
+                }), 502
+
+            txt = str(raw_text).strip()
+            if txt.startswith("```"):
+                txt = txt.strip("`")
+                if txt.lower().startswith("json"):
+                    txt = txt[4:].strip()
+            try:
+                parsed = json.loads(txt)
+            except Exception:
+                # try extract first {...}
+                m = re.search(r"\{[\s\S]*\}", txt)
+                if not m:
+                    return jsonify({
+                        "status": "error",
+                        "analysis": {
+                            "is_valid_diagnostic": False,
+                            "error_message_amharic": "ያልተነበበ / ግልጽ ያልሆነ መረጃ",
+                            "health_score_pct": 0,
+                            "total_estimated_repair_cost_etb": 0,
+                            "identified_faults": [],
+                            "buyer_negotiation_advice_amharic": "ያልተነበበ / ግልጽ ያልሆነ መረጃ",
+                        },
+                    })
+                parsed = json.loads(m.group(0))
+
+            # Normalize OpenRouter schema → existing UI analysis schema
+            repair_items = parsed.get("repair_items") or parsed.get("identified_faults") or []
+            faults = []
+            total_cost = 0
+            for it in repair_items:
+                if not isinstance(it, dict):
+                    continue
+                name = (it.get("name") or it.get("component") or "").strip()
+                cost = it.get("cost") if it.get("cost") is not None else it.get("estimated_cost_etb")
+                try:
+                    cost_n = int(float(str(cost).replace(",", "").replace("ETB", "").strip() or 0))
+                except Exception:
+                    cost_n = 0
+                sev = (it.get("severity") or "Unknown").strip() or "Unknown"
+                # Drop invented zero-name lines
+                if not name:
+                    continue
+                if name in ("Valve Cover Gasket", "Brake Pads", "AC Gas Refill") and cost_n == 0:
+                    continue
+                total_cost += max(0, cost_n)
+                faults.append({
+                    "component": name,
+                    "severity": sev,
+                    "estimated_cost_etb": cost_n,
+                    "description": it.get("description") or name,
+                })
+
+            unreadable = parsed.get("unreadable_notes") or []
+            if isinstance(unreadable, str):
+                unreadable = [unreadable]
+            for note in unreadable:
+                if note and not any(f["component"] == note for f in faults):
+                    faults.append({
+                        "component": str(note),
+                        "severity": "Unknown",
+                        "estimated_cost_etb": 0,
+                        "description": "ያልተነበበ / ግልጽ ያልሆነ መረጃ",
+                    })
+
+            sheet_total = parsed.get("estimated_repair_cost")
+            try:
+                sheet_total_n = int(float(str(sheet_total).replace(",", "") or 0)) if sheet_total is not None else total_cost
+            except Exception:
+                sheet_total_n = total_cost
+            if sheet_total_n <= 0:
+                sheet_total_n = total_cost
+
+            health = parsed.get("health_score")
+            if health is None:
+                health = parsed.get("health_score_pct")
+            try:
+                health_n = int(float(health or 0))
+            except Exception:
+                health_n = 0
+
+            engine_g = str(parsed.get("engine_grade") or "—")
+            # Enforce Blowby / Overhaul rules
+            blob = json.dumps(parsed, ensure_ascii=False).lower()
+            if "blowby" in blob or "overhaul" in blob or "ብሎባይ" in blob or "ኦይል መንፋት" in blob:
+                if engine_g.upper() not in ("D", "F"):
+                    engine_g = "D"
+                if health_n >= 50 or health_n == 0:
+                    health_n = 45
+
+            is_valid = parsed.get("is_valid_diagnostic")
+            if is_valid is None:
+                is_valid = bool(faults) or bool(parsed.get("car_model")) or bool(image_url)
+            err_am = parsed.get("error_message_amharic")
+            if is_valid is False and not err_am:
+                err_am = "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
+
+            analysis = {
+                "is_valid_diagnostic": bool(is_valid),
+                "error_message_amharic": err_am,
+                "car_model": parsed.get("car_model") or car_model,
+                "health_score_pct": health_n,
+                "engine_grade": engine_g,
+                "transmission_grade": str(parsed.get("transmission_grade") or "—"),
+                "body_and_suspension": parsed.get("body_and_suspension") or "",
+                "identified_faults": faults,
+                "total_estimated_repair_cost_etb": sheet_total_n,
+                "buyer_negotiation_advice_amharic": (
+                    parsed.get("buyer_negotiation_advice_amharic")
+                    or (
+                        f"ጠቅላላ የተገመተ የጥገና ወጪ ~{sheet_total_n:,} ETB። "
+                        + ("ብሎባይ/ኦቨርሆል ስላለ ጤና ነጥብ ዝቅተኛ ነው — ዋጋ በጥብቅ ይደራደሩ።" if engine_g.upper() in ("D", "F") else "በወረቀቱ ላይ የተገለጹ ወጪዎች ብቻ ተቆጥረዋል።")
                     )
-                    model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
-                        generation_config={"response_mime_type": "application/json", "temperature": 0.15}
-                    )
-                
-                    content_inputs = [prompt]
-                    if image_data:
-                        raw_b64 = image_data.split(',', 1)[1] if ',' in image_data else image_data
-                        img_bytes = base64.b64decode(raw_b64)
-                        pil_img = Image.open(io.BytesIO(img_bytes))
-                        content_inputs.append(pil_img)
-
-                    res = model.generate_content(content_inputs)
-                    txt = (res.text or "").strip()
-                    if txt.startswith("```json"): txt = txt[7:]
-                    if txt.startswith("```"): txt = txt[3:]
-                    if txt.endswith("```"): txt = txt[:-3]
-                    analysis = json.loads(txt.strip())
-                except Exception as e:
-                    logger.warning(f"Diagnostic analyzer Gemini warning: {e}")
-
-            if not analysis:
-                # No LLM result — never invent repair costs
-                analysis = {
-                    "is_valid_diagnostic": False,
-                    "error_message_amharic": "ያልተነበበ / ግልጽ ያልሆነ መረጃ። እባክዎ ግልጽ የምርመራ ወረቀት ያስገቡ ወይም GEMINI_API_KEY ያረጋግጡ።",
-                    "health_score_pct": 0,
-                    "engine_grade": "—",
-                    "transmission_grade": "—",
-                    "body_and_suspension": "ያልተነበበ / ግልጽ ያልሆነ መረጃ",
-                    "identified_faults": [],
-                    "total_estimated_repair_cost_etb": 0,
-                    "buyer_negotiation_advice_amharic": "ግልጽ ያልሆነ ሰነድ ስለሆነ የጥገና ወጪ ማስላት አልተቻለም።",
-                }
+                ),
+            }
 
             return jsonify({
                 "status": "success" if analysis.get("is_valid_diagnostic") is not False else "error",
-                "analysis": analysis
+                "analysis": analysis,
             })
         except Exception as e:
             logger.error(f"api_analyze_diagnostic error: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({
+                "status": "error",
+                "message": str(e),
+                "analysis": {
+                    "is_valid_diagnostic": False,
+                    "error_message_amharic": f"የምርመራ ስህተት፡ {e}",
+                    "health_score_pct": 0,
+                    "total_estimated_repair_cost_etb": 0,
+                    "identified_faults": [],
+                },
+            }), 500
+
 
 
     @web_app.route('/api/verify-chassis', methods=['POST', 'OPTIONS'])
