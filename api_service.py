@@ -4715,46 +4715,24 @@ def register_api_routes(web_app):
                     import base64
 
                     prompt = (
-                        "You are a master vehicle diagnostic engineer, certified garage inspection auditor, and automotive mechanical evaluator in Addis Ababa, Ethiopia.\n"
-                        "STRICT ANTI-HALLUCINATION GUARDRAILS & RULES:\n"
-                        "1. FIRST, strictly inspect and classify whether the provided image or text is genuinely an automotive garage diagnostic report, vehicle inspection sheet, OBD-II scanner output, or mechanical inspection document.\n"
-                        "   If the image or text is random, unrelated (e.g. selfies, food, landscapes, general text, non-automotive documents, cars without diagnostic papers), or NOT a vehicle diagnostic / garage inspection sheet:\n"
-                        "   You MUST immediately halt and return ONLY this JSON structure:\n"
-                        "   {\n"
-                        '     "is_valid_diagnostic": false,\n'
-                        '     "error_message_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",\n'
-                        '     "health_score_pct": 0,\n'
-                        '     "total_estimated_repair_cost_etb": 0,\n'
-                        '     "identified_faults": [],\n'
-                        '     "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"\n'
-                        "   }\n"
-                        "2. NO GUESSING / NO HALLUCINATIONS: If handwriting, text, or values are blurry, illegible, or unreadable, explicitly state 'ያልተነበበ / ግልጽ ያልሆነ መረጃ' in description/component instead of guessing or inventing minor faults. Do NOT default to generic issues like 'Valve Cover Gasket' unless actually written in the sheet.\n"
-                        "3. ACCURATE COST & SEVERITY EXTRACTION: Correctly parse major critical issues like Blowby (ብሎባይ), Engine Overhaul (የሞተር ሙሉ ጥገና / ክፈት), Low Compression, Head Gasket Blown, Transmission Slipping / Defect, Suspension Overhaul, and Body Repaint, alongside their exact handwritten or printed numeric costs in Ethiopian Birr (ETB).\n"
-                        "4. STRICT HEALTH SCORE & GRADE CALCULATION:\n"
-                        "   - If critical/major defects like Blowby, Engine Overhaul needed, or Transmission failure are detected:\n"
-                        "     - Engine Grade MUST be 'D' or 'F'\n"
-                        "     - Health Score (health_score_pct) MUST drop drastically (typically below 50%, e.g., 25% - 48%)\n"
-                        "   - If only minor wear (e.g. Brake pads, AC recharge, minor bushing) is present:\n"
-                        "     - Engine Grade: 'A' or 'B', Health Score 75% - 92%\n"
-                        "   - If the vehicle is in pristine condition:\n"
-                        "     - Engine Grade: 'A', Health Score 90% - 98%\n"
-                        "5. SUMMATION: 'total_estimated_repair_cost_etb' must be the exact mathematical sum of all identified repair costs in ETB.\n"
-                        "6. BUYER ADVICE: Provide tactical negotiation advice in Amharic explaining how much discount to demand or if the car is high-risk.\n\n"
-                        f"Analyze this garage diagnostic inspection report for {car_model}:\n{diagnostic_text}\n\n"
-                        "Generate strictly valid JSON with keys:\n"
-                        "{\n"
-                        '  "is_valid_diagnostic": true,\n'
-                        '  "health_score_pct": number,\n'
-                        '  "engine_grade": "A" | "B" | "C" | "D" | "F",\n'
-                        '  "transmission_grade": "A" | "B" | "C" | "D" | "F",\n'
-                        '  "body_and_suspension": string,\n'
-                        '  "identified_faults": [\n'
-                        '    {"component": string, "severity": "Low" | "Medium" | "High" | "Critical", "estimated_cost_etb": number, "description": string}\n'
-                        '  ],\n'
-                        '  "total_estimated_repair_cost_etb": number,\n'
-                        '  "buyer_negotiation_advice_amharic": string\n'
-                        "}\n"
-                        "Return ONLY JSON."
+                        "Act as an expert mechanic and certified garage OCR auditor in Addis Ababa, Ethiopia.\n"
+                        "STRICT RULES — NO GUESSING:\n"
+                        "1. If the handwritten/scanned image is blurry, incomplete, or does NOT explicitly state a repair part AND its cost, "
+                        "DO NOT GUESS OR INVENT DATA. For that line use component/description: 'ያልተነበበ / ግልጽ ያልሆነ መረጃ' and estimated_cost_etb: 0.\n"
+                        "2. Only list faults and costs that are EXPLICITLY visible or written on the document or in the provided text.\n"
+                        "3. NEVER invent common items (Brake pads, AC gas, oil, filters, gaskets) unless they appear with a clear cost on the sheet.\n"
+                        "4. If the document is not a real vehicle diagnostic / inspection / OBD report, return ONLY:\n"
+                        '{"is_valid_diagnostic":false,"error_message_amharic":"እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",'
+                        '"health_score_pct":0,"total_estimated_repair_cost_etb":0,"identified_faults":[],'
+                        '"buyer_negotiation_advice_amharic":"እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"}\n'
+                        "5. total_estimated_repair_cost_etb = sum of only explicit numeric costs (0 if none readable).\n"
+                        "6. health_score_pct / grades only from clear evidence; if unclear, health_score_pct=0 and grades='—'.\n"
+                        f"Vehicle context (do not invent specs): {car_model}\n"
+                        f"User text (may be empty):\n{diagnostic_text}\n\n"
+                        "Return ONLY valid JSON with keys: is_valid_diagnostic, error_message_amharic, health_score_pct, "
+                        "engine_grade, transmission_grade, body_and_suspension, identified_faults "
+                        "(list of {component, severity, estimated_cost_etb, description}), "
+                        "total_estimated_repair_cost_etb, buyer_negotiation_advice_amharic.\n"
                     )
                     model = _AdikaGeminiModel(
                         model_name="gemini-2.0-flash",
@@ -4778,95 +4756,18 @@ def register_api_routes(web_app):
                     logger.warning(f"Diagnostic analyzer Gemini warning: {e}")
 
             if not analysis:
-                # Fallback heuristic validation & smart severity analysis
-                diag_keywords = [
-                    "engine", "brake", "oil", "diagnostic", "garage", "obd", "transmission",
-                    "gasket", "spark", "filter", "compression", "blowby", "overhaul", "suspension",
-                    "shock", "repaint", "body", "leak", "ምርመራ", "ሞተር", "ፍሬን", "ዘይት", "ጋራዥ",
-                    "ጥገና", "ብሎባይ", "ክፈት", "እገዳ", "ቻሲ"
-                ]
-                text_lower = diagnostic_text.lower()
-                has_keywords = any(kw in text_lower for kw in diag_keywords)
-
-                if not has_keywords and not image_data:
-                    analysis = {
-                        "is_valid_diagnostic": False,
-                        "error_message_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",
-                        "health_score_pct": 0,
-                        "total_estimated_repair_cost_etb": 0,
-                        "identified_faults": [],
-                        "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
-                    }
-                else:
-                    # Check for major/critical issues in text
-                    has_blowby = any(k in text_lower for k in ["blowby", "ብሎባይ", "blow-by", "smoke", "ጭስ"])
-                    has_overhaul = any(k in text_lower for k in ["overhaul", "ክፈት", "full engine", "compression low", "piston"])
-                    has_suspension = any(k in text_lower for k in ["suspension", "shock", "እገዳ", "ቡሽ"])
-                    has_repaint = any(k in text_lower for k in ["repaint", "ቀለም", "body paint", "ጭረት"])
-
-                    faults = []
-                    tot_cost = 0
-
-                    if has_blowby or has_overhaul:
-                        eng_grade = "D"
-                        health_score = 42
-                        if has_blowby:
-                            faults.append({
-                                "component": "Engine Blowby (የሞተር ብሎባይ/የዘይት ጭስ)",
-                                "severity": "Critical",
-                                "estimated_cost_etb": 120000,
-                                "description": "የፒስተን ሪንግ መላላትና በዘይት መክደኛ በኩል ከፍተኛ ጭስ መውጣት (አስቸኳይ ሞተር መፍታት)"
-                            })
-                            tot_cost += 120000
-                        if has_overhaul:
-                            faults.append({
-                                "component": "Engine Overhaul (የሞተር ሙሉ ጥገና)",
-                                "severity": "Critical",
-                                "estimated_cost_etb": 150000,
-                                "description": "የሞተር ኮምፕሬሽን መውረድ እና ሙሉ ጥገና (Overhaul) ያስፈልገዋል"
-                            })
-                            tot_cost += 150000
-                        advice = "⚠️ መኪናው ከባድ የሞተር ችግር (Blowby / Overhaul) ስላለበት ቢያንስ ከ150,000 እስከ 250,000 ብር የዋጋ ቅናሽ መጠየቅ አለብዎት ወይም ግዢውን ማቆም ይመረጣል።"
-                    else:
-                        eng_grade = "A-"
-                        health_score = 84
-                        faults.append({
-                            "component": "Brake System (የፍሬን ፓድ)",
-                            "severity": "Medium",
-                            "estimated_cost_etb": 4500,
-                            "description": "የፊት ፍሬን ፓዶች 35% ቀሪ (በቅርቡ መለወጥ ያለበት)"
-                        })
-                        tot_cost += 4500
-                        advice = "መኪናው በጥሩ ይዞታ ላይ ይገኛል። ለቀላል የፍሬንና ሰርቪስ ጥገናዎች የሚሆን 10,000 እስከ 15,000 ብር ከሻጩ ጋር በመደራደር እንዲቀንስ ማድረግ ይችላሉ።"
-
-                    if has_suspension:
-                        faults.append({
-                            "component": "Suspension & Bushings (የእገዳ ክፍሎች)",
-                            "severity": "Medium",
-                            "estimated_cost_etb": 22000,
-                            "description": "የሾክ አብዞርበርና የቡሽ መላላት"
-                        })
-                        tot_cost += 22000
-
-                    if has_repaint:
-                        faults.append({
-                            "component": "Body & Paint (የቦዲ ቀለም ጥገና)",
-                            "severity": "Low",
-                            "estimated_cost_etb": 15000,
-                            "description": "የጎን ፓርት ቀለም ድጋሚ መቀባት"
-                        })
-                        tot_cost += 15000
-
-                    analysis = {
-                        "is_valid_diagnostic": True,
-                        "health_score_pct": health_score,
-                        "engine_grade": eng_grade,
-                        "transmission_grade": "A",
-                        "body_and_suspension": "የቦዲና እገዳ ይዞታ መካከለኛ" if (has_suspension or has_repaint) else "ንጹህ ቻሲና ጤናማ እገዳዎች",
-                        "identified_faults": faults,
-                        "total_estimated_repair_cost_etb": tot_cost,
-                        "buyer_negotiation_advice_amharic": advice
-                    }
+                # No LLM result — never invent repair costs
+                analysis = {
+                    "is_valid_diagnostic": False,
+                    "error_message_amharic": "ያልተነበበ / ግልጽ ያልሆነ መረጃ። እባክዎ ግልጽ የምርመራ ወረቀት ያስገቡ ወይም GEMINI_API_KEY ያረጋግጡ።",
+                    "health_score_pct": 0,
+                    "engine_grade": "—",
+                    "transmission_grade": "—",
+                    "body_and_suspension": "ያልተነበበ / ግልጽ ያልሆነ መረጃ",
+                    "identified_faults": [],
+                    "total_estimated_repair_cost_etb": 0,
+                    "buyer_negotiation_advice_amharic": "ግልጽ ያልሆነ ሰነድ ስለሆነ የጥገና ወጪ ማስላት አልተቻለም።",
+                }
 
             return jsonify({
                 "status": "success" if analysis.get("is_valid_diagnostic") is not False else "error",
