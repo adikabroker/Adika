@@ -164,53 +164,6 @@ SELLER_FORM_HTML = r"""
       };
 
       const removePhoto = (i) => setPhotos(prev => prev.filter((_, idx) => idx !== i));
-
-      const aiAutofillFromPhoto = async () => {
-        if (!photos.length) { setPhotoError('መጀመሪያ ፎቶ ይጫኑ'); return; }
-        setPhotoBusy(true); setPhotoError('');
-        try {
-          const res = await fetch('/api/ai-autofill', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ image: photos[0] })
-          });
-          const d = await res.json();
-          const f = d.autofill || d.data || d;
-          if (d.status === 'error') { setPhotoError(d.message || 'AI failed'); return; }
-          if (f.category === 'property' || f.category === 'ቤት') setCategory('ቤት');
-          else if (f.category) setCategory('መኪና');
-          if (f.title || f.car_model || f.model) setCarModel(f.title || f.car_model || f.model || '');
-          if (f.transmission) setTransmission(f.transmission);
-          if (f.fuel_type || f.fuel) setFuel(f.fuel_type || f.fuel);
-          if (f.condition) setCondition(f.condition);
-          if (f.mileage) setMileage(String(f.mileage));
-          if (f.location || f.location_area) setLocationArea(f.location || f.location_area);
-          if (f.bedrooms) setBedrooms(String(f.bedrooms));
-          if (f.house_type) setHouseType(f.house_type);
-          if (f.suggested_price || f.price) setPrice(formatPrice(String(f.suggested_price || f.price)));
-          if (f.description) setDescription(f.description);
-        } catch (e) {
-          setPhotoError('AI autofill network error');
-        } finally { setPhotoBusy(false); }
-      };
-
-      const aiGenerateDescription = async () => {
-        setPhotoBusy(true);
-        try {
-          const res = await fetch('/api/generate-description', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({
-              category, car_model: carModel, price: parsePrice(price),
-              fuel_type: fuel, transmission, condition, mileage,
-              location_area: locationArea, bedrooms, house_type: houseType,
-              notes: description
-            })
-          });
-          const d = await res.json();
-          if (d.description) setDescription(d.description);
-        } catch (e) {}
-        finally { setPhotoBusy(false); }
-      };
-
       const canNext1 = category && (category === 'መኪና' ? (carModel || carType || condition) : (houseType || locationArea));
       const canSubmit = Boolean(description && description.trim());
 
@@ -247,34 +200,16 @@ SELLER_FORM_HTML = r"""
             body: JSON.stringify(data)
           });
           const result = await res.json();
-          if (result.status === 'success' || result.success === true) {
+          if (result.status === 'success') {
             setStatus('ok');
-            try {
-              if (tg && tg.showAlert) tg.showAlert('✅ ማስታወቂያዎ በትክክል ተለጥፏል!');
-              else alert('✅ ማስታወቂያዎ በትክክል ተለጥፏል!');
-            } catch (ae) {
-              alert('✅ ማስታወቂያዎ በትክክል ተለጥፏል!');
-            }
-            setTimeout(function() {
-              try { if (tg && tg.close) tg.close(); } catch (ce) {}
-              window.location.href = '/';
-            }, 1200);
+            setTimeout(() => tg.close(), 2500);
           } else {
-            var errMsg = result.message || 'Error';
-            setStatus(errMsg);
+            setStatus(result.message || 'Error');
             setSubmitting(false);
-            try {
-              if (tg && tg.showAlert) tg.showAlert(errMsg);
-              else alert(errMsg);
-            } catch (ae2) { alert(errMsg); }
           }
         } catch (e) {
           setStatus('Network error');
           setSubmitting(false);
-          try {
-            if (tg && tg.showAlert) tg.showAlert('Network error');
-            else alert('Network error');
-          } catch (ae3) {}
         }
       };
 
@@ -450,16 +385,10 @@ SELLER_FORM_HTML = r"""
                   )}
 
                   <div>
-                    <div className="flex items-center justify-between mb-1 gap-2">
-                      <label className="text-xs font-bold text-slate-700 block">
-                        <span className="lang-am">📝 ዝርዝር መግለጫ</span>
-                        <span className="lang-en">📝 Description</span>
-                      </label>
-                      <button type="button" onClick={aiGenerateDescription} disabled={photoBusy}
-                        className="text-[10px] font-bold text-[#0e7490] bg-[#16acbd]/10 hover:bg-[#16acbd]/20 px-2 py-1 rounded-lg shrink-0">
-                        ✨ AI መግለጫ
-                      </button>
-                    </div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      <span className="lang-am">📝 ዝርዝር መግለጫ</span>
+                      <span className="lang-en">📝 Description</span>
+                    </label>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
                       placeholder="ስለ ንብረቱ ተጨማሪ መረጃ ይግለጹ / Add specifications..."
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
@@ -511,11 +440,6 @@ SELLER_FORM_HTML = r"""
                         ))}
                       </div>
                     )}
-                    <button type="button" onClick={aiAutofillFromPhoto} disabled={photoBusy || photos.length===0}
-                      className="w-full mt-2 py-2 rounded-xl bg-slate-900 text-white text-[11px] font-bold disabled:opacity-40 active:scale-[0.99]">
-                      🔍 ፎቶ → AI አውቶ-ሞላ (Photo-to-Listing)
-                    </button>
-                    {photoError ? <div className="text-[10px] text-rose-600 font-bold mt-1">{photoError}</div> : null}
                   </div>
                 </div>
               )}
@@ -566,7 +490,7 @@ SELLER_FORM_HTML = r"""
             ) : (
               <button type="button" onClick={submit} disabled={!canSubmit || submitting}
                 className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1">
-                {submitting ? 'Posting... ⏳' : <><span className="lang-am">🚀 ማስታወቂያ መዝግብ</span><span className="lang-en">🚀 Submit Listing</span></>}
+                {submitting ? '...' : <><span className="lang-am">🚀 ማስታወቂያ መዝግብ</span><span className="lang-en">🚀 Submit Listing</span></>}
               </button>
             )}
           </div>
@@ -1068,10 +992,6 @@ EXPLORER_HTML = r"""
           <span class="lang-am">🏢 ንግድ</span>
           <span class="lang-en">🏢 Commercial</span>
         </button>
-        <button type="button" id="chassisFilterBtn" class="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-chassis="1">
-          <span class="lang-am">🔍 ሻሲ ያላቸው ብቻ</span>
-          <span class="lang-en">🔍 With Chassis</span>
-        </button>
       </div>
     </div>
   </header>
@@ -1513,7 +1433,6 @@ EXPLORER_HTML = r"""
         </div>
 
         <div id="modalSpecs" class="grid grid-cols-2 gap-2 text-xs font-medium text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100"></div>
-        <div id="modalSimilar" class="hidden space-y-1.5"></div>
 
         <div>
           <h4 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
@@ -1862,7 +1781,6 @@ EXPLORER_HTML = r"""
       tab: "marketplace",
       category: "",
       q: "",
-      hasChassis: false,
       page: 1,
       hasMore: false,
       loading: false,
@@ -1938,24 +1856,16 @@ EXPLORER_HTML = r"""
         .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    function formatTimeShort(dateString) {
-      if (!dateString) return "";
-      try {
-        var now = new Date();
-        var past = new Date(dateString);
-        var diffInSeconds = Math.floor((now - past) / 1000);
-        if (diffInSeconds < 0) diffInSeconds = 0;
-        if (diffInSeconds < 60) return "Just now";
-        var diffInMinutes = Math.floor(diffInSeconds / 60);
-        if (diffInMinutes < 60) return diffInMinutes + "m ago";
-        var diffInHours = Math.floor(diffInMinutes / 60);
-        if (diffInHours < 24) return diffInHours + "h ago";
-        var diffInDays = Math.floor(diffInHours / 24);
-        return diffInDays + "d ago";
-      } catch (e) { return ""; }
-    }
     function relativeTime(iso) {
-      return formatTimeShort(iso);
+      if (!iso) return "";
+      try {
+        var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+        if (secs < 60) return "አሁን";
+        if (secs < 3600) return "ከ " + Math.floor(secs / 60) + " ደቂቃ በፊት";
+        if (secs < 86400) return "ከ " + Math.floor(secs / 3600) + " ሰዓት በፊት";
+        if (secs < 86400 * 7) return "ከ " + Math.floor(secs / 86400) + " ቀን በፊት";
+        return "ከ " + Math.floor(secs / 86400) + " ቀን በፊት";
+      } catch (e) { return ""; }
     }
 
     function formatListingPrice(raw) {
@@ -2240,53 +2150,11 @@ EXPLORER_HTML = r"""
         if (extra.condition) specsHtml += '<div>📊 Condition: <span class="font-bold text-slate-800">' + esc(extra.condition) + '</span></div>';
       }
       modalSpecs.innerHTML = specsHtml || '<div>Status: <span class="font-bold text-slate-800">Active & Verified ✔</span></div>';
-      // Similar / alternative listings
-      (function() {
-        var box = document.getElementById("modalSimilar");
-        if (!box) return;
-        box.classList.add("hidden");
-        box.innerHTML = "";
-        fetch("/api/similar-listings", {
-          method: "POST",
-          headers: {"Content-Type":"application/json"},
-          body: JSON.stringify({
-            listing_id: item.id,
-            category: item.main_category || item.category || "",
-            keyword: (extra.car_model || item.sub_category || ""),
-            limit: 4
-          })
-        }).then(function(r){ return r.json(); }).then(function(d){
-          var items = (d && d.items) || [];
-          if (!items.length) return;
-          box.classList.remove("hidden");
-          var html = '<div class="text-[10px] font-bold text-slate-500 uppercase">ተመሳሳይ አማራጮች</div>';
-          html += '<div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">';
-          items.forEach(function(it){
-            html += '<div class="shrink-0 w-28 p-1.5 rounded-xl bg-slate-50 border border-slate-100">';
-            html += '<div class="text-[10px] font-bold text-slate-800 truncate">' + esc(it.sub_category || it.main_category || "ንብረት") + '</div>';
-            html += '<div class="text-[9px] text-[#0e7490] font-black">' + esc(formatListingPrice(it.price)) + '</div>';
-            html += '</div>';
-          });
-          html += '</div>';
-          box.innerHTML = html;
-        }).catch(function(){});
-      })();
-
 
       var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
       var tUser = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
       modalCallBtn.href = phone ? ("tel:" + phone) : "#";
-      var inquireText = encodeURIComponent(
-        "ሰላም፣ በAdika Marketplace ላይ ያለውን #" + (item.id || "") + " " +
-        (modalTitleText || "ንብረት") + " ማየት እፈልጋለሁ። ዋጋው " + formatListingPrice(item.price) + " ነው። አሁን ይገኛል?"
-      );
-      if (tUser) {
-        modalChatBtn.href = "https://t.me/" + tUser + "?text=" + inquireText;
-      } else if (item.user_chat_id) {
-        modalChatBtn.href = "tg://user?id=" + item.user_chat_id;
-      } else {
-        modalChatBtn.href = "https://t.me/AdikaMarketplaceBot?text=" + inquireText;
-      }
+      modalChatBtn.href = tUser ? ("https://t.me/" + tUser) : (item.user_chat_id ? ("tg://user?id=" + item.user_chat_id) : "#");
 
       modalFavBtn.innerHTML = favorites[item.id] ? "❤️" : "🤍";
       modalFavBtn.onclick = function() {
@@ -2380,15 +2248,7 @@ EXPLORER_HTML = r"""
       }
       statusEl.style.display = "none";
       for (var i = 0; i < items.length; i++) {
-        var it = items[i];
-        if (state.hasChassis) {
-          var ex = it.extra_data || {};
-          if (typeof ex === "string") { try { ex = JSON.parse(ex); } catch (e) { ex = {}; } }
-          var ch = (ex.chassis_number || ex.chassis || it.chassis_number || it.chassis || "").toString().trim();
-          var blob = (JSON.stringify(ex) + " " + (it.description || "")).toLowerCase();
-          if (!ch && blob.indexOf("chassis") < 0 && blob.indexOf("ሻሲ") < 0) continue;
-        }
-        grid.appendChild(createCardElement(it));
+        grid.appendChild(createCardElement(items[i]));
       }
       if (hasMore) {
         moreBtn.classList.remove("hidden");
@@ -2420,7 +2280,6 @@ EXPLORER_HTML = r"""
         (state.tab === "marketplace" ? "SELL" : "BUY");
       if (state.category) qs += "&category=" + encodeURIComponent(state.category);
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
-      if (state.hasChassis) qs += "&has_chassis=1";
 
       fetch("/api/explorer/listings?" + qs)
         .then(function(res){ return res.json(); })
@@ -2481,20 +2340,6 @@ EXPLORER_HTML = r"""
       });
       load(false);
     };
-
-    var chassisFilterBtn = document.getElementById("chassisFilterBtn");
-    if (chassisFilterBtn) {
-      chassisFilterBtn.onclick = function(e) {
-        e.stopPropagation();
-        state.hasChassis = !state.hasChassis;
-        if (state.hasChassis) {
-          chassisFilterBtn.className = "px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm";
-        } else {
-          chassisFilterBtn.className = "px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
-        }
-        load(false);
-      };
-    }
 
     moreBtn.onclick = function () { load(true); };
 
