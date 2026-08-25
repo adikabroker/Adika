@@ -119,41 +119,13 @@ def explorer_page():
     return r
 
 
-def _send_notification_safe(notification_text: str, req_id: int, buyer_id: int):
-    if not bot_app:
-        return
-
-    def run_in_thread():
-        try:
-            from handlers import notify_brokers
-
-            async def _notify():
-                await notify_brokers(bot_app.bot, notification_text, req_id, buyer_id)
-
-            loop = bot_loop
-            if loop is None:
-                loop = getattr(bot_app, "loop", None)
-            if loop is not None and getattr(loop, "is_running", lambda: False)():
-                fut = asyncio.run_coroutine_threadsafe(_notify(), loop)
-                try:
-                    fut.result(timeout=120)
-                except Exception as e:
-                    logger.error(f"notify future error: {e}")
-                return
-
-            new_loop = asyncio.new_event_loop()
-            try:
-                asyncio.set_event_loop(new_loop)
-                new_loop.run_until_complete(_notify())
-            finally:
-                try:
-                    new_loop.close()
-                except Exception:
-                    pass
-        except Exception as e:
-            logger.error(f"_send_notification_safe error: {e}", exc_info=True)
-
-    threading.Thread(target=run_in_thread, daemon=True, name="notify-brokers").start()
+def _send_notification_safe(*args, **kwargs):
+    """Safely sends telegram messages or broker notifications without crashing the API route."""
+    try:
+        if _api_service and hasattr(_api_service, '_send_notification_safe'):
+            return _api_service._send_notification_safe(*args, **kwargs)
+    except Exception as e:
+        logger.error(f"_send_notification_safe delegate error: {e}")
 
 
 
