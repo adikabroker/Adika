@@ -20,6 +20,7 @@ from models import (
     get_db_connection, get_placeholder, add_listing, get_listing_by_id,
     update_listing_status, save_search_alert, expire_old_listings,
     get_active_brokers, get_platform_stats, count_listings, count_brokers,
+    is_postgres,
 )
 
 # Set by webapp.py after import (avoids circular imports)
@@ -1484,7 +1485,43 @@ def register_api_routes(web_app):
                         photos = []
                     if not photos and item.get('photo_id'):
                         photos = [item['photo_id']]
-                    item['photos'] = photos
+                    def _norm_photos(val):
+                        out = []
+                        if val is None or val == "":
+                            return out
+                        if isinstance(val, list):
+                            for x in val:
+                                if isinstance(x, dict):
+                                    u = x.get("url") or x.get("src") or x.get("photo_url") or x.get("photo_id")
+                                    if u:
+                                        out.append(str(u))
+                                elif x:
+                                    out.append(str(x))
+                            return out
+                        if isinstance(val, str):
+                            s = val.strip()
+                            if s.startswith("["):
+                                try:
+                                    parsed = json.loads(s)
+                                    return _norm_photos(parsed)
+                                except Exception:
+                                    return [s] if s else []
+                            return [s] if s else []
+                        return [str(val)]
+                    for key in ("photo_urls", "listing_photos", "photo_url", "image_url"):
+                        extra = _norm_photos(item.get(key))
+                        for u in extra:
+                            if u and u not in photos:
+                                photos.append(u)
+                    clean = []
+                    for ph in photos:
+                        if isinstance(ph, str) and ph.strip().startswith("["):
+                            for u in _norm_photos(ph):
+                                if u and u not in clean:
+                                    clean.append(u)
+                        elif ph:
+                            clean.append(str(ph))
+                    item['photos'] = clean
                     if item.get('view_count') is None:
                         item['view_count'] = 0
                     if item.get('created_at') and not isinstance(item['created_at'], str):
@@ -2020,7 +2057,39 @@ def register_api_routes(web_app):
                     photos = []
                 if not photos and item.get('photo_id'):
                     photos = [item['photo_id']]
-                item['photos'] = photos
+                def _norm_photos2(val):
+                    out = []
+                    if val is None or val == "":
+                        return out
+                    if isinstance(val, list):
+                        for x in val:
+                            if isinstance(x, dict):
+                                u = x.get("url") or x.get("src") or x.get("photo_url") or x.get("photo_id")
+                                if u: out.append(str(u))
+                            elif x:
+                                out.append(str(x))
+                        return out
+                    if isinstance(val, str):
+                        s = val.strip()
+                        if s.startswith("["):
+                            try:
+                                return _norm_photos2(json.loads(s))
+                            except Exception:
+                                return [s] if s else []
+                        return [s] if s else []
+                    return [str(val)]
+                for key in ("photo_urls", "listing_photos", "photo_url", "image_url"):
+                    for u in _norm_photos2(item.get(key)):
+                        if u and u not in photos:
+                            photos.append(u)
+                clean = []
+                for ph in photos:
+                    if isinstance(ph, str) and ph.strip().startswith("["):
+                        for u in _norm_photos2(ph):
+                            if u and u not in clean: clean.append(u)
+                    elif ph:
+                        clean.append(str(ph))
+                item['photos'] = clean
                 if item.get('view_count') is None:
                     item['view_count'] = 0
                 if item.get('created_at') and not isinstance(item['created_at'], str):
@@ -4707,6 +4776,377 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_post_to_channel error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
+
+
+    # ==============================================================================
+    # ADIKA AI FEATURE PACK — production helpers (non-breaking additions)
+    # ==============================================================================
+
+    @web_app.route('/api/generate-description', methods=['POST', 'OPTIONS'])
+    def api_generate_description():
+        """Automated Seller Description Generator — polished Amharic listing text."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            category = (data.get('category') or data.get('main_category') or 'መኪና').strip()
+            model = (data.get('car_model') or data.get('model') or data.get('sub_category') or '').strip()
+            price = data.get('price') or ''
+            fuel = data.get('fuel_type') or data.get('fuel') or ''
+            transmission = data.get('transmission') or ''
+            condition = data.get('condition') or ''
+            mileage = data.get('mileage') or ''
+            location = data.get('location_area') or data.get('location') or ''
+            bedrooms = data.get('bedrooms') or ''
+            house_type = data.get('house_type') or ''
+            notes = (data.get('notes') or data.get('description') or '').strip()
+
+            # Deterministic template (always works offline)
+            if category in ('መኪና', 'car', 'cars', 'Vehicle'):
+                parts = [f"{model or 'መኪና'} ለሽያጭ ቀርቧል።"]
+                if condition:
+                    parts.append(f"ሁኔታ፦ {condition}።")
+                if fuel:
+                    parts.append(f"ነዳጅ፦ {fuel}።")
+                if transmission:
+                    parts.append(f"ማርሽ፦ {transmission}።")
+                if mileage:
+                    parts.append(f"ኪሎሜትር፦ {mileage} KM።")
+                if price:
+                    parts.append(f"ዋጋ፦ {price} ብር።")
+                if notes:
+                    parts.append(notes)
+                parts.append("ለበለጠ መረጃ በስልክ/ቴሌግራም ያግኙን። Adika Marketplace ✔")
+                desc = " ".join(parts)
+            else:
+                parts = [f"{house_type or model or 'ቤት'} ለሽያጭ/ኪራይ ቀርቧል።"]
+                if location:
+                    parts.append(f"አካባቢ፦ {location}።")
+                if bedrooms:
+                    parts.append(f"መኝታ፦ {bedrooms}።")
+                if condition:
+                    parts.append(f"ሁኔታ፦ {condition}።")
+                if price:
+                    parts.append(f"ዋጋ፦ {price} ብር።")
+                if notes:
+                    parts.append(notes)
+                parts.append("ለጉብኝት ቀጠሮ ያስይዙ። Adika Marketplace ✔")
+                desc = " ".join(parts)
+
+            # Optional LLM polish
+            try:
+                if os.environ.get("GEMINI_API_KEY"):
+                    prompt = (
+                        "Rewrite this Ethiopian marketplace listing description in warm, professional Amharic. "
+                        "Keep all facts. Max 4 short sentences. No hashtags. No invented prices.\n\n" + desc
+                    )
+                    polished = _gemini_generate(prompt, temperature=0.35)
+                    if polished and len(polished) > 40:
+                        desc = polished.strip()
+            except Exception as e:
+                logger.debug(f"desc polish skip: {e}")
+
+            return jsonify({"status": "success", "description": desc, "language": "am"})
+        except Exception as e:
+            logger.error(f"api_generate_description: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+
+    @web_app.route('/api/vin-lookup', methods=['POST', 'OPTIONS'])
+    def api_vin_lookup():
+        """Car VIN / chassis code analyzer — deterministic parse + optional AI enrichment."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            vin = (data.get('vin') or data.get('chassis') or data.get('code') or '').strip().upper()
+            vin = re.sub(r'[^A-HJ-NPR-Z0-9]', '', vin)
+            if len(vin) < 8:
+                return jsonify({
+                    "status": "error",
+                    "message": "የVIN/Chassis ቁጥር ቢያንስ 8 ቁምፊ መሆን አለበት።",
+                }), 400
+
+            # WMI rough map (common in ET market)
+            wmi_map = {
+                "JTD": "Toyota", "JT2": "Toyota", "JT3": "Toyota", "JT4": "Toyota",
+                "JHM": "Honda", "JH4": "Honda",
+                "KMH": "Hyundai", "KM8": "Hyundai", "KNA": "Kia",
+                "WDB": "Mercedes-Benz", "WDD": "Mercedes-Benz", "WBA": "BMW",
+                "LGX": "BYD", "LC0": "BYD",
+                "LVV": "Chery", "LVS": "Ford China",
+                "MA3": "Suzuki India", "MHF": "Toyota Indonesia",
+                "NMT": "Toyota Turkey", "SB1": "Toyota UK",
+            }
+            wmi = vin[:3]
+            brand = wmi_map.get(wmi, "")
+            year_code = vin[9] if len(vin) >= 10 else ""
+            year_map = {
+                "A": 2010, "B": 2011, "C": 2012, "D": 2013, "E": 2014, "F": 2015,
+                "G": 2016, "H": 2017, "J": 2018, "K": 2019, "L": 2020, "M": 2021,
+                "N": 2022, "P": 2023, "R": 2024, "S": 2025, "T": 2026,
+            }
+            year = year_map.get(year_code)
+            result = {
+                "vin": vin,
+                "wmi": wmi,
+                "brand_guess": brand or None,
+                "model_year_guess": year,
+                "check_length_ok": len(vin) == 17,
+                "notes_amharic": (
+                    f"VIN ርዝመት {'ትክክል (17)' if len(vin)==17 else f'{len(vin)} ቁምፊ'}። "
+                    + (f"ብራንድ ግምት፦ {brand}። " if brand else "ብራንድ ከWMI ማረጋገጥ አልተቻለም። ")
+                    + (f"የምርት ዘመን ግምት፦ {year}። " if year else "")
+                    + "ኦፊሴላዊ ታሪክ ለማግኘት libre / መንግስት መዝገብ ያረጋግጡ።"
+                ),
+            }
+            # Optional AI enrichment
+            try:
+                if os.environ.get("GEMINI_API_KEY") and len(vin) >= 11:
+                    prompt = (
+                        f"Decode vehicle VIN/chassis '{vin}' for Ethiopian used-car market. "
+                        "Return JSON only: brand, model_family, model_year, body_type, engine_guess, "
+                        "notes_amharic (1 short sentence). If uncertain use null. No markdown."
+                    )
+                    txt = _gemini_generate(prompt, json_mode=True, temperature=0.1)
+                    if txt:
+                        if txt.startswith("```"):
+                            txt = re.sub(r'^```(?:json)?\s*', '', txt)
+                            txt = re.sub(r'\s*```$', '', txt)
+                        ai = json.loads(txt)
+                        result["ai"] = ai
+                        if ai.get("brand") and not brand:
+                            result["brand_guess"] = ai["brand"]
+                        if ai.get("model_year") and not year:
+                            result["model_year_guess"] = ai["model_year"]
+            except Exception as e:
+                logger.debug(f"vin AI skip: {e}")
+
+            return jsonify({"status": "success", "data": result})
+        except Exception as e:
+            logger.error(f"api_vin_lookup: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+
+    @web_app.route('/api/similar-listings', methods=['GET', 'POST', 'OPTIONS'])
+    def api_similar_listings():
+        """Similar Look / Alternative Suggestion — same category, near price, optional keyword."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json if request.method == 'POST' else {}
+            data = data or {}
+            listing_id = data.get('listing_id') or request.args.get('listing_id')
+            category = (data.get('category') or request.args.get('category') or '').strip()
+            keyword = (data.get('keyword') or request.args.get('keyword') or '').strip()
+            try:
+                max_price = float(str(data.get('max_price') or request.args.get('max_price') or 0).replace(',', '') or 0)
+            except Exception:
+                max_price = 0
+            try:
+                min_price = float(str(data.get('min_price') or request.args.get('min_price') or 0).replace(',', '') or 0)
+            except Exception:
+                min_price = 0
+            limit = min(int(data.get('limit') or request.args.get('limit') or 6), 20)
+
+            ref = None
+            if listing_id:
+                try:
+                    ref = get_listing_by_id(int(listing_id))
+                except Exception:
+                    ref = None
+            if ref:
+                category = category or ref.get('main_category') or ref.get('category') or ''
+                keyword = keyword or (ref.get('sub_category') or '')
+                try:
+                    digits = re.sub(r'[^\d]', '', str(ref.get('price') or ''))
+                    p = float(digits) if digits else 0
+                    if p and not max_price:
+                        max_price = p * 1.25
+                    if p and not min_price:
+                        min_price = p * 0.7
+                except Exception:
+                    pass
+
+            from models import is_postgres as _is_pg
+            conn = get_db_connection()
+            cur = conn.cursor()
+            p = get_placeholder()
+            like = "ILIKE" if _is_pg() else "LIKE"
+            where = ["(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','expired','rejected'))"]
+            params = []
+            if category:
+                where.append(f"(COALESCE(main_category, category, '') {like} {p})")
+                params.append(f"%{category}%")
+            if keyword:
+                where.append(f"(COALESCE(sub_category,'') {like} {p} OR COALESCE(description,'') {like} {p})")
+                params.extend([f"%{keyword}%", f"%{keyword}%"])
+            if listing_id:
+                where.append(f"id <> {p}")
+                params.append(int(listing_id))
+            sql = f"SELECT * FROM listings WHERE {' AND '.join(where)} ORDER BY id DESC LIMIT {p}"
+            params.append(limit * 3)
+            try:
+                cur.execute(sql, params)
+                rows = cur.fetchall() or []
+            except Exception as qe:
+                logger.warning(f"similar query: {qe}")
+                rows = []
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+            items = []
+            for row in rows:
+                item = dict(row) if isinstance(row, dict) else {}
+                if not item:
+                    continue
+                try:
+                    digits = re.sub(r'[^\d]', '', str(item.get('price') or ''))
+                    ip = float(digits) if digits else 0
+                except Exception:
+                    ip = 0
+                if max_price and ip and ip > max_price:
+                    continue
+                if min_price and ip and ip < min_price:
+                    continue
+                items.append({
+                    "id": item.get("id"),
+                    "main_category": item.get("main_category") or item.get("category"),
+                    "sub_category": item.get("sub_category"),
+                    "price": item.get("price"),
+                    "description": (item.get("description") or "")[:120],
+                    "photo_id": item.get("photo_id"),
+                    "req_type": item.get("req_type"),
+                })
+                if len(items) >= limit:
+                    break
+
+            return jsonify({
+                "status": "success",
+                "count": len(items),
+                "items": items,
+                "reference_id": listing_id,
+            })
+        except Exception as e:
+            logger.error(f"api_similar_listings: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+
+    @web_app.route('/api/parse-telegram-post', methods=['POST', 'OPTIONS'])
+    def api_parse_telegram_post():
+        """Telegram Post → structured listing fields (Amharic/English free text)."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            text = (data.get('text') or data.get('post') or data.get('caption') or '').strip()
+            if not text or len(text) < 8:
+                return jsonify({"status": "error", "message": "ጽሁፍ ያስገቡ።"}), 400
+
+            # Deterministic extraction
+            price = None
+            m = re.search(r'(?:ዋጋ|price|br|ብር|etb)[^\d]{0,8}([\d,.\s]{4,15})', text, re.I)
+            if not m:
+                m = re.search(r'([\d,]{5,12})\s*(?:ብር|br|etb)?', text, re.I)
+            if m:
+                price = re.sub(r'[^\d]', '', m.group(1))
+
+            phone = None
+            pm = re.search(r'(\+?251[79]\d{8}|0[79]\d{8})', text)
+            if pm:
+                phone = pm.group(1)
+
+            category = "መኪና"
+            if re.search(r'ቤት|አፓርት|ቪላ|ኮንዶ|መሬት|apartment|villa|house|land', text, re.I):
+                category = "ቤት"
+
+            brands = ["Toyota","Hyundai","Suzuki","BYD","Nissan","Honda","Chery","Jetour","Kia","Mercedes","BMW"]
+            model = ""
+            for b in brands:
+                if re.search(rf'\b{b}\b', text, re.I):
+                    # grab few words after brand
+                    mm = re.search(rf'({b}\s+[A-Za-z0-9\-]+(?:\s+\d{{4}})?)', text, re.I)
+                    model = mm.group(1) if mm else b
+                    break
+
+            year = None
+            ym = re.search(r'\b(19|20)\d{2}\b', text)
+            if ym:
+                year = ym.group(0)
+
+            structured = {
+                "category": category,
+                "car_model": model or None,
+                "year": year,
+                "price": price,
+                "phone": phone,
+                "description": text[:500],
+                "source": "telegram_parse",
+            }
+
+            try:
+                if os.environ.get("GEMINI_API_KEY"):
+                    prompt = (
+                        "Parse this Ethiopian Telegram marketplace post into JSON keys: "
+                        "category (መኪና|ቤት), car_model, year, price_etb, phone, fuel_type, "
+                        "transmission, location, description_amharic (cleaned 2 sentences). "
+                        "No markdown.\n\nPOST:\n" + text[:1500]
+                    )
+                    txt = _gemini_generate(prompt, json_mode=True, temperature=0.15)
+                    if txt:
+                        if txt.startswith("```"):
+                            txt = re.sub(r'^```(?:json)?\s*', '', txt)
+                            txt = re.sub(r'\s*```$', '', txt)
+                        ai = json.loads(txt)
+                        for k, v in ai.items():
+                            if v and not structured.get(k):
+                                structured[k] = v
+                        if ai.get("price_etb") and not structured.get("price"):
+                            structured["price"] = re.sub(r'[^\d]', '', str(ai["price_etb"]))
+            except Exception as e:
+                logger.debug(f"parse post AI: {e}")
+
+            return jsonify({"status": "success", "listing": structured})
+        except Exception as e:
+            logger.error(f"api_parse_telegram_post: {e}", exc_info=True)
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+
+    @web_app.route('/api/photo-enhance', methods=['POST', 'OPTIONS'])
+    def api_photo_enhance():
+        """
+        Lightweight photo quality hint + recompress guidance.
+        Heavy CV filters run client-side; server returns recommended canvas settings.
+        """
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            # Client already has canvas compression; provide enhancement recipe
+            return jsonify({
+                "status": "success",
+                "recipe": {
+                    "max_edge_px": 1200,
+                    "jpeg_quality": 0.72,
+                    "brightness": 1.08,
+                    "contrast": 1.12,
+                    "saturation": 1.05,
+                    "sharpen": True,
+                    "notes_amharic": "ደብዛዛ ፎቶዎችን ብሩህነትና ኮንትራስት በመጨመር ያሻሽሉ። ከ80% በላይ መጨመቅ ይቻላል።",
+                },
+                "day_to_dusk": {
+                    "enabled_client": True,
+                    "filter": "warm_orange_overlay_0.25 + reduce_exposure_0.85",
+                    "notes_amharic": "የቤት ውጫዊ ፎቶ ወደ ማታ ብርሃን ለመቀየር የደንበኛ-ጎን ፊልተር ይጠቀሙ።",
+                },
+            })
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+
 
 
 
