@@ -32,6 +32,21 @@ def _webapp_url(path: str) -> str:
     return base + path
 
 
+def _send_notification_safe(bot_instance, chat_id, message_text=None, *args, **kwargs):
+    """Safely sends telegram messages without crashing the API route."""
+    try:
+        if isinstance(bot_instance, str) and (isinstance(chat_id, (int, str)) or message_text is not None):
+            # Signature was (notification_text, req_id, buyer_id)
+            import api_service
+            if hasattr(api_service, '_send_notification_safe'):
+                return api_service._send_notification_safe(bot_instance, chat_id, message_text, *args, **kwargs)
+        if bot_instance and chat_id and message_text:
+            if hasattr(bot_instance, 'send_message'):
+                bot_instance.send_message(chat_id=chat_id, text=message_text, parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"Failed to send notification: {e}")
+
+
 from models import (
     LAST_BROKER_ERROR,
     upload_broker_document,
