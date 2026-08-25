@@ -3,6 +3,9 @@ import json
 import re
 import os
 import random
+import threading
+import asyncio
+import logging
 import urllib.request
 import urllib.error
 from typing import List, Dict, Any, Optional
@@ -26,6 +29,100 @@ from models import (
 bot_app = None
 bot_loop = None
 _json_safe = None
+
+
+def _send_notification_safe(*args, **kwargs):
+    """Safely sends telegram messages or broker notifications without crashing the API route."""
+    try:
+        # Pattern 1: (bot_instance, chat_id, message_text)
+        if len(args) >= 3 and hasattr(args[0], 'send_message'):
+            bot_instance, chat_id, message_text = args[0], args[1], args[2]
+            if bot_instance and chat_id:
+                try:
+                    if asyncio.iscoroutinefunction(bot_instance.send_message):
+                        async def _send():
+                            await bot_instance.send_message(chat_id=chat_id, text=message_text, parse_mode='HTML')
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if loop.is_running():
+                                asyncio.create_task(_send())
+                            else:
+                                loop.run_until_complete(_send())
+                        except Exception:
+                            new_loop = asyncio.new_event_loop()
+                            new_loop.run_until_complete(_send())
+                            new_loop.close()
+                    else:
+                        bot_instance.send_message(chat_id=chat_id, text=message_text, parse_mode='HTML')
+                except Exception as e:
+                    logging.error(f"Failed to send notification: {e}")
+            return
+
+        if 'bot_instance' in kwargs:
+            bot_instance = kwargs.get('bot_instance')
+            chat_id = kwargs.get('chat_id')
+            message_text = kwargs.get('message_text')
+            if bot_instance and chat_id:
+                try:
+                    if hasattr(bot_instance, 'send_message'):
+                        bot_instance.send_message(chat_id=chat_id, text=message_text, parse_mode='HTML')
+                except Exception as e:
+                    logging.error(f"Failed to send notification: {e}")
+            return
+
+        # Pattern 2: (notification_text, req_id, buyer_id/chat_id)
+        notification_text = kwargs.get('notification_text') or kwargs.get('message_text') or (args[0] if len(args) > 0 and isinstance(args[0], str) else "")
+        req_id = kwargs.get('req_id') or (args[1] if len(args) > 1 and isinstance(args[1], (int, str)) else 0)
+        buyer_id = kwargs.get('buyer_id') or kwargs.get('chat_id') or (args[2] if len(args) > 2 and isinstance(args[2], (int, str)) else 0)
+
+        target_bot = bot_app
+        target_loop = bot_loop
+        if not target_bot:
+            try:
+                import webapp
+                target_bot = getattr(webapp, 'bot_app', None)
+                target_loop = getattr(webapp, 'bot_loop', None)
+            except Exception:
+                target_bot = None
+
+        if not target_bot:
+            return
+
+        def run_in_thread():
+            try:
+                from handlers import notify_brokers
+                bot_obj = getattr(target_bot, 'bot', target_bot)
+
+                async def _notify():
+                    try:
+                        await notify_brokers(bot_obj, str(notification_text), int(req_id or 0), int(buyer_id or 0))
+                    except Exception as err:
+                        logging.error(f"notify_brokers error: {err}")
+
+                loop = target_loop or getattr(target_bot, "loop", None)
+                if loop is not None and getattr(loop, "is_running", lambda: False)():
+                    fut = asyncio.run_coroutine_threadsafe(_notify(), loop)
+                    try:
+                        fut.result(timeout=60)
+                    except Exception as e:
+                        logging.error(f"notify future error: {e}")
+                    return
+
+                new_loop = asyncio.new_event_loop()
+                try:
+                    asyncio.set_event_loop(new_loop)
+                    new_loop.run_until_complete(_notify())
+                finally:
+                    try:
+                        new_loop.close()
+                    except Exception:
+                        pass
+            except Exception as e:
+                logging.error(f"_send_notification_safe thread error: {e}")
+
+        threading.Thread(target=run_in_thread, daemon=True, name="notify-safe").start()
+    except Exception as e:
+        logging.error(f"Failed to send notification: {e}")
 
 # ---------------------------------------------------------------------------
 # Gemini (new google-genai SDK + multi-model fallback)
@@ -1191,6 +1288,7 @@ def register_api_routes(web_app):
         return obj
 
     @web_app.route('/api/submit-listing', methods=['POST'])
+    @web_app.route('/api/post-listing', methods=['POST'])
     def submit_listing():
         try:
             data = request.json or {}
@@ -1293,12 +1391,17 @@ def register_api_routes(web_app):
             if req_id:
                 notification_text = f"🛍️ **New Listing (#ADK-{req_id})**\n\n{full_desc}"
                 _send_notification_safe(notification_text, req_id, uid)
-                return jsonify({"status": "success", "req_id": req_id})
+                return jsonify({
+                    "success": True,
+                    "status": "success",
+                    "message": "ማስታወቂያዎ በትክክል ተመዝግቧል!",
+                    "req_id": req_id
+                }), 200
             else:
-                return jsonify({"status": "error", "message": "Failed to save listing"}), 500
+                return jsonify({"success": False, "status": "error", "message": "Failed to save listing"}), 500
         except Exception as e:
             logger.error(f"submit_listing error: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({"success": False, "status": "error", "message": str(e)}), 500
 
 
     @web_app.route('/api/submit-request', methods=['POST'])
