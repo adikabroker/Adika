@@ -2061,3 +2061,245 @@ def expire_old_listings(days: int = 30) -> int:
 
 
 
+
+
+
+# ========== CONTRACTS ==========
+
+def ensure_contracts_table():
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        if is_postgres():
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS contracts (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT,
+                    seller_info JSONB DEFAULT '{}',
+                    buyer_info JSONB DEFAULT '{}',
+                    vehicle_info JSONB DEFAULT '{}',
+                    financial_info JSONB DEFAULT '{}',
+                    witnesses JSONB DEFAULT '[]',
+                    contract_status TEXT DEFAULT 'Draft',
+                    contract_text TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+        else:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS contracts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    seller_info TEXT DEFAULT '{}',
+                    buyer_info TEXT DEFAULT '{}',
+                    vehicle_info TEXT DEFAULT '{}',
+                    financial_info TEXT DEFAULT '{}',
+                    witnesses TEXT DEFAULT '[]',
+                    contract_status TEXT DEFAULT 'Draft',
+                    contract_text TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
+    except Exception as e:
+        logger.error("ensure_contracts_table: %s", e)
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def _json_param(obj):
+    if is_postgres():
+        try:
+            from psycopg2.extras import Json as PgJson
+            return PgJson(obj if obj is not None else {})
+        except Exception:
+            return json.dumps(obj or {}, ensure_ascii=False)
+    return json.dumps(obj or {}, ensure_ascii=False)
+
+
+def save_contract(user_id, seller_info, buyer_info, vehicle_info, financial_info,
+                  witnesses=None, contract_status="Draft", contract_text=None, contract_id=None):
+    """Insert or update contract. Returns id."""
+    ensure_contracts_table()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        uid = int(user_id) if user_id else 0
+        s = _json_param(seller_info or {})
+        b = _json_param(buyer_info or {})
+        v = _json_param(vehicle_info or {})
+        f = _json_param(financial_info or {})
+        w = _json_param(witnesses or [])
+        status = str(contract_status or "Draft")[:32]
+        text = contract_text or ""
+
+        if contract_id:
+            cur.execute(
+                f"""UPDATE contracts SET
+                    seller_info={p}, buyer_info={p}, vehicle_info={p}, financial_info={p},
+                    witnesses={p}, contract_status={p}, contract_text={p},
+                    updated_at=CURRENT_TIMESTAMP
+                    WHERE id={p}""",
+                (s, b, v, f, w, status, text, int(contract_id)),
+            )
+            if not is_postgres():
+                conn.commit()
+            return int(contract_id)
+
+        cur.execute(
+            f"""INSERT INTO contracts
+                (user_id, seller_info, buyer_info, vehicle_info, financial_info, witnesses, contract_status, contract_text)
+                VALUES ({p},{p},{p},{p},{p},{p},{p},{p})""",
+            (uid, s, b, v, f, w, status, text),
+        )
+        if is_postgres():
+            cur.execute("SELECT lastval()")
+            row = cur.fetchone()
+            cid = row[0] if not isinstance(row, dict) else list(row.values())[0]
+        else:
+            cid = cur.lastrowid
+            conn.commit()
+        return int(cid or 0)
+    except Exception as e:
+        logger.error("save_contract: %s", e, exc_info=True)
+        return None
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def get_contract(contract_id):
+    ensure_contracts_table()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        cur.execute(f"SELECT * FROM contracts WHERE id = {p}", (int(contract_id),))
+        row = cur.fetchone()
+        if not row:
+            return None
+        d = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
+        for k in ("seller_info", "buyer_info", "vehicle_info", "financial_info", "witnesses"):
+            if isinstance(d.get(k), str):
+                try:
+                    d[k] = json.loads(d[k])
+                except Exception:
+                    pass
+        return d
+    except Exception as e:
+        logger.error("get_contract: %s", e)
+        return None
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def get_user_contracts(user_id, limit=20):
+    ensure_contracts_table()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        cur.execute(
+            f"SELECT * FROM contracts WHERE user_id = {p} ORDER BY id DESC LIMIT {p}",
+            (int(user_id), int(limit)),
+        )
+        rows = cur.fetchall() or []
+        out = []
+        for row in rows:
+            d = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
+            for k in ("seller_info", "buyer_info", "vehicle_info", "financial_info", "witnesses"):
+                if isinstance(d.get(k), str):
+                    try:
+                        d[k] = json.loads(d[k])
+                    except Exception:
+                        pass
+            out.append(d)
+        return out
+    except Exception as e:
+        logger.error("get_user_contracts: %s", e)
+        return []
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def build_amharic_vehicle_contract(seller, buyer, vehicle, financial, witnesses=None):
+    """Formal Amharic vehicle sale contract text."""
+    seller = seller or {}
+    buyer = buyer or {}
+    vehicle = vehicle or {}
+    financial = financial or {}
+    witnesses = witnesses or []
+    total = int(float(financial.get("total_price") or 0))
+    advance = int(float(financial.get("advance") or 0))
+    balance = int(float(financial.get("balance") or max(0, total - advance)))
+    deadline = financial.get("deadline") or "______________"
+
+    def money(n):
+        try:
+            return f"{int(n):,} ብር"
+        except Exception:
+            return f"{n} ብር"
+
+    w1 = witnesses[0] if len(witnesses) > 0 else {}
+    w2 = witnesses[1] if len(witnesses) > 1 else {}
+
+    text = f"""የመኪና ሽያጭ ውል
+========================
+የተዋዋዮች:
+1. ሻጭ: {seller.get('name') or '—'} | ስልክ: {seller.get('phone') or '—'} | መታወቂያ: {seller.get('id_number') or '—'}
+   ክፍለ ከተማ: {seller.get('sub_city') or '—'} | ወረዳ: {seller.get('woreda') or '—'}
+2. ገዢ: {buyer.get('name') or '—'} | ስልክ: {buyer.get('phone') or '—'} | መታወቂያ: {buyer.get('id_number') or '—'}
+
+የመኪናው መግለጫ:
+- ሞዴል: {vehicle.get('model') or '—'}
+- ሰሌዳ/Folder: {vehicle.get('plate') or '—'}
+- ሻንሲ (Chassis): {vehicle.get('chassis') or '—'}
+- ሞተር (Engine): {vehicle.get('engine') or '—'}
+- ሊብሬ: {vehicle.get('libre') or '—'}
+
+የገንዘብ ሁኔታ:
+- ጠቅላላ ዋጋ: {money(total)}
+- የተከፈለ ቅድመ ክፍያ: {money(advance)}
+- ቀሪ ክፍያ: {money(balance)}
+- ቀሪ ክፍያ የሚጠናቀቅበት ቀን: {deadline}
+
+አንቀጾች:
+1. ሻጩ ከላይ የተገለጸውን መኪና ለገዢው በሙሉ ባለቤትነት ያስተላልፋል።
+2. ገዢው ቀሪ ክፍያውን በተጠቀሰው ቀን ወይም በፊት ይከፍላል።
+3. የባለቤትነት ሽግግር ከሙሉ ክፍያ በኋላ ይጠናቀቃል።
+4. ከውሉ በፊት የነበሩ ግዴታዎች/እዳዎች በሻጩ ላይ ይቆያሉ።
+5. ከውሉ በኋላ የሚከሰቱ ጉዳቶች በገዢው ላይ ናቸው።
+
+ምስክሮች:
+1. {w1.get('name') or '________________'} | መታወቂያ: {w1.get('id_number') or '________'}
+2. {w2.get('name') or '________________'} | መታወቂያ: {w2.get('id_number') or '________'}
+
+ፊርማዎች:
+ሻጭ: ________________     ገዢ: ________________
+ምስክር 1: ________________  ምስክር 2: ________________
+
+ቀን: ________________     ቦታ: አዲስ አበባ
+"""
+    return text
