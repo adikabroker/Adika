@@ -102,6 +102,7 @@ SELLER_FORM_HTML = r"""
       const [mileage, setMileage] = useState('');
       const [condition, setCondition] = useState('');
       const [carType, setCarType] = useState('');
+      const [chassisNumber, setChassisNumber] = useState('');
       const [locationArea, setLocationArea] = useState('');
       const [bedrooms, setBedrooms] = useState('');
       const [bathrooms, setBathrooms] = useState('');
@@ -175,6 +176,7 @@ SELLER_FORM_HTML = r"""
         setMileage('');
         setCondition('');
         setCarType('');
+        setChassisNumber('');
         setLocationArea('');
         setBedrooms('');
         setBathrooms('');
@@ -207,8 +209,9 @@ SELLER_FORM_HTML = r"""
           photos,
           car_model: carModel,
           location_area: locationArea,
+          chassis_number: chassisNumber,
           ...(isCar ? {
-            fuel_type: fuel, transmission, mileage, condition, car_type: carType
+            fuel_type: fuel, transmission, mileage, condition, car_type: carType, chassis_number: chassisNumber
           } : {
             bedrooms, bathrooms,
             parking: parking ? 'አለ' : 'የለም',
@@ -385,6 +388,21 @@ SELLER_FORM_HTML = r"""
                           placeholder="45000"
                           className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs" />
                       </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                          <span>
+                            <span className="lang-am">🛡️ የሻሲ ቁጥር (Chassis/VIN)</span>
+                            <span className="lang-en">🛡️ Chassis / VIN</span>
+                          </span>
+                          <span className="text-[10px] text-[#0e7490] font-semibold bg-[#16acbd]/10 px-1.5 py-0.5 rounded">
+                            <span className="lang-am">አማራጭ (ኦፊሴላዊ ባጅ ያገኛል)</span>
+                            <span className="lang-en">Optional (Grants Verified Badge)</span>
+                          </span>
+                        </label>
+                        <input type="text" value={chassisNumber} onChange={e => setChassisNumber(e.target.value.toUpperCase())}
+                          placeholder="ለምሳሌ፡ JTDKN36U48... (17 Digits)"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-mono uppercase font-bold text-slate-800" />
+                      </div>
                     </>
                   ) : (
                     <>
@@ -530,8 +548,9 @@ SELLER_FORM_HTML = r"""
               <button type="button" onClick={submit} disabled={!canSubmit || submitting}
                 className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
                 {submitting ? (
-                  <span className="flex items-center gap-1.5">
-                    <span>Posting... ⏳</span>
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <span className="lang-am">እየተመዘገበ ነው... ⏳</span>
+                    <span className="lang-en">Posting... ⏳</span>
                   </span>
                 ) : (
                   <>
@@ -822,8 +841,9 @@ BUYER_FORM_HTML = r"""
             <button type="button" onClick={submit} disabled={!details || submitting}
               className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
               {submitting ? (
-                <span className="flex items-center gap-1.5">
-                  <span>Broadcasting... ⏳</span>
+                <span className="flex items-center gap-1.5 font-bold">
+                  <span className="lang-am">እየተመዘገበ ነው... ⏳</span>
+                  <span className="lang-en">Broadcasting... ⏳</span>
                 </span>
               ) : (
                 <>
@@ -1073,6 +1093,9 @@ EXPLORER_HTML = r"""
         <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ንግድ">
           <span class="lang-am">🏢 ንግድ</span>
           <span class="lang-en">🏢 Commercial</span>
+        </button>
+        <button id="filterChassisChip" type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40" data-filter="chassis">
+          <span>🔍 <span class="lang-am">ሻሲ ያላቸው ብቻ</span><span class="lang-en">VIN Verified</span></span>
         </button>
       </div>
     </div>
@@ -1416,6 +1439,11 @@ EXPLORER_HTML = r"""
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
               <span class="tool-title">የምርመራ ወረቀት</span>
               <span class="tool-sub">Garage Diagnostic Sheet</span>
+            </button>
+            <button id="toolChassisBtn" type="button" class="tool-card-pro">
+              <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/><path d="M12 14v3"/></svg></span>
+              <span class="tool-title">የሻሲ ማረጋገጫ</span>
+              <span class="tool-sub">Chassis / VIN Specs</span>
             </button>
           </div>
         </div>
@@ -1837,6 +1865,53 @@ EXPLORER_HTML = r"""
     </div>
   </div>
 
+  <!-- Modal: Chassis & VIN Verification Tool -->
+  <div id="chassisModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-1.5">
+          <span class="text-base">🛡️</span>
+          <h3 class="font-extrabold text-xs tracking-wide">
+            <span class="lang-am">የሻሲ ቁጥር ማረጋገጫ (Chassis / VIN Decoder)</span>
+            <span class="lang-en">Chassis & VIN Verification</span>
+          </h3>
+        </div>
+        <button onclick="closeToolModal('chassisModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm" aria-label="Close">✕</button>
+      </div>
+      <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs">
+        <div>
+          <label class="font-bold text-slate-700 block mb-1">
+            <span class="lang-am">የመኪናው 17-ዲጂት ሻሲ / VIN ቁጥር ያስገቡ</span>
+            <span class="lang-en">Enter 17-Digit Chassis / VIN Number</span>
+          </label>
+          <div class="relative">
+            <input id="chassisInput" type="text" placeholder="ለምሳሌ፡ JTDKB20U... (17 Digits)" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-mono uppercase font-black tracking-wider text-slate-800" />
+          </div>
+          
+          <!-- Sample Test Chips -->
+          <div class="mt-2.5">
+            <span class="text-[10px] font-bold text-slate-400 block mb-1">
+              <span class="lang-am">ፈጣን የሙከራ ሻሲዎች (Quick Test):</span>
+              <span class="lang-en">Sample VINs:</span>
+            </span>
+            <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="JTDKB20U00189342">Toyota Vitz (Japan)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="KMHD381CBKU782910">Hyundai Tucson (Korea)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="LGXC12480PA093821">BYD Song Plus (EV)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="MA3FBE41S00123984">Suzuki Dzire (Auto)</button>
+            </div>
+          </div>
+        </div>
+
+        <button id="chassisVerifyBtn" type="button" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow-md active:scale-95 flex items-center justify-center gap-1.5">
+          <span>🔍 <span class="lang-am">ሻሲ አረጋግጥና ዝርዝር አውጣ</span><span class="lang-en">Verify Chassis Specs</span></span>
+        </button>
+
+        <div id="chassisResult" class="hidden font-medium"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ================================================================= -->
   <!-- 6. APPLICATION LOGIC & CSS CLASS TOGGLE                           -->
   <!-- ================================================================= -->
@@ -2116,12 +2191,14 @@ EXPLORER_HTML = r"""
       var views = item.view_count || item.views_count || 0;
       var isFav = Boolean(favorites[item.id]);
       var timeLabel = relativeTime(item.created_at);
+      var hasChassis = Boolean(extra.chassis_number || item.chassis_number || extra.has_chassis || (item.description && (item.description.indexOf("Chassis") >= 0 || item.description.indexOf("ሻሲ") >= 0)));
 
       var card = document.createElement("div");
       card.className = "adika-card cursor-pointer";
       card.innerHTML =
         '<div class="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">' +
           '<div class="absolute top-2 left-2 z-10 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>' +
+          (hasChassis ? '<span class="absolute top-2 right-2 z-10 bg-emerald-700/90 text-white backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] font-black flex items-center gap-0.5 shadow-sm"><span>🛡️</span><span>ሻሲ ✓</span></span>' : '') +
           media +
           (views ? '<span class="absolute bottom-1.5 left-1.5 z-10 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] text-white font-bold">👁️ ' + esc(views) + '</span>' : '') +
         '</div>' +
@@ -2222,6 +2299,7 @@ EXPLORER_HTML = r"""
 
       var specsHtml = "";
       if (isCar) {
+        if (extra.chassis_number) specsHtml += '<div class="col-span-2">🛡️ VIN: <span class="font-mono font-bold text-emerald-700">' + esc(extra.chassis_number) + ' (Verified ✓)</span></div>';
         if (extra.fuel_type) specsHtml += '<div>⛽ Fuel: <span class="font-bold text-slate-800">' + esc(extra.fuel_type) + '</span></div>';
         if (extra.transmission) specsHtml += '<div>⚙️ Trans: <span class="font-bold text-slate-800">' + esc(extra.transmission) + '</span></div>';
         if (extra.mileage) specsHtml += '<div>🛣️ Mileage: <span class="font-bold text-slate-800">' + esc(extra.mileage) + ' KM</span></div>';
@@ -2374,6 +2452,7 @@ EXPLORER_HTML = r"""
         (state.tab === "marketplace" ? "SELL" : "BUY");
       if (state.category) qs += "&category=" + encodeURIComponent(state.category);
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
+      if (state.chassisOnly) qs += "&chassis_only=1";
 
       fetch("/api/explorer/listings?" + qs)
         .then(function(res){ return res.json(); })
@@ -2436,6 +2515,19 @@ EXPLORER_HTML = r"""
     catsEl.onclick = function (ev) {
       var btn = ev.target.closest("button");
       if (!btn || !catsEl.contains(btn)) return;
+      if (btn.id === "filterChassisChip") {
+        state.chassisOnly = !state.chassisOnly;
+        if (state.chassisOnly) {
+          btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-400 text-slate-900 shadow-md ring-2 ring-emerald-200";
+          filterText.textContent = "🛡️ ሻሲ ያላቸው ብቻ (VIN Verified Only)";
+          filterBanner.classList.remove("hidden");
+        } else {
+          btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40";
+          filterBanner.classList.add("hidden");
+        }
+        load(false);
+        return;
+      }
       var catId = btn.getAttribute("data-id") || "";
       selectCategory(catId);
     };
@@ -2494,6 +2586,9 @@ EXPLORER_HTML = r"""
     document.getElementById("toolContractBtn").onclick = function() { aiModalClose.onclick(); openToolModal("contractModal"); };
     document.getElementById("toolPoaBtn").onclick = function() { aiModalClose.onclick(); openToolModal("poaModal"); };
     document.getElementById("toolDiagBtn").onclick = function() { aiModalClose.onclick(); openToolModal("diagModal"); };
+    if (document.getElementById("toolChassisBtn")) {
+      document.getElementById("toolChassisBtn").onclick = function() { aiModalClose.onclick(); openToolModal("chassisModal"); };
+    }
 
     // AI Smart Financial Advisor Interactive Controls
     var selectedPurpose = "business";
@@ -3510,6 +3605,82 @@ EXPLORER_HTML = r"""
       });
     };
 
+    // Chassis / VIN Verification Action Handlers
+    document.querySelectorAll(".vin-sample-chip").forEach(function(btn) {
+      btn.onclick = function() {
+        var v = btn.getAttribute("data-vin");
+        var inp = document.getElementById("chassisInput");
+        if (inp) {
+          inp.value = v;
+          inp.focus();
+        }
+      };
+    });
+
+    if (document.getElementById("chassisVerifyBtn")) {
+      document.getElementById("chassisVerifyBtn").onclick = function() {
+        var inp = document.getElementById("chassisInput");
+        var vin = (inp ? inp.value : "").trim().toUpperCase();
+        var resEl = document.getElementById("chassisResult");
+        if (!resEl) return;
+        if (!vin || vin.length < 5) {
+          resEl.classList.remove("hidden");
+          resEl.innerHTML = '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-bold">⚠️ እባክዎን ትክክለኛ የሻሲ ቁጥር ያስገቡ (ቢያንስ 5 ፊደላት/ቁጥሮች)።</div>';
+          return;
+        }
+        resEl.classList.remove("hidden");
+        resEl.innerHTML = '<div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-600 text-xs text-center font-medium">⏳ የሻሲ ቁጥሩ በኦፊሴላዊ የፋብሪካ ዳታቤዝ እየተረጋገጠ ነው...</div>';
+
+        fetch("/api/verify-chassis", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vin: vin })
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          if (res.status !== "success" || !res.data) {
+            resEl.innerHTML = '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-semibold">' + esc(res.message || "የሻሲ ቁጥሩን ማረጋገጥ አልተቻለም።") + '</div>';
+            return;
+          }
+          var d = res.data;
+          var sp = d.specs || {};
+          resEl.innerHTML =
+            '<div class="space-y-3 text-xs">' +
+              '<div class="p-3 bg-slate-900 text-white rounded-2xl flex items-center justify-between shadow-md">' +
+                '<div>' +
+                  '<div class="text-[10px] text-emerald-400 font-extrabold uppercase tracking-wide flex items-center gap-1"><span>✓</span><span>' + esc(d.badge || "Official Specs Verified") + '</span></div>' +
+                  '<div class="text-sm font-black text-white mt-0.5">' + esc((sp.make || "") + " " + (sp.model || "")) + '</div>' +
+                  '<div class="text-[10px] text-slate-400 font-mono">' + esc(sp.vin || vin) + '</div>' +
+                '</div>' +
+                '<div class="text-right">' +
+                  '<span class="px-2 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 font-black text-[11px] border border-emerald-500/40">' + esc(sp.year || "2020") + '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200 text-[11px]">' +
+                '<div><span class="text-slate-400 text-[10px] block">አምራች / Make:</span><span class="font-bold text-slate-800">' + esc(sp.make || "Toyota") + '</span></div>' +
+                '<div><span class="text-slate-400 text-[10px] block">ሞዴል / Model:</span><span class="font-bold text-slate-800">' + esc(sp.model || "Vitz") + '</span></div>' +
+                '<div><span class="text-slate-400 text-[10px] block">የምርት ዘመን / Year:</span><span class="font-bold text-slate-800">' + esc(sp.year || "2018") + '</span></div>' +
+                '<div><span class="text-slate-400 text-[10px] block">የትውልድ አገር / Country:</span><span class="font-bold text-slate-800">' + esc(sp.country || "Japan") + '</span></div>' +
+                '<div><span class="text-slate-400 text-[10px] block">ሞተር / Engine:</span><span class="font-bold text-slate-800">' + esc(sp.engine || "1.3L VVT-i") + '</span></div>' +
+                '<div><span class="text-slate-400 text-[10px] block">ነዳጅ / Fuel:</span><span class="font-bold text-slate-800">' + esc(sp.fuel_type || "Benzine") + '</span></div>' +
+                '<div><span class="text-slate-400 text-[10px] block">ማርሽ / Transmission:</span><span class="font-bold text-slate-800">' + esc(sp.transmission || "Automatic") + '</span></div>' +
+                '<div><span class="text-slate-400 text-[10px] block">ቦዲ / Body Style:</span><span class="font-bold text-slate-800">' + esc(sp.body_style || "Hatchback") + '</span></div>' +
+                '<div class="col-span-2"><span class="text-slate-400 text-[10px] block">የመገጣጠሚያ ፋብሪካ / Assembly:</span><span class="font-bold text-slate-800">' + esc(sp.assembly || "Official Assembly Plant") + '</span></div>' +
+                '<div class="col-span-2"><span class="text-slate-400 text-[10px] block">የህጋዊነት ደረጃ / Legal Status:</span><span class="font-bold text-emerald-700 flex items-center gap-1"><span>🛡️</span><span>' + esc(sp.legal_status || "Clean Title / Registered Libre Match") + '</span></span></div>' +
+              '</div>' +
+              (d.details_amharic ?
+                '<div class="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-slate-800 text-[11px] leading-relaxed">' +
+                  '<div class="font-bold text-emerald-900 mb-0.5">ℹ️ የማረጋገጫ ማጠቃለያ:</div>' +
+                  '<div>' + esc(d.details_amharic) + '</div>' +
+                '</div>' : '') +
+            '</div>';
+        })
+        .catch(function(){
+          resEl.innerHTML = '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs">የኔትወርክ ስህተት አጋጥሟል። እባክዎ እንደገና ይሞክሩ።</div>';
+        });
+      };
+    }
+
     // AI Smart Filter modal handlers
     document.getElementById("navAi").onclick = function() {
       aiModal.classList.remove("hidden");
@@ -3599,6 +3770,11 @@ EXPLORER_HTML = r"""
       state.q = "";
       qInput.value = "";
       aiPrompt.value = "";
+      state.chassisOnly = false;
+      var fChip = document.getElementById("filterChassisChip");
+      if (fChip) {
+        fChip.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40";
+      }
       filterBanner.classList.add("hidden");
       selectCategory("");
     };
