@@ -93,6 +93,32 @@ def validate_price(price: str) -> bool:
     price = price.replace(',', '').replace(' ', '')
     return price.isdigit()
 
+
+VIN_YEAR_CODES = {
+    'A': 2010, 'B': 2011, 'C': 2012, 'D': 2013, 'E': 2014,
+    'F': 2015, 'G': 2016, 'H': 2017, 'J': 2018, 'K': 2019,
+    'L': 2020, 'M': 2021, 'N': 2022, 'P': 2023, 'R': 2024,
+    'S': 2025, 'T': 2026,
+    'Y': 2000, '1': 2001, '2': 2002, '3': 2003, '4': 2004,
+    '5': 2005, '6': 2006, '7': 2007, '8': 2008, '9': 2009,
+}
+
+
+def get_exact_vin_year(vin_str: str) -> str:
+    """
+    Decodes the 10th character of a 17-digit VIN to extract the exact single manufacture year.
+    Never returns a range like 2018-2022.
+    """
+    if not vin_str:
+        return "N/A"
+    clean_vin = re.sub(r'[^A-Z0-9]', '', str(vin_str).upper())
+    if len(clean_vin) >= 10:
+        year_code = clean_vin[9]
+        if year_code in VIN_YEAR_CODES:
+            return str(VIN_YEAR_CODES[year_code])
+    return "N/A"
+
+
 def clean_description(desc: str, max_len: int = 60) -> str:
     if not desc:
         return ""
