@@ -1873,9 +1873,87 @@ EXPLORER_HTML = r"""
       }
     }
 
+    function getImageUrl(photoUrls) {
+      if (!photoUrls) return "";
+      if (Array.isArray(photoUrls)) {
+        var first = photoUrls[0];
+        if (!first) return "";
+        if (typeof first === "string") return first;
+        if (first && typeof first === "object") {
+          return first.url || first.src || first.photo_url || first.photo_id || "";
+        }
+        return String(first);
+      }
+      if (typeof photoUrls === "string") {
+        var s = photoUrls.trim();
+        if (!s) return "";
+        if (s.charAt(0) === "[") {
+          try {
+            var parsed = JSON.parse(s);
+            return getImageUrl(parsed);
+          } catch (e) {
+            return s;
+          }
+        }
+        return s;
+      }
+      if (typeof photoUrls === "object") {
+        return photoUrls.url || photoUrls.src || photoUrls.photo_url || photoUrls.photo_id || "";
+      }
+      return "";
+    }
+
+    function parsePhotosList(item) {
+      if (!item) return [];
+      var candidates = [
+        item.photos,
+        item.photo_urls,
+        item.listing_photos,
+        item.photo_url,
+        item.image_url,
+        item.photo_id
+      ];
+      var out = [];
+      for (var i = 0; i < candidates.length; i++) {
+        var raw = candidates[i];
+        if (raw == null || raw === "") continue;
+        if (Array.isArray(raw)) {
+          for (var j = 0; j < raw.length; j++) {
+            var u = getImageUrl(raw[j]);
+            if (u) out.push(u);
+          }
+        } else if (typeof raw === "string") {
+          var s = raw.trim();
+          if (s.charAt(0) === "[") {
+            try {
+              var arr = JSON.parse(s);
+              if (Array.isArray(arr)) {
+                for (var k = 0; k < arr.length; k++) {
+                  var u2 = getImageUrl(arr[k]);
+                  if (u2) out.push(u2);
+                }
+              }
+            } catch (e) {
+              if (s) out.push(s);
+            }
+          } else if (s) {
+            out.push(s);
+          }
+        } else {
+          var u3 = getImageUrl(raw);
+          if (u3) out.push(u3);
+        }
+      }
+      var seen = {};
+      var uniq = [];
+      for (var x = 0; x < out.length; x++) {
+        if (!seen[out[x]]) { seen[out[x]] = 1; uniq.push(out[x]); }
+      }
+      return uniq;
+    }
+
     function createCardElement(item) {
-      var photos = item.photos || [];
-      if (!Array.isArray(photos)) photos = [];
+      var photos = parsePhotosList(item);
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
       var icon = isCar ? "🚗" : "🏠";
 
@@ -1903,7 +1981,7 @@ EXPLORER_HTML = r"""
 
       var media;
       if (photos.length > 0) {
-        media = '<img src="' + esc(photos[0]) + '" alt="" class="w-full h-full object-cover" loading="lazy" />';
+        media = '<img src="' + esc(getImageUrl(photos[0]) || photos[0] || "") + '" alt="" class="w-full h-full object-cover" loading="lazy" />';
       } else {
         media = '<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white p-2">' +
           '<span class="text-3xl mb-1">' + icon + '</span>' +
@@ -1967,8 +2045,7 @@ EXPLORER_HTML = r"""
       if (typeof extra === "string") {
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
       }
-      var photos = item.photos || [];
-      if (!Array.isArray(photos)) photos = [];
+      var photos = parsePhotosList(item);
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
 
       modalCategoryBadge.textContent = (isCar ? "Vehicle" : "Property") + " • Verified ✔";
@@ -1983,7 +2060,7 @@ EXPLORER_HTML = r"""
       modalDesc.textContent = item.description || "No further details provided.";
 
       if (photos.length > 0) {
-        modalMediaContainer.innerHTML = '<img src="' + esc(photos[0]) + '" alt="" class="w-full h-full object-cover" />';
+        modalMediaContainer.innerHTML = '<img src="' + esc(getImageUrl(photos[0]) || photos[0] || "") + '" alt="" class="w-full h-full object-cover" />';
       } else {
         modalMediaContainer.innerHTML =
           '<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white">' +
