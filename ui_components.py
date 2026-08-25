@@ -247,16 +247,34 @@ SELLER_FORM_HTML = r"""
             body: JSON.stringify(data)
           });
           const result = await res.json();
-          if (result.status === 'success') {
+          if (result.status === 'success' || result.success === true) {
             setStatus('ok');
-            setTimeout(() => tg.close(), 2500);
+            try {
+              if (tg && tg.showAlert) tg.showAlert('✅ ማስታወቂያዎ በትክክል ተለጥፏል!');
+              else alert('✅ ማስታወቂያዎ በትክክል ተለጥፏል!');
+            } catch (ae) {
+              alert('✅ ማስታወቂያዎ በትክክል ተለጥፏል!');
+            }
+            setTimeout(function() {
+              try { if (tg && tg.close) tg.close(); } catch (ce) {}
+              window.location.href = '/';
+            }, 1200);
           } else {
-            setStatus(result.message || 'Error');
+            var errMsg = result.message || 'Error';
+            setStatus(errMsg);
             setSubmitting(false);
+            try {
+              if (tg && tg.showAlert) tg.showAlert(errMsg);
+              else alert(errMsg);
+            } catch (ae2) { alert(errMsg); }
           }
         } catch (e) {
           setStatus('Network error');
           setSubmitting(false);
+          try {
+            if (tg && tg.showAlert) tg.showAlert('Network error');
+            else alert('Network error');
+          } catch (ae3) {}
         }
       };
 
@@ -548,7 +566,7 @@ SELLER_FORM_HTML = r"""
             ) : (
               <button type="button" onClick={submit} disabled={!canSubmit || submitting}
                 className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1">
-                {submitting ? '...' : <><span className="lang-am">🚀 ማስታወቂያ መዝግብ</span><span className="lang-en">🚀 Submit Listing</span></>}
+                {submitting ? 'Posting... ⏳' : <><span className="lang-am">🚀 ማስታወቂያ መዝግብ</span><span className="lang-en">🚀 Submit Listing</span></>}
               </button>
             )}
           </div>
@@ -1049,6 +1067,10 @@ EXPLORER_HTML = r"""
         <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ንግድ">
           <span class="lang-am">🏢 ንግድ</span>
           <span class="lang-en">🏢 Commercial</span>
+        </button>
+        <button type="button" id="chassisFilterBtn" class="px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-chassis="1">
+          <span class="lang-am">🔍 ሻሲ ያላቸው ብቻ</span>
+          <span class="lang-en">🔍 With Chassis</span>
         </button>
       </div>
     </div>
@@ -1840,6 +1862,7 @@ EXPLORER_HTML = r"""
       tab: "marketplace",
       category: "",
       q: "",
+      hasChassis: false,
       page: 1,
       hasMore: false,
       loading: false,
@@ -1915,16 +1938,24 @@ EXPLORER_HTML = r"""
         .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    function relativeTime(iso) {
-      if (!iso) return "";
+    function formatTimeShort(dateString) {
+      if (!dateString) return "";
       try {
-        var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-        if (secs < 60) return "አሁን";
-        if (secs < 3600) return "ከ " + Math.floor(secs / 60) + " ደቂቃ በፊት";
-        if (secs < 86400) return "ከ " + Math.floor(secs / 3600) + " ሰዓት በፊት";
-        if (secs < 86400 * 7) return "ከ " + Math.floor(secs / 86400) + " ቀን በፊት";
-        return "ከ " + Math.floor(secs / 86400) + " ቀን በፊት";
+        var now = new Date();
+        var past = new Date(dateString);
+        var diffInSeconds = Math.floor((now - past) / 1000);
+        if (diffInSeconds < 0) diffInSeconds = 0;
+        if (diffInSeconds < 60) return "Just now";
+        var diffInMinutes = Math.floor(diffInSeconds / 60);
+        if (diffInMinutes < 60) return diffInMinutes + "m ago";
+        var diffInHours = Math.floor(diffInMinutes / 60);
+        if (diffInHours < 24) return diffInHours + "h ago";
+        var diffInDays = Math.floor(diffInHours / 24);
+        return diffInDays + "d ago";
       } catch (e) { return ""; }
+    }
+    function relativeTime(iso) {
+      return formatTimeShort(iso);
     }
 
     function formatListingPrice(raw) {
@@ -2349,7 +2380,15 @@ EXPLORER_HTML = r"""
       }
       statusEl.style.display = "none";
       for (var i = 0; i < items.length; i++) {
-        grid.appendChild(createCardElement(items[i]));
+        var it = items[i];
+        if (state.hasChassis) {
+          var ex = it.extra_data || {};
+          if (typeof ex === "string") { try { ex = JSON.parse(ex); } catch (e) { ex = {}; } }
+          var ch = (ex.chassis_number || ex.chassis || it.chassis_number || it.chassis || "").toString().trim();
+          var blob = (JSON.stringify(ex) + " " + (it.description || "")).toLowerCase();
+          if (!ch && blob.indexOf("chassis") < 0 && blob.indexOf("ሻሲ") < 0) continue;
+        }
+        grid.appendChild(createCardElement(it));
       }
       if (hasMore) {
         moreBtn.classList.remove("hidden");
@@ -2381,6 +2420,7 @@ EXPLORER_HTML = r"""
         (state.tab === "marketplace" ? "SELL" : "BUY");
       if (state.category) qs += "&category=" + encodeURIComponent(state.category);
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
+      if (state.hasChassis) qs += "&has_chassis=1";
 
       fetch("/api/explorer/listings?" + qs)
         .then(function(res){ return res.json(); })
@@ -2441,6 +2481,20 @@ EXPLORER_HTML = r"""
       });
       load(false);
     };
+
+    var chassisFilterBtn = document.getElementById("chassisFilterBtn");
+    if (chassisFilterBtn) {
+      chassisFilterBtn.onclick = function(e) {
+        e.stopPropagation();
+        state.hasChassis = !state.hasChassis;
+        if (state.hasChassis) {
+          chassisFilterBtn.className = "px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm";
+        } else {
+          chassisFilterBtn.className = "px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
+        }
+        load(false);
+      };
+    }
 
     moreBtn.onclick = function () { load(true); };
 
