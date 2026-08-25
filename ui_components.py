@@ -1524,7 +1524,7 @@ EXPLORER_HTML = r"""
 
       <div class="px-3 py-2 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 gap-2">
         <div class="flex items-center gap-1.5 min-w-0">
-          <button id="modalBackBtn" type="button" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] shrink-0">← ወደ ኋላ</button>
+          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] shrink-0">← ተመለስ</button>
           <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-[#16acbd]/10 text-[#0e7490] text-[10px] font-bold truncate">Property</span>
           <span id="modalIdBadge" class="text-[10px] text-slate-400 font-semibold shrink-0">#ADK-</span>
         </div>
@@ -1566,6 +1566,22 @@ EXPLORER_HTML = r"""
             <span class="lang-en">Full Description</span>
           </h4>
           <p id="modalDesc" class="text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50/50 p-2.5 rounded-xl border border-slate-100"></p>
+        </div>
+
+        <!-- Behavioral recommendations + Smart Alert -->
+        <div id="modalRecoSection" class="space-y-2.5 pt-1">
+          <div class="flex items-center justify-between gap-2">
+            <div id="modalRecoTitle" class="text-[11px] font-extrabold text-slate-800">🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች</div>
+            <div id="modalRecoIntent" class="text-[9px] font-bold text-[#0e7490] bg-[#16acbd]/10 px-2 py-0.5 rounded-full truncate max-w-[45%]"></div>
+          </div>
+          <div id="modalRecoScroll" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-0.5 px-0.5"></div>
+          <div id="modalAlertCard" class="hidden p-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 space-y-2 shadow-sm">
+            <p id="modalAlertText" class="text-[11px] text-slate-700 font-medium leading-relaxed"></p>
+            <button type="button" id="modalAlertBtn" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] active:scale-[0.98]">
+              🔔 አዎ! በቴሌግራም አሳውቀኝ (Subscribe to Alerts)
+            </button>
+            <div id="modalAlertStatus" class="text-[10px] font-bold text-emerald-700 hidden"></div>
+          </div>
         </div>
       </div>
 
@@ -2015,6 +2031,132 @@ EXPLORER_HTML = r"""
       selectedItem: null
     };
 
+
+    // ---- Feed scroll + view history (recommendations) ----
+    var savedFeedScrollY = 0;
+    function pushViewHistory(item) {
+      try {
+        var extra = item.extra_data || {};
+        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        var bm = {};
+        try { bm = extractBrandModel(item, extra) || {}; } catch (e) {}
+        var priceNum = 0;
+        try {
+          priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0;
+        } catch (e) {}
+        var entry = {
+          id: item.id,
+          category: item.main_category || item.category || "",
+          price: priceNum,
+          fuel_type: extra.fuel_type || "",
+          model: bm.display || item.sub_category || extra.car_model || "",
+          brand: bm.brand || ""
+        };
+        var hist = [];
+        try { hist = JSON.parse(localStorage.getItem("viewHistory") || "[]"); } catch (e) { hist = []; }
+        if (!Array.isArray(hist)) hist = [];
+        hist = hist.filter(function(h) { return String(h.id) !== String(entry.id); });
+        hist.unshift(entry);
+        hist = hist.slice(0, 3);
+        localStorage.setItem("viewHistory", JSON.stringify(hist));
+      } catch (e) {}
+    }
+    function getViewHistory() {
+      try {
+        var hist = JSON.parse(localStorage.getItem("viewHistory") || "[]");
+        return Array.isArray(hist) ? hist : [];
+      } catch (e) { return []; }
+    }
+
+    function renderRecoCards(items, intentLabel) {
+      var sc = document.getElementById("modalRecoScroll");
+      var title = document.getElementById("modalRecoTitle");
+      var intentEl = document.getElementById("modalRecoIntent");
+      if (!sc) return;
+      if (intentEl) intentEl.textContent = intentLabel || "";
+      if (title) {
+        var isCar = true;
+        try {
+          isCar = !(state.selectedItem && (state.selectedItem.main_category === "ቤት" || state.selectedItem.category === "ቤት"));
+        } catch (e) {}
+        title.textContent = isCar ? "🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች" : "🤖 ለእርስዎ የተመረጡ ተቀራራቢ ንብረቶች";
+      }
+      if (!items || !items.length) {
+        sc.innerHTML = '<div class="text-[10px] text-slate-400 font-medium py-2">ተቀራራቢ ዝርዝር በቅርቡ...</div>';
+        return;
+      }
+      sc.innerHTML = items.map(function(it) {
+        var extra = it.extra_data || {};
+        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        var photos = [];
+        try { photos = parsePhotosList(it); } catch (e) {}
+        var img = getImageUrl(photos[0] || it.photo_urls || it.listing_photos || "") || "";
+        var price = formatListingPrice(it.price);
+        var name = it.title || it.sub_category || it.main_category || "ንብረት";
+        return (
+          '<button type="button" class="reco-card shrink-0 w-[138px] text-left rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden active:scale-[0.98]" data-id="' + esc(String(it.id || "")) + '">' +
+            '<div class="aspect-[4/3] bg-slate-100">' +
+              (img ? '<img src="' + esc(img) + '" class="w-full h-full object-cover" loading="lazy" />' : '<div class="w-full h-full flex items-center justify-center text-2xl">🚗</div>') +
+            '</div>' +
+            '<div class="p-1.5 space-y-0.5">' +
+              '<div class="text-[10px] font-extrabold text-slate-800 truncate">' + esc(name) + '</div>' +
+              '<div class="text-[9px] font-black text-[#0e7490]">💰 ' + esc(price) + '</div>' +
+            '</div>' +
+          '</button>'
+        );
+      }).join("");
+      sc.querySelectorAll(".reco-card").forEach(function(btn) {
+        btn.onclick = function() {
+          var id = btn.getAttribute("data-id");
+          var found = (items || []).find(function(x) { return String(x.id) === String(id); });
+          if (found) openDetailModal(found);
+          else {
+            // try from current feed state.items
+            var f2 = (state.items || []).find(function(x) { return String(x.id) === String(id); });
+            if (f2) openDetailModal(f2);
+          }
+        };
+      });
+    }
+
+    function loadRecommendations(item) {
+      var hist = getViewHistory();
+      var sc = document.getElementById("modalRecoScroll");
+      var alertCard = document.getElementById("modalAlertCard");
+      var alertText = document.getElementById("modalAlertText");
+      if (sc) sc.innerHTML = '<div class="text-[10px] text-slate-400 py-2">⏳ በመፈለግ ላይ...</div>';
+      fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ viewHistory: hist, exclude_id: item && item.id })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        renderRecoCards(data.items || [], data.intent_label || "");
+        // Smart alert card
+        if (alertCard && alertText && item) {
+          var extra = item.extra_data || {};
+          if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+          var bm = {};
+          try { bm = extractBrandModel(item, extra) || {}; } catch (e) {}
+          var priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0;
+          var lo = priceNum ? Math.round(priceNum * 0.85) : 0;
+          var hi = priceNum ? Math.round(priceNum * 1.15) : 0;
+          var modelName = bm.display || item.sub_category || "ንብረት";
+          var rangeTxt = (lo && hi) ? (lo.toLocaleString() + " – " + hi.toLocaleString() + " ETB") : modelName;
+          alertText.textContent = "💡 ከ " + rangeTxt + " / " + modelName + " ጋር ተመሳሳይ አዳዲስ ንብረቶች ሲለቀቁ በቴሌግራም እንዲደርስዎ ይፈልጋሉ?";
+          alertCard.classList.remove("hidden");
+          alertCard.dataset.minPrice = String(lo || 0);
+          alertCard.dataset.maxPrice = String(hi || 999999999);
+          alertCard.dataset.model = modelName;
+          alertCard.dataset.category = item.main_category || item.category || "መኪና";
+        }
+      })
+      .catch(function() {
+        renderRecoCards([], "");
+      });
+    }
+
     var grid = document.getElementById("grid");
     var statusEl = document.getElementById("status");
     var moreBtn = document.getElementById("more");
@@ -2305,7 +2447,9 @@ EXPLORER_HTML = r"""
     }
 
     function openDetailModal(item) {
+      try { savedFeedScrollY = window.scrollY || window.pageYOffset || 0; } catch (e) { savedFeedScrollY = 0; }
       state.selectedItem = item;
+      pushViewHistory(item);
       var extra = item.extra_data || {};
       if (typeof extra === "string") {
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
@@ -2444,21 +2588,74 @@ EXPLORER_HTML = r"""
       if (item.id) {
         try { fetch("/api/views/" + item.id, { method: "POST" }).catch(function(){}); } catch(e){}
       }
+      loadRecommendations(item);
     }
 
-    modalClose.onclick = function () {
+    function closeDetailModalPreserve() {
       modalOverlay.classList.add("hidden");
       modalOverlay.classList.remove("flex");
       state.selectedItem = null;
-    };
+      try {
+        window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
+      } catch (e) {
+        try { window.scrollTo(0, savedFeedScrollY || 0); } catch (e2) {}
+      }
+    }
+    modalClose.onclick = closeDetailModalPreserve;
     var modalBackBtn = document.getElementById("modalBackBtn");
     if (modalBackBtn) {
-      modalBackBtn.onclick = function() {
-        modalClose.onclick();
-      };
+      modalBackBtn.onclick = function() { closeDetailModalPreserve(); };
     };
+
+    (function bindSmartAlert() {
+      var btn = document.getElementById("modalAlertBtn");
+      if (!btn) return;
+      btn.onclick = function() {
+        var card = document.getElementById("modalAlertCard");
+        var status = document.getElementById("modalAlertStatus");
+        var userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
+        var payload = {
+          user_id: userId,
+          chat_id: userId,
+          target_category: (card && card.dataset.category) || "መኪና",
+          min_price: (card && card.dataset.minPrice) || "0",
+          max_price: (card && card.dataset.maxPrice) || "999999999",
+          model: (card && card.dataset.model) || "",
+          telegram_user: (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {}
+        };
+        btn.disabled = true;
+        btn.textContent = "⏳ በመመዝገብ ላይ...";
+        fetch("/api/save-alert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          btn.disabled = false;
+          btn.textContent = "🔔 አዎ! በቴሌግራም አሳውቀኝ (Subscribe to Alerts)";
+          if (status) {
+            status.classList.remove("hidden");
+            status.textContent = res.message || (res.success ? "✅ ተመዝግቧል!" : "❌ አልተሳካም");
+            status.className = "text-[10px] font-bold " + (res.success ? "text-emerald-700" : "text-rose-600");
+          }
+          if (res.success && tg && tg.showAlert) {
+            try { tg.showAlert(res.message || "ተመዝግቧል!"); } catch (e) {}
+          }
+        })
+        .catch(function() {
+          btn.disabled = false;
+          btn.textContent = "🔔 አዎ! በቴሌግራም አሳውቀኝ (Subscribe to Alerts)";
+          if (status) {
+            status.classList.remove("hidden");
+            status.textContent = "የኔትወርክ ስህተት";
+            status.className = "text-[10px] font-bold text-rose-600";
+          }
+        });
+      };
+    })();
     modalOverlay.onclick = function (e) {
-      if (e.target === modalOverlay) modalClose.onclick();
+      if (e.target === modalOverlay) closeDetailModalPreserve();
     };
 
     function finishLoading(items, append, hasMore) {
