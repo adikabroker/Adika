@@ -1217,8 +1217,9 @@ def register_api_routes(web_app):
             house_type = data.get('house_type', '')
             photos = data.get('photos', [])
             logger.info(f"📥 Seller WebApp data: {data}")
-            if not user_id or user_id == "unknown":
-                return jsonify({"status": "error", "message": "User ID not found. Open in Telegram."}), 400
+            uid = 0
+            if user_id and str(user_id).isdigit() and int(user_id) > 0:
+                uid = int(user_id)
             negotiable_text = "✅ Negotiable / የሚደራደር" if negotiable else "❌ Fixed / የማይደራደር"
             urgent_text = "⚡ **URGENT SALE / አስቸኳይ ሽያጭ!** " if urgent_sale else ""
             full_desc = f"{urgent_text}"
@@ -1288,7 +1289,7 @@ def register_api_routes(web_app):
                 )
             if req_id:
                 notification_text = f"🛍️ **New Listing (#ADK-{req_id})**\n\n{full_desc}"
-                _send_notification_safe(notification_text, req_id, int(user_id))
+                _send_notification_safe(notification_text, req_id, uid)
                 return jsonify({"status": "success", "req_id": req_id})
             else:
                 return jsonify({"status": "error", "message": "Failed to save listing"}), 500
@@ -1309,8 +1310,9 @@ def register_api_routes(web_app):
             details = data.get('details', '')
             phone = data.get('phone', '')
             telegram_user = data.get('telegram_user', '')
-            if not user_id or user_id == "unknown":
-                return jsonify({"status": "error", "message": "User ID not found"}), 400
+            uid = 0
+            if user_id and str(user_id).isdigit() and int(user_id) > 0:
+                uid = int(user_id)
             budget_range = f"{budget_min} - {budget_max}" if budget_min and budget_max else (budget_min or budget_max or "Not specified")
             full_desc = (
                 f"💰 Budget: {budget_range} ETB\n"
@@ -1319,7 +1321,7 @@ def register_api_routes(web_app):
             )
             if telegram_user: full_desc += f"📱 Telegram: {telegram_user}\n"
             req_id = add_listing(
-                user_chat_id=int(user_id) if str(user_id).isdigit() else 0,
+                user_chat_id=uid,
                 user_name="WebApp User",
                 req_type="BUY",
                 main_category=(category or "መኪና"),
@@ -1336,9 +1338,9 @@ def register_api_routes(web_app):
             )
             if req_id:
                 notification_text = f"🔔 **New Buyer Request (#ADK-{req_id})**\n\n{full_desc}"
-                _send_notification_safe(notification_text, req_id, int(user_id))
-                if create_alert and str(user_id).isdigit():
-                    save_search_alert(int(user_id), category, budget_min, budget_max)
+                _send_notification_safe(notification_text, req_id, uid)
+                if create_alert and uid > 0:
+                    save_search_alert(uid, category, budget_min, budget_max)
                 return jsonify({"status": "success", "req_id": req_id})
             else:
                 return jsonify({"status": "error", "message": "Failed to save request"}), 500
@@ -1406,7 +1408,7 @@ def register_api_routes(web_app):
                     )
                     params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት'])
                 like = "ILIKE" if is_postgres() else "LIKE"
-                if category:
+                if category and str(category).strip().lower() not in ('', 'all', 'null', 'none', 'undefined', '✨ ሁሉም', '✨ all', 'ሁሉም'):
                     # only main_category — column `category` may not exist
                     where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
                     params.extend([category, f"%{category}%"])
