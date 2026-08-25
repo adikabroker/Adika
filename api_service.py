@@ -1258,6 +1258,62 @@ def register_api_routes(web_app):
                         s = s[:350000]
                     safe_photos.append(s)
             resolved_sub = sub_category or (car_model if category == 'መኪና' else (f"{house_type} • {location_area}" if house_type and location_area else (house_type or location_area)))
+
+            # --- Duplicate post prevention (same phone + title/sub + price within 5 min) ---
+            try:
+                from datetime import datetime, timedelta
+                from models import is_postgres as _is_pg_dup
+                _conn = get_db_connection()
+                _cur = _conn.cursor()
+                _p = get_placeholder()
+                _title_key = (resolved_sub or car_model or description or "")[:80]
+                _phone_key = str(phone or "").strip()
+                _price_key = str(price or "").strip()
+                if _phone_key or _title_key:
+                    if _is_pg_dup():
+                        _cur.execute(
+                            f"""
+                            SELECT id FROM listings
+                            WHERE COALESCE(phone,'') = {_p}
+                              AND COALESCE(price,'') = {_p}
+                              AND (
+                                COALESCE(sub_category,'') = {_p}
+                                OR CAST(COALESCE(description,'') AS TEXT) LIKE {_p}
+                              )
+                              AND created_at >= (NOW() AT INTERVAL '5 minutes')
+                            LIMIT 1
+                            """,
+                            (_phone_key, _price_key, _title_key, f"%{_title_key[:40]}%"),
+                        )
+                    else:
+                        _cur.execute(
+                            f"""
+                            SELECT id FROM listings
+                            WHERE COALESCE(phone,'') = {_p}
+                              AND COALESCE(price,'') = {_p}
+                              AND (
+                                COALESCE(sub_category,'') = {_p}
+                                OR CAST(COALESCE(description,'') AS TEXT) LIKE {_p}
+                              )
+                              AND created_at >= datetime('now', '-5 minutes')
+                            LIMIT 1
+                            """,
+                            (_phone_key, _price_key, _title_key, f"%{_title_key[:40]}%"),
+                        )
+                    _row = _cur.fetchone()
+                    try:
+                        _conn.close()
+                    except Exception:
+                        pass
+                    if _row:
+                        return jsonify({
+                            "status": "error",
+                            "success": False,
+                            "message": "ይህ ማስታወቂያ ቀደም ብሎ ተለጥፏል! እባክዎን ጥቂት ደቂቃዎች ይጠብቁ።",
+                        }), 400
+            except Exception as _dup_err:
+                logger.warning(f"duplicate check skipped: {_dup_err}")
+
             req_id = add_listing(
                 user_chat_id=uid,
                 user_name="WebApp User",
@@ -1372,7 +1428,8 @@ def register_api_routes(web_app):
             offset = (page - 1) * limit
             req_type = (request.args.get('type') or '').upper()
             category = request.args.get('category') or ''
-            search = (request.args.get('q') or '').strip()
+            search = (request.args.get('q') or '')
+            has_chassis = str(request.args.get('has_chassis') or request.args.get('chassis') or '').lower() in ('1', 'true', 'yes')
             order = (request.args.get('order') or 'DESC').upper()
             active_only = request.args.get('active_only', '1') == '1'
             if order not in ('ASC', 'DESC'):
@@ -1420,6 +1477,17 @@ def register_api_routes(web_app):
                         f"OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p})"
                     )
                     params.extend([f"%{search}%"] * 5)
+
+                # Chassis filter: extra_data.chassis_number or chassis fields not empty
+                if has_chassis:
+                    where.append(
+                        f"("
+                        f"CAST(COALESCE(extra_data,'') AS TEXT) {like} {p} "
+                        f"OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p} "
+                        f"OR CAST(COALESCE(description,'') AS TEXT) {like} {p}"
+                        f")"
+                    )
+                    params.extend(["%chassis_number%", "%chassis%", "%ሻሲ%"])
 
                 where_sql = " AND ".join(where)
                 total = 0
