@@ -1558,7 +1558,7 @@ def register_api_routes(web_app):
                             "Return ONLY JSON keys: upin, cert, name, area, sub_city, url. "
                             "UPIN patterns: AA############, KK############, LTP-KK... "
                             "If a QR URL is visible as text include it in url. "
-                            "Never invent values — use empty string when unreadable."
+                            "Prefer Unique Parcel Identification No. (UPIN) like AA00091305321, Plot Code KK..., Property No LTP-KK..., Title deed No. Never invent values — use empty string when unreadable."
                         ),
                     },
                     {
