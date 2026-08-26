@@ -4543,55 +4543,75 @@ EXPLORER_HTML = r"""
         var s = String(scannedPayload || "").trim();
         if (!s) return "";
 
-        // 1) Full URL — keep official portals as-is (addislandfarm, addiscadaster, e-services, etc.)
+        // Rule 1: Already a complete URL (female title deed style) — use EXACTLY
         if (/^https?:\/\//i.test(s)) {
           return s;
         }
         var urlIn = s.match(/https?:\/\/[^\s\"'<>\]]+/i);
         if (urlIn) return urlIn[0];
 
-        // 2) JSON payload
+        // Rule 2: JSON — extract url or typed id without mixing paths
         try {
           if (s.charAt(0) === "{" || s.charAt(0) === "[") {
             var j = JSON.parse(s);
             if (Array.isArray(j)) j = j[0] || {};
             var jUrl = j.url || j.verify_url || j.link || j.href || "";
             if (jUrl && /^https?:\/\//i.test(String(jUrl))) return String(jUrl).trim();
-            var ju = j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || j.token || "";
-            if (ju) {
-              ju = String(ju).trim();
-              // Prefer path-style used by addislandfarm: /verify/{code}
-              if (/^[A-Za-z0-9_\-]+$/.test(ju) && ju.length >= 8) {
-                return CADASTRE_VERIFY + "/" + encodeURIComponent(ju);
-              }
-              return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(ju);
-            }
+            var ju = String(j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || j.token || "").trim();
+            if (ju) s = ju; // fall through to typed rules
+            else return "";
           }
         } catch (e) {}
 
-        // 3) Raw UPIN / plot codes → addislandfarm verify
-        var upinMatch =
-          s.match(/\b(AA\d{8,16})\b/i) ||
-          s.match(/\b(KK\d{8,16})\b/i) ||
-          s.match(/\b(LTP[-_]?[A-Z0-9\-]+)\b/i) ||
-          s.match(/\b([A-Z]{2}\d{8,16})\b/i) ||
-          s.match(/\b([A-Za-z0-9_\-]{10,40})\b/);
-        if (upinMatch) {
-          var upin = (upinMatch[1] || upinMatch[0]).trim();
-          // Path form: https://addislandfarm.gov.et/verify/UPIN
-          return CADASTRE_VERIFY + "/" + encodeURIComponent(upin);
+        var clean = s.trim();
+
+        // Rule 3: UUID (36 chars with hyphens) → addislandfarm path ONLY
+        // https://addislandfarm.gov.et/verify/{uuid}
+        if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clean)) {
+          return "https://addislandfarm.gov.et/verify/" + clean;
         }
 
-        // 4) query-style fragments
-        var qs = s.match(/(?:upin|plot|id|code|token)\s*[=:\/]\s*([A-Za-z0-9_\-]{6,})/i);
-        if (qs) {
-          return CADASTRE_VERIFY + "/" + encodeURIComponent(qs[1]);
+        // Rule 4: Cadastral UPIN AA… → land.addiscadaster query param ONLY
+        // NEVER put AA UPIN on addislandfarm path (causes "Failed to load certificate data")
+        if (/^AA\d{6,}$/i.test(clean)) {
+          return "https://land.addiscadaster.gov.et/verify?upin=" + encodeURIComponent(clean.toUpperCase());
         }
 
-        if (s.length >= 6 && s.length <= 64) {
-          return CADASTRE_VERIFY + "/" + encodeURIComponent(s);
+        // Rule 5: KK… / LTP… plot-style codes → cadastre query
+        if (/^KK\d{6,}$/i.test(clean) || /^LTP[-_]?/i.test(clean)) {
+          return "https://land.addiscadaster.gov.et/verify?upin=" + encodeURIComponent(clean);
         }
+
+        // Rule 6: Generic alphanumeric 8–15 (possible UPIN) → cadastre query
+        if (/^[A-Z0-9]{8,15}$/i.test(clean)) {
+          return "https://land.addiscadaster.gov.et/verify?upin=" + encodeURIComponent(clean);
+        }
+
+        // Rule 7: extract AA from longer noisy text
+        var aa = clean.match(/\b(AA\d{8,16})\b/i);
+        if (aa) {
+          return "https://land.addiscadaster.gov.et/verify?upin=" + encodeURIComponent(aa[1].toUpperCase());
+        }
+        var uuid = clean.match(/\b([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\b/);
+        if (uuid) {
+          return "https://addislandfarm.gov.et/verify/" + uuid[1];
+        }
+
+        // Rule 8: Fallback — do NOT invent a path; return empty so UI can retry
         return "";
+      }
+
+      function handleVerificationSuccess(scannedData) {
+        var finalUrl = buildFinalUrl(scannedData);
+        if (!finalUrl) {
+          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+          return;
+        }
+        // Pass correctly formatted URL to Adika modal (no auto-redirect)
+        if (typeof triggerAdikaSuccessModal === "function") {
+          // Store pre-built URL path: pass object so modal uses exact finalUrl
+          triggerAdikaSuccessModal(scannedData, finalUrl);
+        }
       }
 
 
@@ -4629,9 +4649,9 @@ EXPLORER_HTML = r"""
       }
 
       /** Show professional Adika success modal — NO auto-redirect */
-      function triggerAdikaSuccessModal(scannedPayload) {
+      function triggerAdikaSuccessModal(scannedPayload, prebuiltUrl) {
         isScanning = false;
-        var finalUrl = buildFinalUrl(scannedPayload);
+        var finalUrl = prebuiltUrl || buildFinalUrl(scannedPayload);
         if (!finalUrl) {
           showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
           return;
@@ -4646,8 +4666,16 @@ EXPLORER_HTML = r"""
 
         var hint = document.getElementById("adikaPayloadHint");
         if (hint) {
-          if (upin) {
-            hint.textContent = "መለያ: " + upin;
+          // Show safe label — never show wrong host confusion
+          var label = upin || "";
+          if (!label && /addislandfarm\.gov\.et/i.test(finalUrl)) {
+            try { label = finalUrl.split("/verify/")[1] || ""; } catch (e) {}
+          }
+          if (label) {
+            hint.textContent = "መለያ: " + label;
+            hint.classList.remove("hidden");
+          } else if (/^https?:\/\//i.test(String(scannedPayload || ""))) {
+            hint.textContent = "ኦፊሴላዊ ማረጋገጫ ሊንክ ተገኝቷል";
             hint.classList.remove("hidden");
           } else {
             hint.classList.add("hidden");
@@ -4665,6 +4693,7 @@ EXPLORER_HTML = r"""
         var fi = document.getElementById("landMapFile");
         if (fi) try { fi.value = ""; } catch (e) {}
       }
+
 
       function tryJsQROnImageData(imageData) {
         if (typeof jsQR !== "function" || !imageData) return null;
@@ -4784,7 +4813,7 @@ EXPLORER_HTML = r"""
         try { console.log("[Adika Digital System] scan ms:", Math.round(t1 - t0), qrData ? "OK" : "MISS"); } catch (e) {}
 
         if (qrData) {
-          triggerAdikaSuccessModal(qrData);
+          handleVerificationSuccess(qrData);
         } else {
           // Backend OCR last resort
           runBackendOCRLast(imageElement);
@@ -4812,7 +4841,7 @@ EXPLORER_HTML = r"""
               if (res && res.success && res.data) {
                 var cand = res.data.url || res.data.upin || res.data.cert || "";
                 if (cand) {
-                  triggerAdikaSuccessModal(cand);
+                  handleVerificationSuccess(cand);
                   return;
                 }
               }
