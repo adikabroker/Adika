@@ -4521,11 +4521,57 @@ EXPLORER_HTML = r"""
       }
 
       function openOfficialUrl(url) {
-        if (!url) return;
+        if (!url) return false;
+        url = String(url).trim();
         try {
-          if (tg && typeof tg.openLink === "function") { tg.openLink(url); return; }
+          if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === "function") {
+            Telegram.WebApp.openLink(url);
+            return true;
+          }
+        } catch (e0) {}
+        try {
+          if (typeof tg !== "undefined" && tg && typeof tg.openLink === "function") {
+            tg.openLink(url);
+            return true;
+          }
+        } catch (e1) {}
+        try {
+          window.open(url, "_blank", "noopener,noreferrer");
+          return true;
+        } catch (e2) {
+          try { window.location.href = url; } catch (e3) {}
+          return false;
+        }
+      }
+
+      function redirectWithExtract(extract) {
+        extract = extract || {};
+        saveForContract(extract);
+        var raw = String(extract.raw || "").trim();
+        var url = null;
+        // Direct URL from QR payload
+        if (extract.url && /^https?:\/\//i.test(String(extract.url).trim())) {
+          url = String(extract.url).trim();
+        } else if (/^https?:\/\//i.test(raw)) {
+          url = raw;
+        } else if (typeof buildOfficialUrl === "function") {
+          url = buildOfficialUrl(extract);
+        }
+        if (!url) {
+          var code = String(extract.upin || extract.cert || "").trim();
+          if (code) url = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(code);
+        }
+        if (!url) {
+          showRetryOnly();
+          return;
+        }
+        // IMMEDIATE open — no intermediate modals/cards
+        openOfficialUrl(url);
+        try {
+          showPanel("landMapUploadPanel");
+          var retry = document.getElementById("landMapRetryBox");
+          if (retry) retry.classList.add("hidden");
         } catch (e) {}
-        window.open(url, "_blank", "noopener,noreferrer");
       }
 
       function buildOfficialUrl(extract) {
@@ -4897,10 +4943,25 @@ EXPLORER_HTML = r"""
         img.onload = function() {
           multiStageScan(img, function(qrRaw) {
             if (qrRaw) {
-              redirectWithExtract(parseQrPayload(qrRaw));
+              var payload = String(qrRaw).trim();
+              // FAST PATH 1: full URL in QR → open immediately
+              if (/^https?:\/\//i.test(payload)) {
+                saveForContract({ url: payload, raw: payload });
+                openOfficialUrl(payload);
+                showPanel("landMapUploadPanel");
+                return;
+              }
+              // FAST PATH 2: bare UPIN/plot code
+              if (/^(AA|KK)\d{8,}$/i.test(payload) || /^LTP[-_]/i.test(payload)) {
+                var u = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(payload);
+                saveForContract({ upin: payload, raw: payload });
+                openOfficialUrl(u);
+                showPanel("landMapUploadPanel");
+                return;
+              }
+              redirectWithExtract(parseQrPayload(payload));
               return;
             }
-            // OCR fallback — client tesseract then backend — no alerts
             runTesseractOCR(dataUrl, function(ocrFields) {
               if (ocrFields && (ocrFields.upin || ocrFields.cert || ocrFields.url)) {
                 redirectWithExtract(ocrFields);
