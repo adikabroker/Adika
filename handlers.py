@@ -1151,14 +1151,23 @@ async def save_seller_listing(update: Update, context: ContextTypes.DEFAULT_TYPE
     photo_id = photos[0] if photos else None
     
     try:
+        # Normalize category for Mini App tabs (Cars/Property must match DB + UI filters)
+        _raw_cat = str(user_data.get('main_category') or '').strip().lower()
+        if _raw_cat in ('car', 'cars', 'vehicle', 'vehicles', 'auto', 'መኪና', 'መኪኖች') or is_car:
+            _main_cat = 'መኪና'
+        elif _raw_cat in ('house', 'home', 'property', 'realestate', 'real_estate', 'ቤት', 'ንብረት'):
+            _main_cat = 'ቤት'
+        else:
+            _main_cat = user_data.get('main_category') or ('መኪና' if is_car else 'ቤት')
+
         req_id = add_listing(
             user_chat_id=user.id,
             user_name=user.first_name or "User",
             req_type="SELL",
-            main_category=user_data.get('main_category', ''),
-            sub_category=user_data.get('sub_category', ''),
+            main_category=_main_cat,
+            sub_category=user_data.get('sub_category', '') or property_subtype or '',
             action_type=user_data.get('action_type', 'መሸጥ'),
-            property_type=user_data.get('property_type', ''),
+            property_type=user_data.get('property_type', '') or property_subtype or '',
             description=clean_description_text,
             price=price,
             phone=phone,
