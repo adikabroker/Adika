@@ -550,6 +550,12 @@ def add_listing(user_chat_id, user_name, req_type, main_category, sub_category,
         main_category = str(main_category or (extra_data.get("category") if isinstance(extra_data, dict) else None) or (extra_data.get("car_type") if isinstance(extra_data, dict) else None) or "መኪና")[:100]
         if not main_category.strip():
             main_category = "መኪና"
+        # Normalize EN labels → Amharic marketplace tabs
+        _mc = main_category.strip().lower()
+        if _mc in ("car", "cars", "vehicle", "vehicles", "auto"):
+            main_category = "መኪና"
+        elif _mc in ("house", "home", "property", "realestate", "real_estate"):
+            main_category = "ቤት"
         sub_category = str(sub_category or "")[:100]
         action_type = str(action_type or "")[:100]
         property_type = str(property_type or "")[:100]
@@ -792,8 +798,7 @@ def get_listings_by_category_ordered(limit=20, offset=0, req_type=None, order="D
         p = get_placeholder()
         order_sql = "ASC" if str(order).upper() == "ASC" else "DESC"
         where = [
-            "status IS NOT NULL",
-            "status NOT IN ('deleted', 'sold', 'rented', 'expired')",
+            "(status IS NULL OR status NOT IN ('deleted', 'sold', 'rented', 'expired'))",
         ]
         params = []
         if req_type:
@@ -847,8 +852,7 @@ def count_listings(req_type=None):
         cursor = conn.cursor()
         p = get_placeholder()
         where = [
-            "status IS NOT NULL",
-            "status NOT IN ('deleted', 'sold', 'rented', 'expired')",
+            "(status IS NULL OR status NOT IN ('deleted', 'sold', 'rented', 'expired'))",
         ]
         params = []
         if req_type:
