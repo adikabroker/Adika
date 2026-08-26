@@ -4546,33 +4546,31 @@ EXPLORER_HTML = r"""
 
       function redirectWithExtract(extract) {
         extract = extract || {};
-        saveForContract(extract);
-        var raw = String(extract.raw || "").trim();
-        var url = null;
-        // Direct URL from QR payload
-        if (extract.url && /^https?:\/\//i.test(String(extract.url).trim())) {
-          url = String(extract.url).trim();
-        } else if (/^https?:\/\//i.test(raw)) {
-          url = raw;
-        } else if (typeof buildOfficialUrl === "function") {
-          url = buildOfficialUrl(extract);
+        // Prefer raw / url / upin string through universal decoder
+        var candidates = [
+          extract.url,
+          extract.raw,
+          extract.upin,
+          extract.cert,
+          extract.plot
+        ];
+        for (var i = 0; i < candidates.length; i++) {
+          if (candidates[i] && handleParsedLandPayload(candidates[i])) {
+            try {
+              showPanel("landMapUploadPanel");
+              var retry = document.getElementById("landMapRetryBox");
+              if (retry) retry.classList.add("hidden");
+            } catch (e) {}
+            return;
+          }
         }
-        if (!url) {
-          var code = String(extract.upin || extract.cert || "").trim();
-          if (code) url = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(code);
+        // Compose from fields
+        if (extract.upin) {
+          if (handleParsedLandPayload(String(extract.upin))) return;
         }
-        if (!url) {
-          showRetryOnly();
-          return;
-        }
-        // IMMEDIATE open — no intermediate modals/cards
-        openOfficialUrl(url);
-        try {
-          showPanel("landMapUploadPanel");
-          var retry = document.getElementById("landMapRetryBox");
-          if (retry) retry.classList.add("hidden");
-        } catch (e) {}
+        showRetryOnly();
       }
+
 
       function buildOfficialUrl(extract) {
         extract = extract || {};
@@ -4742,27 +4740,79 @@ EXPLORER_HTML = r"""
       }
 
       function handleParsedLandPayload(payload) {
-        if (!payload) return false;
-        var s = String(payload).trim();
-        if (!s) return false;
-        try { saveForContract({ raw: s, url: /^https?:/i.test(s) ? s : "", upin: /^(AA|KK)/i.test(s) ? s : "" }); } catch (e) {}
+        if (payload == null || payload === "") return false;
+        var decodedText = String(payload).trim();
+        try { console.log("[Adika Digital System] Raw QR Output:", decodedText); } catch (e0) {}
 
-        // Full URL from certificate QR
-        if (/^https?:\/\//i.test(s)) {
-          openOfficialUrl(s);
+        // Case 1: Standard URL (female title deed style)
+        if (/^https?:\/\//i.test(decodedText)) {
+          openOfficialUrl(decodedText);
+          try { saveForContract({ url: decodedText, raw: decodedText }); } catch (e) {}
           return true;
         }
-        // UPIN / plot codes (AA..., KK..., LTP-...)
-        if (/^(AA|KK)\d/i.test(s) || /^LTP/i.test(s) || (s.length >= 10 && /^[A-Z0-9\-]+$/i.test(s))) {
-          openOfficialUrl(CADASTRE_VERIFY + "?upin=" + encodeURIComponent(s));
+
+        // Case 1b: URL embedded inside longer text / JSON string
+        var urlInText = decodedText.match(/https?:\/\/[^\s\"'<>]+/i);
+        if (urlInText) {
+          openOfficialUrl(urlInText[0]);
+          try { saveForContract({ url: urlInText[0], raw: decodedText }); } catch (e) {}
           return true;
         }
-        // Default title-deed style lookup
-        openOfficialUrl("https://e-services.addisababa.gov.et/land/verify?plot=" + encodeURIComponent(s));
-        return true;
+
+        // Case 2: JSON object payload
+        try {
+          if (decodedText.charAt(0) === "{" || decodedText.charAt(0) === "[") {
+            var j = JSON.parse(decodedText);
+            if (Array.isArray(j)) j = j[0] || {};
+            var jUrl = j.url || j.verify_url || j.link || j.href || "";
+            var jUpin = j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || "";
+            if (jUrl && /^https?:\/\//i.test(String(jUrl))) {
+              openOfficialUrl(String(jUrl));
+              try { saveForContract({ url: jUrl, upin: jUpin, raw: decodedText }); } catch (e) {}
+              return true;
+            }
+            if (jUpin) {
+              openOfficialUrl(CADASTRE_VERIFY + "?upin=" + encodeURIComponent(String(jUpin).trim()));
+              try { saveForContract({ upin: String(jUpin).trim(), raw: decodedText }); } catch (e) {}
+              return true;
+            }
+          }
+        } catch (eJson) {}
+
+        // Case 3: Raw UPIN / plot code (male cadastral style e.g. AA00091305321)
+        var upinMatch =
+          decodedText.match(/\b(AA\d{8,})\b/i) ||
+          decodedText.match(/\b(KK\d{8,})\b/i) ||
+          decodedText.match(/\b(LTP[-_]?[A-Z0-9\-]+)\b/i) ||
+          decodedText.match(/\b([A-Z]{1,4}\d{8,15})\b/i) ||
+          decodedText.match(/([A-Z0-9]{8,20})/i);
+        if (upinMatch) {
+          var extractedUpin = upinMatch[1] || upinMatch[0];
+          extractedUpin = String(extractedUpin).trim();
+          var cadastralUrl = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(extractedUpin);
+          openOfficialUrl(cadastralUrl);
+          try { saveForContract({ upin: extractedUpin, raw: decodedText }); } catch (e) {}
+          return true;
+        }
+
+        // Case 4: query-string style without host (upin=AA...&...)
+        var qs = decodedText.match(/(?:upin|plot|id|code)\s*[=:]\s*([A-Z0-9\-]+)/i);
+        if (qs) {
+          openOfficialUrl(CADASTRE_VERIFY + "?upin=" + encodeURIComponent(qs[1]));
+          try { saveForContract({ upin: qs[1], raw: decodedText }); } catch (e) {}
+          return true;
+        }
+
+        // Last resort: open default plot lookup with whole payload (no alert)
+        if (decodedText.length >= 6) {
+          openOfficialUrl("https://e-services.addisababa.gov.et/land/verify?plot=" + encodeURIComponent(decodedText));
+          try { saveForContract({ raw: decodedText }); } catch (e) {}
+          return true;
+        }
+        return false;
       }
 
-      /** Universal 4-zone scan for all Ethiopian land certificate layouts (<400ms) */
+
       function multiStageScan(img, cb) {
         var found = null;
         var t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
