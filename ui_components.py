@@ -1831,61 +1831,58 @@ EXPLORER_HTML = r"""
   <div id="contractModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
-        <h3 class="font-extrabold text-xs tracking-wide">📜 የመኪና ሽያጭ ውል (Contract Wizard)</h3>
+        <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ ውል ማዘጋጃ (Contract Wizard)</h3>
         <div class="flex items-center gap-1.5 shrink-0">
           <button type="button" onclick="navigateBack('contractModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">← ተመለስ</button>
           <button type="button" onclick="closeModal('contractModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
-      <!-- Step tabs -->
       <div class="px-3 pt-2 pb-1 bg-slate-50 border-b border-slate-100 shrink-0">
-        <div class="grid grid-cols-3 gap-1 p-0.5 bg-slate-200/60 rounded-xl">
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm" data-step="1">1. ተዋዋዮች</button>
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all text-slate-500" data-step="2">2. መኪና</button>
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all text-slate-500" data-step="3">3. ገንዘብ</button>
+        <div class="grid grid-cols-4 gap-1 p-0.5 bg-slate-200/60 rounded-xl">
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm" data-step="0">ዓይነት</button>
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="1">ተዋዋዮች</button>
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="2">ንብረት</button>
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="3">ገንዘብ</button>
         </div>
       </div>
 
       <div class="p-3.5 overflow-y-auto space-y-3 flex-1 text-xs">
+        <!-- STEP 0: Type -->
+        <div id="contractStep0" class="contract-step space-y-2">
+          <div class="text-[11px] font-black text-slate-800">የውል ዓይነት ይምረጡ</div>
+          <div class="grid grid-cols-1 gap-2">
+            <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border-2 border-[#16acbd] bg-[#16acbd]/5 cursor-pointer">
+              <input type="radio" name="cContractType" value="vehicle_sale" checked class="accent-[#16acbd]" />
+              <span class="font-bold text-slate-800">🚗 የመኪና ሽያጭ ውል (Vehicle Sale)</span>
+            </label>
+            <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
+              <input type="radio" name="cContractType" value="vehicle_rental" class="accent-[#16acbd]" />
+              <span class="font-bold text-slate-800">🔑 የመኪና ኪራይ ውል (Vehicle Rental)</span>
+            </label>
+            <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
+              <input type="radio" name="cContractType" value="house_sale" class="accent-[#16acbd]" />
+              <span class="font-bold text-slate-800">🏠 የቤት ሽያጭ ውል (House Sale)</span>
+            </label>
+            <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
+              <input type="radio" name="cContractType" value="house_rental" class="accent-[#16acbd]" />
+              <span class="font-bold text-slate-800">🏢 የቤት ኪራይ ውል (House Rental)</span>
+            </label>
+          </div>
+        </div>
+
         <!-- STEP 1: Parties -->
-        <div id="contractStep1" class="contract-step space-y-2.5">
-          <div class="text-[11px] font-black text-slate-800">የተዋዋዮች መረጃ (Parties Info)</div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">የሻጭ ሙሉ ስም *</label>
-              <input id="cSellerName" type="text" placeholder="አቶ ተስፋዬ በቀለ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+        <div id="contractStep1" class="contract-step space-y-2.5 hidden">
+          <div class="text-[11px] font-black text-slate-800">የተዋዋዮች መረጃ</div>
+          <div class="p-2 rounded-xl bg-slate-50 border space-y-2">
+            <div class="text-[10px] font-extrabold text-[#0e7490]" id="cPartyALabel">ውል ሰጪ / ሻጭ / አከራይ</div>
+            <input id="cSellerName" type="text" placeholder="ሙሉ ስም *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+            <div class="grid grid-cols-2 gap-2">
+              <input id="cSellerNationality" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+              <input id="cSellerPhone" type="tel" placeholder="ስልክ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
             </div>
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">የገዢ ሙሉ ስም *</label>
-              <input id="cBuyerName" type="text" placeholder="ወ/ሮ ማርታ ደሳለኝ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">የሻጭ ስልክ *</label>
-              <input id="cSellerPhone" type="tel" placeholder="0911..." class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            </div>
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">የገዢ ስልክ *</label>
-              <input id="cBuyerPhone" type="tel" placeholder="0922..." class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">የሻጭ መታወቂያ / Passport</label>
-              <input id="cSellerId" type="text" placeholder="ID / PP" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            </div>
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">የገዢ መታወቂያ / Passport</label>
-              <input id="cBuyerId" type="text" placeholder="ID / PP" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">ክፍለ ከተማ (Sub-City)</label>
-              <select id="cSubCity" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
-                <option value="">— ይምረጡ —</option>
+            <div class="grid grid-cols-2 gap-2">
+              <select id="cSellerSubCity" class="w-full p-2 rounded-xl bg-white border text-xs font-bold">                <option value="">— ይምረጡ —</option>
                 <option>አዲስ ከተማ</option>
                 <option>አቃቂ ቃሊቲ</option>
                 <option>አራዳ</option>
@@ -1898,79 +1895,150 @@ EXPLORER_HTML = r"""
                 <option>የካ</option>
                 <option>ሌሚ ኩራ</option>
               </select>
+              <input id="cSellerWoreda" type="text" placeholder="ወረዳ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
             </div>
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">ወረዳ (Woreda)</label>
-              <input id="cWoreda" type="number" min="1" max="20" placeholder="1–20" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cSellerHouseNo" type="text" placeholder="የቤት ቁጥር" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+          </div>
+          <div class="p-2 rounded-xl bg-slate-50 border space-y-2">
+            <div class="text-[10px] font-extrabold text-[#0e7490]" id="cPartyBLabel">ውል ተቀባይ / ገዢ / ተከራይ</div>
+            <input id="cBuyerName" type="text" placeholder="ሙሉ ስም *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+            <div class="grid grid-cols-2 gap-2">
+              <input id="cBuyerNationality" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+              <input id="cBuyerPhone" type="tel" placeholder="ስልክ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
             </div>
+            <div class="grid grid-cols-2 gap-2">
+              <select id="cBuyerSubCity" class="w-full p-2 rounded-xl bg-white border text-xs font-bold">                <option value="">— ይምረጡ —</option>
+                <option>አዲስ ከተማ</option>
+                <option>አቃቂ ቃሊቲ</option>
+                <option>አራዳ</option>
+                <option>ቦሌ</option>
+                <option>ጉለሌ</option>
+                <option>ኪርኮስ</option>
+                <option>ኮልፌ ቀራንዮ</option>
+                <option>ልደታ</option>
+                <option>ንፋስ ስልክ ላፍቶ</option>
+                <option>የካ</option>
+                <option>ሌሚ ኩራ</option>
+              </select>
+              <input id="cBuyerWoreda" type="text" placeholder="ወረዳ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+            </div>
+            <input id="cBuyerHouseNo" type="text" placeholder="የቤት ቁጥር" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
           </div>
         </div>
 
-        <!-- STEP 2: Vehicle -->
+        <!-- STEP 2: Asset fields (dynamic by type) -->
         <div id="contractStep2" class="contract-step space-y-2.5 hidden">
-          <div class="flex items-center justify-between gap-2">
-            <div class="text-[11px] font-black text-slate-800">የመኪናው ህጋዊ መረጃ</div>
-            <label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold cursor-pointer">
-              📷 ሊብሬ በፎቶ
-              <input id="cLibreFile" type="file" accept="image/*" class="hidden" />
-            </label>
-          </div>
-          <div id="cLibreStatus" class="hidden text-[10px] font-bold text-[#0e7490]"></div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">ሰሌዳ / Folder No. *</label>
-              <input id="cPlate" type="text" placeholder="ኮድ 3 - A12345" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          <div class="text-[11px] font-black text-slate-800">የንብረት / መኪና መረጃ</div>
+          <!-- Vehicle fields -->
+          <div id="cFieldsVehicle" class="space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold text-slate-500">መኪና</span>
+              <label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold cursor-pointer">
+                📷 ሊብሬ
+                <input id="cLibreFile" type="file" accept="image/*" class="hidden" />
+              </label>
             </div>
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">ሞዴል & ዘመን *</label>
-              <input id="cCarModel" type="text" placeholder="Toyota Vitz 2018" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <div id="cLibreStatus" class="hidden text-[10px] font-bold text-[#0e7490]"></div>
+            <input id="cPlate" type="text" placeholder="ሰሌዳ ቁጥር *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cChassis" type="text" placeholder="ቻሲ / Chassis *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
+            <input id="cEngine" type="text" placeholder="የሞተር ቁጥር" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
+            <input id="cCarModel" type="text" placeholder="የመኪና ዓይነት / ሞዴል *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+          <!-- House fields -->
+          <div id="cFieldsHouse" class="space-y-2 hidden">
+            <div class="grid grid-cols-2 gap-2">
+              <select id="cHouseSubCity" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">                <option value="">— ይምረጡ —</option>
+                <option>አዲስ ከተማ</option>
+                <option>አቃቂ ቃሊቲ</option>
+                <option>አራዳ</option>
+                <option>ቦሌ</option>
+                <option>ጉለሌ</option>
+                <option>ኪርኮስ</option>
+                <option>ኮልፌ ቀራንዮ</option>
+                <option>ልደታ</option>
+                <option>ንፋስ ስልክ ላፍቶ</option>
+                <option>የካ</option>
+                <option>ሌሚ ኩራ</option>
+              </select>
+              <input id="cHouseWoreda" type="text" placeholder="የቤት ወረዳ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
             </div>
-          </div>
-          <div>
-            <label class="font-bold text-slate-600 block mb-1">ሻንሲ / Chassis No. *</label>
-            <input id="cChassis" type="text" placeholder="JTDKN36U48..." class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
-          </div>
-          <div>
-            <label class="font-bold text-slate-600 block mb-1">የሞተር ቁጥር (Engine)</label>
-            <input id="cEngine" type="text" placeholder="1NZ-FE-88992" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
-          </div>
-          <div>
-            <label class="font-bold text-slate-600 block mb-1">የሊብሬ ቁጥር</label>
-            <input id="cLibreNo" type="text" placeholder="LIB-AA-998822" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cHouseNo" type="text" placeholder="የቤት ቁጥር" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cTitleDeed" type="text" placeholder="የካርታ / ደብተር ቁጥር" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cAreaSqm" type="text" placeholder="ስፋት (ካ.ሜ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <select id="cHouseUse" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
+              <option value="የመኖሪያ">የመኖሪያ ቤት</option>
+              <option value="የንግድ">የንግድ ቤት</option>
+            </select>
           </div>
         </div>
 
-        <!-- STEP 3: Financials & Witnesses -->
+        <!-- STEP 3: Money + Witnesses -->
         <div id="contractStep3" class="contract-step space-y-2.5 hidden">
-          <div class="text-[11px] font-black text-slate-800">የገንዘብና የምስክሮች ውል</div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">ጠቅላላ ዋጋ (ETB) *</label>
-              <input id="cTotalPrice" type="text" placeholder="2,200,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            </div>
-            <div>
-              <label class="font-bold text-slate-600 block mb-1">ቅድመ ክፍያ (ETB)</label>
-              <input id="cAdvance" type="text" placeholder="500,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            </div>
-          </div>
-          <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
-            <span class="font-bold text-emerald-800 text-[10px]">ቀሪ ክፍያ (Balance)</span>
-            <span id="cBalance" class="font-black text-emerald-900 text-sm">0 ETB</span>
-          </div>
-          <div>
-            <label class="font-bold text-slate-600 block mb-1">ቀሪ ክፍያ የሚጠናቀቅበት ቀን</label>
-            <input id="cDeadline" type="date" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-          <details class="rounded-xl border border-slate-200 bg-white open:shadow-sm">
-            <summary class="cursor-pointer px-3 py-2 font-bold text-slate-700 text-[11px]">👥 የ 2 ምስክሮች (አማራጭ)</summary>
-            <div class="p-3 pt-1 space-y-2 border-t border-slate-100">
-              <div class="grid grid-cols-2 gap-2">
-                <input id="cWit1Name" type="text" placeholder="ምስክር 1 ስም" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-                <input id="cWit1Id" type="text" placeholder="መታወቂያ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          <div class="text-[11px] font-black text-slate-800">የገንዘብና ምስክሮች</div>
+          <!-- Sale financials -->
+          <div id="cFinSale" class="space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="font-bold text-slate-600 block mb-1">ጠቅላላ ዋጋ (ብር) *</label>
+                <input id="cTotalPrice" type="text" placeholder="2,200,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
               </div>
-              <div class="grid grid-cols-2 gap-2">
-                <input id="cWit2Name" type="text" placeholder="ምስክር 2 ስም" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-                <input id="cWit2Id" type="text" placeholder="መታወቂያ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+              <div>
+                <label class="font-bold text-slate-600 block mb-1">ቅድመ ክፍያ (ብር)</label>
+                <input id="cAdvance" type="text" placeholder="500,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+              </div>
+            </div>
+            <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex justify-between items-center">
+              <span class="font-bold text-emerald-800 text-[10px]">ቀሪ ክፍያ</span>
+              <span id="cBalance" class="font-black text-emerald-900 text-sm">0 ብር</span>
+            </div>
+            <input id="cDeadline" type="text" placeholder="ማለቂያ ቀን (ምሳ. ጥቅምት 30 ቀን 2018 ዓ.ም)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+          <!-- Rental financials -->
+          <div id="cFinRental" class="space-y-2 hidden">
+            <div class="grid grid-cols-2 gap-2">
+              <input id="cRentRate" type="text" placeholder="የኪራይ ዋጋ (ብር) *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+              <select id="cRentPeriod" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
+                <option value="በወር">በወር</option>
+                <option value="በቀን">በቀን</option>
+              </select>
+            </div>
+            <input id="cRentStart" type="text" placeholder="መጀመሪያ ቀን (አማርኛ ጽሁፍ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cRentEnd" type="text" placeholder="ማለቂያ ቀን / የኪራይ ዘመን" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cRentAdvanceMonths" type="text" placeholder="የተከፈለ ቅድመ ወራት ብዛት (ለቤት ኪራይ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cRentAdvanceTotal" type="text" placeholder="ጠቅላላ የተከፈለ ቅድመ ኪራይ (ብር)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+          <input id="cPenalty" type="text" placeholder="የካሳ መጠን (ብር) — አማራጭ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          <input id="cContractDate" type="text" placeholder="የውል ቀን (ምሳ. መስከረም 15 ቀን 2018 ዓ.ም)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+
+          <details class="rounded-xl border border-slate-200 bg-white" open>
+            <summary class="cursor-pointer px-3 py-2 font-bold text-slate-700 text-[11px]">👥 3 ምስክሮች</summary>
+            <div class="p-3 pt-1 space-y-3 border-t border-slate-100">
+              <div class="space-y-1.5 p-2 bg-slate-50 rounded-xl">
+                <div class="text-[10px] font-extrabold text-slate-500">ምስክር 1</div>
+                <input id="cWit1Name" type="text" placeholder="ሙሉ ስም" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                <div class="grid grid-cols-2 gap-1.5">
+                  <input id="cWit1Nat" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                  <input id="cWit1Phone" type="tel" placeholder="ስልክ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                </div>
+                <input id="cWit1Addr" type="text" placeholder="ክ/ከተማ · ወረዳ · ቤት ቁ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+              </div>
+              <div class="space-y-1.5 p-2 bg-slate-50 rounded-xl">
+                <div class="text-[10px] font-extrabold text-slate-500">ምስክር 2</div>
+                <input id="cWit2Name" type="text" placeholder="ሙሉ ስም" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                <div class="grid grid-cols-2 gap-1.5">
+                  <input id="cWit2Nat" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                  <input id="cWit2Phone" type="tel" placeholder="ስልክ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                </div>
+                <input id="cWit2Addr" type="text" placeholder="ክ/ከተማ · ወረዳ · ቤት ቁ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+              </div>
+              <div class="space-y-1.5 p-2 bg-slate-50 rounded-xl">
+                <div class="text-[10px] font-extrabold text-slate-500">ምስክር 3</div>
+                <input id="cWit3Name" type="text" placeholder="ሙሉ ስም" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                <div class="grid grid-cols-2 gap-1.5">
+                  <input id="cWit3Nat" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                  <input id="cWit3Phone" type="tel" placeholder="ስልክ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                </div>
+                <input id="cWit3Addr" type="text" placeholder="ክ/ከተማ · ወረዳ · ቤት ቁ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
               </div>
             </div>
           </details>
@@ -1992,6 +2060,7 @@ EXPLORER_HTML = r"""
     </div>
   </div>
 
+  <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <div id="poaModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
@@ -4315,11 +4384,11 @@ EXPLORER_HTML = r"""
     };
 
 
-    // ========== Contract Wizard (3-step) ==========
+    // ========== Contract Wizard (4 types, continuous legal prose) ==========
     (function initContractWizard() {
-      var step = 1;
+      var step = 0;
       var draftId = null;
-      var SUB_KEY = "adika_contract_draft_v1";
+      var SUB_KEY = "adika_contract_draft_v2";
 
       function val(id) {
         var el = document.getElementById(id);
@@ -4333,73 +4402,120 @@ EXPLORER_HTML = r"""
         return Number(String(s || "").replace(/[^0-9.]/g, "")) || 0;
       }
       function fmtMoney(n) {
-        return Math.max(0, Math.round(n)).toLocaleString() + " ETB";
+        return Math.max(0, Math.round(n)).toLocaleString() + " ብር";
+      }
+      function getContractType() {
+        var r = document.querySelector('input[name="cContractType"]:checked');
+        return r ? r.value : "vehicle_sale";
       }
       function updateBalance() {
         var total = parseMoney(val("cTotalPrice"));
         var adv = parseMoney(val("cAdvance"));
-        var bal = Math.max(0, total - adv);
         var el = document.getElementById("cBalance");
-        if (el) el.textContent = fmtMoney(bal);
+        if (el) el.textContent = fmtMoney(Math.max(0, total - adv));
+      }
+      function syncTypeUI() {
+        var t = getContractType();
+        var isVehicle = t.indexOf("vehicle") === 0;
+        var isSale = t.indexOf("sale") >= 0;
+        var fv = document.getElementById("cFieldsVehicle");
+        var fh = document.getElementById("cFieldsHouse");
+        var fs = document.getElementById("cFinSale");
+        var fr = document.getElementById("cFinRental");
+        if (fv) fv.classList.toggle("hidden", !isVehicle);
+        if (fh) fh.classList.toggle("hidden", isVehicle);
+        if (fs) fs.classList.toggle("hidden", !isSale);
+        if (fr) fr.classList.toggle("hidden", isSale);
+        var a = document.getElementById("cPartyALabel");
+        var b = document.getElementById("cPartyBLabel");
+        if (a) a.textContent = isSale ? "ውል ሰጪ (ሻጭ)" : "አከራይ";
+        if (b) b.textContent = isSale ? "ውል ተቀባይ (ገዢ)" : "ተከራይ";
+        document.querySelectorAll(".c-type-opt").forEach(function(lab) {
+          var inp = lab.querySelector("input");
+          if (!inp) return;
+          if (inp.checked) {
+            lab.className = "c-type-opt flex items-center gap-2 p-3 rounded-xl border-2 border-[#16acbd] bg-[#16acbd]/5 cursor-pointer";
+          } else {
+            lab.className = "c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer";
+          }
+        });
       }
       function collectPayload(status) {
         var userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
+        var ctype = getContractType();
         return {
           contract_id: draftId,
           user_id: userId,
+          contract_type: ctype,
           contract_status: status || "Draft",
           seller_info: {
             name: val("cSellerName"),
+            nationality: val("cSellerNationality") || "ኢትዮጵያዊ",
             phone: val("cSellerPhone"),
-            id_number: val("cSellerId"),
-            sub_city: val("cSubCity"),
-            woreda: val("cWoreda")
+            sub_city: val("cSellerSubCity"),
+            woreda: val("cSellerWoreda"),
+            house_no: val("cSellerHouseNo")
           },
           buyer_info: {
             name: val("cBuyerName"),
+            nationality: val("cBuyerNationality") || "ኢትዮጵያዊ",
             phone: val("cBuyerPhone"),
-            id_number: val("cBuyerId")
+            sub_city: val("cBuyerSubCity"),
+            woreda: val("cBuyerWoreda"),
+            house_no: val("cBuyerHouseNo")
           },
           vehicle_info: {
             plate: val("cPlate"),
             chassis: val("cChassis"),
             engine: val("cEngine"),
-            model: val("cCarModel"),
-            libre: val("cLibreNo")
+            model: val("cCarModel")
+          },
+          property_info: {
+            sub_city: val("cHouseSubCity"),
+            woreda: val("cHouseWoreda"),
+            house_no: val("cHouseNo"),
+            title_deed: val("cTitleDeed"),
+            area_sqm: val("cAreaSqm"),
+            use_type: val("cHouseUse")
           },
           financial_info: {
             total_price: parseMoney(val("cTotalPrice")),
             advance: parseMoney(val("cAdvance")),
             balance: Math.max(0, parseMoney(val("cTotalPrice")) - parseMoney(val("cAdvance"))),
-            deadline: val("cDeadline")
+            deadline: val("cDeadline"),
+            rent_rate: parseMoney(val("cRentRate")),
+            rent_period: val("cRentPeriod") || "በወር",
+            rent_start: val("cRentStart"),
+            rent_end: val("cRentEnd"),
+            rent_advance_months: val("cRentAdvanceMonths"),
+            rent_advance_total: parseMoney(val("cRentAdvanceTotal")),
+            penalty: parseMoney(val("cPenalty")),
+            contract_date: val("cContractDate")
           },
           witnesses: [
-            { name: val("cWit1Name"), id_number: val("cWit1Id") },
-            { name: val("cWit2Name"), id_number: val("cWit2Id") }
+            { name: val("cWit1Name"), nationality: val("cWit1Nat"), phone: val("cWit1Phone"), address: val("cWit1Addr") },
+            { name: val("cWit2Name"), nationality: val("cWit2Nat"), phone: val("cWit2Phone"), address: val("cWit2Addr") },
+            { name: val("cWit3Name"), nationality: val("cWit3Nat"), phone: val("cWit3Phone"), address: val("cWit3Addr") }
           ]
         };
       }
       function showStep(n) {
         step = n;
-        [1,2,3].forEach(function(i) {
+        [0,1,2,3].forEach(function(i) {
           var panel = document.getElementById("contractStep" + i);
           if (panel) panel.classList.toggle("hidden", i !== n);
         });
         document.querySelectorAll(".contract-step-tab").forEach(function(btn) {
           var s = Number(btn.getAttribute("data-step"));
-          if (s === n) {
-            btn.className = "contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm";
-          } else {
-            btn.className = "contract-step-tab py-1.5 rounded-lg text-[10px] font-extrabold transition-all text-slate-500";
-          }
+          btn.className = s === n
+            ? "contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm"
+            : "contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500";
         });
         var prev = document.getElementById("cStepPrev");
         var next = document.getElementById("cStepNext");
-        if (prev) prev.classList.toggle("hidden", n <= 1);
-        if (next) {
-          next.classList.toggle("hidden", n >= 3);
-          next.textContent = n >= 3 ? "" : "ቀጣይ →";
-        }
+        if (prev) prev.classList.toggle("hidden", n <= 0);
+        if (next) next.classList.toggle("hidden", n >= 3);
+        syncTypeUI();
         try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
       }
       function restoreDraft() {
@@ -4409,34 +4525,50 @@ EXPLORER_HTML = r"""
           var d = JSON.parse(raw);
           if (!d) return;
           draftId = d.contract_id || null;
-          var s = d.seller_info || {}, b = d.buyer_info || {}, v = d.vehicle_info || {}, f = d.financial_info || {};
-          setVal("cSellerName", s.name); setVal("cSellerPhone", s.phone); setVal("cSellerId", s.id_number);
-          setVal("cSubCity", s.sub_city); setVal("cWoreda", s.woreda);
-          setVal("cBuyerName", b.name); setVal("cBuyerPhone", b.phone); setVal("cBuyerId", b.id_number);
-          setVal("cPlate", v.plate); setVal("cChassis", v.chassis); setVal("cEngine", v.engine);
-          setVal("cCarModel", v.model); setVal("cLibreNo", v.libre);
+          if (d.contract_type) {
+            var r = document.querySelector('input[name="cContractType"][value="' + d.contract_type + '"]');
+            if (r) r.checked = true;
+          }
+          var s = d.seller_info || {}, b = d.buyer_info || {}, v = d.vehicle_info || {}, p = d.property_info || {}, f = d.financial_info || {};
+          setVal("cSellerName", s.name); setVal("cSellerNationality", s.nationality); setVal("cSellerPhone", s.phone);
+          setVal("cSellerSubCity", s.sub_city); setVal("cSellerWoreda", s.woreda); setVal("cSellerHouseNo", s.house_no);
+          setVal("cBuyerName", b.name); setVal("cBuyerNationality", b.nationality); setVal("cBuyerPhone", b.phone);
+          setVal("cBuyerSubCity", b.sub_city); setVal("cBuyerWoreda", b.woreda); setVal("cBuyerHouseNo", b.house_no);
+          setVal("cPlate", v.plate); setVal("cChassis", v.chassis); setVal("cEngine", v.engine); setVal("cCarModel", v.model);
+          setVal("cHouseSubCity", p.sub_city); setVal("cHouseWoreda", p.woreda); setVal("cHouseNo", p.house_no);
+          setVal("cTitleDeed", p.title_deed); setVal("cAreaSqm", p.area_sqm); setVal("cHouseUse", p.use_type);
           setVal("cTotalPrice", f.total_price); setVal("cAdvance", f.advance); setVal("cDeadline", f.deadline);
+          setVal("cRentRate", f.rent_rate); setVal("cRentPeriod", f.rent_period); setVal("cRentStart", f.rent_start);
+          setVal("cRentEnd", f.rent_end); setVal("cRentAdvanceMonths", f.rent_advance_months);
+          setVal("cRentAdvanceTotal", f.rent_advance_total); setVal("cPenalty", f.penalty); setVal("cContractDate", f.contract_date);
           var w = d.witnesses || [];
-          if (w[0]) { setVal("cWit1Name", w[0].name); setVal("cWit1Id", w[0].id_number); }
-          if (w[1]) { setVal("cWit2Name", w[1].name); setVal("cWit2Id", w[1].id_number); }
+          for (var i = 0; i < 3; i++) {
+            var wi = w[i] || {};
+            setVal("cWit" + (i+1) + "Name", wi.name);
+            setVal("cWit" + (i+1) + "Nat", wi.nationality);
+            setVal("cWit" + (i+1) + "Phone", wi.phone);
+            setVal("cWit" + (i+1) + "Addr", wi.address);
+          }
           updateBalance();
+          syncTypeUI();
         } catch (e) {}
       }
 
       document.querySelectorAll(".contract-step-tab").forEach(function(btn) {
-        btn.onclick = function() { showStep(Number(btn.getAttribute("data-step")) || 1); };
+        btn.onclick = function() { showStep(Number(btn.getAttribute("data-step")) || 0); };
+      });
+      document.querySelectorAll('input[name="cContractType"]').forEach(function(r) {
+        r.onchange = function() { syncTypeUI(); };
       });
       var prevBtn = document.getElementById("cStepPrev");
       var nextBtn = document.getElementById("cStepNext");
-      if (prevBtn) prevBtn.onclick = function() { showStep(Math.max(1, step - 1)); };
+      if (prevBtn) prevBtn.onclick = function() { showStep(Math.max(0, step - 1)); };
       if (nextBtn) nextBtn.onclick = function() { showStep(Math.min(3, step + 1)); };
-
       ["cTotalPrice", "cAdvance"].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener("input", updateBalance);
       });
 
-      // Libre OCR optional
       var libreFile = document.getElementById("cLibreFile");
       if (libreFile) {
         libreFile.onchange = function() {
@@ -4450,31 +4582,24 @@ EXPLORER_HTML = r"""
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ image_data: reader.result })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
-              var d = (res && res.data) || res || {};
+            }).then(function(r) { return r.json(); }).then(function(res) {
+              var d = (res && res.data) || {};
               if (d.chassis) setVal("cChassis", d.chassis);
               if (d.engine) setVal("cEngine", d.engine);
               if (d.plate) setVal("cPlate", d.plate);
-              if (d.libre) setVal("cLibreNo", d.libre);
               if (d.model) setVal("cCarModel", d.model);
-              if (st) st.textContent = res.success === false ? ("⚠️ " + (res.message || "OCR አልተሳካም")) : "✅ መረጃ ተሞልቷል — እባክዎ ያረጋግጡ";
-            })
-            .catch(function() {
-              if (st) st.textContent = "⚠️ OCR አልተሳካም — በእጅ ያስገቡ";
-            });
+              if (st) st.textContent = res.success === false ? ("⚠️ " + (res.message || "OCR")) : "✅ ተሞልቷል — ያረጋግጡ";
+            }).catch(function() { if (st) st.textContent = "⚠️ OCR አልተሳካም"; });
           };
           reader.readAsDataURL(f);
         };
       }
 
       function saveContract(status) {
-        var payload = collectPayload(status);
         return fetch("/api/contracts/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(collectPayload(status))
         }).then(function(r) { return r.json(); });
       }
 
@@ -4482,19 +4607,13 @@ EXPLORER_HTML = r"""
       if (saveBtn) {
         saveBtn.onclick = function() {
           saveBtn.disabled = true;
-          saveBtn.textContent = "⏳...";
-          saveContract("Draft")
-            .then(function(res) {
-              if (res.contract_id) draftId = res.contract_id;
-              try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
-              if (tg && tg.showAlert) tg.showAlert(res.message || "ረቂቅ ተቀምጧል");
-              else alert(res.message || "ረቂቅ ተቀምጧል");
-            })
-            .catch(function() { alert("ማስቀመጥ አልተቻለም"); })
-            .finally(function() {
-              saveBtn.disabled = false;
-              saveBtn.textContent = "💾 ረቂቅ አስቀምጥ";
-            });
+          saveContract("Draft").then(function(res) {
+            if (res.contract_id) draftId = res.contract_id;
+            try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
+            if (tg && tg.showAlert) tg.showAlert(res.message || "ረቂቅ ተቀምጧል");
+            else alert(res.message || "ረቂቅ ተቀምጧል");
+          }).catch(function() { alert("ማስቀመጥ አልተቻለም"); })
+          .finally(function() { saveBtn.disabled = false; });
         };
       }
 
@@ -4502,45 +4621,38 @@ EXPLORER_HTML = r"""
       if (finBtn) {
         finBtn.onclick = function() {
           var p = collectPayload("Finalized");
-          if (!p.seller_info.name || !p.buyer_info.name || !p.vehicle_info.chassis || !p.financial_info.total_price) {
-            alert("እባክዎ አስፈላጊ መስኮችን ይሙሉ (ሻጭ፣ ገዢ፣ ቻሲ፣ ዋጋ)");
+          if (!p.seller_info.name || !p.buyer_info.name) {
+            alert("እባክዎ የተዋዋዮች ስም ይሙሉ");
             showStep(1);
             return;
           }
           finBtn.disabled = true;
-          finBtn.textContent = "⏳ ውል በማዘጋጀት...";
-          saveContract("Finalized")
-            .then(function(res) {
-              if (res.contract_id) draftId = res.contract_id;
-              var result = document.getElementById("contractResult");
-              if (result) {
-                result.classList.remove("hidden");
-                var cid = res.contract_id || draftId || "";
-                result.innerHTML =
-                  '<div class="font-black text-slate-800 text-[11px]">✅ ውል ተጠናቋል</div>' +
-                  '<div class="text-[10px] text-slate-600">የውል ቁጥር: #' + esc(String(cid)) + '</div>' +
-                  '<div class="flex gap-2 pt-1">' +
-                    '<a href="/api/contracts/' + encodeURIComponent(cid) + '/export-pdf" target="_blank" class="flex-1 text-center py-2 rounded-xl bg-slate-900 text-white font-bold text-[10px]">📥 PDF አውርድ</a>' +
-                    '<button type="button" id="cPrintBtn" class="flex-1 py-2 rounded-xl bg-[#16acbd] text-white font-bold text-[10px]">🖨️ ህትመት</button>' +
-                  '</div>' +
-                  '<pre class="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-[10px] bg-white p-2 rounded-lg border">' + esc(res.contract_text || res.message || "") + '</pre>';
-                var pb = document.getElementById("cPrintBtn");
-                if (pb) pb.onclick = function() {
-                  var w = window.open("/api/contracts/" + encodeURIComponent(cid) + "/export-pdf?print=1", "_blank");
-                  if (!w) alert("Popup ተከልክሏል");
-                };
-              }
-              showStep(3);
-            })
-            .catch(function() { alert("ውል ማጠናቀቅ አልተቻለም"); })
-            .finally(function() {
-              finBtn.disabled = false;
-              finBtn.textContent = "📄 ውል አጠናቅቅ";
-            });
+          finBtn.textContent = "⏳...";
+          saveContract("Finalized").then(function(res) {
+            if (res.contract_id) draftId = res.contract_id;
+            var result = document.getElementById("contractResult");
+            if (result) {
+              result.classList.remove("hidden");
+              var cid = res.contract_id || draftId || "";
+              result.innerHTML =
+                '<div class="font-black text-slate-800 text-[11px]">✅ ውል ተጠናቋል</div>' +
+                '<div class="text-[10px] text-slate-600">#' + esc(String(cid)) + '</div>' +
+                '<div class="flex gap-2 pt-1">' +
+                  '<a href="/api/contracts/' + encodeURIComponent(cid) + '/export-pdf" target="_blank" class="flex-1 text-center py-2 rounded-xl bg-slate-900 text-white font-bold text-[10px]">📥 PDF አውርድ</a>' +
+                  '<button type="button" id="cPrintBtn" class="flex-1 py-2 rounded-xl bg-[#16acbd] text-white font-bold text-[10px]">🖨️ ህትመት</button>' +
+                '</div>' +
+                '<pre class="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-[10px] bg-white p-2 rounded-lg border leading-relaxed">' + esc(res.contract_text || "") + '</pre>';
+              var pb = document.getElementById("cPrintBtn");
+              if (pb) pb.onclick = function() {
+                window.open("/api/contracts/" + encodeURIComponent(cid) + "/export-pdf?print=1", "_blank");
+              };
+            }
+            showStep(3);
+          }).catch(function() { alert("ውል ማጠናቀቅ አልተቻለም"); })
+          .finally(function() { finBtn.disabled = false; finBtn.textContent = "📄 ውል አጠናቅቅ"; });
         };
       }
 
-      // Restore draft when modal opens
       var origOpen = window.openToolModal;
       window.openToolModal = function(id) {
         if (typeof origOpen === "function") origOpen(id);
@@ -4550,14 +4662,17 @@ EXPLORER_HTML = r"""
         }
         if (id === "contractModal") {
           restoreDraft();
-          showStep(1);
+          showStep(0);
           updateBalance();
+          syncTypeUI();
         }
       };
       restoreDraft();
-      showStep(1);
+      showStep(0);
       updateBalance();
+      syncTypeUI();
     })();
+
 
     setTabs();
     load(false);
