@@ -941,6 +941,41 @@ EXPLORER_HTML = r"""
     .hero-dot { width: 4px; height: 4px; border-radius: 999px; background: rgba(15,23,42,0.25); }
     .hero-dot.active { background: #0e7490; width: 12px; }
 
+    /* Instagram-style listing photo auto-enhancement (zero-cost CSS) */
+    .listing-photo-frame {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      border-radius: 0.75rem;
+      background: #e2e8f0;
+    }
+    .listing-photo-frame::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: linear-gradient(145deg, #cbd5e1, #94a3b8);
+      filter: blur(12px);
+      transform: scale(1.08);
+    }
+    .listing-photo-enhance {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      border-radius: 0.75rem;
+      filter: contrast(108%) brightness(102%) saturate(110%);
+      -webkit-filter: contrast(108%) brightness(102%) saturate(110%);
+      transition: filter 0.2s ease, transform 0.2s ease;
+    }
+    .adika-card:active .listing-photo-enhance {
+      transform: scale(1.02);
+    }
+
+
     /* Glass chat bubbles */
     .chat-bubble-user {
       margin-left: 1.5rem; padding: 0.7rem 0.85rem; border-radius: 1rem;
@@ -2112,10 +2147,27 @@ EXPLORER_HTML = r"""
     } catch(e) {}
 
     function toggleFav(id) {
+      var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
       try { localStorage.setItem('adika_favs', JSON.stringify(favorites)); } catch(e){}
       renderFavoritesUI();
+      // Persist bookmark for price-drop alerts (Telegram chat_id)
+      try {
+        var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
+        if (uid && id) {
+          fetch("/api/favorites/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: uid,
+              chat_id: uid,
+              listing_id: id,
+              action: wasFav ? "remove" : "add"
+            })
+          }).catch(function(){});
+        }
+      } catch (e) {}
     }
 
     var state = {
@@ -2157,11 +2209,21 @@ EXPLORER_HTML = r"""
         hist.unshift(entry);
         hist = hist.slice(0, 3);
         localStorage.setItem("viewHistory", JSON.stringify(hist));
+        // Zero-cost intent key (last 3 categories + prices)
+        try {
+          var intent = hist.map(function(h) {
+            return { category: h.category || "", price: h.price || 0, model: h.model || "", brand: h.brand || "" };
+          });
+          localStorage.setItem("adik_user_intent", JSON.stringify(intent));
+        } catch (e2) {}
       } catch (e) {}
     }
     function getViewHistory() {
       try {
         var hist = JSON.parse(localStorage.getItem("viewHistory") || "[]");
+        if (!Array.isArray(hist) || !hist.length) {
+          hist = JSON.parse(localStorage.getItem("adik_user_intent") || "[]");
+        }
         return Array.isArray(hist) ? hist : [];
       } catch (e) { return []; }
     }
@@ -2194,7 +2256,7 @@ EXPLORER_HTML = r"""
         return (
           '<button type="button" class="reco-card shrink-0 w-[138px] text-left rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden active:scale-[0.98]" data-id="' + esc(String(it.id || "")) + '">' +
             '<div class="aspect-[4/3] bg-slate-100">' +
-              (img ? '<img src="' + esc(img) + '" class="w-full h-full object-cover" loading="lazy" />' : '<div class="w-full h-full flex items-center justify-center text-2xl">🚗</div>') +
+              (img ? '<img src="' + esc(img) + '" class="listing-photo-enhance" loading="lazy" />' : '<div class="w-full h-full flex items-center justify-center text-2xl">🚗</div>') +
             '</div>' +
             '<div class="p-1.5 space-y-0.5">' +
               '<div class="text-[10px] font-extrabold text-slate-800 truncate">' + esc(name) + '</div>' +
@@ -2489,11 +2551,13 @@ EXPLORER_HTML = r"""
 
       var media;
       if (photos.length > 0) {
-        media = '<img src="' + esc(getImageUrl(photos[0]) || photos[0] || "") + '" alt="" class="w-full h-full object-cover" loading="lazy" />';
+        media = '<div class="listing-photo-frame">' +
+          '<img src="' + esc(getImageUrl(photos[0]) || photos[0] || "") + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.style.display=\'none\'" />' +
+          '</div>';
       } else {
-        media = '<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white p-2">' +
-          '<span class="text-3xl mb-1">' + icon + '</span>' +
-          '<span class="text-[9px] font-bold text-white/90">No Image</span>' +
+        media = '<div class="listing-photo-frame flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white p-2">' +
+          '<span class="text-3xl mb-1 relative z-10">' + icon + '</span>' +
+          '<span class="text-[9px] font-bold text-white/90 relative z-10">No Image</span>' +
           '</div>';
       }
 
@@ -2576,7 +2640,7 @@ EXPLORER_HTML = r"""
       // Image gallery carousel
       if (photos.length > 0) {
         var slides = photos.map(function(u, i) {
-          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img src="' + esc(getImageUrl(u) || u || "") + '" alt="" class="w-full h-full object-cover" loading="' + (i === 0 ? "eager" : "lazy") + '" /></div>';
+          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img src="' + esc(getImageUrl(u) || u || "") + '" alt="" class="listing-photo-enhance" loading="' + (i === 0 ? "eager" : "lazy") + '" /></div>';
         }).join("");
         var dots = photos.length > 1 ? ('<div class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">' +
           photos.map(function(_, i) {
