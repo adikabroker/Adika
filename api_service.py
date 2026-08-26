@@ -1,120 +1,176 @@
-# api_service.py — REST API + AI handlers for Adika Marketplace
-import json
-import re
+# api_service.py — Adika Marketplace API routes & AI helpers
+"""API service layer for Adika Telegram Mini App."""
+from __future__ import annotations
+
 import os
-import random
-import threading
-import asyncio
+import re
+import json
+import time
 import logging
-import urllib.request
-import urllib.error
-from typing import List, Dict, Any, Optional
+import asyncio
+import threading
+import base64
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 try:
     import requests
 except ImportError:
-    requests = None
+    requests = None  # type: ignore
 
 try:
-    import cv2
+    from flask import request, jsonify
 except ImportError:
-    cv2 = None
+    request = None  # type: ignore
+    jsonify = None  # type: ignore
 
 try:
-    import numpy as np
-except ImportError:
-    np = None
+    from config import (
+        OPENROUTER_API_KEY,
+        WEBAPP_URL,
+    )
+except Exception:
+    OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "") or ""
+    WEBAPP_URL = os.environ.get("WEBAPP_URL", "") or ""
 
-try:
-    from pyzbar.pyzbar import decode as pyzbar_decode
-except ImportError:
-    pyzbar_decode = None
+logger = logging.getLogger(__name__)
 
-from flask import request, jsonify, Response
-
-def extract_certificate_id(scanned_text):
-    """
-    Extract Certificate ID or Property/Parcel code from text.
-    Returns UUID or code, or None. Never returns static strings like 'addisland'.
-    """
-    if not scanned_text:
-        return None
-    
-    clean_text = str(scanned_text).strip()
-
-    # 1. Check if the scanned text contains a valid 36-character UUID (like f11b394e-...)
-    uuid_match = re.search(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', clean_text)
-    if uuid_match:
-        return uuid_match.group(0)
-
-    # 2. Check if it's a Plot / Property code (like LTP-KK05004731 or KK052025004731 or AA00091305321)
-    code_match = re.search(r'(?:LTP-)?[A-Z]{2}\d+', clean_text, re.IGNORECASE)
-    if code_match:
-        return code_match.group(0)
-
-    # 3. Standalone numeric parcel code (6+ digits)
-    num_match = re.search(r'\b\d{6,16}\b', clean_text)
-    if num_match:
-        return num_match.group(0)
-
-    return None
-
-def format_target_url(raw_data):
-    """
-    Strict Domain Sanitizer & Routing
-    Enforces that non-existent domains (land.addiscadaster.gov.et / addiscadaster.gov.et) are NEVER returned.
-    All extracted parameters and links route exclusively to active addislandfarm.gov.et.
-    """
-    if not raw_data:
-        return "https://addislandfarm.gov.et/"
-    
-    clean_input = str(raw_data).strip()
-
-    # 1. ABSOLUTE BLOCK: If the scanned data contains the dead domain, strip/remap it immediately!
-    if "land.addiscadaster.gov.et" in clean_input or "addiscadaster.gov.et" in clean_input:
-        clean_input = re.sub(r'https?://[^/]*addiscadaster[^/]*', 'https://addislandfarm.gov.et', clean_input, flags=re.IGNORECASE)
-        if "addiscadaster" in clean_input:
-            cert_id = extract_certificate_id(clean_input)
-            if cert_id:
-                if re.match(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', cert_id):
-                    return f"https://addislandfarm.gov.et/verify/{cert_id}"
-                return f"https://addislandfarm.gov.et/verify?upin={cert_id}"
-            return "https://addislandfarm.gov.et/"
-
-    # 2. If it's already a valid addislandfarm link, keep it untouched
-    if clean_input.startswith("http://") or clean_input.startswith("https://"):
-        if "addislandfarm.gov.et" in clean_input:
-            return clean_input
-        # Force replace any other http domain with addislandfarm
-        return re.sub(r'https?://[^/]+', 'https://addislandfarm.gov.et', clean_input)
-
-    # 3. If it's a 36-char UUID, map to addislandfarm verify path
-    if re.match(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', clean_input):
-        return f"https://addislandfarm.gov.et/verify/{clean_input}"
-
-    # 4. Check for Certificate / Plot / Property ID
-    cert_id = extract_certificate_id(clean_input)
-    if cert_id:
-        if re.match(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', cert_id):
-            return f"https://addislandfarm.gov.et/verify/{cert_id}"
-        return f"https://addislandfarm.gov.et/verify?upin={cert_id}"
-
-    # 5. Default safe fallback: Every single scanned code MUST route to addislandfarm.gov.et
-    import urllib.parse
-    return f"https://addislandfarm.gov.et/verify?upin={urllib.parse.quote_plus(clean_input)}"
-
-from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY
-from models import (
-    LAST_DB_ERROR,
-    get_db_connection, get_placeholder, add_listing, get_listing_by_id,
-    update_listing_status, save_search_alert, expire_old_listings,
-    get_active_brokers, get_platform_stats, count_listings, count_brokers,
-)
-
-# Set by webapp.py after import (avoids circular imports)
+# Optional bot globals (set by webapp at runtime)
 bot_app = None
 bot_loop = None
-_json_safe = None
+
+
+def sanitize_and_route_url(scanned_data: str) -> str:
+    """Map QR payload to addislandfarm.gov.et only — never dead hosts or static junk tokens."""
+    import re as _re
+    text = (scanned_data or "").strip()
+    BASE = "https://addislandfarm.gov.et"
+    VERIFY = BASE + "/verify"
+    if not text:
+        return BASE + "/"
+
+    def extract_id(s: str):
+        if not s:
+            return None
+        uuid_m = _re.search(
+            r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
+            s,
+        )
+        if uuid_m:
+            return ("uuid", uuid_m.group(0))
+        code_m = _re.search(r'(LTP-)?[A-Z]{2}\d+', s, _re.I)
+        if code_m:
+            return ("code", code_m.group(0))
+        upin_m = _re.search(r'\b(AA\d{6,}|KK\d{6,})\b', s, _re.I)
+        if upin_m:
+            return ("code", upin_m.group(1))
+        return None
+
+    # Dead domain strip
+    if _re.search(r'addiscadaster|addisland\.gov\.et', text, _re.I) and "addislandfarm.gov.et" not in text.lower():
+        got = extract_id(text)
+        if got and got[0] == "uuid":
+            return f"{VERIFY}/{got[1]}"
+        if got:
+            return f"{VERIFY}?upin={got[1]}"
+        return BASE + "/"
+
+    if "addislandfarm.gov.et" in text.lower():
+        m = _re.search(r'https?://[^\s\"\'<>]*addislandfarm\.gov\.et[^\s\"\'<>]*', text, _re.I)
+        if m:
+            url = m.group(0)
+            if _re.search(r'/verify/(addisland|verify|home|null|undefined)/?$', url, _re.I):
+                return BASE + "/"
+            return url
+
+    if _re.search(r'https?://', text, _re.I):
+        got = extract_id(text)
+        if got and got[0] == "uuid":
+            return f"{VERIFY}/{got[1]}"
+        if got:
+            return f"{VERIFY}?upin={got[1]}"
+        return BASE + "/"
+
+    got = extract_id(text)
+    if got and got[0] == "uuid":
+        return f"{VERIFY}/{got[1]}"
+    if got:
+        return f"{VERIFY}?upin={got[1]}"
+
+    if _re.fullmatch(r'[A-Za-z0-9_\-]{8,64}', text) and text.lower() not in (
+        "addisland", "verify", "null", "undefined", "http", "https", "www"
+    ):
+        return f"{VERIFY}?upin={text}"
+    return BASE + "/"
+
+
+
+def decode_qr_from_bytes(img_bytes: bytes):
+    """
+    High-accuracy QR decode: OpenCV enhancement passes + pyzbar.
+    Returns decoded UTF-8 string or None if libs/image fail.
+    """
+    try:
+        import numpy as np
+        import cv2
+        from pyzbar.pyzbar import decode as pyzbar_decode
+    except ImportError:
+        return None
+    try:
+        arr = np.frombuffer(img_bytes, dtype=np.uint8)
+        image = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if image is None:
+            return None
+
+        def _try(mat):
+            objs = pyzbar_decode(mat)
+            if objs:
+                return objs[0].data.decode("utf-8", errors="ignore")
+            return None
+
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        thresh = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+        )
+        thresh_inv = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2
+        )
+        _, otsu = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        for mat in (image, gray, thresh, thresh_inv, otsu):
+            hit = _try(mat)
+            if hit:
+                return hit
+
+        # Scale-up pass for small / distant QR modules
+        h, w = gray.shape[:2]
+        for scale in (2, 3):
+            big = cv2.resize(gray, (w * scale, h * scale), interpolation=cv2.INTER_CUBIC)
+            big_t = cv2.adaptiveThreshold(
+                big, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, 3
+            )
+            hit = _try(big) or _try(big_t)
+            if hit:
+                return hit
+
+        # Top-right / mid-right crops (certificate layouts)
+        for y0, y1, x0 in ((0.0, 0.35, 0.50), (0.12, 0.50, 0.50), (0.0, 0.30, 0.55)):
+            y_a, y_b = int(h * y0), int(h * y1)
+            x_a = int(w * x0)
+            crop = gray[y_a:y_b, x_a:w]
+            if crop.size < 100:
+                continue
+            crop2 = cv2.resize(crop, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+            ct = cv2.adaptiveThreshold(
+                crop2, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+            )
+            hit = _try(crop2) or _try(ct)
+            if hit:
+                return hit
+    except Exception:
+        return None
+    return None
+
 
 
 def _send_notification_safe(*args, **kwargs):
@@ -1366,80 +1422,46 @@ class _AdikaGeminiModel:
 
 
 
+
+def _dispatch_listing_alerts(category, price, title, listing_id, model_hint=""):
+    """Match search_alerts and push Telegram messages to subscribers."""
+    try:
+        try:
+            matches = get_matching_alerts(category, str(price or "0"), model_hint=model_hint) or []
+        except TypeError:
+            matches = get_matching_alerts(category, str(price or "0")) or []
+    except Exception as e:
+        logger.warning("get_matching_alerts: %s", e)
+        return
+    if not matches:
+        return
+    try:
+        price_fmt = f"{int(float(str(price).replace(',', '') or 0)):,}"
+    except Exception:
+        price_fmt = str(price or "—")
+    msg = (
+        f"🔔 <b>አዲስ ማሳወቂያ!</b>\n\n"
+        f"<b>{title}</b>\n"
+        f"💰 ዋጋ: {price_fmt} ETB\n"
+        f"📦 #{listing_id}\n\n"
+        f"የእርስዎን ፍላጎት መሰረት ያደረገ አዲስ ዝርዝር በ Adika Marketplace ተለጥፏል። Mini App ይመልከቱ።"
+    )
+    for alert in matches:
+        chat_id = alert.get("user_chat_id") or alert.get("chat_id")
+        if not chat_id:
+            continue
+        try:
+            _send_notification_safe(msg, listing_id, chat_id)
+        except Exception as pe:
+            logger.warning("alert push %s: %s", chat_id, pe)
+
+
 def register_api_routes(web_app):
     """Register every /api/* endpoint on the Flask application."""
     def _safe(obj):
         if _json_safe is not None:
             return _json_safe(obj)
         return obj
-
-    @web_app.route('/api/scan-qr', methods=['POST', 'OPTIONS'])
-    @web_app.route('/api/scan_qr', methods=['POST', 'OPTIONS'])
-    def smart_document_scanner():
-        if request.method == 'OPTIONS':
-            return ('', 204)
-
-        file = request.files.get('file') or request.files.get('image') or request.files.get('photo')
-        img_bytes = None
-
-        if file:
-            img_bytes = file.read()
-        elif request.is_json:
-            data = request.json or {}
-            raw_img = data.get('image_data') or data.get('image') or data.get('photo') or data.get('file')
-            if raw_img:
-                if isinstance(raw_img, str):
-                    if ',' in raw_img and raw_img.startswith('data:'):
-                        raw_img = raw_img.split(',', 1)[1]
-                    import base64
-                    try:
-                        img_bytes = base64.b64decode(raw_img)
-                    except Exception:
-                        pass
-            elif data.get('payload') or data.get('qr_data') or data.get('text'):
-                raw_data = str(data.get('payload') or data.get('qr_data') or data.get('text')).strip()
-                cert_id = extract_certificate_id(raw_data)
-                target_url = format_target_url(raw_data)
-                return jsonify({
-                    'success': True,
-                    'method': 'id_extract' if cert_id else 'qr_code',
-                    'payload': raw_data,
-                    'target_url': target_url
-                })
-
-        if not img_bytes:
-            return jsonify({'success': False, 'message': 'No image uploaded'}), 400
-
-        # Attempt decoding with OpenCV and PyZbar if available
-        raw_data = None
-        if cv2 is not None and np is not None and pyzbar_decode is not None:
-            try:
-                np_arr = np.frombuffer(img_bytes, np.uint8)
-                image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-                if image is not None:
-                    # 1. Image Preprocessing for QR Enhancement (Grayscale, Threshold, Contrast)
-                    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                    
-                    # Try multiple thresholding levels to bypass stamp ink interference
-                    _, thresh1 = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
-                    thresh2 = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-
-                    # 2. Attempt decoding QR from original, grayscale, and processed versions
-                    decoded_objects = pyzbar_decode(image) or pyzbar_decode(gray) or pyzbar_decode(thresh1) or pyzbar_decode(thresh2)
-                    if decoded_objects:
-                        raw_data = decoded_objects[0].data.decode('utf-8')
-            except Exception as cv_err:
-                logger.warning(f"OpenCV/PyZbar scan error: {cv_err}")
-
-        if raw_data:
-            target_url = format_target_url(raw_data)
-            return jsonify({'success': True, 'method': 'qr_code', 'target_url': target_url, 'payload': raw_data})
-
-        # 3. FALLBACK: Return clean error prompting user to frame clearly
-        return jsonify({
-            'success': False,
-            'message': 'QR code could not be read due to blur or stamps. Please ensure the QR area is clear and well-lit.'
-        }), 422
 
     @web_app.route('/api/submit-listing', methods=['POST'])
     @web_app.route('/api/post-listing', methods=['POST'])
@@ -1545,6 +1567,16 @@ def register_api_routes(web_app):
             if req_id:
                 notification_text = f"🛍️ **New Listing (#ADK-{req_id})**\n\n{full_desc}"
                 _send_notification_safe(notification_text, req_id, uid)
+                try:
+                    _dispatch_listing_alerts(
+                        category=(category or "መኪና"),
+                        price=str(price or ""),
+                        title=(resolved_sub or car_model or "ንብረት"),
+                        listing_id=req_id,
+                        model_hint=(car_model or resolved_sub or ""),
+                    )
+                except Exception as _al_err:
+                    logger.warning("alert dispatch: %s", _al_err)
                 return jsonify({
                     "success": True,
                     "status": "success",
@@ -1556,6 +1588,718 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"submit_listing error: {e}", exc_info=True)
             return jsonify({"success": False, "status": "error", "message": str(e)}), 500
+
+
+
+
+
+
+
+    @web_app.route('/api/scan-qr', methods=['POST', 'OPTIONS'])
+    def api_scan_qr():
+        """Backend QR decode (pyzbar/OpenCV when available) + strict domain routing."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            img_bytes = b""
+            if request.files.get("file"):
+                img_bytes = request.files["file"].read()
+            elif request.is_json:
+                data = request.json or {}
+                b64 = data.get("image_data") or data.get("image") or ""
+                if isinstance(b64, str) and b64:
+                    if "," in b64 and b64.strip().startswith("data:"):
+                        b64 = b64.split(",", 1)[1]
+                    import base64
+                    img_bytes = base64.b64decode(b64)
+            if not img_bytes:
+                return jsonify({"success": False, "message": "No file uploaded"}), 400
+
+            raw_payload = decode_qr_from_bytes(img_bytes)
+            if not raw_payload:
+                return jsonify({
+                    "success": False,
+                    "message": "QR code not readable",
+                }), 422
+
+            target_url = sanitize_and_route_url(raw_payload)
+            return jsonify({
+                "success": True,
+                "payload": raw_payload,
+                "raw_payload": raw_payload,
+                "target_url": target_url,
+            })
+        except Exception as e:
+            logger.error(f"scan-qr: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
+    @web_app.route('/api/land-map/ocr', methods=['POST', 'OPTIONS'])
+    def api_land_map_ocr():
+        """Extract UPIN/plot codes from land certificate photo. Used only when client QR fails."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            image_data = data.get("image_data") or ""
+            if not image_data:
+                return jsonify({"success": False, "message": "no image"}), 400
+
+            # Fast path: regex on any embedded text if client already sent text
+            text_hint = str(data.get("text") or "")
+            def from_text(s):
+                import re as _re
+                out = {"upin": "", "cert": "", "name": "", "area": "", "sub_city": "", "url": ""}
+                if not s:
+                    return out
+                m = _re.search(r'\b(AA\d{9,14}|KK\d{9,14}|LTP[-_]?KK[\d\-]+)\b', s, _re.I)
+                if m:
+                    out["upin"] = m.group(1).upper()
+                m2 = _re.search(r'\b(ETH[\d\-]{8,})\b', s, _re.I)
+                if m2:
+                    out["cert"] = m2.group(1).upper()
+                m3 = _re.search(r'(\d{2,5}(?:[.,]\d{1,3})?)\s*(?:m²|m2)', s, _re.I)
+                if m3:
+                    out["area"] = m3.group(1).replace(",", ".") + " m²"
+                m4 = _re.search(r'https?://[^\s\"\']*addislandfarm\.gov\.et[^\s\"\']*', s, _re.I)
+                if m4:
+                    out["url"] = m4.group(0)
+                return out
+
+            if text_hint:
+                parsed = from_text(text_hint)
+                if parsed.get("upin") or parsed.get("url"):
+                    return jsonify({"success": True, "data": parsed})
+
+            api_key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+            # Also try OPENROUTER from config if present
+            try:
+                from config import OPENROUTER_API_KEY as _OR
+                if not api_key and _OR:
+                    api_key = str(_OR).strip()
+            except Exception:
+                pass
+
+            if not api_key or requests is None:
+                return jsonify({"success": False, "message": "ocr unavailable"}), 503
+
+            image_url = image_data if str(image_data).startswith(("data:", "http")) else f"data:image/jpeg;base64,{image_data}"
+            payload = {
+                "model": os.environ.get("OPENROUTER_VISION_MODEL") or "openai/gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You extract fields from Ethiopian Addis Ababa land certificate photos. "
+                            "Return ONLY JSON keys: upin, cert, name, area, sub_city, url. "
+                            "UPIN patterns: AA############, KK############, LTP-KK... "
+                            "If a QR URL is visible as text include it in url. "
+                            "Prefer Unique Parcel Identification No. (UPIN) like AA00091305321, Plot Code KK..., Property No LTP-KK..., Title deed No. Never invent values — use empty string when unreadable."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Extract UPIN, owner name, area m², subcity, certificate number from this land certificate."},
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    },
+                ],
+                "temperature": 0,
+                "response_format": {"type": "json_object"},
+                "max_tokens": 400,
+            }
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": (WEBAPP_URL or "https://adika.app"),
+                "X-Title": "Adika Cadastre OCR",
+            }
+            res = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers, json=payload, timeout=40,
+            )
+            body = res.json() if res.content else {}
+            if res.status_code >= 400:
+                return jsonify({"success": False, "message": "ocr failed"}), 502
+            raw = ((body.get("choices") or [{}])[0].get("message") or {}).get("content") or "{}"
+            raw = str(raw).strip()
+            if raw.startswith("```"):
+                raw = raw.strip("`")
+                if raw.lower().startswith("json"):
+                    raw = raw[4:].strip()
+            parsed = json.loads(raw)
+            # Normalize
+            data_out = {
+                "upin": str(parsed.get("upin") or "").strip().upper(),
+                "cert": str(parsed.get("cert") or parsed.get("certificate_no") or "").strip().upper(),
+                "name": str(parsed.get("name") or "").strip(),
+                "area": str(parsed.get("area") or "").strip(),
+                "sub_city": str(parsed.get("sub_city") or "").strip(),
+                "url": str(parsed.get("url") or "").strip(),
+            }
+            ok = bool(data_out["upin"] or data_out["cert"] or data_out["url"])
+            return jsonify({"success": ok, "data": data_out})
+        except Exception as e:
+            logger.error(f"land-map ocr: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
+    @web_app.route('/api/land-map/verify', methods=['POST', 'OPTIONS'])
+    def api_land_map_verify():
+        """Cadastral map field validation — Adika Digital System (no external AI)."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            upin = str(data.get("upin") or "").strip().upper()
+            cert = str(data.get("certificate_no") or data.get("cert") or "").strip().upper()
+            owner = str(data.get("owner_name") or data.get("name") or "").strip()
+            area = str(data.get("area") or "").strip()
+            sub_city = str(data.get("sub_city") or "").strip()
+            use_type = str(data.get("use_type") or "").strip() or "Residential"
+            tenure = str(data.get("tenure") or "").strip() or "Lease"
+
+            # Deterministic format checks (Ethiopian cadastral-style identifiers)
+            upin_ok = bool(re.match(r'^(AA\d{8,}|\d{10,15})$', upin)) if upin else False
+            cert_ok = bool(re.match(r'^ETH[\d\-]{8,}$', cert)) if cert else False
+            if not upin_ok and upin and len(upin) >= 8:
+                upin_ok = True  # accept longer free-form registry ids
+            if not cert_ok and cert and len(cert) >= 8:
+                cert_ok = True
+
+            verified = bool(upin_ok or cert_ok)
+            payload = {
+                "owner_name": owner or "—",
+                "upin": upin or "—",
+                "certificate_no": cert or "—",
+                "area": area or "—",
+                "use_type": use_type,
+                "tenure": tenure,
+                "sub_city": sub_city or "አዲስ ከተማ",
+                "verified": verified,
+                "status": "verified" if verified else "incomplete",
+            }
+            return jsonify({
+                "success": verified,
+                "data": payload,
+                "message": "በ Adika Digital System ተረጋግጧል" if verified else "መረጃው ሙሉ አይደለም — UPIN ወይም Certificate ያስገቡ",
+            })
+        except Exception as e:
+            logger.error(f"land-map verify: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
+    @web_app.route('/api/favorites/toggle', methods=['POST', 'OPTIONS'])
+    def api_favorites_toggle():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            user_id = data.get('user_id') or data.get('chat_id') or 0
+            chat_id = data.get('chat_id') or user_id
+            listing_id = data.get('listing_id')
+            action = data.get('action')  # add|remove|None
+            if not user_id or not listing_id:
+                return jsonify({"success": False, "message": "user_id and listing_id required"}), 400
+            result = toggle_favorite(user_id, listing_id, chat_id=chat_id, action=action)
+            return jsonify({"success": True, **result})
+        except Exception as e:
+            logger.error(f"api_favorites_toggle: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/update-listing', methods=['POST', 'OPTIONS'])
+    def api_update_listing():
+        """Update listing fields; on price drop notify all users who favorited it."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            listing_id = data.get('listing_id') or data.get('id')
+            if not listing_id:
+                return jsonify({"success": False, "message": "listing_id required"}), 400
+
+            new_price = data.get('price') or data.get('new_price')
+            if new_price is None:
+                return jsonify({"success": False, "message": "price required"}), 400
+
+            def _num(v):
+                try:
+                    return float(str(v).replace(",", "").replace("ETB", "").replace("ብር", "").strip() or 0)
+                except Exception:
+                    return 0.0
+
+            ok, old_price, title, category = update_listing_price(listing_id, new_price)
+            if not ok:
+                return jsonify({"success": False, "message": "Listing not found or update failed"}), 404
+
+            old_n = _num(old_price)
+            new_n = _num(new_price)
+            notified = 0
+            if old_n > 0 and new_n > 0 and new_n < old_n:
+                subs = get_favorite_subscribers(listing_id) or []
+                try:
+                    price_fmt = f"{int(new_n):,}"
+                    old_fmt = f"{int(old_n):,}"
+                except Exception:
+                    price_fmt = str(new_price)
+                    old_fmt = str(old_price)
+                msg = (
+                    f"🔥 <b>የዋጋ ቅናሽ!</b>\n\n"
+                    f"<b>{title or 'ንብረት'}</b>\n"
+                    f"ዋጋ ከ {old_fmt} ወደ <b>{price_fmt} ETB</b> ቀንሷል!\n"
+                    f"📦 #ADK-{listing_id}\n\n"
+                    f"በ Adika Marketplace Mini App ይመልከቱ።"
+                )
+                for sub in subs:
+                    chat_id = sub.get("chat_id") or sub.get("user_id")
+                    if not chat_id:
+                        continue
+                    try:
+                        _send_notification_safe(msg, listing_id, chat_id)
+                        notified += 1
+                    except Exception as pe:
+                        logger.warning("price-drop push %s: %s", chat_id, pe)
+
+            return jsonify({
+                "success": True,
+                "listing_id": listing_id,
+                "old_price": old_price,
+                "new_price": new_price,
+                "price_dropped": bool(old_n > 0 and new_n < old_n),
+                "notified": notified,
+                "message": "ዋጋ ተዘምኗል" + (f" · {notified} ማሳወቂያ" if notified else ""),
+            })
+        except Exception as e:
+            logger.error(f"api_update_listing: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
+    @web_app.route('/api/recommendations', methods=['POST', 'OPTIONS'])
+    def api_recommendations():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            history = data.get('viewHistory') or data.get('history') or []
+            exclude_id = data.get('exclude_id')
+            items = []
+            intent = "recent"
+            intent_label = "የቅርብ ጊዜ ዝርዝሮች"
+            conn = get_db_connection()
+            cur = conn.cursor()
+            p = get_placeholder()
+            like = "ILIKE" if is_postgres() else "LIKE"
+
+            def _row_dict(row):
+                if isinstance(row, dict):
+                    return dict(row)
+                return dict(zip([c[0] for c in cur.description], row))
+
+            def _price_num(v):
+                try:
+                    return float(str(v or "0").replace(",", "").replace("ETB", "").strip() or 0)
+                except Exception:
+                    return 0.0
+
+            prices = [_price_num(h.get("price")) for h in history if h]
+            prices = [x for x in prices if x > 0]
+            categories = [str(h.get("category") or "") for h in history if h and h.get("category")]
+            models = [str(h.get("model") or h.get("brand") or "").strip() for h in history if h]
+            models = [m for m in models if m]
+            fuels = [str(h.get("fuel_type") or "").strip() for h in history if h and h.get("fuel_type")]
+
+            avg_price = sum(prices) / len(prices) if prices else 0
+            # Intent detection
+            price_focus = False
+            model_focus = False
+            if len(prices) >= 2:
+                mn, mx = min(prices), max(prices)
+                mid = (mn + mx) / 2 or 1
+                if (mx - mn) / mid <= 0.15:
+                    price_focus = True
+            # same model twice
+            from collections import Counter
+            mc = Counter([m.lower() for m in models])
+            top_model = None
+            if mc:
+                top_model, cnt = mc.most_common(1)[0]
+                if cnt >= 2:
+                    model_focus = True
+            target_cat = None
+            if categories:
+                target_cat = Counter(categories).most_common(1)[0][0]
+
+            where = ["(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))"]
+            params = []
+            if exclude_id:
+                where.append(f"id <> {p}")
+                params.append(exclude_id)
+
+            if model_focus and top_model:
+                intent = "model"
+                intent_label = "በተመሳሳይ ሞዴል/ብራንድ"
+                where.append(f"(CAST(COALESCE(sub_category,'') AS TEXT) {like} {p} OR CAST(COALESCE(description,'') AS TEXT) {like} {p} OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p})")
+                params.extend([f"%{top_model}%"] * 3)
+            elif price_focus and avg_price > 0:
+                intent = "price"
+                intent_label = "በተመሳሳይ የዋጋ ክልል"
+                if target_cat:
+                    where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
+                    params.extend([target_cat, f"%{target_cat}%"])
+                # Indexed-friendly numeric range (±15%) — strip non-digits in SQL when possible
+                lo = int(avg_price * 0.85)
+                hi = int(avg_price * 1.15)
+                try:
+                    if is_postgres():
+                        where.append(
+                            f"(NULLIF(regexp_replace(CAST(COALESCE(price,'') AS TEXT), '[^0-9]', '', 'g'), '')::BIGINT "
+                            f"BETWEEN {p} AND {p})"
+                        )
+                        params.extend([lo, hi])
+                    else:
+                        # SQLite: filter in Python below; keep category filter only
+                        pass
+                except Exception:
+                    pass
+            elif target_cat:
+                intent = "category"
+                intent_label = "በተመሳሳይ ምድብ"
+                where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
+                params.extend([target_cat, f"%{target_cat}%"])
+
+            where_sql = " AND ".join(where)
+            try:
+                cur.execute(
+                    f"SELECT * FROM listings WHERE {where_sql} ORDER BY id DESC LIMIT {p}",
+                    list(params) + [40],
+                )
+                rows = cur.fetchall() or []
+            except Exception as qe:
+                logger.warning("recommendations query: %s", qe)
+                cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p}", (12,))
+                rows = cur.fetchall() or []
+
+            lo = avg_price * 0.85 if avg_price else 0
+            hi = avg_price * 1.15 if avg_price else 0
+            scored = []
+            for row in rows:
+                it = _row_dict(row)
+                pr = _price_num(it.get("price"))
+                if avg_price and (price_focus or intent in ("price", "category", "model")):
+                    if lo and hi and pr and not (lo <= pr <= hi * 1.25):
+                        # soft filter: keep some outside
+                        if intent == "price" and not (lo * 0.9 <= pr <= hi * 1.2):
+                            continue
+                scored.append(it)
+            items = scored[:6]
+            if len(items) < 6:
+                # pad with latest
+                try:
+                    cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p}", (12,))
+                    for row in cur.fetchall() or []:
+                        it = _row_dict(row)
+                        if exclude_id and str(it.get("id")) == str(exclude_id):
+                            continue
+                        if any(str(x.get("id")) == str(it.get("id")) for x in items):
+                            continue
+                        items.append(it)
+                        if len(items) >= 6:
+                            break
+                except Exception:
+                    pass
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+            # Serialize minimally for cards
+            out = []
+            for it in items[:6]:
+                extra = it.get("extra_data") or {}
+                if isinstance(extra, str):
+                    try:
+                        extra = json.loads(extra)
+                    except Exception:
+                        extra = {}
+                out.append({
+                    "id": it.get("id"),
+                    "title": it.get("sub_category") or it.get("main_category") or "ንብረት",
+                    "main_category": it.get("main_category"),
+                    "sub_category": it.get("sub_category"),
+                    "price": it.get("price"),
+                    "photo_urls": it.get("photo_id") or it.get("photo_urls"),
+                    "listing_photos": it.get("photo_id"),
+                    "created_at": str(it.get("created_at") or ""),
+                    "extra_data": extra,
+                    "req_type": it.get("req_type"),
+                    "action_type": it.get("action_type"),
+                    "description": (it.get("description") or "")[:200],
+                })
+            return jsonify({
+                "success": True,
+                "intent": intent,
+                "intent_label": intent_label,
+                "items": out,
+            })
+        except Exception as e:
+            logger.error(f"api_recommendations: {e}", exc_info=True)
+            return jsonify({"success": False, "items": [], "message": str(e)}), 500
+
+
+    @web_app.route('/api/contracts/save', methods=['POST', 'OPTIONS'])
+    def api_contracts_save():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            user_id = data.get('user_id') or 0
+            status = data.get('contract_status') or 'Draft'
+            ctype = data.get('contract_type') or 'vehicle_sale'
+            seller = data.get('seller_info') or {}
+            buyer = data.get('buyer_info') or {}
+            vehicle = data.get('vehicle_info') or {}
+            prop = data.get('property_info') or {}
+            financial = data.get('financial_info') or {}
+            witnesses = data.get('witnesses') or []
+            cid = data.get('contract_id')
+            text = None
+            if str(status).lower() in ('finalized', 'final', 'done'):
+                text = build_contract_by_type(
+                    ctype, seller, buyer,
+                    vehicle=vehicle, property_info=prop,
+                    financial=financial, witnesses=witnesses,
+                )
+                status = 'Finalized'
+            # stash type inside vehicle_info meta for export
+            if isinstance(vehicle, dict):
+                vehicle = dict(vehicle)
+                vehicle['_contract_type'] = ctype
+            if isinstance(prop, dict) and prop:
+                vehicle = dict(vehicle or {})
+                vehicle['_property_info'] = prop
+                vehicle['_contract_type'] = ctype
+            new_id = save_contract(
+                user_id=user_id,
+                seller_info=seller,
+                buyer_info=buyer,
+                vehicle_info=vehicle,
+                financial_info=financial,
+                witnesses=witnesses,
+                contract_status=status,
+                contract_text=text,
+                contract_id=cid,
+            )
+            if not new_id:
+                return jsonify({"success": False, "message": "ውል ማስቀመጥ አልተቻለም"}), 500
+            return jsonify({
+                "success": True,
+                "contract_id": new_id,
+                "message": "ረቂቅ ተቀምጧል" if status == "Draft" else "ውል ተጠናቋል",
+                "contract_text": text or "",
+            })
+        except Exception as e:
+            logger.error(f"api_contracts_save: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/contracts/user/<user_id>', methods=['GET', 'OPTIONS'])
+    def api_contracts_user(user_id):
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            items = get_user_contracts(user_id, limit=30)
+            return jsonify({"success": True, "items": items})
+        except Exception as e:
+            return jsonify({"success": False, "items": [], "message": str(e)}), 500
+
+    @web_app.route('/api/contracts/<int:contract_id>/export-pdf', methods=['GET', 'OPTIONS'])
+    def api_contracts_export_pdf(contract_id):
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            c = get_contract(contract_id)
+            if not c:
+                return jsonify({"success": False, "message": "Contract not found"}), 404
+            vinfo = c.get("vehicle_info") or {}
+            if isinstance(vinfo, str):
+                try:
+                    import json as _json
+                    vinfo = _json.loads(vinfo)
+                except Exception:
+                    vinfo = {}
+            ctype = (vinfo or {}).get("_contract_type") or "vehicle_sale"
+            prop = (vinfo or {}).get("_property_info") or {}
+            text = c.get("contract_text") or build_contract_by_type(
+                ctype,
+                c.get("seller_info"), c.get("buyer_info"),
+                vehicle=vinfo, property_info=prop,
+                financial=c.get("financial_info"), witnesses=c.get("witnesses"),
+            )
+            # Prefer simple printable HTML (works without reportlab); browser can Print→PDF
+            do_print = request.args.get("print") == "1"
+            safe = (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            html = f"""<!DOCTYPE html>
+<html lang="am"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Adika ውል #{contract_id}</title>
+<style>
+  @page {{ size: A4; margin: 15mm; }}
+  html, body {{
+    margin: 0; padding: 0;
+    background: #fff; color: #111;
+  }}
+  body {{
+    font-family: 'Noto Sans Ethiopic', 'Nyala', 'Abyssinica SIL', 'Power Geez', Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.35;
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 12mm 15mm;
+    box-sizing: border-box;
+  }}
+  .toolbar {{
+    display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+  }}
+  .toolbar button, .toolbar a {{
+    font-size: 12px; padding: 8px 12px; border-radius: 8px; border: none;
+    background: #0f172a; color: #fff; text-decoration: none; cursor: pointer;
+  }}
+  .toolbar .share {{ background: #059669; }}
+  h1 {{
+    font-size: 13pt; text-align: center; margin: 0 0 8px 0; font-weight: 800;
+  }}
+  .meta {{ text-align: right; font-size: 9.5pt; margin-bottom: 6px; color: #334155; }}
+  .body-text {{
+    white-space: pre-wrap; font-family: inherit; font-size: 10.5pt;
+    line-height: 1.35; margin: 0;
+  }}
+  @media print {{
+    .noprint {{ display: none !important; }}
+    body {{ padding: 0; max-width: none; }}
+  }}
+</style>
+</head><body>
+<div class="toolbar noprint">
+  <button onclick="window.print()">🖨️ ህትመት / PDF</button>
+  <button class="share" onclick="shareContract()">📤 ውል አጋራ</button>
+</div>
+<div class="meta">#{contract_id} · Adika Marketplace</div>
+<pre class="body-text">{safe}</pre>
+<script>
+function shareContract() {{
+  var url = window.location.href.split('?')[0];
+  if (navigator.share) {{
+    navigator.share({{ title: 'Adika ውል #{contract_id}', text: 'ህጋዊ ውል', url: url }}).catch(function(){{}});
+  }} else if (navigator.clipboard) {{
+    navigator.clipboard.writeText(url).then(function(){{ alert('ሊንኩ ተቀድቷል'); }});
+  }}
+}}
+{"window.onload=function(){window.print();};" if do_print else ""}
+</script>
+</body></html>"""
+            return Response(html, mimetype="text/html; charset=utf-8")
+        except Exception as e:
+            logger.error(f"export-pdf: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/contracts/scan-libre', methods=['POST', 'OPTIONS'])
+    def api_contracts_scan_libre():
+        """Optional Libre OCR via OpenRouter vision — fills chassis/engine/plate."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            image_data = data.get("image_data")
+            if not image_data:
+                return jsonify({"success": False, "message": "ምስል አልተላከም"}), 400
+            api_key = (os.environ.get("OPENROUTER_API_KEY") or API_KEY or "").strip()
+            if not api_key:
+                return jsonify({"success": False, "message": "OPENROUTER_API_KEY አልተዋቀረም"}), 503
+            image_url = image_data if str(image_data).startswith("data:") or str(image_data).startswith("http") else f"data:image/jpeg;base64,{image_data}"
+            payload = {
+                "model": os.environ.get("OPENROUTER_VISION_MODEL") or "openai/gpt-4o",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "Extract vehicle registration (Libre) fields from the image. "
+                            "Return ONLY JSON: {\"chassis\":\"\",\"engine\":\"\",\"plate\":\"\",\"libre\":\"\",\"model\":\"\"}. "
+                            "If unreadable use empty string. Do not invent values."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Parse this Ethiopian vehicle libre / title photo."},
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    },
+                ],
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
+            }
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": (WEBAPP_URL or "https://adika.app"),
+                "X-Title": "Adika Libre OCR",
+            }
+            if requests is None:
+                return jsonify({"success": False, "message": "requests library missing"}), 500
+            res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=45)
+            body = res.json() if res.content else {}
+            if res.status_code >= 400:
+                return jsonify({"success": False, "message": body.get("error", {}).get("message") or res.text[:200]}), 502
+            raw = ((body.get("choices") or [{}])[0].get("message") or {}).get("content") or "{}"
+            raw = str(raw).strip()
+            if raw.startswith("```"):
+                raw = raw.strip("`")
+                if raw.lower().startswith("json"):
+                    raw = raw[4:].strip()
+            parsed = json.loads(raw)
+            return jsonify({"success": True, "data": parsed})
+        except Exception as e:
+            logger.error(f"scan-libre: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
+    @web_app.route('/api/save-alert', methods=['POST', 'OPTIONS'])
+    def api_save_alert():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            user_id = data.get("user_id") or data.get("chat_id") or 0
+            try:
+                uid = int(user_id) if str(user_id).isdigit() else 0
+            except Exception:
+                uid = 0
+            # Telegram WebApp user id from initData if provided
+            if not uid:
+                try:
+                    tg_user = (data.get("telegram_user") or {})
+                    if isinstance(tg_user, dict) and tg_user.get("id"):
+                        uid = int(tg_user["id"])
+                except Exception:
+                    pass
+            category = data.get("target_category") or data.get("category") or "መኪና"
+            min_price = str(data.get("min_price") or data.get("budget_min") or "0")
+            max_price = str(data.get("max_price") or data.get("budget_max") or "999999999")
+            model = (data.get("model") or data.get("target_model") or "")[:120]
+            if not uid:
+                return jsonify({"success": False, "message": "user_id / chat_id ያስፈልጋል (Telegram Login)"}), 400
+            alert_id = save_search_alert(uid, category, min_price, max_price, target_model=model)
+            if not alert_id:
+                return jsonify({"success": False, "message": "Alert ማስቀመጥ አልተቻለም"}), 500
+            return jsonify({
+                "success": True,
+                "alert_id": alert_id,
+                "message": "🔔 ማሳወቂያ ተመዝግቧል! ተመሳሳይ ንብረት ሲለቀቅ በቴሌግራም ይደርስዎታል።",
+            })
+        except Exception as e:
+            logger.error(f"api_save_alert: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
 
 
     @web_app.route('/api/submit-request', methods=['POST'])
@@ -4830,19 +5574,52 @@ def register_api_routes(web_app):
     @web_app.route('/api/analyze-diagnostic', methods=['POST', 'OPTIONS'])
     def api_analyze_diagnostic():
         """
-        GARAGE DIAGNOSTIC SHEET ANALYZER & OCR ENGINE (/api/analyze-diagnostic)
-        Scans inspection sheets (text or scanned photo) and identifies mechanical issues and estimated repair costs.
-        Enforces strict anti-hallucination guardrails:
-        - If image/text is not a genuine garage inspection/diagnostic report, returns error: "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
-        - No guessing or hallucinating minor faults: if text/values are blurry or unreadable, explicitly states "ያልተነበበ / ግልጽ ያልሆነ መረጃ".
-        - Accurate extraction of critical faults like Blowby, Engine Overhaul, Suspension, Body Repaint with exact costs.
-        - Strict Health Score and Engine Grade D/F calculation for major defects.
+        GARAGE DIAGNOSTIC SHEET ANALYZER via OpenRouter Vision (no direct Gemini).
+        Uses OPENROUTER_API_KEY + openai/gpt-4o (fallback google/gemini-2.0-flash-001).
+        Strict Ethiopian handwriting OCR — never invents costs.
         """
         if request.method == 'OPTIONS':
             return ('', 204)
+
+        DIAGNOSTIC_SYSTEM_PROMPT = (
+            "You are an expert Ethiopian automotive diagnostic sheet reader.\n"
+            "Carefully examine the handwritten text and handwritten numeric values in the document.\n\n"
+            "HANDWRITING REFERENCE & SPECIFIC EXTRACTION RULES:\n"
+            "- Car Model Header: Extract model name precisely (e.g., \"Plata 12-2000\").\n"
+            "- Line items parsing:\n"
+            "  * Check for Engine status: e.g., \"Blowby 120,000 ETB\" or \"Overhaul\".\n"
+            "  * Check for Suspension status: e.g., \"Front Suspension 24,000 ETB\".\n"
+            "  * Check for Body status: e.g., \"Repaint 35,000 ETB\".\n"
+            "  * Check for Wheels status: e.g., \"Total Service\".\n"
+            "- IF handwritten text for a component is blurry or unreadable, mark it explicitly as "
+            "\"ያልተነበበ / ግልጽ ያልሆነ መረጃ\". DO NOT invent minor faults like \"Valve Cover Gasket\" or random numbers.\n\n"
+            "CALCULATION & SCORING RULES:\n"
+            "- If \"Blowby\" or \"Engine Overhaul\" is present: Engine Grade MUST be \"D\" or \"F\", and Health Score MUST be below 50%.\n"
+            "- Only include costs that are explicitly written on the sheet. Sum them for estimated_repair_cost.\n"
+            "- Return valid JSON matching this schema:\n"
+            "{\n"
+            '  "car_model": "Plata 12-2000",\n'
+            '  "health_score": 45,\n'
+            '  "engine_grade": "D",\n'
+            '  "transmission_grade": "A",\n'
+            '  "estimated_repair_cost": 179000,\n'
+            '  "repair_items": [\n'
+            '    {"name": "Engine Blowby (ኦይል መንፋት)", "cost": 120000, "severity": "High"},\n'
+            '    {"name": "Front Suspension (የፊተኛው እግር)", "cost": 24000, "severity": "Medium"},\n'
+            '    {"name": "Body Repaint (ቀለምና ቦዲ)", "cost": 35000, "severity": "Medium"}\n'
+            "  ],\n"
+            '  "unreadable_notes": []\n'
+            "}\n"
+            "If the image is not a diagnostic sheet, return "
+            '{"car_model":"","health_score":0,"engine_grade":"—","transmission_grade":"—",'
+            '"estimated_repair_cost":0,"repair_items":[],"unreadable_notes":["እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"],'
+            '"is_valid_diagnostic":false,"error_message_amharic":"እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"}.\n'
+            "Return ONLY JSON."
+        )
+
         try:
             data = request.json or {}
-            car_model = data.get('car_model') or 'Toyota Vitz 2018'
+            car_model = (data.get('car_model') or '').strip() or 'Unknown'
             diagnostic_text = (data.get('diagnostic_text') or '').strip()
             image_data = data.get('image_data')
 
@@ -4853,195 +5630,267 @@ def register_api_routes(web_app):
                         "is_valid_diagnostic": False,
                         "error_message_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",
                         "health_score_pct": 0,
+                        "engine_grade": "—",
+                        "transmission_grade": "—",
                         "total_estimated_repair_cost_etb": 0,
                         "identified_faults": [],
-                        "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
-                    }
+                        "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",
+                    },
                 })
 
-            api_key = os.environ.get("GEMINI_API_KEY")
-            analysis = None
-
-            if api_key and (diagnostic_text or image_data):
-                try:
-                    from PIL import Image
-                    import io
-                    import base64
-                    from handlers import DIAGNOSTIC_OCR_PROMPT
-
-                    prompt = (
-                        "Act as an expert mechanic, master vehicle diagnostic engineer, and certified garage inspection auditor in Addis Ababa, Ethiopia.\n"
-                        "MANDATORY INSTRUCTION: If the handwritten image is blurry, incomplete, or does not explicitly state a repair part and its cost, DO NOT GUESS OR INVENT DATA. Output: ያልተነበበ / ግልጽ ያልሆነ መረጃ. Only calculate costs for explicitly visible handwritten issues.\n\n"
-                        "STRICT ANTI-HALLUCINATION GUARDRAILS & RULES:\n"
-                        "1. FIRST, strictly inspect and classify whether the provided image or text is genuinely an automotive garage diagnostic report, vehicle inspection sheet, OBD-II scanner output, or mechanical inspection document.\n"
-                        "   If the image or text is random, unrelated (e.g. selfies, food, landscapes, general text, non-automotive documents, cars without diagnostic papers), or NOT a vehicle diagnostic / garage inspection sheet:\n"
-                        "   You MUST immediately halt and return ONLY this JSON structure:\n"
-                        "   {\n"
-                        '     "is_valid_diagnostic": false,\n'
-                        '     "error_message_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",\n'
-                        '     "health_score_pct": 0,\n'
-                        '     "total_estimated_repair_cost_etb": 0,\n'
-                        '     "identified_faults": [],\n'
-                        '     "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"\n'
-                        "   }\n"
-                        "2. NO GUESSING / NO HALLUCINATIONS: If handwriting, text, or values are blurry, illegible, or unreadable, explicitly state 'ያልተነበበ / ግልጽ ያልሆነ መረጃ' in description/component instead of guessing or inventing minor faults. Do NOT invent fake repair costs (e.g., do NOT invent 'Brake System 4,500 ETB' or default part costs unless explicitly written on the inspection sheet).\n"
-                        "3. ACCURATE COST & SEVERITY EXTRACTION: Only calculate and parse explicitly stated issues (e.g., Blowby (ብሎባይ), Engine Overhaul (የሞተር ሙሉ ጥገና / ክፈት), Low Compression, Head Gasket Blown, Transmission Slipping / Defect, Suspension Overhaul, and Body Repaint), alongside their explicitly visible handwritten or printed numeric costs in Ethiopian Birr (ETB).\n"
-                        "4. STRICT HEALTH SCORE & GRADE CALCULATION:\n"
-                        "   - If critical/major defects like Blowby, Engine Overhaul needed, or Transmission failure are detected:\n"
-                        "     - Engine Grade MUST be 'D' or 'F'\n"
-                        "     - Health Score (health_score_pct) MUST drop drastically (typically below 50%, e.g., 25% - 48%)\n"
-                        "   - If only minor wear is explicitly documented:\n"
-                        "     - Engine Grade: 'A' or 'B', Health Score 75% - 92%\n"
-                        "   - If the vehicle is in pristine condition:\n"
-                        "     - Engine Grade: 'A', Health Score 90% - 98%\n"
-                        "5. SUMMATION: 'total_estimated_repair_cost_etb' must be the exact mathematical sum of explicitly visible repair costs in ETB.\n"
-                        "6. BUYER ADVICE: Provide tactical negotiation advice in Amharic explaining how much discount to demand or if the car is high-risk.\n\n"
-                        f"Analyze this garage diagnostic inspection report for {car_model}:\n{diagnostic_text}\n\n"
-                        "Generate strictly valid JSON with keys:\n"
-                        "{\n"
-                        '  "is_valid_diagnostic": true,\n'
-                        '  "health_score_pct": number,\n'
-                        '  "engine_grade": "A" | "B" | "C" | "D" | "F",\n'
-                        '  "transmission_grade": "A" | "B" | "C" | "D" | "F",\n'
-                        '  "body_and_suspension": string,\n'
-                        '  "identified_faults": [\n'
-                        '    {"component": string, "severity": "Low" | "Medium" | "High" | "Critical", "estimated_cost_etb": number, "description": string}\n'
-                        '  ],\n'
-                        '  "total_estimated_repair_cost_etb": number,\n'
-                        '  "buyer_negotiation_advice_amharic": string\n'
-                        "}\n"
-                        "Return ONLY JSON."
-                    )
-                    model = _AdikaGeminiModel(
-                        model_name="gemini-2.0-flash",
-                        generation_config={"response_mime_type": "application/json", "temperature": 0.15}
-                    )
-                
-                    content_inputs = [prompt]
-                    if image_data:
-                        raw_b64 = image_data.split(',', 1)[1] if ',' in image_data else image_data
-                        img_bytes = base64.b64decode(raw_b64)
-                        pil_img = Image.open(io.BytesIO(img_bytes))
-                        content_inputs.append(pil_img)
-
-                    res = model.generate_content(content_inputs)
-                    txt = (res.text or "").strip()
-                    if txt.startswith("```json"): txt = txt[7:]
-                    if txt.startswith("```"): txt = txt[3:]
-                    if txt.endswith("```"): txt = txt[:-3]
-                    analysis = json.loads(txt.strip())
-                except Exception as e:
-                    logger.warning(f"Diagnostic analyzer Gemini warning: {e}")
-
-            if not analysis:
-                # Fallback heuristic validation & smart severity analysis
-                diag_keywords = [
-                    "engine", "brake", "oil", "diagnostic", "garage", "obd", "transmission",
-                    "gasket", "spark", "filter", "compression", "blowby", "overhaul", "suspension",
-                    "shock", "repaint", "body", "leak", "ምርመራ", "ሞተር", "ፍሬን", "ዘይት", "ጋራዥ",
-                    "ጥገና", "ብሎባይ", "ክፈት", "እገዳ", "ቻሲ"
-                ]
-                text_lower = diagnostic_text.lower()
-                has_keywords = any(kw in text_lower for kw in diag_keywords)
-
-                if not has_keywords and not image_data:
-                    analysis = {
+            api_key = (
+                os.environ.get("OPENROUTER_API_KEY")
+                or API_KEY
+                or OPENROUTER_API_KEY
+                or ""
+            )
+            api_key = str(api_key).strip().strip('"').strip("'")
+            if not api_key or not (api_key.startswith("sk-") or api_key.startswith("sk-or-")):
+                return jsonify({
+                    "status": "error",
+                    "analysis": {
                         "is_valid_diagnostic": False,
-                        "error_message_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።",
+                        "error_message_amharic": "OPENROUTER_API_KEY አልተዋቀረም። እባክዎን env var ያረጋግጡ።",
                         "health_score_pct": 0,
+                        "engine_grade": "—",
+                        "transmission_grade": "—",
                         "total_estimated_repair_cost_etb": 0,
                         "identified_faults": [],
-                        "buyer_negotiation_advice_amharic": "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
-                    }
+                        "buyer_negotiation_advice_amharic": "OPENROUTER_API_KEY አልተዋቀረም። እባክዎን env var ያረጋግጡ።",
+                    },
+                }), 503
+
+            # Normalize image to data URL for OpenRouter vision
+            image_url = None
+            if image_data:
+                s = str(image_data).strip()
+                if s.startswith("http://") or s.startswith("https://"):
+                    image_url = s
+                elif s.startswith("data:"):
+                    image_url = s
                 else:
-                    # Check for major/critical issues in text
-                    has_blowby = any(k in text_lower for k in ["blowby", "ብሎባይ", "blow-by", "smoke", "ጭስ"])
-                    has_overhaul = any(k in text_lower for k in ["overhaul", "ክፈት", "full engine", "compression low", "piston"])
-                    has_brake = any(k in text_lower for k in ["brake", "ፍሬን", "pad"])
-                    has_suspension = any(k in text_lower for k in ["suspension", "shock", "እገዳ", "ቡሽ"])
-                    has_repaint = any(k in text_lower for k in ["repaint", "ቀለም", "body paint", "ጭረት"])
+                    image_url = f"data:image/jpeg;base64,{s}"
 
-                    faults = []
-                    tot_cost = 0
+            user_content = []
+            user_text = (
+                f"Analyze this Ethiopian garage inspection sheet for vehicle: {car_model}.\n"
+                "Extract only explicitly written faults and costs. Never invent items."
+            )
+            if diagnostic_text:
+                user_text += f"\n\nAdditional text notes from user:\n{diagnostic_text}"
+            user_content.append({"type": "text", "text": user_text})
+            if image_url:
+                user_content.append({
+                    "type": "image_url",
+                    "image_url": {"url": image_url},
+                })
 
-                    if has_blowby or has_overhaul:
-                        eng_grade = "D"
-                        health_score = 42
-                        if has_blowby:
-                            faults.append({
-                                "component": "Engine Blowby (የሞተር ብሎባይ/የዘይት ጭስ)",
-                                "severity": "Critical",
-                                "estimated_cost_etb": 120000,
-                                "description": "የፒስተን ሪንግ መላላትና በዘይት መክደኛ በኩል ከፍተኛ ጭስ መውጣት (አስቸኳይ ሞተር መፍታት)"
-                            })
-                            tot_cost += 120000
-                        if has_overhaul:
-                            faults.append({
-                                "component": "Engine Overhaul (የሞተር ሙሉ ጥገና)",
-                                "severity": "Critical",
-                                "estimated_cost_etb": 150000,
-                                "description": "የሞተር ኮምፕሬሽን መውረድ እና ሙሉ ጥገና (Overhaul) ያስፈልገዋል"
-                            })
-                            tot_cost += 150000
-                        advice = "⚠️ መኪናው ከባድ የሞተር ችግር (Blowby / Overhaul) ስላለበት ቢያንስ ከ150,000 እስከ 250,000 ብር የዋጋ ቅናሽ መጠየቅ አለብዎት ወይም ግዢውን ማቆም ይመረጣል።"
-                    else:
-                        eng_grade = "A"
-                        health_score = 90
-                        advice = "መኪናው በጥሩ ይዞታ ላይ ይገኛል። ምንም አይነት ከባድ የሞተር ወይም የትራንስሚሽን ብልሽት አልተገኘም።"
-                        if has_brake:
-                            faults.append({
-                                "component": "Brake System (የፍሬን ፓድ)",
-                                "severity": "Medium",
-                                "estimated_cost_etb": 4500,
-                                "description": "የፊት ፍሬን ፓዶች መለወጥ አለባቸው"
-                            })
-                            tot_cost += 4500
-                            health_score = 84
+            models_try = [
+                os.environ.get("OPENROUTER_VISION_MODEL") or "openai/gpt-4o",
+                "google/gemini-2.0-flash-001",
+                "openai/gpt-4o-mini",
+            ]
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": (WEBAPP_URL or "https://adika.app"),
+                "X-Title": "Adika Marketplace Diagnostic OCR",
+            }
 
-                    if has_suspension:
-                        faults.append({
-                            "component": "Suspension & Bushings (የእገዳ ክፍሎች)",
-                            "severity": "Medium",
-                            "estimated_cost_etb": 22000,
-                            "description": "የሾክ አብዞርበርና የቡሽ መላላት"
-                        })
-                        tot_cost += 22000
-
-                    if has_repaint:
-                        faults.append({
-                            "component": "Body & Paint (የቦዲ ቀለም ጥገና)",
-                            "severity": "Low",
-                            "estimated_cost_etb": 15000,
-                            "description": "የጎን ፓርት ቀለም ድጋሚ መቀባት"
-                        })
-                        tot_cost += 15000
-
-                    if not faults:
-                        faults.append({
-                            "component": "ምንም የተለየ ብልሽት የለም (No Major Issues Found)",
-                            "severity": "Low",
-                            "estimated_cost_etb": 0,
-                            "description": "የምርመራ ወረቀቱ ምንም አይነት የጥገና ወጪ የሚያስፈልገው ጉልህ ብልሽት አያሳይም።"
-                        })
-
-                    analysis = {
-                        "is_valid_diagnostic": True,
-                        "health_score_pct": health_score,
-                        "engine_grade": eng_grade,
-                        "transmission_grade": "A",
-                        "body_and_suspension": "የቦዲና እገዳ ይዞታ መካከለኛ" if (has_suspension or has_repaint) else "ንጹህ ቻሲና ጤናማ እገዳዎች",
-                        "identified_faults": faults,
-                        "total_estimated_repair_cost_etb": tot_cost,
-                        "buyer_negotiation_advice_amharic": advice
+            raw_text = None
+            last_err = None
+            for model_name in models_try:
+                try:
+                    payload = {
+                        "model": model_name,
+                        "messages": [
+                            {"role": "system", "content": DIAGNOSTIC_SYSTEM_PROMPT},
+                            {"role": "user", "content": user_content},
+                        ],
+                        "temperature": 0.1,
+                        "response_format": {"type": "json_object"},
                     }
+                    if requests is not None:
+                        res = requests.post(
+                            "https://openrouter.ai/api/v1/chat/completions",
+                            headers=headers,
+                            json=payload,
+                            timeout=45,
+                        )
+                        body = res.json() if res.content else {}
+                        if res.status_code >= 400:
+                            last_err = body.get("error", {}).get("message") or res.text[:200]
+                            logger.warning("OpenRouter vision %s HTTP %s: %s", model_name, res.status_code, last_err)
+                            continue
+                        choices = body.get("choices") or []
+                        if not choices:
+                            last_err = "empty choices"
+                            continue
+                        raw_text = (choices[0].get("message") or {}).get("content") or ""
+                    else:
+                        req = urllib.request.Request(
+                            "https://openrouter.ai/api/v1/chat/completions",
+                            data=json.dumps(payload).encode("utf-8"),
+                            headers=headers,
+                            method="POST",
+                        )
+                        with urllib.request.urlopen(req, timeout=45) as resp:
+                            body = json.loads(resp.read().decode("utf-8"))
+                        choices = body.get("choices") or []
+                        raw_text = (choices[0].get("message") or {}).get("content") or ""
+                    if raw_text:
+                        break
+                except Exception as me:
+                    last_err = str(me)
+                    logger.warning("OpenRouter vision model %s failed: %s", model_name, me)
+
+            if not raw_text:
+                return jsonify({
+                    "status": "error",
+                    "analysis": {
+                        "is_valid_diagnostic": False,
+                        "error_message_amharic": f"የምርመራ ስህተት፡ {last_err or 'OpenRouter response empty'}",
+                        "health_score_pct": 0,
+                        "engine_grade": "—",
+                        "transmission_grade": "—",
+                        "total_estimated_repair_cost_etb": 0,
+                        "identified_faults": [],
+                        "buyer_negotiation_advice_amharic": "ትንተናው አልተሳካም። እባክዎ እንደገና ይሞክሩ።",
+                    },
+                }), 502
+
+            txt = str(raw_text).strip()
+            if txt.startswith("```"):
+                txt = txt.strip("`")
+                if txt.lower().startswith("json"):
+                    txt = txt[4:].strip()
+            try:
+                parsed = json.loads(txt)
+            except Exception:
+                # try extract first {...}
+                m = re.search(r"\{[\s\S]*\}", txt)
+                if not m:
+                    return jsonify({
+                        "status": "error",
+                        "analysis": {
+                            "is_valid_diagnostic": False,
+                            "error_message_amharic": "ያልተነበበ / ግልጽ ያልሆነ መረጃ",
+                            "health_score_pct": 0,
+                            "total_estimated_repair_cost_etb": 0,
+                            "identified_faults": [],
+                            "buyer_negotiation_advice_amharic": "ያልተነበበ / ግልጽ ያልሆነ መረጃ",
+                        },
+                    })
+                parsed = json.loads(m.group(0))
+
+            # Normalize OpenRouter schema → existing UI analysis schema
+            repair_items = parsed.get("repair_items") or parsed.get("identified_faults") or []
+            faults = []
+            total_cost = 0
+            for it in repair_items:
+                if not isinstance(it, dict):
+                    continue
+                name = (it.get("name") or it.get("component") or "").strip()
+                cost = it.get("cost") if it.get("cost") is not None else it.get("estimated_cost_etb")
+                try:
+                    cost_n = int(float(str(cost).replace(",", "").replace("ETB", "").strip() or 0))
+                except Exception:
+                    cost_n = 0
+                sev = (it.get("severity") or "Unknown").strip() or "Unknown"
+                # Drop invented zero-name lines
+                if not name:
+                    continue
+                if name in ("Valve Cover Gasket", "Brake Pads", "AC Gas Refill") and cost_n == 0:
+                    continue
+                total_cost += max(0, cost_n)
+                faults.append({
+                    "component": name,
+                    "severity": sev,
+                    "estimated_cost_etb": cost_n,
+                    "description": it.get("description") or name,
+                })
+
+            unreadable = parsed.get("unreadable_notes") or []
+            if isinstance(unreadable, str):
+                unreadable = [unreadable]
+            for note in unreadable:
+                if note and not any(f["component"] == note for f in faults):
+                    faults.append({
+                        "component": str(note),
+                        "severity": "Unknown",
+                        "estimated_cost_etb": 0,
+                        "description": "ያልተነበበ / ግልጽ ያልሆነ መረጃ",
+                    })
+
+            sheet_total = parsed.get("estimated_repair_cost")
+            try:
+                sheet_total_n = int(float(str(sheet_total).replace(",", "") or 0)) if sheet_total is not None else total_cost
+            except Exception:
+                sheet_total_n = total_cost
+            if sheet_total_n <= 0:
+                sheet_total_n = total_cost
+
+            health = parsed.get("health_score")
+            if health is None:
+                health = parsed.get("health_score_pct")
+            try:
+                health_n = int(float(health or 0))
+            except Exception:
+                health_n = 0
+
+            engine_g = str(parsed.get("engine_grade") or "—")
+            # Enforce Blowby / Overhaul rules
+            blob = json.dumps(parsed, ensure_ascii=False).lower()
+            if "blowby" in blob or "overhaul" in blob or "ብሎባይ" in blob or "ኦይል መንፋት" in blob:
+                if engine_g.upper() not in ("D", "F"):
+                    engine_g = "D"
+                if health_n >= 50 or health_n == 0:
+                    health_n = 45
+
+            is_valid = parsed.get("is_valid_diagnostic")
+            if is_valid is None:
+                is_valid = bool(faults) or bool(parsed.get("car_model")) or bool(image_url)
+            err_am = parsed.get("error_message_amharic")
+            if is_valid is False and not err_am:
+                err_am = "እባክዎ ትክክለኛ የምርመራ ወረቀት ያስገቡ።"
+
+            analysis = {
+                "is_valid_diagnostic": bool(is_valid),
+                "error_message_amharic": err_am,
+                "car_model": parsed.get("car_model") or car_model,
+                "health_score_pct": health_n,
+                "engine_grade": engine_g,
+                "transmission_grade": str(parsed.get("transmission_grade") or "—"),
+                "body_and_suspension": parsed.get("body_and_suspension") or "",
+                "identified_faults": faults,
+                "total_estimated_repair_cost_etb": sheet_total_n,
+                "buyer_negotiation_advice_amharic": (
+                    parsed.get("buyer_negotiation_advice_amharic")
+                    or (
+                        f"ጠቅላላ የተገመተ የጥገና ወጪ ~{sheet_total_n:,} ETB። "
+                        + ("ብሎባይ/ኦቨርሆል ስላለ ጤና ነጥብ ዝቅተኛ ነው — ዋጋ በጥብቅ ይደራደሩ።" if engine_g.upper() in ("D", "F") else "በወረቀቱ ላይ የተገለጹ ወጪዎች ብቻ ተቆጥረዋል።")
+                    )
+                ),
+            }
 
             return jsonify({
                 "status": "success" if analysis.get("is_valid_diagnostic") is not False else "error",
-                "analysis": analysis
+                "analysis": analysis,
             })
         except Exception as e:
             logger.error(f"api_analyze_diagnostic error: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({
+                "status": "error",
+                "message": str(e),
+                "analysis": {
+                    "is_valid_diagnostic": False,
+                    "error_message_amharic": f"የምርመራ ስህተት፡ {e}",
+                    "health_score_pct": 0,
+                    "total_estimated_repair_cost_etb": 0,
+                    "identified_faults": [],
+                },
+            }), 500
+
 
 
     @web_app.route('/api/verify-chassis', methods=['POST', 'OPTIONS'])
