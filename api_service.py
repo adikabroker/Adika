@@ -20,7 +20,7 @@ from flask import request, jsonify, Response
 from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY
 from models import (
     toggle_favorite, get_favorite_subscribers, update_listing_price, ensure_favorites_table,
-    save_contract, get_contract, get_user_contracts, build_amharic_vehicle_contract, ensure_contracts_table,
+    save_contract, get_contract, get_user_contracts, build_amharic_vehicle_contract, build_contract_by_type, ensure_contracts_table,
     LAST_DB_ERROR,
     get_db_connection, get_placeholder, is_postgres, add_listing, get_listing_by_id,
     update_listing_status, save_search_alert, get_matching_alerts, expire_old_listings,
@@ -1717,16 +1717,30 @@ def register_api_routes(web_app):
             data = request.json or {}
             user_id = data.get('user_id') or 0
             status = data.get('contract_status') or 'Draft'
+            ctype = data.get('contract_type') or 'vehicle_sale'
             seller = data.get('seller_info') or {}
             buyer = data.get('buyer_info') or {}
             vehicle = data.get('vehicle_info') or {}
+            prop = data.get('property_info') or {}
             financial = data.get('financial_info') or {}
             witnesses = data.get('witnesses') or []
             cid = data.get('contract_id')
             text = None
             if str(status).lower() in ('finalized', 'final', 'done'):
-                text = build_amharic_vehicle_contract(seller, buyer, vehicle, financial, witnesses)
+                text = build_contract_by_type(
+                    ctype, seller, buyer,
+                    vehicle=vehicle, property_info=prop,
+                    financial=financial, witnesses=witnesses,
+                )
                 status = 'Finalized'
+            # stash type inside vehicle_info meta for export
+            if isinstance(vehicle, dict):
+                vehicle = dict(vehicle)
+                vehicle['_contract_type'] = ctype
+            if isinstance(prop, dict) and prop:
+                vehicle = dict(vehicle or {})
+                vehicle['_property_info'] = prop
+                vehicle['_contract_type'] = ctype
             new_id = save_contract(
                 user_id=user_id,
                 seller_info=seller,
@@ -1768,9 +1782,20 @@ def register_api_routes(web_app):
             c = get_contract(contract_id)
             if not c:
                 return jsonify({"success": False, "message": "Contract not found"}), 404
-            text = c.get("contract_text") or build_amharic_vehicle_contract(
-                c.get("seller_info"), c.get("buyer_info"), c.get("vehicle_info"),
-                c.get("financial_info"), c.get("witnesses"),
+            vinfo = c.get("vehicle_info") or {}
+            if isinstance(vinfo, str):
+                try:
+                    import json as _json
+                    vinfo = _json.loads(vinfo)
+                except Exception:
+                    vinfo = {}
+            ctype = (vinfo or {}).get("_contract_type") or "vehicle_sale"
+            prop = (vinfo or {}).get("_property_info") or {}
+            text = c.get("contract_text") or build_contract_by_type(
+                ctype,
+                c.get("seller_info"), c.get("buyer_info"),
+                vehicle=vinfo, property_info=prop,
+                financial=c.get("financial_info"), witnesses=c.get("witnesses"),
             )
             # Prefer simple printable HTML (works without reportlab); browser can Print→PDF
             do_print = request.args.get("print") == "1"
