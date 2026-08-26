@@ -1843,25 +1843,66 @@ def register_api_routes(web_app):
             )
             # Prefer simple printable HTML (works without reportlab); browser can Print→PDF
             do_print = request.args.get("print") == "1"
+            safe = (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             html = f"""<!DOCTYPE html>
-<html lang="am"><head><meta charset="utf-8"/>
-<title>የመኪና ሽያጭ ውል #{contract_id}</title>
+<html lang="am"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Adika ውል #{contract_id}</title>
 <style>
-  body {{ font-family: 'Noto Sans Ethiopic', 'Nyala', 'Abyssinica SIL', Arial, sans-serif; padding: 24px; line-height: 1.55; color: #111; }}
-  h1 {{ font-size: 18px; text-align: center; }}
-  pre {{ white-space: pre-wrap; font-family: inherit; font-size: 13px; }}
-  .sig {{ margin-top: 28px; display: flex; justify-content: space-between; gap: 12px; }}
-  .sig div {{ flex: 1; border-top: 1px solid #333; padding-top: 6px; text-align: center; font-size: 12px; }}
-  @media print {{ .noprint {{ display: none; }} }}
-</style></head><body>
-<button class="noprint" onclick="window.print()">🖨️ ህትመት / PDF</button>
-<h1>የመኪና ሽያጭ ውል — Adika Marketplace</h1>
-<pre>{text.replace('<','&lt;')}</pre>
-<div class="sig">
-  <div>ሻጭ ፊርማ</div><div>ገዢ ፊርማ</div>
-  <div>ምስክር 1</div><div>ምስክር 2</div>
+  @page {{ size: A4; margin: 15mm; }}
+  html, body {{
+    margin: 0; padding: 0;
+    background: #fff; color: #111;
+  }}
+  body {{
+    font-family: 'Noto Sans Ethiopic', 'Nyala', 'Abyssinica SIL', 'Power Geez', Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.35;
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 12mm 15mm;
+    box-sizing: border-box;
+  }}
+  .toolbar {{
+    display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+  }}
+  .toolbar button, .toolbar a {{
+    font-size: 12px; padding: 8px 12px; border-radius: 8px; border: none;
+    background: #0f172a; color: #fff; text-decoration: none; cursor: pointer;
+  }}
+  .toolbar .share {{ background: #059669; }}
+  h1 {{
+    font-size: 13pt; text-align: center; margin: 0 0 8px 0; font-weight: 800;
+  }}
+  .meta {{ text-align: right; font-size: 9.5pt; margin-bottom: 6px; color: #334155; }}
+  .body-text {{
+    white-space: pre-wrap; font-family: inherit; font-size: 10.5pt;
+    line-height: 1.35; margin: 0;
+  }}
+  @media print {{
+    .noprint {{ display: none !important; }}
+    body {{ padding: 0; max-width: none; }}
+  }}
+</style>
+</head><body>
+<div class="toolbar noprint">
+  <button onclick="window.print()">🖨️ ህትመት / PDF</button>
+  <button class="share" onclick="shareContract()">📤 ውል አጋራ</button>
 </div>
-{"<script>window.onload=function(){window.print();}</script>" if do_print else ""}
+<div class="meta">#{contract_id} · Adika Marketplace</div>
+<pre class="body-text">{safe}</pre>
+<script>
+function shareContract() {{
+  var url = window.location.href.split('?')[0];
+  if (navigator.share) {{
+    navigator.share({{ title: 'Adika ውል #{contract_id}', text: 'ህጋዊ ውል', url: url }}).catch(function(){{}});
+  }} else if (navigator.clipboard) {{
+    navigator.clipboard.writeText(url).then(function(){{ alert('ሊንኩ ተቀድቷል'); }});
+  }}
+}}
+{"window.onload=function(){window.print();};" if do_print else ""}
+</script>
 </body></html>"""
             return Response(html, mimetype="text/html; charset=utf-8")
         except Exception as e:
