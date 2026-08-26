@@ -2245,13 +2245,74 @@ def get_user_contracts(user_id, limit=20):
 
 
 
+
 def _etb_words(n):
-    """Simple ETB amount in Amharic digits-as-text fallback (numeric with ብር)."""
+    """Convert integer ETB amount to Amharic words (supports up to billions)."""
+    try:
+        n = int(float(str(n).replace(",", "").replace("ብር", "").strip() or 0))
+    except Exception:
+        return str(n)
+
+    ones = ["", "አንድ", "ሁለት", "ሦስት", "አራት", "አምስት", "ስድስት", "ሰባት", "ስምንት", "ዘጠኝ"]
+    teens = {
+        10: "አስር", 11: "አስራ አንድ", 12: "አስራ ሁለት", 13: "አስራ ሦስት", 14: "አስራ አራት",
+        15: "አስራ አምስት", 16: "አስራ ስድስት", 17: "አስራ ሰባት", 18: "አስራ ስምንት", 19: "አስራ ዘጠኝ",
+    }
+    tens = ["", "አስር", "ሃያ", "ሰላሳ", "አርባ", "ሃምሳ", "ስልሳ", "ሰባ", "ሰማንያ", "ዘጠና"]
+    # hundreds: አንድ መቶ, ሁለት መቶ, ...
+    def under_1000(x):
+        if x == 0:
+            return ""
+        parts = []
+        h = x // 100
+        r = x % 100
+        if h:
+            parts.append(("አንድ መቶ" if h == 1 else f"{ones[h]} መቶ"))
+        if r:
+            if r < 10:
+                parts.append(ones[r])
+            elif r < 20:
+                parts.append(teens[r])
+            else:
+                t, o = divmod(r, 10)
+                if o:
+                    parts.append(f"{tens[t]} {ones[o]}")
+                else:
+                    parts.append(tens[t])
+        return " ".join(parts)
+
+    if n == 0:
+        return "ዜሮ"
+    if n < 0:
+        return "አሉታዊ " + _etb_words(-n)
+
+    scales = [
+        (1_000_000_000, "ቢሊዮን"),
+        (1_000_000, "ሚሊዮን"),
+        (1_000, "ሺህ"),
+    ]
+    parts = []
+    rest = n
+    for scale, name in scales:
+        if rest >= scale:
+            q, rest = divmod(rest, scale)
+            w = under_1000(q)
+            if q == 1 and scale == 1000:
+                parts.append(f"አንድ {name}")
+            else:
+                parts.append(f"{w} {name}")
+    if rest:
+        parts.append(under_1000(rest))
+    return " ".join(p for p in parts if p).strip()
+
+
+def _money_phrase(n):
+    """Format: 78,000 ብር (ሰባ ስምንት ሺህ ብር)"""
     try:
         n = int(float(str(n).replace(",", "") or 0))
     except Exception:
-        return str(n)
-    return f"{n:,} ብር"
+        n = 0
+    return f"{n:,} ብር ({_etb_words(n)} ብር)"
 
 
 def _party_line(label, p):
@@ -2267,17 +2328,30 @@ def _party_line(label, p):
 
 
 def _witness_block(witnesses):
+    """Inline witness lines with signature — no duplicate footer block."""
     witnesses = witnesses or []
     lines = []
     for i in range(3):
         w = witnesses[i] if i < len(witnesses) else {}
         lines.append(
-            f"ምስክር {i+1}: {w.get('name') or '________________'}፣ "
-            f"ዜግነት: {w.get('nationality') or 'ኢትዮጵያዊ'}፣ "
-            f"አድራሻ: {w.get('address') or '________________'}፣ "
-            f"ስልክ: {w.get('phone') or '________'}፣ ፊርማ: ________"
+            f"ምስክር {i+1}: {w.get('name') or '________________'} | "
+            f"አድራሻ: {w.get('address') or '________________'} | "
+            f"ስልክ: {w.get('phone') or '________'} | "
+            f"ፊርማ: ___________"
         )
     return "\n".join(lines)
+
+
+def _party_signatures(is_rental=False):
+    if is_rental:
+        return (
+            "የውል ሰጪ (አከራይ) ፊርማ: ____________________\n"
+            "የውል ተቀባይ (ተከራይ) ፊርማ: ____________________"
+        )
+    return (
+        "የውል ሰጪ (ሻጭ) ፊርማ: ____________________\n"
+        "የውል ተቀባይ (ገዢ) ፊርማ: ____________________"
+    )
 
 
 def build_amharic_vehicle_sale_contract(seller, buyer, vehicle, financial, witnesses=None):
@@ -2285,7 +2359,7 @@ def build_amharic_vehicle_sale_contract(seller, buyer, vehicle, financial, witne
     total = int(float(financial.get("total_price") or 0))
     advance = int(float(financial.get("advance") or 0))
     balance = int(float(financial.get("balance") or max(0, total - advance)))
-    penalty = int(float(financial.get("penalty") or 0))
+    penalty = int(float(financial.get("penalty") or 50000))
     deadline = financial.get("deadline") or "______________"
     cdate = financial.get("contract_date") or "______________"
     plate = vehicle.get("plate") or "—"
@@ -2300,20 +2374,19 @@ def build_amharic_vehicle_sale_contract(seller, buyer, vehicle, financial, witne
 {_party_line("ውል ሰጪ (ሻጭ)", seller)}
 {_party_line("ውል ተቀባይ (ገዢ)", buyer)}
 
-እኔ ውል ሰጪ (ሻጭ) በስሜ የተመዘገበውን የሰሌዳ ቁጥር {plate}፣ የሞተር ቁጥር {engine}፣ የቻሲ ቁጥር {chassis} የሆነውን {model} መኪና ባለበት ሁኔታ ለውል ተቀባይ (ገዢ) በብር {_etb_words(total)} ({total:,}) የሸጥኩ ሲሆን፤ የገንዘቡን አከፋፈል በተመለከተ በዛሬው ዕለት ቅድመ ክፍያ ብር {_etb_words(advance)} ({advance:,}) ተቀብዬ፣ ቀሪውን ብር {_etb_words(balance)} ({balance:,}) ከዛሬ ጀምሮ እስከ {deadline} ድረስ አጠናቆ ገዢ የሚያስረክበኝ መሆኑን ተስማምተን መኪናውንና ሰነዶቹን ለገዢ ያስረከብኩ መሆኑን አረጋግጣለሁ።
+እኔ ውል ሰጪ (ሻጭ) በስሜ የተመዘገበውን የሰሌዳ ቁጥር {plate}፣ የሞተር ቁጥር {engine}፣ የቻሲ ቁጥር {chassis} የሆነውን {model} መኪና ባለበት ሁኔታ ለውል ተቀባይ (ገዢ) በ {_money_phrase(total)} የሸጥኩ ሲሆን፤ የገንዘቡን አከፋፈል በተመለከተ በዛሬው ዕለት ቅድመ ክፍያ {_money_phrase(advance)} ተቀብዬ፣ ቀሪውን {_money_phrase(balance)} ከዛሬ ጀምሮ እስከ {deadline} ድረስ አጠናቆ ገዢ የሚያስረክበኝ መሆኑን ተስማምተን መኪናውንና ሰነዶቹን ለገዢ ያስረከብኩ መሆኑን አረጋግጣለሁ።
 
-እኔ ሻጭ በዚህ በሸጥኩት መኪና ላይ "በዕዳ ወይም እገዳ ይይዛልኛል / ይገባኛል" ብሎ የሚከራከር የሶስተኛ ወገን ቢመጣ በወንጀልና በፍትሐብሔር ቀርቤ ተከራክሬ መልስ የምሰጥና ገዢውን ነፃ የማወጣ ሲሆን፤ ይህ መኪና ከሽያጩ በፊት የነበረ ማንኛውም የመንግሥት፣ የትራፊክ ቅጣት፣ የደብርም ሆነ ልዩ ልዩ ዕዳ ቢኖር ከፋዩ እኔው ራሴ ሻጭ መሆኔን አረጋግጣለሁ።
+እኔ ሻጭ በዚህ በሸጥኩት ንብረት ላይ በዕዳ፣ በእገዳ ወይም "ይገባኛል" ብሎ የሚከራከር የሶስተኛ ወገን ቢመጣ በወንጀልና በፍትሐብሔር ቀርቤ ተከራክሬ መልስ የምሰጥና ገዢን ነፃ የማወጣ ሲሆን፤ ከውሉ በፊት የነበረ ማንኛውም የመንግሥት፣ የትራፊክ ቅጣት፣ የታክስ፣ የደብተር/የካርታ ወይም ልዩ ልዩ ዕዳ ቢኖር ከፋዩ እኔው ራሴ መሆኔን አረጋግጣለሁ።
 
 እኔ ገዢ መኪናውን ከተረከብኩበት ዕለት ማለትም ከዛሬ {cdate} ጀምሮ ለሚመጣ ማንኛውም የትራፊክ አደጋ፣ በሰውና ንብረት ላይ ለሚደርስ ጉዳት፣ የወንጀልም ሆነ የመንግሥት ኃላፊነት ሙሉ በሙሉ ተጠያቂው እኔው ራሴ ገዢ ስሆን፣ በዚህ ጉዳይ ላይ ሻጭን ተጠያቂ የማላደርግ መሆኑን ተስማምቼ መኪናውን መረከቤን አረጋግጣለሁ። ገዢ ቀሪውን ገንዘብ አጠናቆ ሲከፍል ሻጭ በ 10 ቀናት ውስጥ የባለቤትነት ስም ዝውውር የማዛወር ግዴታ አለበት።
 
-ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 / 2005 / 2266 መሠረት የተደረገ ነው። ይህንን ውል ለማፍረስ የሚሞክር ወገን ቢኖር ብር {_etb_words(penalty) if penalty else '______________'} ({penalty:,} ብር) ከፍሎ ውሉ እና ገደቡ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
+ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 / 2005 / 2266 መሠረት የተደረገ ነው። ይህንን ውል ለማፍረስ የሚሞክር ወገን ቢኖር {_money_phrase(penalty)} ከፍሎ ውሉ እና ገደቡ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
 
 እኛ ተዋዋዮችና ምስክሮች በዚህ ውል መሠረት ተስማምተን ገንዘቡም ሲከፈልና ሲቀበል በአካል ተገኝተን በፊርማችን አረጋግጠናል።
 
 {_witness_block(witnesses)}
 
-ውል ሰጪ (ሻጭ) ፊርማ: ________________
-ውል ተቀባይ (ገዢ) ፊርማ: ________________
+{_party_signatures(is_rental=False)}
 """
 
 
@@ -2323,7 +2396,7 @@ def build_amharic_vehicle_rental_contract(lessor, lessee, vehicle, financial, wi
     period = financial.get("rent_period") or "በወር"
     start = financial.get("rent_start") or "______________"
     end = financial.get("rent_end") or "______________"
-    penalty = int(float(financial.get("penalty") or 0))
+    penalty = int(float(financial.get("penalty") or 50000))
     cdate = financial.get("contract_date") or "______________"
     plate = vehicle.get("plate") or "—"
     engine = vehicle.get("engine") or "—"
@@ -2337,20 +2410,21 @@ def build_amharic_vehicle_rental_contract(lessor, lessee, vehicle, financial, wi
 {_party_line("አከራይ", lessor)}
 {_party_line("ተከራይ", lessee)}
 
-እኔ አከራይ በስሜ የተመዘገበውን የሰሌዳ ቁጥር {plate}፣ የሞተር ቁጥር {engine}፣ የቻሲ ቁጥር {chassis} የሆነውን {model} መኪና ከ {start} ጀምሮ እስከ {end} ድረስ ለተከራይ አከራይቼ ያስረከብኩ ሲሆን፤ ተከራይም {period} ብር {_etb_words(rate)} ({rate:,}) ለመክፈል ተስማምቶ መኪናውን በሙሉ ጤንነት ተረክቧል።
+እኔ አከራይ በስሜ የተመዘገበውን የሰሌዳ ቁጥር {plate}፣ የሞተር ቁጥር {engine}፣ የቻሲ ቁጥር {chassis} የሆነውን {model} መኪና ከ {start} ጀምሮ እስከ {end} ድረስ ለተከራይ አከራይቼ ያስረከብኩ ሲሆን፤ ተከራይም {period} {_money_phrase(rate)} ለመክፈል ተስማምቶ መኪናውን በሙሉ ጤንነት ተረክቧል።
 
-ተከራይ መኪናውን ከተረከበበት ሰዓት ጀምሮ እስከሚያስረክብበት ቀን ድረስ ለሚደርስ ማንኛውም የትራፊክ አደጋ፣ የመኪና ስርቆት፣ በሰው ወይም በንብረት ላይ ለሚደርስ ጉዳት፣ እንዲሁም ተሽከርካሪው በቁጥጥሩ ስር እያለ ለሚፈጸም ማንኛውም ህገ-ወጥ ድርጊትና ወንጀል ሙሉ በሙሉ በህግ ፊት ተጠያቂ ይሆናል። አከራይም መኪናው ከኪራዩ በፊት ከማንኛውም እገዳና የሶስተኛ ወገን ጥያቄ ነፃ መሆኑን ያረጋግጣል።
+እኔ አከራይ በዚህ ባከራየሁት ንብረት ላይ በዕዳ፣ በእገዳ ወይም "ይገባኛል" ብሎ የሚከራከር የሶስተኛ ወገን ቢመጣ በወንጀልና በፍትሐብሔር ቀርቤ ተከራክሬ መልስ የምሰጥና ተከራይን ነፃ የማወጣ ሲሆን፤ ከውሉ በፊት የነበረ ማንኛውም የመንግሥት፣ የትራፊክ ቅጣት፣ የታክስ፣ የደብተር/የካርታ ወይም ልዩ ልዩ ዕዳ ቢኖር ከፋዩ እኔው ራሴ መሆኔን አረጋግጣለሁ።
+
+ተከራይ መኪናውን ከተረከበበት ሰዓት ጀምሮ እስከሚያስረክብበት ቀን ድረስ ለሚደርስ ማንኛውም የትራፊክ አደጋ፣ የመኪና ስርቆት፣ በሰው ወይም በንብረት ላይ ለሚደርስ ጉዳት፣ እንዲሁም ተሽከርካሪው በቁጥጥሩ ስር እያለ ለሚፈጸም ማንኛውም ህገ-ወጥ ድርጊትና ወንጀል ሙሉ በሙሉ በህግ ፊት ተጠያቂ ይሆናል።
 
 ተከራይ የመኪናውን ዘይት፣ ውሃ እና አጠቃላይ እንክብካቤ የማድረግ ግዴታ ያለበት ሲሆን፣ ከተፈጥሯዊ ያረጀ አሰራር (Normal wear and tear) ውጪ ለሚደርስ ማንኛውም የሜካኒክስና የቦዲ ጉዳት ወጪውን ይሸፍናል። የኪራይ ዘመኑ ሲያልቅ ተከራይ መኪናውን በተረከበበት ሁኔታ የማስረከብ ግዴታ አለበት።
 
-ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 እና 2896 መሠረት የተደረገ ነው። ይህንን ውል ለማፍረስ የሚሞክር ወገን ቢኖር ብር {_etb_words(penalty) if penalty else '______________'} ({penalty:,} ብር) ከፍሎ ውሉ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
+ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 እና 2896 መሠረት የተደረገ ነው። ይህንን ውል ለማፍረስ የሚሞክር ወገን ቢኖር {_money_phrase(penalty)} ከፍሎ ውሉ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
 
 እኛ ተዋዋዮችና ምስክሮች በዚህ ውል መሠረት ተስማምተን በአካል ተገኝተን በፊርማችን አረጋግጠናል።
 
 {_witness_block(witnesses)}
 
-አከራይ ፊርማ: ________________
-ተከራይ ፊርማ: ________________
+{_party_signatures(is_rental=True)}
 """
 
 
@@ -2359,7 +2433,7 @@ def build_amharic_house_sale_contract(seller, buyer, prop, financial, witnesses=
     total = int(float(financial.get("total_price") or 0))
     advance = int(float(financial.get("advance") or 0))
     balance = int(float(financial.get("balance") or max(0, total - advance)))
-    penalty = int(float(financial.get("penalty") or 0))
+    penalty = int(float(financial.get("penalty") or 50000))
     deadline = financial.get("deadline") or "______________"
     cdate = financial.get("contract_date") or "______________"
     hsc = prop.get("sub_city") or "—"
@@ -2375,20 +2449,19 @@ def build_amharic_house_sale_contract(seller, buyer, prop, financial, witnesses=
 {_party_line("ውል ሰጪ (ሻጭ)", seller)}
 {_party_line("ውል ተቀባይ (ገዢ)", buyer)}
 
-እኔ ውል ሰጪ (ሻጭ) አድራሻው ክ/ከተማ {hsc}፣ ወረዳ {hw}፣ የካርታ / የደብተር ቁጥር {deed}፣ የቦታው ስፋት {area} ካ.ሜ የሆነውን {use} ቤት ባለበት ሁኔታ ለውል ተቀባይ (ገዢ) በብር {_etb_words(total)} ({total:,}) የሸጥኩ ሲሆን፤ በዛሬው ዕለት በቅድመ ክፍያ ብር {_etb_words(advance)} ({advance:,}) ተቀብዬ፣ ቀሪውን ብር {_etb_words(balance)} ({balance:,}) ከዛሬ ጀምሮ እስከ {deadline} ድረስ ገዢ አጠናቆ የሚያስረክበኝ መሆኑን ተስማምተናል።
+እኔ ውል ሰጪ (ሻጭ) አድራሻው ክ/ከተማ {hsc}፣ ወረዳ {hw}፣ የካርታ / የደብተር ቁጥር {deed}፣ የቦታው ስፋት {area} ካ.ሜ የሆነውን {use} ቤት ባለበት ሁኔታ ለውል ተቀባይ (ገዢ) በ {_money_phrase(total)} የሸጥኩ ሲሆን፤ በዛሬው ዕለት በቅድመ ክፍያ {_money_phrase(advance)} ተቀብዬ፣ ቀሪውን {_money_phrase(balance)} ከዛሬ ጀምሮ እስከ {deadline} ድረስ ገዢ አጠናቆ የሚያስረክበኝ መሆኑን ተስማምተናል።
 
-እኔ ሻጭ ይህ ቤት ከማንኛውም የባንክ ዕዳ፣ እገዳ፣ የካርታ እግድ እና "ይይዛልኛል / ይገባኛል" ከሚል የሶስተኛ ወገን ወይም የቤተሰብ ጥያቄ ነፃ መሆኑን የማረጋግጥ ሲሆን፤ ማንኛውም ተቃዋሚ ወገን ቢመጣ በአካል ቀርቤ ተከራክሬ መልስ የምሰጥና ገዢውን ነፃ የማወጣ መሆኔን፣ እንዲሁም ከውሉ ቀን በፊት የነበሩ የቤት ግብር፣ የመብራት፣ የውሃ እና የመንግሥት ዕዳዎችን ሙሉ በሙሉ የምከፍል መሆኑን አረጋግጣለሁ።
+እኔ ሻጭ በዚህ በሸጥኩት ንብረት ላይ በዕዳ፣ በእገዳ ወይም "ይገባኛል" ብሎ የሚከራከር የሶስተኛ ወገን ቢመጣ በወንጀልና በፍትሐብሔር ቀርቤ ተከራክሬ መልስ የምሰጥና ገዢን ነፃ የማወጣ ሲሆን፤ ከውሉ በፊት የነበረ ማንኛውም የመንግሥት፣ የትራፊክ ቅጣት፣ የታክስ፣ የደብተር/የካርታ ወይም ልዩ ልዩ ዕዳ ቢኖር ከፋዩ እኔው ራሴ መሆኔን አረጋግጣለሁ።
 
 እኔ ገዢ ቀሪውን ክፍያ አጠናቅቄ ስከፍል ሻጭ በ 15 ቀናት ውስጥ የካርታ ስም ዝውውር (ስም ማዛወር) እና የይዞታ ማስተላለፍ ግዴታውን የሚወጣ ሲሆን፤ ውሉ ከተፈረመበት ቀን ጀምሮ ለሚመጡ ማናቸውም የመንግሥት ግብሮችና ወጪዎች ገዢ ኃላፊነቱን ይወስዳል።
 
-ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 እና 2872 (ቤትና ቦታ ሽያጭ ድንጋጌ) መሠረት የተደረገ ነው። ይህንን ውል ለማፍረስ የሚሞክር ወገን ቢኖር ብር {_etb_words(penalty) if penalty else '______________'} ({penalty:,} ብር) ከፍሎ ውሉ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
+ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 እና 2872 (ቤትና ቦታ ሽያጭ ድንጋጌ) መሠረት የተደረገ ነው። ይህንን ውል ለማፍረስ የሚሞክር ወገን ቢኖር {_money_phrase(penalty)} ከፍሎ ውሉ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
 
 እኛ ተዋዋዮችና ምስክሮች በዚህ ውል መሠረት ተስማምተን በአካል ተገኝተን በፊርማችን አረጋግጠናል።
 
 {_witness_block(witnesses)}
 
-ውል ሰጪ (ሻጭ) ፊርማ: ________________
-ውል ተቀባይ (ገዢ) ፊርማ: ________________
+{_party_signatures(is_rental=False)}
 """
 
 
@@ -2399,7 +2472,7 @@ def build_amharic_house_rental_contract(lessor, lessee, prop, financial, witness
     paid = int(float(financial.get("rent_advance_total") or 0))
     start = financial.get("rent_start") or "______________"
     duration = financial.get("rent_end") or "______________"
-    penalty = int(float(financial.get("penalty") or 0))
+    penalty = int(float(financial.get("penalty") or 50000))
     cdate = financial.get("contract_date") or "______________"
     hsc = prop.get("sub_city") or "—"
     hw = prop.get("woreda") or "—"
@@ -2413,20 +2486,21 @@ def build_amharic_house_rental_contract(lessor, lessee, prop, financial, witness
 {_party_line("አከራይ", lessor)}
 {_party_line("ተከራይ", lessee)}
 
-እኔ አከራይ አድራሻው ክ/ከተማ {hsc}፣ ወረዳ {hw}፣ የቤት ቁጥር {hno} የሆነውን {use} ቤት ከ {start} ጀምሮ ለ {duration} ወራት / ዓመታት ለተከራይ ያከራየሁ ሲሆን፤ ተከራይም በወር ብር {_etb_words(rate)} ({rate:,}) ለመክፈል ተስማምቶ በዛሬው ዕለት የ {months} ወር ቅድመ ኪራይ ብር {_etb_words(paid)} ({paid:,}) ገቢ አድርጎ ቤቱን ተረክቧል።
+እኔ አከራይ አድራሻው ክ/ከተማ {hsc}፣ ወረዳ {hw}፣ የቤት ቁጥር {hno} የሆነውን {use} ቤት ከ {start} ጀምሮ ለ {duration} ወራት / ዓመታት ለተከራይ ያከራየሁ ሲሆን፤ ተከራይም በወር {_money_phrase(rate)} ለመክፈል ተስማምቶ በዛሬው ዕለት የ {months} ወር ቅድመ ኪራይ {_money_phrase(paid)} ገቢ አድርጎ ቤቱን ተረክቧል።
+
+እኔ አከራይ በዚህ ባከራየሁት ንብረት ላይ በዕዳ፣ በእገዳ ወይም "ይገባኛል" ብሎ የሚከራከር የሶስተኛ ወገን ቢመጣ በወንጀልና በፍትሐብሔር ቀርቤ ተከራክሬ መልስ የምሰጥና ተከራይን ነፃ የማወጣ ሲሆን፤ ከውሉ በፊት የነበረ ማንኛውም የመንግሥት፣ የትራፊክ ቅጣት፣ የታክስ፣ የደብተር/የካርታ ወይም ልዩ ልዩ ዕዳ ቢኖር ከፋዩ እኔው ራሴ መሆኔን አረጋግጣለሁ።
 
 ተከራይ ቤቱን ለመኖሪያ / ለንግድ አገልግሎት ብቻ የመጠቀም፣ የህንጻውን አካል ሳያፈርስና ሳይለውጥ በጥንቃቄ የመጠበቅ፣ እንዲሁም የወርሃዊ የመብራት፣ የውሃ እና የቆሻሻ ክፍያዎችን በወቅቱ የመክፈል ግዴታ አለበት። ተከራይ ከአከራይ ፈቃድ ውጪ ቤቱን ለሶስተኛ ወገን አሳልፎ ማከራየት አይችልም።
 
 አከራይ ተከራይ በሰላም የመኖሩን/ የመጠቀሙን መብት የማስከበር ግዴታ ያለበት ሲሆን፣ የኪራይ ዘመኑ ሲያልቅ ተከራይ ቤቱን በተረከበበት ሁኔታና ሰላማዊ መንገድ ለአከራይ ያስረክባል። ውሉን ማደስ ከተፈለገ ከውሉ ማለቂያ 1 ወር በፊት ተዋዋዮች መነጋገር አለባቸው።
 
-ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 እና 2945 (የቤት ኪራይ ድንጋጌ) መሠረት የተደረገ ነው። ውሉን ያለበቂ ምክንያት ያፈረሰ ወገን የ {_etb_words(penalty) if penalty else '______________'} ({penalty:,} ብር) ካሳ ከፍሎ ውሉ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
+ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 እና 2945 (የቤት ኪራይ ድንጋጌ) መሠረት የተደረገ ነው። ውሉን ያለበቂ ምክንያት ያፈረሰ ወገን {_money_phrase(penalty)} ካሳ ከፍሎ ውሉ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
 
 እኛ ተዋዋዮችና ምስክሮች በዚህ ውል መሠረት ተስማምተን በአካል ተገኝተን በፊርማችን አረጋግጠናል።
 
 {_witness_block(witnesses)}
 
-አከራይ ፊርማ: ________________
-ተከራይ ፊርማ: ________________
+{_party_signatures(is_rental=True)}
 """
 
 
@@ -2445,9 +2519,6 @@ def build_contract_by_type(contract_type, seller, buyer, vehicle=None, property_
         return build_amharic_house_rental_contract(seller, buyer, property_info, financial, witnesses)
     return build_amharic_vehicle_sale_contract(seller, buyer, vehicle, financial, witnesses)
 
-
-
-# ========== FAVORITES / BOOKMARKS (price-drop alerts) ==========
 
 def ensure_favorites_table():
     conn = None
