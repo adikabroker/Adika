@@ -4542,17 +4542,53 @@ EXPLORER_HTML = r"""
       function extractCertificateId(scannedText) {
         if (!scannedText) return null;
         var s = String(scannedText).trim();
-        // 1. 36-char UUID
+        // 1. 36-char UUID (active digital certificates)
         var uuidMatch = s.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
         if (uuidMatch) return uuidMatch[0];
-        // 2. Plot / Property codes (LTP-KK…, KK…, AA…)
-        var codeMatch = s.match(/(LTP-)?[A-Z]{2}\d+/i);
-        if (codeMatch) return codeMatch[0];
-        // 3. Broader AA/KK UPIN
+        // 2. Reject old deed numbers AD… (not on digital portal)
+        if (/^AD\d+/i.test(s) || /\bAD\d{10,}\b/i.test(s)) return null;
+        // 3. Plot / Property codes (LTP-KK…, KK…, AA…) — not AD
+        var codeMatch = s.match(/\b((?:LTP-)?(?:KK|AA)\d+)\b/i);
+        if (codeMatch) return codeMatch[1] || codeMatch[0];
+        // 4. Broader AA/KK UPIN only
         var upin = s.match(/\b(AA\d{6,}|KK\d{6,})\b/i);
         if (upin) return upin[1];
-        // 4. DO NOT return static fallback like "addisland"
+        // 5. DO NOT return static fallback like "addisland"
         return null;
+      }
+
+      function processScannedQrPayload(scannedText) {
+        if (!scannedText) return null;
+        var s = String(scannedText).trim();
+        var uuidMatch = s.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+        if (uuidMatch) {
+          return "https://addislandfarm.gov.et/verify/" + uuidMatch[0];
+        }
+        // Reject old deed AD… prefixes
+        if (/^AD/i.test(s) || /\bAD\d{8,}\b/i.test(s) || /addisland(?!farm)/i.test(s)) {
+          try {
+            var toast = document.getElementById("landMapToast");
+            if (toast) {
+              toast.textContent = "ይህ የቆየ የካርታ ቁጥር በመሆኑ በመንግስት ዲጂታል ፖርታል ላይ አልተመዘገበም። እባክዎን የቅርብ ጊዜውን ዲጂታል የካርታ ፎቶ ያስገቡ።";
+              toast.classList.remove("hidden");
+            } else {
+              alert("ይህ የቆየ የካርታ ቁጥር በመሆኑ በመንግስት ዲጂታል ፖርታል ላይ አልተመዘገበም። እባክዎን የቅርብ ጊዜውን ዲጂታል የካርታ ፎቶ ያስገቡ።");
+            }
+          } catch (e) {}
+          return null;
+        }
+        if (/addislandfarm\.gov\.et/i.test(s)) {
+          var m = s.match(/https?:\/\/[^\s"'<>]*addislandfarm\.gov\.et[^\s"'<>]*/i);
+          return m ? m[0] : s;
+        }
+        var id = extractCertificateId(s);
+        if (id && /^[0-9a-fA-F-]{36}$/.test(id)) {
+          return "https://addislandfarm.gov.et/verify/" + id;
+        }
+        if (id) {
+          return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(id);
+        }
+        return "https://addislandfarm.gov.et/";
       }
 
       function sanitizeAndEnforceActiveDomain(scannedInput) {
@@ -4620,7 +4656,9 @@ EXPLORER_HTML = r"""
 
 
       function buildFinalUrl(scannedPayload) {
-        return sanitizeAndEnforceActiveDomain(scannedPayload);
+        var processed = processScannedQrPayload(scannedPayload);
+        if (processed === null) return ""; // rejected (e.g. AD old deed)
+        return sanitizeAndEnforceActiveDomain(processed || scannedPayload);
       }
 
 
