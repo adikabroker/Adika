@@ -40,6 +40,36 @@ bot_app = None
 bot_loop = None
 
 
+# Database helpers from models (required for listings API)
+try:
+    from models import (
+        get_db_connection,
+        get_placeholder,
+        is_postgres,
+        add_listing,
+        ensure_core_tables,
+        ensure_listings_columns,
+        LAST_DB_ERROR,
+    )
+except Exception as _models_imp_err:
+    import logging as _logging
+    _logging.getLogger(__name__).error("models import failed: %s", _models_imp_err)
+    def get_db_connection():
+        raise RuntimeError("get_db_connection unavailable — models import failed")
+    def get_placeholder():
+        return "%s"
+    def is_postgres():
+        return False
+    def add_listing(*args, **kwargs):
+        return None
+    def ensure_core_tables():
+        pass
+    def ensure_listings_columns():
+        pass
+    LAST_DB_ERROR = ""
+
+
+
 def sanitize_and_route_url(scanned_data: str) -> str:
     """Map QR payload to addislandfarm.gov.et only — never dead hosts or static junk tokens."""
     import re as _re
@@ -2403,12 +2433,13 @@ function shareContract() {{
                     params.extend(['sold', 'rented', 'expired'])
                 # Match req_type OR Amharic/English action_type (many rows only have action_type)
                 if req_type == 'SELL':
+                    # Broad match: SELL rows OR seller-style action OR blank type (legacy Telegram posts)
                     where.append(
-                        f"(UPPER(COALESCE(req_type,'')) = 'SELL' "
-                        f"OR COALESCE(action_type,'') IN ({p},{p},{p},{p}) "
-                        f"OR (COALESCE(req_type,'') = '' AND COALESCE(action_type,'') NOT IN ({p},{p},{p})))"
+                        f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('SELL','SALE','') "
+                        f"OR COALESCE(action_type,'') IN ({p},{p},{p},{p},{p}) "
+                        f"OR UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT'))"
                     )
-                    params.extend(['መሸጥ', 'SELL', 'sell', 'ለመሸጥ', 'መግዛት', 'BUY', 'buy'])
+                    params.extend(['መሸጥ', 'SELL', 'sell', 'ለመሸጥ', 'Sale'])
                 elif req_type == 'BUY':
                     where.append(
                         f"(UPPER(COALESCE(req_type,'')) = 'BUY' "
@@ -2464,6 +2495,27 @@ function shareContract() {{
                         list(params) + [limit, offset],
                     )
                     rows = cur.fetchall() or []
+                    # If filters returned empty, show any non-deleted listings (Telegram sync safety net)
+                    if not rows and page == 1:
+                        try:
+                            cur.execute(
+                                f"SELECT COUNT(*) AS cnt FROM listings WHERE "
+                                f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN "
+                                f"('deleted','sold','rented','expired'))"
+                            )
+                            tr = cur.fetchone()
+                            total = tr['cnt'] if isinstance(tr, dict) else (tr[0] if tr else 0)
+                            cur.execute(
+                                f"SELECT * FROM listings WHERE "
+                                f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN "
+                                f"('deleted','sold','rented','expired')) "
+                                f"ORDER BY id DESC LIMIT {p} OFFSET {p}",
+                                [limit, offset],
+                            )
+                            rows = cur.fetchall() or []
+                            logger.info("explorer empty-filter fallback returned %s rows", len(rows))
+                        except Exception as _fb0:
+                            logger.warning("explorer empty fallback: %s", _fb0)
                 except Exception as qerr:
                     logger.warning(f"api_explorer_listings primary query failed, fallback: {qerr}")
                     try:
