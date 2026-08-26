@@ -2135,7 +2135,7 @@ EXPLORER_HTML = r"""
       <div class="px-4 py-3 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="min-w-0">
           <div class="font-black text-xs tracking-tight">🛡️ የዲጂታል ካርታ ማጣሪያ</div>
-          <div class="text-[10px] text-cyan-100/90 font-medium">Adika Digital System · Cadastral Verification</div>
+          <div class="text-[10px] text-cyan-100/90 font-medium">Adika Digital System - Cadastral Verification</div>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
           <button type="button" onclick="navigateBack('landMapModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">← ተመለስ</button>
@@ -2148,16 +2148,16 @@ EXPLORER_HTML = r"""
           <label class="block cursor-pointer">
             <div class="rounded-2xl border-2 border-dashed border-[#1e73be]/50 bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 text-center active:scale-[0.99] transition">
               <div class="text-3xl mb-2">📷</div>
-              <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ / QR ያንሱ</div>
-              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">ፎቶ ብቻ — QR በራስ-ሰር ይነበባል እና ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
+              <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ ያስገቡ</div>
+              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
             </div>
             <input id="landMapFile" type="file" accept="image/*" capture="environment" class="hidden" />
           </label>
           <div id="landMapRetryBox" class="hidden">
             <button type="button" id="landMapRetryBtn" class="w-full py-3 rounded-xl bg-[#1e73be] text-white font-bold text-xs shadow">
-              📷 እባክዎን የካርታውን QR ኮድ አቅርበው እንደገና ያንሱ
+              📷 እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያንሱ
             </button>
-            <p class="text-[10px] text-slate-500 text-center mt-2 leading-relaxed">ፎቶው ላይ ያለውን QR በግልጽ ያስገቡ — የጽሁፍ ግቤት አያስፈልግም</p>
+            <p class="text-[10px] text-slate-500 text-center mt-2 leading-relaxed">በ Adika Digital System ማረጋገጫ ላይ ይገኛል</p>
           </div>
         </div>
 
@@ -4732,7 +4732,6 @@ EXPLORER_HTML = r"""
         var imgData = ctx.getImageData(0, 0, w, h);
         var d = imgData.data;
         for (var i = 0; i < d.length; i += 4) {
-          // grayscale luminance
           var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
           var v = g >= thr ? 255 : 0;
           d[i] = d[i + 1] = d[i + 2] = v;
@@ -4742,124 +4741,76 @@ EXPLORER_HTML = r"""
         return imgData;
       }
 
-      function enhanceTopRightQR(img) {
-        /** In-memory pipeline: top-right crop → 3x nearest-neighbor → B&W threshold → ImageData for jsQR */
-        var srcW = img.naturalWidth || img.width;
-        var srcH = img.naturalHeight || img.height;
-        if (!srcW || !srcH) return null;
-
-        // 1) Top-right quarter: X 50–100%, Y 0–35%
-        var sx = Math.floor(srcW * 0.50);
-        var sy = 0;
-        var sw = Math.max(1, srcW - sx);
-        var sh = Math.max(1, Math.floor(srcH * 0.35));
-
-        // intermediate crop canvas
-        var crop = document.createElement("canvas");
-        crop.width = sw;
-        crop.height = sh;
-        var cctx = crop.getContext("2d");
-        cctx.imageSmoothingEnabled = false;
-        cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-
-        // 2) 3x upscale (nearest neighbor for sharp QR modules)
-        var out = document.createElement("canvas");
-        out.width = Math.max(1, sw * 3);
-        out.height = Math.max(1, sh * 3);
-        var octx = out.getContext("2d");
-        octx.imageSmoothingEnabled = false;
-        try { octx.imageSmoothingQuality = "low"; } catch (e) {}
-        octx.drawImage(crop, 0, 0, out.width, out.height);
-
-        // Optional CSS-like contrast via canvas filter if supported
-        try {
-          octx.filter = "grayscale(100%) contrast(250%) brightness(90%)";
-          octx.drawImage(out, 0, 0);
-          octx.filter = "none";
-        } catch (e2) {}
-
-        // 3) Hard binarize — try multiple thresholds for blur/exposure variance
-        var thresholds = [128, 110, 145, 100, 160];
-        var results = [];
-        for (var ti = 0; ti < thresholds.length; ti++) {
-          var trial = document.createElement("canvas");
-          trial.width = out.width;
-          trial.height = out.height;
-          var tctx = trial.getContext("2d");
-          tctx.imageSmoothingEnabled = false;
-          tctx.drawImage(out, 0, 0);
-          // grayscale boost if filter failed
-          toGrayscaleContrast(tctx, trial.width, trial.height, 1.8);
-          var idata = hardBinarize(tctx, trial.width, trial.height, thresholds[ti]);
-          results.push({ canvas: trial, imageData: idata, thr: thresholds[ti] });
-        }
-        return results;
-      }
-
+      /** Hyper-fast dual-format scan: only 2 small crops, <300ms target */
       function multiStageScan(img, cb) {
         var found = null;
+        var t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
         try {
-          // === PRIMARY: enhanced top-right QR snippet (<300ms on typical phones) ===
-          var enhanced = enhanceTopRightQR(img);
-          if (enhanced && enhanced.length) {
-            for (var ei = 0; ei < enhanced.length && !found; ei++) {
-              found = tryJsQR(enhanced[ei].imageData);
-            }
-          }
+          var srcW = img.naturalWidth || img.width;
+          var srcH = img.naturalHeight || img.height;
+          if (!srcW || !srcH) { cb(null); return; }
 
-          // Secondary: slightly larger top-right (45–100% x, 0–40% y) same pipeline
-          if (!found) {
-            var srcW = img.naturalWidth || img.width;
-            var srcH = img.naturalHeight || img.height;
-            var sx2 = Math.floor(srcW * 0.45);
-            var sw2 = srcW - sx2;
-            var sh2 = Math.floor(srcH * 0.40);
-            var c2 = document.createElement("canvas");
-            c2.width = sw2; c2.height = sh2;
-            var cx2 = c2.getContext("2d");
-            cx2.imageSmoothingEnabled = false;
-            cx2.drawImage(img, sx2, 0, sw2, sh2, 0, 0, sw2, sh2);
-            var u2 = document.createElement("canvas");
-            u2.width = sw2 * 3; u2.height = sh2 * 3;
-            var ux2 = u2.getContext("2d");
-            ux2.imageSmoothingEnabled = false;
-            ux2.drawImage(c2, 0, 0, u2.width, u2.height);
-            toGrayscaleContrast(ux2, u2.width, u2.height, 1.7);
-            hardBinarize(ux2, u2.width, u2.height, 128);
-            found = tryJsQR(getImageData(u2));
-            if (!found) {
-              hardBinarize(ux2, u2.width, u2.height, 115);
-              found = tryJsQR(getImageData(u2));
-            }
-          }
+          // Region A: Format 1 Top-Right  X:60-100% Y:0-30%
+          // Region B: Format 2 Mid-Right  X:60-100% Y:20-50%
+          var regions = [
+            [0.60, 0.00, 0.40, 0.30],
+            [0.60, 0.20, 0.40, 0.30]
+          ];
+          // thresholds strip blue/purple stamp overlays
+          var thresholds = [128, 110, 145];
 
-          // Tertiary: top-left (some certificates)
-          if (!found) {
-            var base = drawScaled(img, 1400);
-            var regions = [
-              [0.50, 0.00, 0.50, 0.35],
-              [0.55, 0.00, 0.45, 0.30],
-              [0.00, 0.00, 0.45, 0.35]
-            ];
-            for (var ri = 0; ri < regions.length && !found; ri++) {
-              var r = regions[ri];
-              var crop = cropRegion(base.canvas, r[0], r[1], r[2], r[3], 900);
-              toGrayscaleContrast(crop.ctx, crop.canvas.width, crop.canvas.height, 1.6);
-              hardBinarize(crop.ctx, crop.canvas.width, crop.canvas.height, 128);
-              found = tryJsQR(getImageData(crop.canvas));
-            }
-          }
+          for (var ri = 0; ri < regions.length && !found; ri++) {
+            var r = regions[ri];
+            var sx = Math.floor(srcW * r[0]);
+            var sy = Math.floor(srcH * r[1]);
+            var sw = Math.max(1, Math.floor(srcW * r[2]));
+            var sh = Math.max(1, Math.floor(srcH * r[3]));
 
-          // Last resort: full-frame grayscale
-          if (!found) {
-            var full = drawScaled(img, 1200);
-            toGrayscaleContrast(full.ctx, full.canvas.width, full.canvas.height, 1.5);
-            hardBinarize(full.ctx, full.canvas.width, full.canvas.height, 128);
-            found = tryJsQR(getImageData(full.canvas));
+            // crop at native res
+            var crop = document.createElement("canvas");
+            crop.width = sw;
+            crop.height = sh;
+            var cctx = crop.getContext("2d", { willReadFrequently: true });
+            cctx.imageSmoothingEnabled = false;
+            cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+            // 2x nearest-neighbor upscale (fast, sharp modules)
+            var up = document.createElement("canvas");
+            up.width = sw * 2;
+            up.height = sh * 2;
+            var uctx = up.getContext("2d", { willReadFrequently: true });
+            uctx.imageSmoothingEnabled = false;
+            uctx.drawImage(crop, 0, 0, up.width, up.height);
+
+            for (var ti = 0; ti < thresholds.length && !found; ti++) {
+              var trial = document.createElement("canvas");
+              trial.width = up.width;
+              trial.height = up.height;
+              var tctx = trial.getContext("2d", { willReadFrequently: true });
+              tctx.imageSmoothingEnabled = false;
+              tctx.drawImage(up, 0, 0);
+              // grayscale + high contrast to kill stamp color
+              var id = tctx.getImageData(0, 0, trial.width, trial.height);
+              var d = id.data;
+              var contrast = 1.6;
+              var intercept = 128 * (1 - contrast);
+              var thr = thresholds[ti];
+              for (var i = 0; i < d.length; i += 4) {
+                var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                g = g * contrast + intercept;
+                var v = g >= thr ? 255 : 0;
+                d[i] = d[i + 1] = d[i + 2] = v;
+                d[i + 3] = 255;
+              }
+              tctx.putImageData(id, 0, 0);
+              found = tryJsQR(id);
+            }
           }
         } catch (e) {
           found = null;
         }
+        var t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        try { console.log("[Adika Digital System] scan ms:", Math.round(t1 - t0), found ? "ok" : "miss"); } catch (e2) {}
         cb(found);
       }
 
@@ -4962,18 +4913,13 @@ EXPLORER_HTML = r"""
               redirectWithExtract(parseQrPayload(payload));
               return;
             }
-            runTesseractOCR(dataUrl, function(ocrFields) {
-              if (ocrFields && (ocrFields.upin || ocrFields.cert || ocrFields.url)) {
-                redirectWithExtract(ocrFields);
-                return;
+            // Lightweight miss path: backend OCR only (no slow client OCR by default)
+            runBackendOCR(dataUrl, function(serverFields) {
+              if (serverFields && (serverFields.upin || serverFields.cert || serverFields.url)) {
+                redirectWithExtract(serverFields);
+              } else {
+                showRetryOnly();
               }
-              runBackendOCR(dataUrl, function(serverFields) {
-                if (serverFields && (serverFields.upin || serverFields.cert || serverFields.url)) {
-                  redirectWithExtract(serverFields);
-                } else {
-                  showRetryOnly();
-                }
-              });
             });
           });
         };
