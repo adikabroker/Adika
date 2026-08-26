@@ -5338,5 +5338,3 @@ def render_chat_interface(user_budget):
                 
         st.session_state.messages.append({"role": "assistant", "content": response})
         st.rerun()
-
-
