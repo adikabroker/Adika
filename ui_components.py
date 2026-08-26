@@ -4477,11 +4477,12 @@ EXPLORER_HTML = r"""
 
 
 
-    // ========== Digital Cadastral Map Verifier — Photo-only multi-stage QR ==========
+    // ========== Digital Cadastral Map Verifier (Adika Digital System) ==========
     (function initLandMapVerifier() {
       var CADASTRE_VERIFY = "https://land.addiscadaster.gov.et/verify";
       var CADASTRE_SEARCH = "https://land.addiscadaster.gov.et/search";
       var lastExtract = null;
+      var isScanning = false;
 
       function showPanel(name) {
         ["landMapUploadPanel", "landMapScanPanel", "landMapResultPanel"].forEach(function(id) {
@@ -4489,13 +4490,17 @@ EXPLORER_HTML = r"""
           if (el) el.classList.toggle("hidden", id !== name);
         });
         var retry = document.getElementById("landMapRetryBox");
-        if (retry) retry.classList.add("hidden");
+        if (retry && name !== "landMapUploadPanel") retry.classList.add("hidden");
       }
 
       function showRetryOnly() {
+        isScanning = false;
         showPanel("landMapUploadPanel");
         var retry = document.getElementById("landMapRetryBox");
         if (retry) retry.classList.remove("hidden");
+        // Reset file input so same/next photo can be selected
+        var fi = document.getElementById("landMapFile");
+        if (fi) try { fi.value = ""; } catch (e) {}
       }
 
       function saveForContract(extract) {
@@ -4523,220 +4528,35 @@ EXPLORER_HTML = r"""
       function openOfficialUrl(url) {
         if (!url) return false;
         url = String(url).trim();
+        try { console.log("[Adika Digital System] openLink:", url); } catch (e0) {}
+        var opened = false;
         try {
           if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === "function") {
-            Telegram.WebApp.openLink(url);
-            return true;
-          }
-        } catch (e0) {}
-        try {
-          if (typeof tg !== "undefined" && tg && typeof tg.openLink === "function") {
-            tg.openLink(url);
-            return true;
+            try {
+              Telegram.WebApp.openLink(url, { try_instant_view: false });
+            } catch (eOpt) {
+              Telegram.WebApp.openLink(url);
+            }
+            opened = true;
           }
         } catch (e1) {}
-        try {
-          window.open(url, "_blank", "noopener,noreferrer");
-          return true;
-        } catch (e2) {
-          try { window.location.href = url; } catch (e3) {}
-          return false;
-        }
-      }
-
-      function redirectWithExtract(extract) {
-        extract = extract || {};
-        // Prefer raw / url / upin string through universal decoder
-        var candidates = [
-          extract.url,
-          extract.raw,
-          extract.upin,
-          extract.cert,
-          extract.plot
-        ];
-        for (var i = 0; i < candidates.length; i++) {
-          if (candidates[i] && handleParsedLandPayload(candidates[i])) {
-            try {
-              showPanel("landMapUploadPanel");
-              var retry = document.getElementById("landMapRetryBox");
-              if (retry) retry.classList.add("hidden");
-            } catch (e) {}
-            return;
-          }
-        }
-        // Compose from fields
-        if (extract.upin) {
-          if (handleParsedLandPayload(String(extract.upin))) return;
-        }
-        showRetryOnly();
-      }
-
-
-      function buildOfficialUrl(extract) {
-        extract = extract || {};
-        if (extract.url && /^https?:\/\//i.test(extract.url)) return extract.url;
-        var upin = (extract.upin || "").trim();
-        var cert = (extract.cert || "").trim();
-        if (upin) return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(upin);
-        if (cert) return CADASTRE_SEARCH + "?q=" + encodeURIComponent(cert);
-        return null;
-      }
-
-      function parseQrPayload(raw) {
-        var out = { upin: "", cert: "", name: "", area: "", sub_city: "", url: "", raw: raw || "" };
-        if (!raw) return out;
-        var s = String(raw).trim();
-        if (/^https?:\/\//i.test(s)) {
-          out.url = s;
+        if (!opened) {
           try {
-            var u = new URL(s);
-            out.upin = u.searchParams.get("upin") || u.searchParams.get("UPIN") || u.searchParams.get("id") || "";
-            out.cert = u.searchParams.get("cert") || u.searchParams.get("certificate") || "";
-          } catch (e) {}
-          // path segment fallback e.g. /verify/AA0009...
-          if (!out.upin) {
-            var m = s.match(/\b(AA\d{8,})\b/i);
-            if (m) out.upin = m[1];
-          }
-          return out;
-        }
-        try {
-          if (s.charAt(0) === "{") {
-            var j = JSON.parse(s);
-            out.upin = j.upin || j.UPIN || j.parcel_id || "";
-            out.cert = j.certificate || j.cert_no || "";
-            out.name = j.owner || j.name || "";
-            out.url = j.url || j.verify_url || j.link || "";
-            return out;
-          }
-        } catch (e2) {}
-        try {
-          var q = s.indexOf("?") >= 0 ? s.split("?")[1] : s;
-          q.split("&").forEach(function(pair) {
-            var kv = pair.split("=");
-            if (kv.length < 2) return;
-            var k = decodeURIComponent(kv[0] || "").toLowerCase();
-            var v = decodeURIComponent((kv[1] || "").replace(/\+/g, " "));
-            if (k.indexOf("upin") >= 0 || k === "id") out.upin = v;
-            if (k.indexOf("cert") >= 0) out.cert = v;
-            if (k.indexOf("url") >= 0 || k.indexOf("link") >= 0) out.url = v;
-          });
-        } catch (e3) {}
-        var up = s.match(/\b(AA\d{8,})\b/i);
-        if (up && !out.upin) out.upin = up[1];
-        var cert = s.match(/\b(ETH[\d\-]{8,})\b/i);
-        if (cert && !out.cert) out.cert = cert[1];
-        // bare AA code as entire payload
-        if (!out.upin && /^AA\d{8,}$/i.test(s)) out.upin = s;
-        return out;
-      }
-
-      function tryJsQR(imageData) {
-        if (typeof jsQR !== "function") return null;
-        try {
-          var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
-          return code && code.data ? code.data : null;
-        } catch (e) {
-          return null;
-        }
-      }
-
-      function getImageData(canvas) {
-        return canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
-      }
-
-      function toGrayscaleContrast(ctx, w, h, contrast) {
-        var imgData = ctx.getImageData(0, 0, w, h);
-        var d = imgData.data;
-        var c = contrast || 1.35;
-        var intercept = 128 * (1 - c);
-        for (var i = 0; i < d.length; i += 4) {
-          var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-          g = g * c + intercept;
-          if (g < 0) g = 0;
-          if (g > 255) g = 255;
-          // mild threshold boost for QR modules
-          if (g > 160) g = 255;
-          else if (g < 90) g = 0;
-          d[i] = d[i + 1] = d[i + 2] = g;
-        }
-        ctx.putImageData(imgData, 0, 0);
-        return imgData;
-      }
-
-      function sharpen(ctx, w, h) {
-        var weights = [0, -1, 0, -1, 5, -1, 0, -1, 0];
-        var src = ctx.getImageData(0, 0, w, h);
-        var dst = ctx.createImageData(w, h);
-        var s = src.data, d = dst.data;
-        for (var y = 1; y < h - 1; y++) {
-          for (var x = 1; x < w - 1; x++) {
-            for (var ch = 0; ch < 3; ch++) {
-              var sum = 0;
-              var wi = 0;
-              for (var ky = -1; ky <= 1; ky++) {
-                for (var kx = -1; kx <= 1; kx++) {
-                  var idx = ((y + ky) * w + (x + kx)) * 4 + ch;
-                  sum += s[idx] * weights[wi++];
-                }
-              }
-              d[(y * w + x) * 4 + ch] = Math.max(0, Math.min(255, sum));
+            if (typeof tg !== "undefined" && tg && typeof tg.openLink === "function") {
+              tg.openLink(url);
+              opened = true;
             }
-            d[(y * w + x) * 4 + 3] = 255;
-          }
+          } catch (e2) {}
         }
-        ctx.putImageData(dst, 0, 0);
-        return dst;
-      }
-
-      function drawScaled(img, maxW) {
-        var canvas = document.createElement("canvas");
-        var scale = img.width > maxW ? maxW / img.width : 1;
-        // also upscale tiny images
-        if (img.width < 400) scale = 800 / Math.max(img.width, 1);
-        canvas.width = Math.max(1, Math.floor(img.width * scale));
-        canvas.height = Math.max(1, Math.floor(img.height * scale));
-        var ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        return { canvas: canvas, ctx: ctx };
-      }
-
-      function cropRegion(srcCanvas, xRatio, yRatio, wRatio, hRatio, outMax) {
-        var sx = Math.floor(srcCanvas.width * xRatio);
-        var sy = Math.floor(srcCanvas.height * yRatio);
-        var sw = Math.floor(srcCanvas.width * wRatio);
-        var sh = Math.floor(srcCanvas.height * hRatio);
-        var canvas = document.createElement("canvas");
-        var scale = outMax / Math.max(sw, sh);
-        if (scale < 1) scale = 1;
-        if (scale > 3) scale = 3;
-        canvas.width = Math.max(1, Math.floor(sw * scale));
-        canvas.height = Math.max(1, Math.floor(sh * scale));
-        var ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-        return { canvas: canvas, ctx: ctx };
-      }
-
-      function extractUpinFromPixelsHeuristic(imageData) {
-        // Extremely lightweight: not true OCR — rely on QR primarily.
-        // Placeholder for pattern if we had OCR; returns null here.
-        return null;
-      }
-
-      function hardBinarize(ctx, w, h, threshold) {
-        var thr = threshold == null ? 128 : threshold;
-        var imgData = ctx.getImageData(0, 0, w, h);
-        var d = imgData.data;
-        for (var i = 0; i < d.length; i += 4) {
-          var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-          var v = g >= thr ? 255 : 0;
-          d[i] = d[i + 1] = d[i + 2] = v;
-          d[i + 3] = 255;
+        // Always also try window.open as backup (some WebViews need both)
+        try {
+          var w = window.open(url, "_blank");
+          if (w) opened = true;
+        } catch (e3) {}
+        if (!opened) {
+          try { window.location.href = url; opened = true; } catch (e4) {}
         }
-        ctx.putImageData(imgData, 0, 0);
-        return imgData;
+        return opened;
       }
 
       function handleParsedLandPayload(payload) {
@@ -4744,22 +4564,20 @@ EXPLORER_HTML = r"""
         var decodedText = String(payload).trim();
         try { console.log("[Adika Digital System] Raw QR Output:", decodedText); } catch (e0) {}
 
-        // Case 1: Standard URL (female title deed style)
+        // Case 1: Full URL
         if (/^https?:\/\//i.test(decodedText)) {
+          saveForContract({ url: decodedText, raw: decodedText });
           openOfficialUrl(decodedText);
-          try { saveForContract({ url: decodedText, raw: decodedText }); } catch (e) {}
           return true;
         }
-
-        // Case 1b: URL embedded inside longer text / JSON string
-        var urlInText = decodedText.match(/https?:\/\/[^\s\"'<>]+/i);
+        // Case 1b: URL embedded in text
+        var urlInText = decodedText.match(/https?:\/\/[^\s\"'<>\]]+/i);
         if (urlInText) {
+          saveForContract({ url: urlInText[0], raw: decodedText });
           openOfficialUrl(urlInText[0]);
-          try { saveForContract({ url: urlInText[0], raw: decodedText }); } catch (e) {}
           return true;
         }
-
-        // Case 2: JSON object payload
+        // Case 2: JSON
         try {
           if (decodedText.charAt(0) === "{" || decodedText.charAt(0) === "[") {
             var j = JSON.parse(decodedText);
@@ -4767,203 +4585,169 @@ EXPLORER_HTML = r"""
             var jUrl = j.url || j.verify_url || j.link || j.href || "";
             var jUpin = j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || "";
             if (jUrl && /^https?:\/\//i.test(String(jUrl))) {
+              saveForContract({ url: jUrl, upin: jUpin, raw: decodedText });
               openOfficialUrl(String(jUrl));
-              try { saveForContract({ url: jUrl, upin: jUpin, raw: decodedText }); } catch (e) {}
               return true;
             }
             if (jUpin) {
-              openOfficialUrl(CADASTRE_VERIFY + "?upin=" + encodeURIComponent(String(jUpin).trim()));
-              try { saveForContract({ upin: String(jUpin).trim(), raw: decodedText }); } catch (e) {}
+              var u0 = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(String(jUpin).trim());
+              saveForContract({ upin: String(jUpin).trim(), raw: decodedText });
+              openOfficialUrl(u0);
               return true;
             }
           }
         } catch (eJson) {}
 
-        // Case 3: Raw UPIN / plot code (male cadastral style e.g. AA00091305321)
+        // Case 3: Raw UPIN patterns (male cadastral certificates)
         var upinMatch =
-          decodedText.match(/\b(AA\d{8,})\b/i) ||
-          decodedText.match(/\b(KK\d{8,})\b/i) ||
+          decodedText.match(/\b(AA\d{8,16})\b/i) ||
+          decodedText.match(/\b(KK\d{8,16})\b/i) ||
+          decodedText.match(/\b(LTP[-_]?KK[\d\-]+)\b/i) ||
           decodedText.match(/\b(LTP[-_]?[A-Z0-9\-]+)\b/i) ||
-          decodedText.match(/\b([A-Z]{1,4}\d{8,15})\b/i) ||
-          decodedText.match(/([A-Z0-9]{8,20})/i);
+          decodedText.match(/\b([A-Z]{2}\d{8,16})\b/i);
         if (upinMatch) {
-          var extractedUpin = upinMatch[1] || upinMatch[0];
-          extractedUpin = String(extractedUpin).trim();
+          var extractedUpin = (upinMatch[1] || upinMatch[0]).trim();
           var cadastralUrl = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(extractedUpin);
+          saveForContract({ upin: extractedUpin, raw: decodedText });
           openOfficialUrl(cadastralUrl);
-          try { saveForContract({ upin: extractedUpin, raw: decodedText }); } catch (e) {}
           return true;
         }
-
-        // Case 4: query-string style without host (upin=AA...&...)
-        var qs = decodedText.match(/(?:upin|plot|id|code)\s*[=:]\s*([A-Z0-9\-]+)/i);
+        // Case 4: query style
+        var qs = decodedText.match(/(?:upin|plot|id|code)\s*[=:]\s*([A-Z0-9\-]{6,})/i);
         if (qs) {
           openOfficialUrl(CADASTRE_VERIFY + "?upin=" + encodeURIComponent(qs[1]));
-          try { saveForContract({ upin: qs[1], raw: decodedText }); } catch (e) {}
+          saveForContract({ upin: qs[1], raw: decodedText });
           return true;
         }
-
-        // Last resort: open default plot lookup with whole payload (no alert)
+        // Case 5: alphanumeric blob
+        if (/^[A-Z0-9\-]{8,24}$/i.test(decodedText)) {
+          openOfficialUrl(CADASTRE_VERIFY + "?upin=" + encodeURIComponent(decodedText));
+          saveForContract({ upin: decodedText, raw: decodedText });
+          return true;
+        }
         if (decodedText.length >= 6) {
           openOfficialUrl("https://e-services.addisababa.gov.et/land/verify?plot=" + encodeURIComponent(decodedText));
-          try { saveForContract({ raw: decodedText }); } catch (e) {}
+          saveForContract({ raw: decodedText });
           return true;
         }
         return false;
       }
 
+      function tryJsQR(imageData) {
+        if (typeof jsQR !== "function") return null;
+        try {
+          var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
+          return code && code.data ? String(code.data) : null;
+        } catch (e) {
+          return null;
+        }
+      }
 
+      /** Scan one region: crop → 2x upscale → stamp-aware binarize → jsQR */
+      function scanRegion(img, x0, y0, x1, y1, thresholds) {
+        var srcW = img.naturalWidth || img.width;
+        var srcH = img.naturalHeight || img.height;
+        var sx = Math.floor(srcW * x0);
+        var sy = Math.floor(srcH * y0);
+        var sw = Math.max(8, Math.floor(srcW * (x1 - x0)));
+        var sh = Math.max(8, Math.floor(srcH * (y1 - y0)));
+        // clamp
+        if (sx + sw > srcW) sw = srcW - sx;
+        if (sy + sh > srcH) sh = srcH - sy;
+        if (sw < 8 || sh < 8) return null;
+
+        var crop = document.createElement("canvas");
+        crop.width = sw; crop.height = sh;
+        var cctx = crop.getContext("2d", { willReadFrequently: true });
+        cctx.imageSmoothingEnabled = false;
+        cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+        // 2x nearest neighbor
+        var up = document.createElement("canvas");
+        up.width = sw * 2; up.height = sh * 2;
+        var uctx = up.getContext("2d", { willReadFrequently: true });
+        uctx.imageSmoothingEnabled = false;
+        uctx.drawImage(crop, 0, 0, up.width, up.height);
+
+        var thrs = thresholds || [128, 105, 150, 90];
+        for (var ti = 0; ti < thrs.length; ti++) {
+          var trial = document.createElement("canvas");
+          trial.width = up.width; trial.height = up.height;
+          var tctx = trial.getContext("2d", { willReadFrequently: true });
+          tctx.drawImage(up, 0, 0);
+          var id = tctx.getImageData(0, 0, trial.width, trial.height);
+          var d = id.data;
+          var thr = thrs[ti];
+          var contrast = 1.7;
+          var intercept = 128 * (1 - contrast);
+          for (var i = 0; i < d.length; i += 4) {
+            // Reduce blue/purple stamp influence (official seals)
+            var g = 0.40 * d[i] + 0.50 * d[i + 1] + 0.10 * d[i + 2];
+            g = g * contrast + intercept;
+            var v = g >= thr ? 255 : 0;
+            d[i] = d[i + 1] = d[i + 2] = v;
+            d[i + 3] = 255;
+          }
+          var hit = tryJsQR(id);
+          if (hit) return hit;
+        }
+        return null;
+      }
+
+      /**
+       * Universal multi-zone scanner for AA land certificates:
+       * - Female title deed: extreme top-right URL QR
+       * - Male cadastral: mid-right beside photo, often raw UPIN + purple stamp
+       */
       function multiStageScan(img, cb) {
         var found = null;
         var t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
         try {
-          var srcW = img.naturalWidth || img.width;
-          var srcH = img.naturalHeight || img.height;
-          if (!srcW || !srcH) { cb(null); return; }
-
-          // Zone 1 Top-Right | Zone 2 Mid-Right | Zone 3 Top-Left | Zone 4 handled as full downscale
+          // Ordered zones: mid-right first for male format, then top-right for female
           var zones = [
-            [0.50, 0.00, 0.50, 0.35],
-            [0.50, 0.25, 0.50, 0.35],
-            [0.00, 0.00, 0.50, 0.35]
+            // Mid-right beside photo (male cadastral) — several vertical bands
+            [0.55, 0.12, 1.00, 0.42],
+            [0.55, 0.18, 1.00, 0.48],
+            [0.50, 0.15, 1.00, 0.50],
+            // Extreme top-right (female title deed)
+            [0.55, 0.00, 1.00, 0.28],
+            [0.50, 0.00, 1.00, 0.32],
+            // Top-left alt
+            [0.00, 0.00, 0.45, 0.32],
+            // Lower-right fallback
+            [0.55, 0.35, 1.00, 0.65]
           ];
-          var thresholds = [128, 110, 145];
-
-          function scanZone(sx, sy, sw, sh, scaleUp) {
-            if (found) return;
-            sw = Math.max(1, sw); sh = Math.max(1, sh);
-            var crop = document.createElement("canvas");
-            crop.width = sw; crop.height = sh;
-            var cctx = crop.getContext("2d", { willReadFrequently: true });
-            cctx.imageSmoothingEnabled = false;
-            cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-
-            var up = document.createElement("canvas");
-            var sc = scaleUp || 2;
-            up.width = Math.max(1, Math.floor(sw * sc));
-            up.height = Math.max(1, Math.floor(sh * sc));
-            var uctx = up.getContext("2d", { willReadFrequently: true });
-            uctx.imageSmoothingEnabled = false;
-            uctx.drawImage(crop, 0, 0, up.width, up.height);
-
-            for (var ti = 0; ti < thresholds.length && !found; ti++) {
-              var trial = document.createElement("canvas");
-              trial.width = up.width; trial.height = up.height;
-              var tctx = trial.getContext("2d", { willReadFrequently: true });
-              tctx.imageSmoothingEnabled = false;
-              tctx.drawImage(up, 0, 0);
-              var id = tctx.getImageData(0, 0, trial.width, trial.height);
-              var d = id.data;
-              var contrast = 1.65;
-              var intercept = 128 * (1 - contrast);
-              var thr = thresholds[ti];
-              for (var i = 0; i < d.length; i += 4) {
-                // suppress blue/purple stamp bias (lower blue channel weight)
-                var g = 0.35 * d[i] + 0.50 * d[i + 1] + 0.15 * d[i + 2];
-                g = g * contrast + intercept;
-                var v = g >= thr ? 255 : 0;
-                d[i] = d[i + 1] = d[i + 2] = v;
-                d[i + 3] = 255;
-              }
-              tctx.putImageData(id, 0, 0);
-              found = tryJsQR(id);
-            }
-          }
-
           for (var zi = 0; zi < zones.length && !found; zi++) {
             var z = zones[zi];
-            var sx = Math.floor(srcW * z[0]);
-            var sy = Math.floor(srcH * z[1]);
-            var sw = Math.floor(srcW * z[2]);
-            var sh = Math.floor(srcH * z[3]);
-            scanZone(sx, sy, sw, sh, 2);
+            found = scanRegion(img, z[0], z[1], z[2], z[3]);
           }
-
-          // Zone 4: full image downscaled fallback
+          // Full-page light downscale last
           if (!found) {
-            var maxW = 900;
+            var srcW = img.naturalWidth || img.width;
+            var srcH = img.naturalHeight || img.height;
+            var maxW = 1000;
             var scale = srcW > maxW ? maxW / srcW : 1;
             var fw = Math.max(1, Math.floor(srcW * scale));
             var fh = Math.max(1, Math.floor(srcH * scale));
             var full = document.createElement("canvas");
             full.width = fw; full.height = fh;
             var fctx = full.getContext("2d", { willReadFrequently: true });
-            fctx.imageSmoothingEnabled = true;
             fctx.drawImage(img, 0, 0, fw, fh);
             var fid = fctx.getImageData(0, 0, fw, fh);
             var fd = fid.data;
             for (var j = 0; j < fd.length; j += 4) {
-              var g2 = 0.35 * fd[j] + 0.50 * fd[j + 1] + 0.15 * fd[j + 2];
-              var v2 = g2 >= 128 ? 255 : 0;
+              var g2 = 0.40 * fd[j] + 0.50 * fd[j + 1] + 0.10 * fd[j + 2];
+              var v2 = g2 >= 120 ? 255 : 0;
               fd[j] = fd[j + 1] = fd[j + 2] = v2;
             }
-            fctx.putImageData(fid, 0, 0);
             found = tryJsQR(fid);
           }
         } catch (e) {
           found = null;
         }
         var t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-        try { console.log("[Adika Digital System] 4-zone ms:", Math.round(t1 - t0), found ? "ok" : "miss"); } catch (e2) {}
+        try { console.log("[Adika Digital System] scan ms:", Math.round(t1 - t0), found ? "OK" : "MISS"); } catch (e2) {}
         cb(found);
-      }
-
-      function extractCodesFromText(txt) {
-        var out = { upin: "", cert: "", name: "", area: "", sub_city: "", url: "" };
-        if (!txt) return out;
-        var s = String(txt);
-        // UPIN / Plot codes used on AA certificates
-        var up =
-          s.match(/\b(AA\d{9,14})\b/i) ||
-          s.match(/\b(KK\d{9,14})\b/i) ||
-          s.match(/\b(LTP[-_]?KK[\d\-]+)\b/i) ||
-          s.match(/\b(LTP[-_][A-Z]{0,4}\d[\d\-]+)\b/i);
-        if (up) out.upin = up[1].toUpperCase();
-        var cert = s.match(/\b(ETH[\d\-]{8,})\b/i);
-        if (cert) out.cert = cert[1].toUpperCase();
-        var area = s.match(/(\d{2,5}(?:[.,]\d{1,3})?)\s*(m²|m2|sq\.?\s*m)/i);
-        if (area) out.area = area[1].replace(",", ".") + " m²";
-        var nameM =
-          s.match(/(?:Full\s*Name|Owner|የባለይዞታው\s*ሙሉ\s*ስም|ሙሉ\s*ስም)\s*[:：\-]?\s*([A-Za-z\u1200-\u137F\s]{5,50})/i);
-        if (nameM) out.name = nameM[1].replace(/\s+/g, " ").trim();
-        var cities = [
-          ["Addis Ketema", "አዲስ ከተማ"], ["Kolfe", "ኮልፌ ቀራንዮ"], ["Bole", "ቦሌ"],
-          ["Arada", "አራዳ"], ["Yeka", "የካ"], ["Lideta", "ልደታ"], ["Kirkos", "ቂርቆስ"],
-          ["Gullele", "ጉለሌ"], ["Nifas", "ንፋስ ስልክ ላፍቶ"], ["Akaki", "አቃቂ ቃሊቲ"], ["Lemi", "ሌሚ ኩራ"]
-        ];
-        for (var i = 0; i < cities.length; i++) {
-          if (s.toLowerCase().indexOf(cities[i][0].toLowerCase()) >= 0 || s.indexOf(cities[i][1]) >= 0) {
-            out.sub_city = cities[i][1];
-            break;
-          }
-        }
-        var urlM = s.match(/https?:\/\/[^\s\"']+addiscadaster[^\s\"']+/i) ||
-                   s.match(/https?:\/\/[^\s\"']+land\.[^\s\"']+/i);
-        if (urlM) out.url = urlM[0];
-        return out;
-      }
-
-      function runTesseractOCR(dataUrl, cb) {
-        function go(Tesseract) {
-          try {
-            Tesseract.recognize(dataUrl, "eng", {
-              logger: function() {}
-            }).then(function(res) {
-              var text = (res && res.data && res.data.text) || "";
-              cb(extractCodesFromText(text));
-            }).catch(function() { cb(null); });
-          } catch (e) { cb(null); }
-        }
-        if (window.Tesseract) {
-          go(window.Tesseract);
-          return;
-        }
-        // Dynamic load — only on QR failure (cost/latency)
-        var s = document.createElement("script");
-        s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-        s.onload = function() { go(window.Tesseract); };
-        s.onerror = function() { cb(null); };
-        document.head.appendChild(s);
       }
 
       function runBackendOCR(dataUrl, cb) {
@@ -4980,29 +4764,43 @@ EXPLORER_HTML = r"""
           .catch(function() { cb(null); });
       }
 
+      function finishSuccess() {
+        isScanning = false;
+        showPanel("landMapUploadPanel");
+        var retry = document.getElementById("landMapRetryBox");
+        if (retry) retry.classList.add("hidden");
+        var fi = document.getElementById("landMapFile");
+        if (fi) try { fi.value = ""; } catch (e) {}
+      }
+
       function processDataUrl(dataUrl) {
+        if (isScanning) return;
+        isScanning = true;
         showPanel("landMapScanPanel");
         var prev = document.getElementById("landMapPreview");
         if (prev) prev.src = dataUrl;
+
         var img = new Image();
         img.onload = function() {
           multiStageScan(img, function(qrRaw) {
-            if (qrRaw) {
-              var payload = String(qrRaw).trim();
-              if (handleParsedLandPayload(payload)) {
-                showPanel("landMapUploadPanel");
-                return;
-              }
-              redirectWithExtract(parseQrPayload(payload));
+            if (qrRaw && handleParsedLandPayload(qrRaw)) {
+              finishSuccess();
               return;
             }
-            // Lightweight miss path: backend OCR only (no slow client OCR by default)
-            runBackendOCR(dataUrl, function(serverFields) {
-              if (serverFields && (serverFields.upin || serverFields.cert || serverFields.url)) {
-                redirectWithExtract(serverFields);
-              } else {
-                showRetryOnly();
+            // Backend OCR fallback — extract AA/KK/LTP from document text
+            runBackendOCR(dataUrl, function(fields) {
+              if (fields) {
+                var candidate = fields.url || fields.upin || fields.cert || "";
+                if (candidate && handleParsedLandPayload(candidate)) {
+                  finishSuccess();
+                  return;
+                }
+                if (fields.upin && handleParsedLandPayload(fields.upin)) {
+                  finishSuccess();
+                  return;
+                }
               }
+              showRetryOnly();
             });
           });
         };
@@ -5019,6 +4817,7 @@ EXPLORER_HTML = r"""
           if (retry) retry.classList.add("hidden");
           var reader = new FileReader();
           reader.onload = function() { processDataUrl(reader.result); };
+          reader.onerror = function() { showRetryOnly(); };
           reader.readAsDataURL(f);
         };
       }
@@ -5026,8 +4825,9 @@ EXPLORER_HTML = r"""
       var retryBtn = document.getElementById("landMapRetryBtn");
       if (retryBtn) {
         retryBtn.onclick = function() {
+          isScanning = false;
           if (fileInput) {
-            fileInput.value = "";
+            try { fileInput.value = ""; } catch (e) {}
             fileInput.click();
           }
         };
@@ -5037,7 +4837,8 @@ EXPLORER_HTML = r"""
       if (resetBtn) {
         resetBtn.onclick = function() {
           lastExtract = null;
-          if (fileInput) fileInput.value = "";
+          isScanning = false;
+          if (fileInput) try { fileInput.value = ""; } catch (e) {}
           showPanel("landMapUploadPanel");
         };
       }
@@ -5054,13 +4855,13 @@ EXPLORER_HTML = r"""
       var shareBtn = document.getElementById("landMapShareBtn");
       if (shareBtn) {
         shareBtn.onclick = function() {
-          var url = buildOfficialUrl(lastExtract) || CADASTRE_VERIFY;
+          var u = (lastExtract && lastExtract.upin)
+            ? CADASTRE_VERIFY + "?upin=" + encodeURIComponent(lastExtract.upin)
+            : (lastExtract && lastExtract.url) || CADASTRE_VERIFY;
           if (navigator.share) {
-            navigator.share({ title: "Cadastre Verification", url: url }).catch(function(){});
-          } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(url);
+            navigator.share({ title: "Adika Digital System", url: u }).catch(function(){});
           } else {
-            openOfficialUrl(url);
+            openOfficialUrl(u);
           }
         };
       }
