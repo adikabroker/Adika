@@ -2627,3 +2627,58 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
             )
     except Exception as e:
         logger.warning(f"error notify failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Price-drop alert helper (favorites subscribers) — used by API / bot flows
+# ---------------------------------------------------------------------------
+def dispatch_price_drop_alerts(listing_id, title, old_price, new_price, bot=None):
+    """Notify users who favorited listing_id when price drops."""
+    try:
+        from models import get_favorite_subscribers
+        subs = get_favorite_subscribers(listing_id) or []
+        try:
+            new_n = int(float(str(new_price).replace(",", "").replace("ETB", "").strip() or 0))
+            old_n = int(float(str(old_price).replace(",", "").replace("ETB", "").strip() or 0))
+            price_fmt = f"{new_n:,}"
+            old_fmt = f"{old_n:,}"
+        except Exception:
+            price_fmt = str(new_price)
+            old_fmt = str(old_price)
+        if old_n and new_n and new_n >= old_n:
+            return 0
+        msg = (
+            f"🔥 <b>የዋጋ ቅናሽ!</b>\n\n"
+            f"<b>{title or 'ንብረት'}</b>\n"
+            f"ዋጋ ከ {old_fmt} ወደ <b>{price_fmt} ETB</b> ቀንሷል!\n"
+            f"📦 #ADK-{listing_id}\n\n"
+            f"በ Adika Marketplace Mini App ይመልከቱ።"
+        )
+        n = 0
+        for sub in subs:
+            chat_id = sub.get("chat_id") or sub.get("user_id")
+            if not chat_id:
+                continue
+            try:
+                if bot is not None:
+                    # sync send if bot has bot.send_message
+                    b = getattr(bot, "bot", bot)
+                    if hasattr(b, "send_message"):
+                        import asyncio
+                        async def _s():
+                            await b.send_message(chat_id=chat_id, text=msg, parse_mode="HTML")
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if loop.is_running():
+                                asyncio.ensure_future(_s())
+                            else:
+                                loop.run_until_complete(_s())
+                        except Exception:
+                            pass
+                n += 1
+            except Exception as e:
+                logger.warning("dispatch_price_drop %s: %s", chat_id, e)
+        return n
+    except Exception as e:
+        logger.error("dispatch_price_drop_alerts: %s", e)
+        return 0
