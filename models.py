@@ -2303,3 +2303,157 @@ def build_amharic_vehicle_contract(seller, buyer, vehicle, financial, witnesses=
 ቀን: ________________     ቦታ: አዲስ አበባ
 """
     return text
+
+
+
+# ========== FAVORITES / BOOKMARKS (price-drop alerts) ==========
+
+def ensure_favorites_table():
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        if is_postgres():
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS favorites (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    chat_id BIGINT,
+                    listing_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, listing_id)
+                )
+            """)
+            try:
+                cur.execute("CREATE INDEX IF NOT EXISTS favorites_listing_idx ON favorites (listing_id)")
+            except Exception:
+                pass
+        else:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS favorites (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER,
+                    listing_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, listing_id)
+                )
+            """)
+            try:
+                cur.execute("CREATE INDEX IF NOT EXISTS favorites_listing_idx ON favorites (listing_id)")
+            except Exception:
+                pass
+            conn.commit()
+    except Exception as e:
+        logger.error("ensure_favorites_table: %s", e)
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def toggle_favorite(user_id, listing_id, chat_id=None, action=None):
+    """Add or remove favorite. action: 'add'|'remove'|None (toggle). Returns {'favorited': bool}."""
+    ensure_favorites_table()
+    conn = None
+    try:
+        uid = int(user_id)
+        lid = int(listing_id)
+        cid = int(chat_id) if chat_id else uid
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        cur.execute(f"SELECT id FROM favorites WHERE user_id = {p} AND listing_id = {p}", (uid, lid))
+        row = cur.fetchone()
+        exists = bool(row)
+        if action == "add" or (action is None and not exists):
+            if not exists:
+                cur.execute(
+                    f"INSERT INTO favorites (user_id, chat_id, listing_id) VALUES ({p}, {p}, {p})",
+                    (uid, cid, lid),
+                )
+                if not is_postgres():
+                    conn.commit()
+            return {"favorited": True}
+        if action == "remove" or (action is None and exists):
+            cur.execute(f"DELETE FROM favorites WHERE user_id = {p} AND listing_id = {p}", (uid, lid))
+            if not is_postgres():
+                conn.commit()
+            return {"favorited": False}
+        return {"favorited": exists}
+    except Exception as e:
+        logger.error("toggle_favorite: %s", e)
+        return {"favorited": False, "error": str(e)}
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def get_favorite_subscribers(listing_id):
+    """Return list of {user_id, chat_id} who bookmarked listing."""
+    ensure_favorites_table()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        cur.execute(
+            f"SELECT user_id, chat_id FROM favorites WHERE listing_id = {p}",
+            (int(listing_id),),
+        )
+        rows = cur.fetchall() or []
+        out = []
+        for row in rows:
+            d = dict(row) if isinstance(row, dict) else {"user_id": row[0], "chat_id": row[1] if len(row) > 1 else row[0]}
+            out.append({
+                "user_id": d.get("user_id"),
+                "chat_id": d.get("chat_id") or d.get("user_id"),
+            })
+        return out
+    except Exception as e:
+        logger.error("get_favorite_subscribers: %s", e)
+        return []
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def update_listing_price(listing_id, new_price):
+    """Update listing price; returns (ok, old_price, title, category)."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        lid = int(listing_id)
+        cur.execute(f"SELECT price, sub_category, main_category, description FROM listings WHERE id = {p}", (lid,))
+        row = cur.fetchone()
+        if not row:
+            return False, None, None, None
+        d = dict(row) if isinstance(row, dict) else {
+            "price": row[0], "sub_category": row[1], "main_category": row[2], "description": row[3] if len(row) > 3 else ""
+        }
+        old_price = d.get("price")
+        title = d.get("sub_category") or d.get("main_category") or f"#{lid}"
+        cat = d.get("main_category") or ""
+        cur.execute(f"UPDATE listings SET price = {p} WHERE id = {p}", (str(new_price), lid))
+        if not is_postgres():
+            conn.commit()
+        return True, old_price, title, cat
+    except Exception as e:
+        logger.error("update_listing_price: %s", e)
+        return False, None, None, None
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
