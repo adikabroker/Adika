@@ -1497,6 +1497,118 @@ def register_api_routes(web_app):
 
 
 
+
+    @web_app.route('/api/land-map/ocr', methods=['POST', 'OPTIONS'])
+    def api_land_map_ocr():
+        """Extract UPIN/plot codes from land certificate photo. Used only when client QR fails."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            image_data = data.get("image_data") or ""
+            if not image_data:
+                return jsonify({"success": False, "message": "no image"}), 400
+
+            # Fast path: regex on any embedded text if client already sent text
+            text_hint = str(data.get("text") or "")
+            def from_text(s):
+                import re as _re
+                out = {"upin": "", "cert": "", "name": "", "area": "", "sub_city": "", "url": ""}
+                if not s:
+                    return out
+                m = _re.search(r'\b(AA\d{9,14}|KK\d{9,14}|LTP[-_]?KK[\d\-]+)\b', s, _re.I)
+                if m:
+                    out["upin"] = m.group(1).upper()
+                m2 = _re.search(r'\b(ETH[\d\-]{8,})\b', s, _re.I)
+                if m2:
+                    out["cert"] = m2.group(1).upper()
+                m3 = _re.search(r'(\d{2,5}(?:[.,]\d{1,3})?)\s*(?:m²|m2)', s, _re.I)
+                if m3:
+                    out["area"] = m3.group(1).replace(",", ".") + " m²"
+                m4 = _re.search(r'https?://[^\s\"\']+(?:addiscadaster|land\.)[^\s\"\']+', s, _re.I)
+                if m4:
+                    out["url"] = m4.group(0)
+                return out
+
+            if text_hint:
+                parsed = from_text(text_hint)
+                if parsed.get("upin") or parsed.get("url"):
+                    return jsonify({"success": True, "data": parsed})
+
+            api_key = (os.environ.get("OPENROUTER_API_KEY") or "").strip()
+            # Also try OPENROUTER from config if present
+            try:
+                from config import OPENROUTER_API_KEY as _OR
+                if not api_key and _OR:
+                    api_key = str(_OR).strip()
+            except Exception:
+                pass
+
+            if not api_key or requests is None:
+                return jsonify({"success": False, "message": "ocr unavailable"}), 503
+
+            image_url = image_data if str(image_data).startswith(("data:", "http")) else f"data:image/jpeg;base64,{image_data}"
+            payload = {
+                "model": os.environ.get("OPENROUTER_VISION_MODEL") or "openai/gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You extract fields from Ethiopian Addis Ababa land certificate photos. "
+                            "Return ONLY JSON keys: upin, cert, name, area, sub_city, url. "
+                            "UPIN patterns: AA############, KK############, LTP-KK... "
+                            "If a QR URL is visible as text include it in url. "
+                            "Never invent values — use empty string when unreadable."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": "Extract UPIN, owner name, area m², subcity, certificate number from this land certificate."},
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    },
+                ],
+                "temperature": 0,
+                "response_format": {"type": "json_object"},
+                "max_tokens": 400,
+            }
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": (WEBAPP_URL or "https://adika.app"),
+                "X-Title": "Adika Cadastre OCR",
+            }
+            res = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers, json=payload, timeout=40,
+            )
+            body = res.json() if res.content else {}
+            if res.status_code >= 400:
+                return jsonify({"success": False, "message": "ocr failed"}), 502
+            raw = ((body.get("choices") or [{}])[0].get("message") or {}).get("content") or "{}"
+            raw = str(raw).strip()
+            if raw.startswith("```"):
+                raw = raw.strip("`")
+                if raw.lower().startswith("json"):
+                    raw = raw[4:].strip()
+            parsed = json.loads(raw)
+            # Normalize
+            data_out = {
+                "upin": str(parsed.get("upin") or "").strip().upper(),
+                "cert": str(parsed.get("cert") or parsed.get("certificate_no") or "").strip().upper(),
+                "name": str(parsed.get("name") or "").strip(),
+                "area": str(parsed.get("area") or "").strip(),
+                "sub_city": str(parsed.get("sub_city") or "").strip(),
+                "url": str(parsed.get("url") or "").strip(),
+            }
+            ok = bool(data_out["upin"] or data_out["cert"] or data_out["url"])
+            return jsonify({"success": ok, "data": data_out})
+        except Exception as e:
+            logger.error(f"land-map ocr: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
     @web_app.route('/api/land-map/verify', methods=['POST', 'OPTIONS'])
     def api_land_map_verify():
         """Cadastral map field validation — Adika Digital System (no external AI)."""
