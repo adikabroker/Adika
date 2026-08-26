@@ -1888,7 +1888,7 @@ EXPLORER_HTML = r"""
                 <option>አራዳ</option>
                 <option>ቦሌ</option>
                 <option>ጉለሌ</option>
-                <option>ኪርኮስ</option>
+                <option>ቂርቆስ</option>
                 <option>ኮልፌ ቀራንዮ</option>
                 <option>ልደታ</option>
                 <option>ንፋስ ስልክ ላፍቶ</option>
@@ -1913,7 +1913,7 @@ EXPLORER_HTML = r"""
                 <option>አራዳ</option>
                 <option>ቦሌ</option>
                 <option>ጉለሌ</option>
-                <option>ኪርኮስ</option>
+                <option>ቂርቆስ</option>
                 <option>ኮልፌ ቀራንዮ</option>
                 <option>ልደታ</option>
                 <option>ንፋስ ስልክ ላፍቶ</option>
@@ -1953,7 +1953,7 @@ EXPLORER_HTML = r"""
                 <option>አራዳ</option>
                 <option>ቦሌ</option>
                 <option>ጉለሌ</option>
-                <option>ኪርኮስ</option>
+                <option>ቂርቆስ</option>
                 <option>ኮልፌ ቀራንዮ</option>
                 <option>ልደታ</option>
                 <option>ንፋስ ስልክ ላፍቶ</option>
@@ -2007,7 +2007,8 @@ EXPLORER_HTML = r"""
             <input id="cRentAdvanceMonths" type="text" placeholder="የተከፈለ ቅድመ ወራት ብዛት (ለቤት ኪራይ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
             <input id="cRentAdvanceTotal" type="text" placeholder="ጠቅላላ የተከፈለ ቅድመ ኪራይ (ብር)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
           </div>
-          <input id="cPenalty" type="text" placeholder="የካሳ መጠን (ብር) — አማራጭ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          <label class="font-bold text-slate-600 block mb-1">የውል ማፍረሻ ካሳ (በብር)</label>
+          <input id="cPenalty" type="text" value="50000" placeholder="50000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
           <input id="cContractDate" type="text" placeholder="የውል ቀን (ምሳ. መስከረም 15 ቀን 2018 ዓ.ም)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
 
           <details class="rounded-xl border border-slate-200 bg-white" open>
@@ -4634,17 +4635,33 @@ EXPLORER_HTML = r"""
             if (result) {
               result.classList.remove("hidden");
               var cid = res.contract_id || draftId || "";
+              var pdfUrl = "/api/contracts/" + encodeURIComponent(cid) + "/export-pdf";
               result.innerHTML =
                 '<div class="font-black text-slate-800 text-[11px]">✅ ውል ተጠናቋል</div>' +
                 '<div class="text-[10px] text-slate-600">#' + esc(String(cid)) + '</div>' +
-                '<div class="flex gap-2 pt-1">' +
-                  '<a href="/api/contracts/' + encodeURIComponent(cid) + '/export-pdf" target="_blank" class="flex-1 text-center py-2 rounded-xl bg-slate-900 text-white font-bold text-[10px]">📥 PDF አውርድ</a>' +
-                  '<button type="button" id="cPrintBtn" class="flex-1 py-2 rounded-xl bg-[#16acbd] text-white font-bold text-[10px]">🖨️ ህትመት</button>' +
+                '<div class="grid grid-cols-3 gap-1.5 pt-1">' +
+                  '<a href="' + pdfUrl + '" target="_blank" class="text-center py-2 rounded-xl bg-slate-900 text-white font-bold text-[10px]">📥 PDF አውርድ</a>' +
+                  '<button type="button" id="cPrintBtn" class="py-2 rounded-xl bg-[#16acbd] text-white font-bold text-[10px]">🖨️ ህትመት</button>' +
+                  '<button type="button" id="cShareBtn" class="py-2 rounded-xl bg-emerald-600 text-white font-bold text-[10px]">📤 ውል አጋራ</button>' +
                 '</div>' +
                 '<pre class="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-[10px] bg-white p-2 rounded-lg border leading-relaxed">' + esc(res.contract_text || "") + '</pre>';
               var pb = document.getElementById("cPrintBtn");
               if (pb) pb.onclick = function() {
-                window.open("/api/contracts/" + encodeURIComponent(cid) + "/export-pdf?print=1", "_blank");
+                window.open(pdfUrl + "?print=1", "_blank");
+              };
+              var sb = document.getElementById("cShareBtn");
+              if (sb) sb.onclick = function() {
+                var abs = (window.location.origin || "") + pdfUrl;
+                if (navigator.share) {
+                  navigator.share({ title: "Adika ውል #" + cid, text: "ህጋዊ ውል — Adika Marketplace", url: abs }).catch(function(){});
+                } else if (navigator.clipboard && navigator.clipboard.writeText) {
+                  navigator.clipboard.writeText(abs).then(function() {
+                    if (tg && tg.showAlert) tg.showAlert("ሊንኩ ተቀድቷል");
+                    else alert("ሊንኩ ተቀድቷል");
+                  });
+                } else {
+                  window.open(pdfUrl, "_blank");
+                }
               };
             }
             showStep(3);
