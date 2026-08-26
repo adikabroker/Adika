@@ -4490,7 +4490,7 @@ EXPLORER_HTML = r"""
     // ========== Digital Cadastral Map Verifier (Adika Digital System) ==========
     (function initLandMapVerifier() {
       var CADASTRE_VERIFY = "https://addislandfarm.gov.et/verify";
-      var CADASTRE_VERIFY_ALT = "https://land.addiscadaster.gov.et/verify";
+      // STRICT: only addislandfarm.gov.et (never dead DNS domains)
       var lastExtract = null;
       var isScanning = false;
       var pendingFinalUrl = "";
@@ -4543,63 +4543,61 @@ EXPLORER_HTML = r"""
         var s = String(scannedPayload || "").trim();
         if (!s) return "";
 
-        // Rule 1: Already a complete URL (female title deed style) — use EXACTLY
-        if (/^https?:\/\//i.test(s)) {
-          return s;
-        }
-        var urlIn = s.match(/https?:\/\/[^\s\"'<>\]]+/i);
-        if (urlIn) return urlIn[0];
+        // STRICT: only addislandfarm.gov.et (dead domains cause DNS_PROBE_FINISHED_NXDOMAIN)
 
-        // Rule 2: JSON — extract url or typed id without mixing paths
+        // Already on active portal
+        if (/addislandfarm\.gov\.et/i.test(s)) {
+          var m = s.match(/https?:\/\/[^\s\"'<>]*addislandfarm\.gov\.et[^\s\"'<>]*/i);
+          return m ? m[0] : s;
+        }
+
+        // Full URL on any host — extract token and re-host on addislandfarm
+        if (/^https?:\/\//i.test(s) || /https?:\/\//i.test(s)) {
+          var urlPart = (s.match(/https?:\/\/[^\s\"'<>\]]+/i) || [s])[0];
+          var pathTok = urlPart.match(/\/verify\/([A-Za-z0-9_\-]+)/i);
+          if (pathTok) return "https://addislandfarm.gov.et/verify/" + pathTok[1];
+          var qTok = urlPart.match(/[?&](?:upin|plot|id|code|token)=([A-Za-z0-9_\-]+)/i);
+          if (qTok) return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(qTok[1]);
+          var uuidIn = urlPart.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+          if (uuidIn) return "https://addislandfarm.gov.et/verify/" + uuidIn[0];
+          return "https://addislandfarm.gov.et/";
+        }
+
+        // JSON
         try {
           if (s.charAt(0) === "{" || s.charAt(0) === "[") {
             var j = JSON.parse(s);
             if (Array.isArray(j)) j = j[0] || {};
-            var jUrl = j.url || j.verify_url || j.link || j.href || "";
-            if (jUrl && /^https?:\/\//i.test(String(jUrl))) return String(jUrl).trim();
-            var ju = String(j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || j.token || "").trim();
-            if (ju) s = ju; // fall through to typed rules
-            else return "";
+            var jUrl = j.url || j.verify_url || j.link || "";
+            if (jUrl) return buildFinalUrl(String(jUrl));
+            s = String(j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || j.token || s).trim();
           }
         } catch (e) {}
 
         var clean = s.trim();
 
-        // Rule 3: UUID (36 chars with hyphens) → addislandfarm path ONLY
-        // https://addislandfarm.gov.et/verify/{uuid}
+        // UUID → path
         if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clean)) {
           return "https://addislandfarm.gov.et/verify/" + clean;
         }
+        var uuid2 = clean.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+        if (uuid2) return "https://addislandfarm.gov.et/verify/" + uuid2[0];
 
-        // Rule 4: Cadastral UPIN AA… → land.addiscadaster query param ONLY
-        // NEVER put AA UPIN on addislandfarm path (causes "Failed to load certificate data")
-        if (/^AA\d{6,}$/i.test(clean)) {
-          return "https://land.addiscadaster.gov.et/verify?upin=" + encodeURIComponent(clean.toUpperCase());
+        // UPIN / codes → query on addislandfarm only
+        var upin =
+          (clean.match(/\b(AA\d{6,})\b/i) ||
+           clean.match(/\b(KK\d{6,})\b/i) ||
+           clean.match(/\b(LTP[-_]?[A-Z0-9\-]+)\b/i) ||
+           clean.match(/\b([A-Z0-9]{8,20})\b/i) || [])[1];
+        if (upin) {
+          return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(upin);
         }
-
-        // Rule 5: KK… / LTP… plot-style codes → cadastre query
-        if (/^KK\d{6,}$/i.test(clean) || /^LTP[-_]?/i.test(clean)) {
-          return "https://land.addiscadaster.gov.et/verify?upin=" + encodeURIComponent(clean);
+        if (clean.length >= 6 && clean.length <= 64) {
+          return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(clean);
         }
-
-        // Rule 6: Generic alphanumeric 8–15 (possible UPIN) → cadastre query
-        if (/^[A-Z0-9]{8,15}$/i.test(clean)) {
-          return "https://land.addiscadaster.gov.et/verify?upin=" + encodeURIComponent(clean);
-        }
-
-        // Rule 7: extract AA from longer noisy text
-        var aa = clean.match(/\b(AA\d{8,16})\b/i);
-        if (aa) {
-          return "https://land.addiscadaster.gov.et/verify?upin=" + encodeURIComponent(aa[1].toUpperCase());
-        }
-        var uuid = clean.match(/\b([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\b/);
-        if (uuid) {
-          return "https://addislandfarm.gov.et/verify/" + uuid[1];
-        }
-
-        // Rule 8: Fallback — do NOT invent a path; return empty so UI can retry
-        return "";
+        return "https://addislandfarm.gov.et/";
       }
+
 
       function handleVerificationSuccess(scannedData) {
         var finalUrl = buildFinalUrl(scannedData);
@@ -4823,27 +4821,43 @@ EXPLORER_HTML = r"""
       function runBackendOCRLast(imgEl) {
         try {
           var c = document.createElement("canvas");
-          var maxW = 1200;
+          var maxW = 1400;
           var w = imgEl.naturalWidth || imgEl.width;
           var h = imgEl.naturalHeight || imgEl.height;
           var sc = w > maxW ? maxW / w : 1;
           c.width = Math.floor(w * sc);
           c.height = Math.floor(h * sc);
           c.getContext("2d").drawImage(imgEl, 0, 0, c.width, c.height);
-          var dataUrl = c.toDataURL("image/jpeg", 0.85);
-          fetch("/api/land-map/ocr", {
+          var dataUrl = c.toDataURL("image/jpeg", 0.9);
+
+          // 1) Backend pyzbar/OpenCV scan-qr
+          fetch("/api/scan-qr", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ image_data: dataUrl })
           })
-            .then(function(r) { return r.json(); })
+            .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, j: j }; }); })
             .then(function(res) {
-              if (res && res.success && res.data) {
-                var cand = res.data.url || res.data.upin || res.data.cert || "";
-                if (cand) {
-                  handleVerificationSuccess(cand);
+              if (res.j && res.j.success && (res.j.target_url || res.j.payload)) {
+                if (res.j.target_url) {
+                  triggerAdikaSuccessModal(res.j.payload || res.j.target_url, res.j.target_url);
                   return;
                 }
+                handleVerificationSuccess(res.j.payload);
+                return;
+              }
+              // 2) Fallback OCR field extract
+              return fetch("/api/land-map/ocr", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image_data: dataUrl })
+              }).then(function(r2) { return r2.json(); });
+            })
+            .then(function(res2) {
+              if (!res2) return;
+              if (res2.success && res2.data) {
+                var cand = res2.data.url || res2.data.upin || res2.data.cert || "";
+                if (cand) { handleVerificationSuccess(cand); return; }
               }
               showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
             })
