@@ -1035,6 +1035,13 @@ EXPLORER_HTML = r"""
     }
     .tool-icon-wrap svg { width: 12px; height: 12px; }
 
+    .adika-success-pulse {
+      animation: adikaPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes adikaPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0.35); }
+      50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+    }
     .land-scan-laser {
       background: linear-gradient(180deg, transparent 0%, rgba(34,211,238,0.15) 48%, rgba(34,211,238,0.55) 50%, rgba(34,211,238,0.15) 52%, transparent 100%);
       background-size: 100% 200%;
@@ -2153,6 +2160,7 @@ EXPLORER_HTML = r"""
             </div>
             <input id="landMapFile" type="file" accept="image/*" capture="environment" class="hidden" />
           </label>
+          <div id="landMapToast" class="hidden mb-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold text-center leading-snug"></div>
           <div id="landMapRetryBox" class="hidden">
             <button type="button" id="landMapRetryBtn" class="w-full py-3 rounded-xl bg-[#1e73be] text-white font-bold text-xs shadow">
               📷 እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያንሱ
@@ -2171,30 +2179,32 @@ EXPLORER_HTML = r"""
           </div>
         </div>
 
-        <div id="landMapResultPanel" class="hidden space-y-0 -mx-4 -mt-1">
-          <!-- DARA-style blue agency banner -->
-          <div class="bg-[#1e73be] text-white px-3 py-3 text-center">
-            <div class="font-black text-[11px] leading-snug tracking-tight">አዲስ አበባ ከተማ አስተዳደር</div>
-            <div class="font-bold text-[10px] leading-snug mt-0.5">የመሬት ይዞታ ምዝገባና መረጃ ኤጀንሲ</div>
-            <div class="text-[9px] text-blue-100 mt-1 font-medium">Adika Digital Verification Portal</div>
-          </div>
-
-          <!-- Success badge -->
-          <div class="mx-3 mt-3 mb-2 flex items-center gap-2.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5">
-            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-600 text-white text-sm font-black">✔</span>
-            <span class="font-black text-[12px] text-[#155724]">ይህ መረጃ የተረጋገጠ ነው</span>
-          </div>
-
-          <!-- Dynamic DARA cards injected here -->
-          <div id="landMapResultGrid" class="px-3 pb-3 space-y-2.5 text-[11px]"></div>
-
-          <div class="px-3 pb-3 space-y-2">
-            <p class="text-[9px] text-slate-500 leading-relaxed">ይህ መረጃ በአዲስ አበባ ከተማ አስተዳደር የመሬት ይዞታ ምዝገባና መረጃ ኤጀንሲ ማዕከላዊ ካዳስተር ዳታቤዝ መሠረት በ Adika Digital System በጥንቃቄ የተረጋገጠ ነው።</p>
-            <div class="grid grid-cols-2 gap-2">
-              <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-lg bg-[#1e73be] text-white font-bold text-[10px] shadow-sm">📄 መረጃውን ወደ ውል አዛውር</button>
-              <button type="button" id="landMapShareBtn" class="py-2.5 rounded-lg bg-slate-800 text-white font-bold text-[10px]">📤 ማረጋገጫውን አጋራ</button>
+        <div id="landMapResultPanel" class="hidden space-y-0">
+          <div id="adikaSuccessModal" class="rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-white">
+            <div class="bg-gradient-to-r from-[#0e4d8b] via-[#1e73be] to-[#16acbd] px-4 py-4 text-center text-white">
+              <div class="text-[10px] font-bold tracking-wide opacity-90">ADIKA DIGITAL SYSTEM</div>
+              <div class="font-black text-sm mt-1 leading-snug">የአዲካ ዲጂታል ማረጋገጫ</div>
+              <div class="text-[10px] mt-0.5 text-blue-100">Adika Digital Verification</div>
             </div>
-            <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px]">← አዲስ ማጣሪያ</button>
+            <div class="px-4 pt-4 pb-2 flex flex-col items-center text-center">
+              <div class="w-14 h-14 rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center mb-3 adika-success-pulse">
+                <span class="text-2xl text-emerald-600 font-black">✓</span>
+              </div>
+              <div class="font-black text-slate-900 text-[13px] leading-snug">የይዞታ ማረጋገጫ ሰነዱ</div>
+              <div class="font-bold text-emerald-700 text-[12px] mt-1 leading-snug">በሲስተሙ ውስጥ በተሳካ ሁኔታ ተረጋግጧል።</div>
+              <div id="adikaPayloadHint" class="mt-3 w-full p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-mono text-slate-600 break-all hidden"></div>
+            </div>
+            <div class="px-4 pb-4 space-y-2">
+              <button type="button" id="adikaViewResultBtn" class="w-full py-3 rounded-xl bg-[#1e73be] hover:bg-[#1862a3] text-white font-black text-sm shadow-md active:scale-[0.98] transition">
+                ውጤቱን ይመልከቱ
+              </button>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-xl bg-slate-100 text-slate-800 font-bold text-[10px]">📄 ወደ ውል አዛውር</button>
+                <button type="button" id="landMapShareBtn" class="py-2.5 rounded-xl bg-slate-800 text-white font-bold text-[10px]">📤 አጋራ</button>
+              </div>
+              <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-xl text-slate-500 font-bold text-[10px]">← አዲስ ማጣሪያ</button>
+              <p class="text-[9px] text-slate-400 text-center leading-relaxed">በ Adika Digital System የተረጋገጠ · ኦፊሴላዊ ውጤት ከመንግሥት ሰርቨር</p>
+            </div>
           </div>
         </div>
       </div>
@@ -4477,25 +4487,34 @@ EXPLORER_HTML = r"""
 
 
 
-    // ========== Digital Cadastral Map Verifier — Photo-only multi-stage QR ==========
+    // ========== Digital Cadastral Map Verifier (Adika Digital System) ==========
     (function initLandMapVerifier() {
-      var CADASTRE_VERIFY = "https://land.addiscadaster.gov.et/verify";
-      var CADASTRE_SEARCH = "https://land.addiscadaster.gov.et/search";
+      var CADASTRE_VERIFY = "https://addislandfarm.gov.et/verify";
+      var CADASTRE_VERIFY_ALT = "https://land.addiscadaster.gov.et/verify";
       var lastExtract = null;
+      var isScanning = false;
+      var pendingFinalUrl = "";
 
       function showPanel(name) {
         ["landMapUploadPanel", "landMapScanPanel", "landMapResultPanel"].forEach(function(id) {
           var el = document.getElementById(id);
           if (el) el.classList.toggle("hidden", id !== name);
         });
-        var retry = document.getElementById("landMapRetryBox");
-        if (retry) retry.classList.add("hidden");
       }
 
-      function showRetryOnly() {
+      function showErrorToast(msg) {
+        isScanning = false;
         showPanel("landMapUploadPanel");
+        var toast = document.getElementById("landMapToast");
+        if (toast) {
+          toast.textContent = msg || "እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።";
+          toast.classList.remove("hidden");
+          setTimeout(function() { try { toast.classList.add("hidden"); } catch (e) {} }, 5000);
+        }
         var retry = document.getElementById("landMapRetryBox");
         if (retry) retry.classList.remove("hidden");
+        var fi = document.getElementById("landMapFile");
+        if (fi) try { fi.value = ""; } catch (e) {}
       }
 
       function saveForContract(extract) {
@@ -4520,410 +4539,315 @@ EXPLORER_HTML = r"""
         } catch (e) {}
       }
 
+      function buildFinalUrl(scannedPayload) {
+        var s = String(scannedPayload || "").trim();
+        if (!s) return "";
+
+        // 1) Full URL — keep official portals as-is (addislandfarm, addiscadaster, e-services, etc.)
+        if (/^https?:\/\//i.test(s)) {
+          return s;
+        }
+        var urlIn = s.match(/https?:\/\/[^\s\"'<>\]]+/i);
+        if (urlIn) return urlIn[0];
+
+        // 2) JSON payload
+        try {
+          if (s.charAt(0) === "{" || s.charAt(0) === "[") {
+            var j = JSON.parse(s);
+            if (Array.isArray(j)) j = j[0] || {};
+            var jUrl = j.url || j.verify_url || j.link || j.href || "";
+            if (jUrl && /^https?:\/\//i.test(String(jUrl))) return String(jUrl).trim();
+            var ju = j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || j.token || "";
+            if (ju) {
+              ju = String(ju).trim();
+              // Prefer path-style used by addislandfarm: /verify/{code}
+              if (/^[A-Za-z0-9_\-]+$/.test(ju) && ju.length >= 8) {
+                return CADASTRE_VERIFY + "/" + encodeURIComponent(ju);
+              }
+              return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(ju);
+            }
+          }
+        } catch (e) {}
+
+        // 3) Raw UPIN / plot codes → addislandfarm verify
+        var upinMatch =
+          s.match(/\b(AA\d{8,16})\b/i) ||
+          s.match(/\b(KK\d{8,16})\b/i) ||
+          s.match(/\b(LTP[-_]?[A-Z0-9\-]+)\b/i) ||
+          s.match(/\b([A-Z]{2}\d{8,16})\b/i) ||
+          s.match(/\b([A-Za-z0-9_\-]{10,40})\b/);
+        if (upinMatch) {
+          var upin = (upinMatch[1] || upinMatch[0]).trim();
+          // Path form: https://addislandfarm.gov.et/verify/UPIN
+          return CADASTRE_VERIFY + "/" + encodeURIComponent(upin);
+        }
+
+        // 4) query-style fragments
+        var qs = s.match(/(?:upin|plot|id|code|token)\s*[=:\/]\s*([A-Za-z0-9_\-]{6,})/i);
+        if (qs) {
+          return CADASTRE_VERIFY + "/" + encodeURIComponent(qs[1]);
+        }
+
+        if (s.length >= 6 && s.length <= 64) {
+          return CADASTRE_VERIFY + "/" + encodeURIComponent(s);
+        }
+        return "";
+      }
+
+
+      function extractUpinHint(payload, finalUrl) {
+        var s = String(payload || "");
+        var m = s.match(/\b(AA\d{8,16}|KK\d{8,16}|LTP[-_]?[A-Z0-9\-]+)\b/i);
+        if (m) return m[1] || m[0];
+        try {
+          var u = new URL(finalUrl);
+          return u.searchParams.get("upin") || u.searchParams.get("plot") || "";
+        } catch (e) {
+          return "";
+        }
+      }
+
       function openOfficialUrl(url) {
         if (!url) return false;
         url = String(url).trim();
         try {
           if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === "function") {
-            Telegram.WebApp.openLink(url);
+            try { Telegram.WebApp.openLink(url, { try_instant_view: false }); }
+            catch (e0) { Telegram.WebApp.openLink(url); }
             return true;
           }
-        } catch (e0) {}
+        } catch (e1) {}
         try {
           if (typeof tg !== "undefined" && tg && typeof tg.openLink === "function") {
             tg.openLink(url);
             return true;
           }
-        } catch (e1) {}
-        try {
-          window.open(url, "_blank", "noopener,noreferrer");
-          return true;
-        } catch (e2) {
-          try { window.location.href = url; } catch (e3) {}
-          return false;
-        }
+        } catch (e2) {}
+        try { window.open(url, "_blank"); return true; } catch (e3) {}
+        try { window.location.href = url; return true; } catch (e4) {}
+        return false;
       }
 
-      function redirectWithExtract(extract) {
-        extract = extract || {};
-        saveForContract(extract);
-        var raw = String(extract.raw || "").trim();
-        var url = null;
-        // Direct URL from QR payload
-        if (extract.url && /^https?:\/\//i.test(String(extract.url).trim())) {
-          url = String(extract.url).trim();
-        } else if (/^https?:\/\//i.test(raw)) {
-          url = raw;
-        } else if (typeof buildOfficialUrl === "function") {
-          url = buildOfficialUrl(extract);
-        }
-        if (!url) {
-          var code = String(extract.upin || extract.cert || "").trim();
-          if (code) url = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(code);
-        }
-        if (!url) {
-          showRetryOnly();
+      /** Show professional Adika success modal — NO auto-redirect */
+      function triggerAdikaSuccessModal(scannedPayload) {
+        isScanning = false;
+        var finalUrl = buildFinalUrl(scannedPayload);
+        if (!finalUrl) {
+          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
           return;
         }
-        // IMMEDIATE open — no intermediate modals/cards
-        openOfficialUrl(url);
-        try {
-          showPanel("landMapUploadPanel");
-          var retry = document.getElementById("landMapRetryBox");
-          if (retry) retry.classList.add("hidden");
-        } catch (e) {}
-      }
+        pendingFinalUrl = finalUrl;
+        var upin = extractUpinHint(scannedPayload, finalUrl);
+        saveForContract({
+          raw: String(scannedPayload || ""),
+          url: finalUrl,
+          upin: upin || ""
+        });
 
-      function buildOfficialUrl(extract) {
-        extract = extract || {};
-        if (extract.url && /^https?:\/\//i.test(extract.url)) return extract.url;
-        var upin = (extract.upin || "").trim();
-        var cert = (extract.cert || "").trim();
-        if (upin) return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(upin);
-        if (cert) return CADASTRE_SEARCH + "?q=" + encodeURIComponent(cert);
-        return null;
-      }
-
-      function parseQrPayload(raw) {
-        var out = { upin: "", cert: "", name: "", area: "", sub_city: "", url: "", raw: raw || "" };
-        if (!raw) return out;
-        var s = String(raw).trim();
-        if (/^https?:\/\//i.test(s)) {
-          out.url = s;
-          try {
-            var u = new URL(s);
-            out.upin = u.searchParams.get("upin") || u.searchParams.get("UPIN") || u.searchParams.get("id") || "";
-            out.cert = u.searchParams.get("cert") || u.searchParams.get("certificate") || "";
-          } catch (e) {}
-          // path segment fallback e.g. /verify/AA0009...
-          if (!out.upin) {
-            var m = s.match(/\b(AA\d{8,})\b/i);
-            if (m) out.upin = m[1];
+        var hint = document.getElementById("adikaPayloadHint");
+        if (hint) {
+          if (upin) {
+            hint.textContent = "መለያ: " + upin;
+            hint.classList.remove("hidden");
+          } else {
+            hint.classList.add("hidden");
           }
-          return out;
         }
-        try {
-          if (s.charAt(0) === "{") {
-            var j = JSON.parse(s);
-            out.upin = j.upin || j.UPIN || j.parcel_id || "";
-            out.cert = j.certificate || j.cert_no || "";
-            out.name = j.owner || j.name || "";
-            out.url = j.url || j.verify_url || j.link || "";
-            return out;
-          }
-        } catch (e2) {}
-        try {
-          var q = s.indexOf("?") >= 0 ? s.split("?")[1] : s;
-          q.split("&").forEach(function(pair) {
-            var kv = pair.split("=");
-            if (kv.length < 2) return;
-            var k = decodeURIComponent(kv[0] || "").toLowerCase();
-            var v = decodeURIComponent((kv[1] || "").replace(/\+/g, " "));
-            if (k.indexOf("upin") >= 0 || k === "id") out.upin = v;
-            if (k.indexOf("cert") >= 0) out.cert = v;
-            if (k.indexOf("url") >= 0 || k.indexOf("link") >= 0) out.url = v;
-          });
-        } catch (e3) {}
-        var up = s.match(/\b(AA\d{8,})\b/i);
-        if (up && !out.upin) out.upin = up[1];
-        var cert = s.match(/\b(ETH[\d\-]{8,})\b/i);
-        if (cert && !out.cert) out.cert = cert[1];
-        // bare AA code as entire payload
-        if (!out.upin && /^AA\d{8,}$/i.test(s)) out.upin = s;
-        return out;
+
+        var viewBtn = document.getElementById("adikaViewResultBtn");
+        if (viewBtn) {
+          viewBtn.onclick = function() {
+            openOfficialUrl(pendingFinalUrl || finalUrl);
+          };
+        }
+
+        showPanel("landMapResultPanel");
+        var fi = document.getElementById("landMapFile");
+        if (fi) try { fi.value = ""; } catch (e) {}
       }
 
-      function tryJsQR(imageData) {
-        if (typeof jsQR !== "function") return null;
+      function tryJsQROnImageData(imageData) {
+        if (typeof jsQR !== "function" || !imageData) return null;
         try {
           var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
-          return code && code.data ? code.data : null;
+          return code && code.data ? String(code.data) : null;
         } catch (e) {
           return null;
         }
       }
 
-      function getImageData(canvas) {
-        return canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
-      }
-
-      function toGrayscaleContrast(ctx, w, h, contrast) {
-        var imgData = ctx.getImageData(0, 0, w, h);
-        var d = imgData.data;
-        var c = contrast || 1.35;
-        var intercept = 128 * (1 - c);
+      function enhanceAndScanCanvas(srcCanvas) {
+        // Binarize copy for stamp resistance
+        var c = document.createElement("canvas");
+        c.width = srcCanvas.width;
+        c.height = srcCanvas.height;
+        var ctx = c.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(srcCanvas, 0, 0);
+        var id = ctx.getImageData(0, 0, c.width, c.height);
+        var d = id.data;
         for (var i = 0; i < d.length; i += 4) {
-          var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-          g = g * c + intercept;
-          if (g < 0) g = 0;
-          if (g > 255) g = 255;
-          // mild threshold boost for QR modules
-          if (g > 160) g = 255;
-          else if (g < 90) g = 0;
-          d[i] = d[i + 1] = d[i + 2] = g;
-        }
-        ctx.putImageData(imgData, 0, 0);
-        return imgData;
-      }
-
-      function sharpen(ctx, w, h) {
-        var weights = [0, -1, 0, -1, 5, -1, 0, -1, 0];
-        var src = ctx.getImageData(0, 0, w, h);
-        var dst = ctx.createImageData(w, h);
-        var s = src.data, d = dst.data;
-        for (var y = 1; y < h - 1; y++) {
-          for (var x = 1; x < w - 1; x++) {
-            for (var ch = 0; ch < 3; ch++) {
-              var sum = 0;
-              var wi = 0;
-              for (var ky = -1; ky <= 1; ky++) {
-                for (var kx = -1; kx <= 1; kx++) {
-                  var idx = ((y + ky) * w + (x + kx)) * 4 + ch;
-                  sum += s[idx] * weights[wi++];
-                }
-              }
-              d[(y * w + x) * 4 + ch] = Math.max(0, Math.min(255, sum));
-            }
-            d[(y * w + x) * 4 + 3] = 255;
-          }
-        }
-        ctx.putImageData(dst, 0, 0);
-        return dst;
-      }
-
-      function drawScaled(img, maxW) {
-        var canvas = document.createElement("canvas");
-        var scale = img.width > maxW ? maxW / img.width : 1;
-        // also upscale tiny images
-        if (img.width < 400) scale = 800 / Math.max(img.width, 1);
-        canvas.width = Math.max(1, Math.floor(img.width * scale));
-        canvas.height = Math.max(1, Math.floor(img.height * scale));
-        var ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        return { canvas: canvas, ctx: ctx };
-      }
-
-      function cropRegion(srcCanvas, xRatio, yRatio, wRatio, hRatio, outMax) {
-        var sx = Math.floor(srcCanvas.width * xRatio);
-        var sy = Math.floor(srcCanvas.height * yRatio);
-        var sw = Math.floor(srcCanvas.width * wRatio);
-        var sh = Math.floor(srcCanvas.height * hRatio);
-        var canvas = document.createElement("canvas");
-        var scale = outMax / Math.max(sw, sh);
-        if (scale < 1) scale = 1;
-        if (scale > 3) scale = 3;
-        canvas.width = Math.max(1, Math.floor(sw * scale));
-        canvas.height = Math.max(1, Math.floor(sh * scale));
-        var ctx = canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-        return { canvas: canvas, ctx: ctx };
-      }
-
-      function extractUpinFromPixelsHeuristic(imageData) {
-        // Extremely lightweight: not true OCR — rely on QR primarily.
-        // Placeholder for pattern if we had OCR; returns null here.
-        return null;
-      }
-
-      function hardBinarize(ctx, w, h, threshold) {
-        var thr = threshold == null ? 128 : threshold;
-        var imgData = ctx.getImageData(0, 0, w, h);
-        var d = imgData.data;
-        for (var i = 0; i < d.length; i += 4) {
-          var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-          var v = g >= thr ? 255 : 0;
+          var g = 0.40 * d[i] + 0.50 * d[i + 1] + 0.10 * d[i + 2];
+          var v = g >= 120 ? 255 : 0;
           d[i] = d[i + 1] = d[i + 2] = v;
           d[i + 3] = 255;
         }
-        ctx.putImageData(imgData, 0, 0);
-        return imgData;
+        ctx.putImageData(id, 0, 0);
+        return tryJsQROnImageData(id) || tryJsQROnImageData(ctx.getImageData(0, 0, c.width, c.height));
       }
 
-      /** Hyper-fast dual-format scan: only 2 small crops, <300ms target */
-      function multiStageScan(img, cb) {
-        var found = null;
+      function scanRegionFromImage(img, rx, ry, rw, rh) {
+        var srcW = img.naturalWidth || img.width;
+        var srcH = img.naturalHeight || img.height;
+        var x = Math.max(0, Math.floor(srcW * rx));
+        var y = Math.max(0, Math.floor(srcH * ry));
+        var w = Math.max(16, Math.floor(srcW * rw));
+        var h = Math.max(16, Math.floor(srcH * rh));
+        if (x + w > srcW) w = srcW - x;
+        if (y + h > srcH) h = srcH - y;
+        if (w < 16 || h < 16) return null;
+
+        // native crop
+        var crop = document.createElement("canvas");
+        crop.width = w; crop.height = h;
+        var cctx = crop.getContext("2d", { willReadFrequently: true });
+        cctx.imageSmoothingEnabled = false;
+        cctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+        var hit = enhanceAndScanCanvas(crop);
+        if (hit) return hit;
+
+        // 2x upscale + enhance
+        var up = document.createElement("canvas");
+        up.width = w * 2; up.height = h * 2;
+        var uctx = up.getContext("2d", { willReadFrequently: true });
+        uctx.imageSmoothingEnabled = false;
+        uctx.drawImage(crop, 0, 0, up.width, up.height);
+        hit = enhanceAndScanCanvas(up);
+        if (hit) return hit;
+
+        // multi-threshold on upscaled
+        var thresholds = [100, 128, 150, 85];
+        for (var ti = 0; ti < thresholds.length; ti++) {
+          var trial = document.createElement("canvas");
+          trial.width = up.width; trial.height = up.height;
+          var tctx = trial.getContext("2d", { willReadFrequently: true });
+          tctx.drawImage(up, 0, 0);
+          var id = tctx.getImageData(0, 0, trial.width, trial.height);
+          var d = id.data;
+          var thr = thresholds[ti];
+          for (var i = 0; i < d.length; i += 4) {
+            var g = 0.40 * d[i] + 0.50 * d[i + 1] + 0.10 * d[i + 2];
+            var v = g >= thr ? 255 : 0;
+            d[i] = d[i + 1] = d[i + 2] = v;
+            d[i + 3] = 255;
+          }
+          hit = tryJsQROnImageData(id);
+          if (hit) return hit;
+        }
+        return null;
+      }
+
+      function processUploadedCertificate(imageElement) {
         var t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-        try {
-          var srcW = img.naturalWidth || img.width;
-          var srcH = img.naturalHeight || img.height;
-          if (!srcW || !srcH) { cb(null); return; }
+        var qrData = null;
 
-          // Region A: Format 1 Top-Right  X:60-100% Y:0-30%
-          // Region B: Format 2 Mid-Right  X:60-100% Y:20-50%
-          var regions = [
-            [0.60, 0.00, 0.40, 0.30],
-            [0.60, 0.20, 0.40, 0.30]
-          ];
-          // thresholds strip blue/purple stamp overlays
-          var thresholds = [128, 110, 145];
+        // Pass 1: Top-Right (Title Deed / female format)
+        qrData = scanRegionFromImage(imageElement, 0.55, 0.00, 0.45, 0.35);
 
-          for (var ri = 0; ri < regions.length && !found; ri++) {
-            var r = regions[ri];
-            var sx = Math.floor(srcW * r[0]);
-            var sy = Math.floor(srcH * r[1]);
-            var sw = Math.max(1, Math.floor(srcW * r[2]));
-            var sh = Math.max(1, Math.floor(srcH * r[3]));
-
-            // crop at native res
-            var crop = document.createElement("canvas");
-            crop.width = sw;
-            crop.height = sh;
-            var cctx = crop.getContext("2d", { willReadFrequently: true });
-            cctx.imageSmoothingEnabled = false;
-            cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
-
-            // 2x nearest-neighbor upscale (fast, sharp modules)
-            var up = document.createElement("canvas");
-            up.width = sw * 2;
-            up.height = sh * 2;
-            var uctx = up.getContext("2d", { willReadFrequently: true });
-            uctx.imageSmoothingEnabled = false;
-            uctx.drawImage(crop, 0, 0, up.width, up.height);
-
-            for (var ti = 0; ti < thresholds.length && !found; ti++) {
-              var trial = document.createElement("canvas");
-              trial.width = up.width;
-              trial.height = up.height;
-              var tctx = trial.getContext("2d", { willReadFrequently: true });
-              tctx.imageSmoothingEnabled = false;
-              tctx.drawImage(up, 0, 0);
-              // grayscale + high contrast to kill stamp color
-              var id = tctx.getImageData(0, 0, trial.width, trial.height);
-              var d = id.data;
-              var contrast = 1.6;
-              var intercept = 128 * (1 - contrast);
-              var thr = thresholds[ti];
-              for (var i = 0; i < d.length; i += 4) {
-                var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                g = g * contrast + intercept;
-                var v = g >= thr ? 255 : 0;
-                d[i] = d[i + 1] = d[i + 2] = v;
-                d[i + 3] = 255;
-              }
-              tctx.putImageData(id, 0, 0);
-              found = tryJsQR(id);
-            }
-          }
-        } catch (e) {
-          found = null;
+        // Pass 2: Mid-Right beside photo (Cadastral / male format)
+        if (!qrData) {
+          qrData = scanRegionFromImage(imageElement, 0.55, 0.15, 0.45, 0.40);
         }
+        // Pass 2b: slightly lower mid-right
+        if (!qrData) {
+          qrData = scanRegionFromImage(imageElement, 0.50, 0.18, 0.50, 0.42);
+        }
+
+        // Pass 3: Full canvas (downscaled for speed)
+        if (!qrData) {
+          var srcW = imageElement.naturalWidth || imageElement.width;
+          var srcH = imageElement.naturalHeight || imageElement.height;
+          var maxW = 1100;
+          var scale = srcW > maxW ? maxW / srcW : 1;
+          var canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.floor(srcW * scale));
+          canvas.height = Math.max(1, Math.floor(srcH * scale));
+          var ctx = canvas.getContext("2d", { willReadFrequently: true });
+          ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+          qrData = enhanceAndScanCanvas(canvas);
+          if (!qrData) {
+            var fullData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            qrData = tryJsQROnImageData(fullData);
+          }
+        }
+
         var t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-        try { console.log("[Adika Digital System] scan ms:", Math.round(t1 - t0), found ? "ok" : "miss"); } catch (e2) {}
-        cb(found);
+        try { console.log("[Adika Digital System] scan ms:", Math.round(t1 - t0), qrData ? "OK" : "MISS"); } catch (e) {}
+
+        if (qrData) {
+          triggerAdikaSuccessModal(qrData);
+        } else {
+          // Backend OCR last resort
+          runBackendOCRLast(imageElement);
+        }
       }
 
-      function extractCodesFromText(txt) {
-        var out = { upin: "", cert: "", name: "", area: "", sub_city: "", url: "" };
-        if (!txt) return out;
-        var s = String(txt);
-        // UPIN / Plot codes used on AA certificates
-        var up =
-          s.match(/\b(AA\d{9,14})\b/i) ||
-          s.match(/\b(KK\d{9,14})\b/i) ||
-          s.match(/\b(LTP[-_]?KK[\d\-]+)\b/i) ||
-          s.match(/\b(LTP[-_][A-Z]{0,4}\d[\d\-]+)\b/i);
-        if (up) out.upin = up[1].toUpperCase();
-        var cert = s.match(/\b(ETH[\d\-]{8,})\b/i);
-        if (cert) out.cert = cert[1].toUpperCase();
-        var area = s.match(/(\d{2,5}(?:[.,]\d{1,3})?)\s*(m²|m2|sq\.?\s*m)/i);
-        if (area) out.area = area[1].replace(",", ".") + " m²";
-        var nameM =
-          s.match(/(?:Full\s*Name|Owner|የባለይዞታው\s*ሙሉ\s*ስም|ሙሉ\s*ስም)\s*[:：\-]?\s*([A-Za-z\u1200-\u137F\s]{5,50})/i);
-        if (nameM) out.name = nameM[1].replace(/\s+/g, " ").trim();
-        var cities = [
-          ["Addis Ketema", "አዲስ ከተማ"], ["Kolfe", "ኮልፌ ቀራንዮ"], ["Bole", "ቦሌ"],
-          ["Arada", "አራዳ"], ["Yeka", "የካ"], ["Lideta", "ልደታ"], ["Kirkos", "ቂርቆስ"],
-          ["Gullele", "ጉለሌ"], ["Nifas", "ንፋስ ስልክ ላፍቶ"], ["Akaki", "አቃቂ ቃሊቲ"], ["Lemi", "ሌሚ ኩራ"]
-        ];
-        for (var i = 0; i < cities.length; i++) {
-          if (s.toLowerCase().indexOf(cities[i][0].toLowerCase()) >= 0 || s.indexOf(cities[i][1]) >= 0) {
-            out.sub_city = cities[i][1];
-            break;
-          }
-        }
-        var urlM = s.match(/https?:\/\/[^\s\"']+addiscadaster[^\s\"']+/i) ||
-                   s.match(/https?:\/\/[^\s\"']+land\.[^\s\"']+/i);
-        if (urlM) out.url = urlM[0];
-        return out;
-      }
-
-      function runTesseractOCR(dataUrl, cb) {
-        function go(Tesseract) {
-          try {
-            Tesseract.recognize(dataUrl, "eng", {
-              logger: function() {}
-            }).then(function(res) {
-              var text = (res && res.data && res.data.text) || "";
-              cb(extractCodesFromText(text));
-            }).catch(function() { cb(null); });
-          } catch (e) { cb(null); }
-        }
-        if (window.Tesseract) {
-          go(window.Tesseract);
-          return;
-        }
-        // Dynamic load — only on QR failure (cost/latency)
-        var s = document.createElement("script");
-        s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-        s.onload = function() { go(window.Tesseract); };
-        s.onerror = function() { cb(null); };
-        document.head.appendChild(s);
-      }
-
-      function runBackendOCR(dataUrl, cb) {
-        fetch("/api/land-map/ocr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_data: dataUrl })
-        })
-          .then(function(r) { return r.json(); })
-          .then(function(res) {
-            if (res && res.success && res.data) cb(res.data);
-            else cb(null);
+      function runBackendOCRLast(imgEl) {
+        try {
+          var c = document.createElement("canvas");
+          var maxW = 1200;
+          var w = imgEl.naturalWidth || imgEl.width;
+          var h = imgEl.naturalHeight || imgEl.height;
+          var sc = w > maxW ? maxW / w : 1;
+          c.width = Math.floor(w * sc);
+          c.height = Math.floor(h * sc);
+          c.getContext("2d").drawImage(imgEl, 0, 0, c.width, c.height);
+          var dataUrl = c.toDataURL("image/jpeg", 0.85);
+          fetch("/api/land-map/ocr", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image_data: dataUrl })
           })
-          .catch(function() { cb(null); });
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+              if (res && res.success && res.data) {
+                var cand = res.data.url || res.data.upin || res.data.cert || "";
+                if (cand) {
+                  triggerAdikaSuccessModal(cand);
+                  return;
+                }
+              }
+              showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+            })
+            .catch(function() {
+              showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+            });
+        } catch (e) {
+          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+        }
       }
 
       function processDataUrl(dataUrl) {
+        if (isScanning) return;
+        isScanning = true;
+        var toast = document.getElementById("landMapToast");
+        if (toast) toast.classList.add("hidden");
+        var retry = document.getElementById("landMapRetryBox");
+        if (retry) retry.classList.add("hidden");
         showPanel("landMapScanPanel");
         var prev = document.getElementById("landMapPreview");
         if (prev) prev.src = dataUrl;
+
         var img = new Image();
         img.onload = function() {
-          multiStageScan(img, function(qrRaw) {
-            if (qrRaw) {
-              var payload = String(qrRaw).trim();
-              // FAST PATH 1: full URL in QR → open immediately
-              if (/^https?:\/\//i.test(payload)) {
-                saveForContract({ url: payload, raw: payload });
-                openOfficialUrl(payload);
-                showPanel("landMapUploadPanel");
-                return;
-              }
-              // FAST PATH 2: bare UPIN/plot code
-              if (/^(AA|KK)\d{8,}$/i.test(payload) || /^LTP[-_]/i.test(payload)) {
-                var u = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(payload);
-                saveForContract({ upin: payload, raw: payload });
-                openOfficialUrl(u);
-                showPanel("landMapUploadPanel");
-                return;
-              }
-              redirectWithExtract(parseQrPayload(payload));
-              return;
-            }
-            // Lightweight miss path: backend OCR only (no slow client OCR by default)
-            runBackendOCR(dataUrl, function(serverFields) {
-              if (serverFields && (serverFields.upin || serverFields.cert || serverFields.url)) {
-                redirectWithExtract(serverFields);
-              } else {
-                showRetryOnly();
-              }
-            });
-          });
+          try {
+            processUploadedCertificate(img);
+          } catch (e) {
+            showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+          }
         };
-        img.onerror = function() { showRetryOnly(); };
+        img.onerror = function() {
+          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+        };
         img.src = dataUrl;
       }
 
@@ -4932,10 +4856,12 @@ EXPLORER_HTML = r"""
         fileInput.onchange = function() {
           var f = fileInput.files && fileInput.files[0];
           if (!f) return;
-          var retry = document.getElementById("landMapRetryBox");
-          if (retry) retry.classList.add("hidden");
+          isScanning = false;
           var reader = new FileReader();
           reader.onload = function() { processDataUrl(reader.result); };
+          reader.onerror = function() {
+            showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+          };
           reader.readAsDataURL(f);
         };
       }
@@ -4943,8 +4869,9 @@ EXPLORER_HTML = r"""
       var retryBtn = document.getElementById("landMapRetryBtn");
       if (retryBtn) {
         retryBtn.onclick = function() {
+          isScanning = false;
           if (fileInput) {
-            fileInput.value = "";
+            try { fileInput.value = ""; } catch (e) {}
             fileInput.click();
           }
         };
@@ -4954,7 +4881,9 @@ EXPLORER_HTML = r"""
       if (resetBtn) {
         resetBtn.onclick = function() {
           lastExtract = null;
-          if (fileInput) fileInput.value = "";
+          pendingFinalUrl = "";
+          isScanning = false;
+          if (fileInput) try { fileInput.value = ""; } catch (e) {}
           showPanel("landMapUploadPanel");
         };
       }
@@ -4971,14 +4900,20 @@ EXPLORER_HTML = r"""
       var shareBtn = document.getElementById("landMapShareBtn");
       if (shareBtn) {
         shareBtn.onclick = function() {
-          var url = buildOfficialUrl(lastExtract) || CADASTRE_VERIFY;
+          var u = pendingFinalUrl || (lastExtract && lastExtract.url) || CADASTRE_VERIFY;
           if (navigator.share) {
-            navigator.share({ title: "Cadastre Verification", url: url }).catch(function(){});
-          } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(url);
+            navigator.share({ title: "Adika Digital Verification", url: u }).catch(function(){});
           } else {
-            openOfficialUrl(url);
+            openOfficialUrl(u);
           }
+        };
+      }
+
+      // Wire view button if present at init
+      var viewBtn0 = document.getElementById("adikaViewResultBtn");
+      if (viewBtn0) {
+        viewBtn0.onclick = function() {
+          if (pendingFinalUrl) openOfficialUrl(pendingFinalUrl);
         };
       }
     })();
