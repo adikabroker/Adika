@@ -2146,10 +2146,10 @@ EXPLORER_HTML = r"""
       <div class="p-4 overflow-y-auto flex-1 space-y-3 text-xs">
         <div id="landMapUploadPanel" class="space-y-3">
           <label class="block cursor-pointer">
-            <div class="rounded-2xl border-2 border-dashed border-[#16acbd]/50 bg-gradient-to-br from-slate-50 to-cyan-50/40 p-6 text-center active:scale-[0.99] transition">
+            <div class="rounded-2xl border-2 border-dashed border-[#1e73be]/50 bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 text-center active:scale-[0.99] transition">
               <div class="text-3xl mb-2">📷</div>
-              <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ ያንሱ / ያስገቡ</div>
-              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">የዲጂታል ካርታውን ፎቶ በማስገባት በ Adika Digital System ፈጣን ማጣሪያ ያድርጉ</div>
+              <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ / QR ያንሱ</div>
+              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">ከፎቶው QR ከተነበበ በኋላ ወደ ኦፊሴላዊ የመሬት ካዳስተር ገጽ ይወሰዳሉ</div>
             </div>
             <input id="landMapFile" type="file" accept="image/*" capture="environment" class="hidden" />
           </label>
@@ -4490,9 +4490,11 @@ EXPLORER_HTML = r"""
 
 
 
-    // ========== Digital Cadastral Map Verifier (Adika Digital System) ==========
+    // ========== Digital Cadastral Map Verifier → Official Cadastre Redirect ==========
     (function initLandMapVerifier() {
-      var lastReport = null;
+      var CADASTRE_VERIFY = "https://land.addiscadaster.gov.et/verify";
+      var CADASTRE_SEARCH = "https://land.addiscadaster.gov.et/search";
+      var lastExtract = null;
 
       function showPanel(name) {
         ["landMapUploadPanel", "landMapScanPanel", "landMapResultPanel"].forEach(function(id) {
@@ -4501,25 +4503,88 @@ EXPLORER_HTML = r"""
         });
       }
 
-      function parseQrPayload(raw) {
-        var out = { upin: "", cert: "", name: "", area: "", sub_city: "", tenure: "", use_type: "", raw: raw || "" };
-        if (!raw) return out;
-        var s = String(raw);
-        // JSON payload
+      function saveForContract(extract) {
+        lastExtract = extract || lastExtract;
+        if (!lastExtract) return;
         try {
-          if (s.trim().charAt(0) === "{") {
-            var j = JSON.parse(s);
-            out.upin = j.upin || j.UPIN || j.parcel_id || "";
-            out.cert = j.certificate || j.cert_no || j.certificate_no || "";
-            out.name = j.owner || j.name || j.right_holder || "";
-            out.area = j.area || j.area_sqm || j.parcel_area || "";
-            out.sub_city = j.sub_city || j.subcity || "";
-            out.tenure = j.tenure || j.tenure_type || "";
-            out.use_type = j.use || j.land_use || j.use_type || "";
-            return out;
+          localStorage.setItem("adika_land_map_last", JSON.stringify(lastExtract));
+          var draft = {};
+          try { draft = JSON.parse(localStorage.getItem("adika_contract_draft_v2") || "{}") || {}; } catch (e) {}
+          draft.contract_type = draft.contract_type && String(draft.contract_type).indexOf("house") >= 0
+            ? draft.contract_type : "house_sale";
+          draft.property_info = draft.property_info || {};
+          if (lastExtract.upin) draft.property_info.title_deed = lastExtract.upin;
+          if (lastExtract.cert) draft.property_info.title_deed = lastExtract.cert || lastExtract.upin;
+          if (lastExtract.area) draft.property_info.area_sqm = String(lastExtract.area).replace(/[^\d.]/g, "");
+          if (lastExtract.sub_city) draft.property_info.sub_city = lastExtract.sub_city;
+          if (lastExtract.name) {
+            draft.seller_info = draft.seller_info || {};
+            draft.seller_info.name = lastExtract.name;
+          }
+          localStorage.setItem("adika_contract_draft_v2", JSON.stringify(draft));
+        } catch (e) {}
+      }
+
+      function openOfficialUrl(url) {
+        if (!url) return;
+        try {
+          if (tg && typeof tg.openLink === "function") {
+            tg.openLink(url);
+            return;
           }
         } catch (e) {}
-        // URL query params
+        try {
+          if (tg && typeof tg.openTelegramLink === "function" && url.indexOf("t.me") >= 0) {
+            tg.openTelegramLink(url);
+            return;
+          }
+        } catch (e2) {}
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
+
+      function buildOfficialUrl(extract) {
+        extract = extract || {};
+        // Prefer full URL embedded in QR
+        if (extract.url && /^https?:\/\//i.test(extract.url)) {
+          return extract.url;
+        }
+        var upin = (extract.upin || "").trim();
+        var cert = (extract.cert || "").trim();
+        if (upin) {
+          return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(upin);
+        }
+        if (cert) {
+          return CADASTRE_SEARCH + "?q=" + encodeURIComponent(cert);
+        }
+        return null;
+      }
+
+      function parseQrPayload(raw) {
+        var out = { upin: "", cert: "", name: "", area: "", sub_city: "", url: "", raw: raw || "" };
+        if (!raw) return out;
+        var s = String(raw).trim();
+        // Direct government / http(s) link
+        if (/^https?:\/\//i.test(s)) {
+          out.url = s;
+          try {
+            var u = new URL(s);
+            out.upin = u.searchParams.get("upin") || u.searchParams.get("UPIN") || u.searchParams.get("id") || "";
+            out.cert = u.searchParams.get("cert") || u.searchParams.get("certificate") || "";
+          } catch (e) {}
+          return out;
+        }
+        try {
+          if (s.charAt(0) === "{") {
+            var j = JSON.parse(s);
+            out.upin = j.upin || j.UPIN || j.parcel_id || "";
+            out.cert = j.certificate || j.cert_no || "";
+            out.name = j.owner || j.name || "";
+            out.area = j.area || j.area_sqm || "";
+            out.sub_city = j.sub_city || "";
+            out.url = j.url || j.verify_url || j.link || "";
+            return out;
+          }
+        } catch (e2) {}
         try {
           var q = s.indexOf("?") >= 0 ? s.split("?")[1] : s;
           q.split("&").forEach(function(pair) {
@@ -4530,38 +4595,11 @@ EXPLORER_HTML = r"""
             if (k.indexOf("upin") >= 0 || k === "id") out.upin = v;
             if (k.indexOf("cert") >= 0) out.cert = v;
             if (k.indexOf("name") >= 0 || k.indexOf("owner") >= 0) out.name = v;
-            if (k.indexOf("area") >= 0) out.area = v;
-            if (k.indexOf("sub") >= 0) out.sub_city = v;
+            if (k.indexOf("url") >= 0 || k.indexOf("link") >= 0) out.url = v;
           });
-        } catch (e2) {}
-        // Regex patterns on free text
-        var up = s.match(/\b(AA\d{8,}|ETH[\d\-]+|\d{10,15})\b/i);
+        } catch (e3) {}
+        var up = s.match(/\b(AA\d{8,})\b/i) || s.match(/\b(ETH[\d\-]{8,})\b/i);
         if (up && !out.upin) out.upin = up[1];
-        var cert = s.match(/\b(ETH\d[\d\-]+)\b/i);
-        if (cert && !out.cert) out.cert = cert[1];
-        return out;
-      }
-
-      function extractFromText(txt) {
-        var out = { upin: "", cert: "", name: "", area: "", sub_city: "", tenure: "", use_type: "" };
-        if (!txt) return out;
-        var s = String(txt);
-        var up = s.match(/\b(AA\d{8,})\b/i) || s.match(/\b(ETH[\d\-]{10,})\b/i);
-        if (up) out.upin = up[1];
-        var cert = s.match(/\b(ETH\d[\d\-]{8,})\b/i);
-        if (cert) out.cert = cert[1];
-        var area = s.match(/(\d+(?:[.,]\d+)?)\s*(m²|m2|ካ\.?\s*ሜ|ካሬ)/i);
-        if (area) out.area = area[1].replace(",", "") + " m²";
-        var nameM = s.match(/(?:ሙሉ\s*ስም|ባለቤት|Owner|Name)\s*[:：\-]?\s*([^\n\r,|]{3,40})/i);
-        if (nameM) out.name = nameM[1].trim();
-        var cities = ["አዲስ ከተማ","ቦሌ","አራዳ","የካ","ልደታ","ጉለሌ","ቂርቆስ","ኮልፌ","ንፋስ","አቃቂ","ሌሚ"];
-        for (var i = 0; i < cities.length; i++) {
-          if (s.indexOf(cities[i]) >= 0) { out.sub_city = cities[i]; break; }
-        }
-        if (/lease|ሊዝ/i.test(s)) out.tenure = "Lease";
-        else if (/possession|ይዞታ|old/i.test(s)) out.tenure = "Old Possession";
-        if (/commercial|ንግድ/i.test(s)) out.use_type = "Commercial";
-        else if (/residential|መኖሪያ/i.test(s)) out.use_type = "Residential";
         return out;
       }
 
@@ -4572,7 +4610,7 @@ EXPLORER_HTML = r"""
           img.onload = function() {
             try {
               var canvas = document.createElement("canvas");
-              var maxW = 1200;
+              var maxW = 1400;
               var scale = img.width > maxW ? maxW / img.width : 1;
               canvas.width = Math.max(1, Math.floor(img.width * scale));
               canvas.height = Math.max(1, Math.floor(img.height * scale));
@@ -4588,128 +4626,46 @@ EXPLORER_HTML = r"""
         } catch (e) { cb(null); }
       }
 
-      function buildReport(fields, source) {
-        var upin = fields.upin || "";
-        var cert = fields.cert || fields.certificate || "";
-        var name = fields.name || fields.owner || "—";
-        var area = fields.area || "—";
-        var sub = fields.sub_city || (document.getElementById("landMapSubCity") && document.getElementById("landMapSubCity").value) || "አዲስ ከተማ";
-        var tenure = fields.tenure || "Lease / Old Possession";
-        var use = fields.use_type || "Residential";
-        var verified = Boolean(upin || cert);
-        return {
-          verified: verified,
-          source: source || "photo",
-          owner_name: name,
-          upin: upin || "—",
-          certificate_no: cert || "—",
-          area: area,
-          use_type: use,
-          tenure: tenure,
-          sub_city: sub
-        };
-      }
-
-      function renderResult(report) {
-        lastReport = report;
+      function showRedirectStatus(msg, extract) {
+        showPanel("landMapResultPanel");
         var grid = document.getElementById("landMapResultGrid");
         if (!grid) return;
-        function clean(v, fallback) {
-          var s = (v == null || v === "" || v === "—" || v === "-") ? "" : String(v).trim();
-          return s || (fallback || "አልተገኘም");
-        }
-        var upin = clean(report.upin, "አልተገኘም");
-        var cert = clean(report.certificate_no, "አልተገኘም");
-        var name = clean(report.owner_name, "አልተገለጸም");
-        var area = clean(report.area, "አልተገኘም");
-        var use = clean(report.use_type, "መኖሪያ");
-        var tenure = clean(report.tenure, "ሊዝ");
-        var sub = clean(report.sub_city, "አዲስ ከተማ");
-        var woreda = clean(report.woreda, "");
-        var nationality = clean(report.nationality, "ኢትዮጵያዊ");
-        var photo = report.owner_photo || report.photo_data_url || "";
-
-        var useLabel = use;
-        if (/residen|መኖሪያ/i.test(use)) useLabel = "መኖሪያ (Residential)";
-        else if (/commerc|ንግድ/i.test(use)) useLabel = "ንግድ (Commercial)";
-
-        var tenureLabel = tenure;
-        if (/lease|ሊዝ/i.test(tenure)) tenureLabel = "ሊዝ (Lease)";
-        else if (/possess|ይዞታ|old/i.test(tenure)) tenureLabel = "የድሮ ይዞታ (Old Possession)";
-
-        var addrParts = ["አዲስ አበባ", "ክፍለ ከተማ: " + sub];
-        if (woreda) addrParts.push("ወረዳ: " + woreda);
-        var addr = addrParts.join(" | ");
-
-        var photoHtml = photo
-          ? '<img src="' + photo + '" alt="" class="w-20 h-24 object-cover rounded border border-slate-200 shadow-sm bg-white" />'
-          : '<div class="w-20 h-24 rounded border border-slate-200 bg-slate-100 flex flex-col items-center justify-center text-slate-400">' +
-              '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
-              '<span class="text-[8px] mt-1 font-bold">ፎቶ</span></div>';
-
-        function daraCard(title, bodyHtml) {
-          return '<div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">' +
-            '<div class="flex">' +
-              '<div class="w-1.5 shrink-0 bg-[#1e73be]"></div>' +
-              '<div class="flex-1 p-3">' +
-                '<div class="text-[10px] font-black text-[#1e73be] mb-2 tracking-wide">' + title + '</div>' +
-                bodyHtml +
-              '</div>' +
-            '</div>' +
-          '</div>';
-        }
-
-        var docBody =
-          '<div class="font-mono font-black text-[15px] text-slate-900 tracking-wide break-all">' + upin + '</div>' +
-          '<div class="mt-2 text-[10px] text-slate-600"><span class="font-bold text-slate-500">የምስክር ወረቀት ቁጥር:</span> <span class="font-bold text-slate-800">' + cert + '</span></div>';
-
-        var ownerBody =
-          '<div class="flex flex-col items-center text-center gap-2 py-1">' +
-            photoHtml +
-            '<div class="font-black text-[14px] text-slate-900 leading-tight">' + name + '</div>' +
-            '<span class="inline-block px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold">' + nationality + '</span>' +
-            '<div class="text-[10px] text-slate-600 leading-snug">' + addr + '</div>' +
-          '</div>';
-
-        function dataRow(label, value) {
-          return '<div class="flex justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0">' +
-            '<span class="font-bold text-slate-500">' + label + '</span>' +
-            '<span class="font-black text-slate-900 text-right">' + value + '</span></div>';
-        }
-        var parcelBody =
-          dataRow("የቦታ ስፋት", area) +
-          dataRow("የይዞታ አገልግሎት", useLabel) +
-          dataRow("የይዞታ ዓይነት", tenureLabel);
-
+        var upin = (extract && extract.upin) || "";
         grid.innerHTML =
-          daraCard("የይዞታ ልዩ መለያ ቁጥር (UPIN)", docBody) +
-          daraCard("የባለቤት መረጃ", ownerBody) +
-          daraCard("የቦታው መረጃ", parcelBody);
-
-        showPanel("landMapResultPanel");
+          '<div class="bg-[#1e73be] text-white px-3 py-3 text-center rounded-t-lg -mx-0">' +
+            '<div class="font-black text-[11px]">አዲስ አበባ ከተማ አስተዳደር</div>' +
+            '<div class="font-bold text-[10px] mt-0.5">የመሬት ይዞታ ምዝገባና መረጃ ኤጀንሲ</div>' +
+            '<div class="text-[9px] text-blue-100 mt-1">Official Cadastre Portal</div>' +
+          '</div>' +
+          '<div class="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 mt-2">' +
+            '<span class="flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-white text-sm font-black">✔</span>' +
+            '<span class="font-black text-[11px] text-[#155724]">ወደ ኦፊሴላዊ ማረጋገጫ ገጽ በመውሰድ ላይ…</span>' +
+          '</div>' +
+          (upin ? '<div class="mt-2 p-3 bg-white border border-slate-200 rounded-lg shadow-sm"><div class="text-[10px] font-bold text-[#1e73be]">UPIN</div><div class="font-mono font-black text-sm text-slate-900">' + upin + '</div></div>' : '') +
+          '<p class="text-[10px] text-slate-500 mt-2 leading-relaxed">' + (msg || "") + '</p>' +
+          '<button type="button" id="landMapOpenAgainBtn" class="w-full mt-2 py-2.5 rounded-lg bg-[#1e73be] text-white font-bold text-[11px]">🌐 ኦፊሴላዊ ገጽ ክፈት</button>';
+        var again = document.getElementById("landMapOpenAgainBtn");
+        if (again) {
+          again.onclick = function() {
+            var url = buildOfficialUrl(extract);
+            if (url) openOfficialUrl(url);
+          };
+        }
       }
 
-      function processFields(fields, source) {
-        var report = buildReport(fields, source);
-        if (typeof lastPhotoDataUrl !== "undefined" && lastPhotoDataUrl) {
-          report.photo_data_url = lastPhotoDataUrl;
+      function redirectWithExtract(extract, source) {
+        saveForContract(extract);
+        var url = buildOfficialUrl(extract);
+        if (!url) {
+          showPanel("landMapUploadPanel");
+          alert("QR/UPIN አልተነበበም። እባክዎ UPIN በእጅ ያስገቡ።");
+          return;
         }
-        // Optional server enrich (no AI branding)
-        fetch("/api/land-map/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(report)
-        }).then(function(r) { return r.json(); }).then(function(res) {
-          if (res && res.success && res.data) {
-            Object.keys(res.data).forEach(function(k) {
-              if (res.data[k]) report[k] = res.data[k];
-            });
-            report.verified = true;
-          }
-          renderResult(report);
-        }).catch(function() {
-          renderResult(report);
-        });
+        showRedirectStatus(
+          "በ Adika ውስጥ መረጃው ተይዟል (ለውል auto-fill)። ኦፊሴላዊው ማረጋገጫ ከመንግሥት ሰርቨር ይከፈታል።",
+          extract
+        );
+        setTimeout(function() { openOfficialUrl(url); }, 350);
       }
 
       var lastPhotoDataUrl = "";
@@ -4720,19 +4676,13 @@ EXPLORER_HTML = r"""
         if (prev) prev.src = dataUrl;
         var started = Date.now();
         scanImageForQr(dataUrl, function(qrRaw) {
-          var wait = Math.max(0, 900 - (Date.now() - started));
+          var wait = Math.max(0, 600 - (Date.now() - started));
           setTimeout(function() {
             if (qrRaw) {
-              processFields(parseQrPayload(qrRaw), "qr");
+              redirectWithExtract(parseQrPayload(qrRaw), "qr");
             } else {
-              // Lightweight pattern fallback from filename not available; use manual fields if filled
-              var manual = {
-                upin: (document.getElementById("landMapUpin") || {}).value || "",
-                cert: (document.getElementById("landMapCert") || {}).value || "",
-                sub_city: (document.getElementById("landMapSubCity") || {}).value || ""
-              };
-              // Try to decode data URL as text is impossible; keep QR-first then manual
-              processFields(manual, "manual_fallback");
+              showPanel("landMapUploadPanel");
+              alert("ከፎቶው QR አልተነበበም። UPIN በእጅ ያስገቡ ወይም ግልጽ ፎቶ ይሞክሩ።");
             }
           }, wait);
         });
@@ -4752,74 +4702,53 @@ EXPLORER_HTML = r"""
       var manualBtn = document.getElementById("landMapManualBtn");
       if (manualBtn) {
         manualBtn.onclick = function() {
-          var fields = {
-            upin: (document.getElementById("landMapUpin") || {}).value || "",
-            cert: (document.getElementById("landMapCert") || {}).value || "",
-            sub_city: (document.getElementById("landMapSubCity") || {}).value || ""
-          };
-          if (!fields.upin && !fields.cert) {
-            alert("እባክዎ UPIN ወይም የምስክር ወረቀት ቁጥር ያስገቡ — ወይም ፎቶ ያስገቡ");
+          var upin = ((document.getElementById("landMapUpin") || {}).value || "").trim();
+          var cert = ((document.getElementById("landMapCert") || {}).value || "").trim();
+          var sub = ((document.getElementById("landMapSubCity") || {}).value || "").trim();
+          if (!upin && !cert) {
+            alert("እባክዎ UPIN (ምሳ. AA00091305321) ያስገቡ");
             return;
           }
           showPanel("landMapScanPanel");
-          var prev = document.getElementById("landMapPreview");
-          if (prev) prev.removeAttribute("src");
-          setTimeout(function() { processFields(fields, "manual"); }, 800);
+          setTimeout(function() {
+            redirectWithExtract({ upin: upin, cert: cert, sub_city: sub }, "manual");
+          }, 400);
         };
       }
 
       var resetBtn = document.getElementById("landMapResetBtn");
-      if (resetBtn) resetBtn.onclick = function() {
-        lastReport = null;
-        if (fileInput) fileInput.value = "";
-        showPanel("landMapUploadPanel");
-      };
+      if (resetBtn) {
+        resetBtn.onclick = function() {
+          lastExtract = null;
+          if (fileInput) fileInput.value = "";
+          showPanel("landMapUploadPanel");
+        };
+      }
 
       var toContract = document.getElementById("landMapToContractBtn");
-      if (toContract) toContract.onclick = function() {
-        if (!lastReport) return;
-        try {
-          // Prefill house contract fields via localStorage draft + open contract wizard
-          var draft = {};
-          try { draft = JSON.parse(localStorage.getItem("adika_contract_draft_v2") || "{}") || {}; } catch (e) {}
-          draft.contract_type = draft.contract_type || "house_sale";
-          draft.property_info = draft.property_info || {};
-          draft.seller_info = draft.seller_info || {};
-          draft.property_info.sub_city = lastReport.sub_city || draft.property_info.sub_city;
-          draft.property_info.title_deed = lastReport.certificate_no !== "—" ? lastReport.certificate_no : (lastReport.upin || "");
-          draft.property_info.area_sqm = String(lastReport.area || "").replace(/[^\d.]/g, "") || draft.property_info.area_sqm;
-          draft.property_info.use_type = /commercial/i.test(lastReport.use_type || "") ? "የንግድ" : "የመኖሪያ";
-          if (lastReport.owner_name && lastReport.owner_name !== "—") {
-            draft.seller_info.name = lastReport.owner_name;
-          }
-          localStorage.setItem("adika_contract_draft_v2", JSON.stringify(draft));
-        } catch (e) {}
-        try { closeModal("landMapModal"); } catch (e2) {}
-        if (typeof openToolModal === "function") openToolModal("contractModal");
-      };
+      if (toContract) {
+        toContract.onclick = function() {
+          saveForContract(lastExtract);
+          try { closeModal("landMapModal"); } catch (e) {}
+          if (typeof openToolModal === "function") openToolModal("contractModal");
+        };
+      }
 
       var shareBtn = document.getElementById("landMapShareBtn");
-      if (shareBtn) shareBtn.onclick = function() {
-        if (!lastReport) return;
-        var txt = "✅ ይህ መረጃ የተረጋገጠ ነው — Adika Digital Verification\n" +
-          "ባለቤት: " + lastReport.owner_name + "\n" +
-          "UPIN: " + lastReport.upin + "\n" +
-          "Certificate: " + lastReport.certificate_no + "\n" +
-          "ስፋት: " + lastReport.area + "\n" +
-          "ክ/ከተማ: " + lastReport.sub_city + "\n" +
-          "— Adika Digital System";
-        if (navigator.share) {
-          navigator.share({ title: "Adika Land Map Report", text: txt }).catch(function(){});
-        } else if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(txt).then(function() {
-            alert("ሪፖርቱ ተቀድቷል");
-          });
-        } else {
-          alert(txt);
-        }
-      };
+      if (shareBtn) {
+        shareBtn.onclick = function() {
+          var url = buildOfficialUrl(lastExtract) || CADASTRE_SEARCH;
+          if (navigator.share) {
+            navigator.share({ title: "Cadastre Verification", url: url, text: "ኦፊሴላዊ የመሬት ማረጋገጫ" }).catch(function(){});
+          } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(url);
+            alert("ሊንኩ ተቀድቷል");
+          } else {
+            openOfficialUrl(url);
+          }
+        };
+      }
     })();
-
 
     // ========== Contract Wizard (4 types, continuous legal prose) ==========
     (function initContractWizard() {
