@@ -52,6 +52,9 @@ def sanitize_and_route_url(scanned_data: str) -> str:
     def extract_id(s: str):
         if not s:
             return None
+        # Reject old deed numbers AD… (no digital portal record)
+        if _re.match(r'^AD\d+', s, _re.I) or _re.search(r'\bAD\d{10,}\b', s, _re.I):
+            return None
         uuid_m = _re.search(
             r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}',
             s,
@@ -2414,9 +2417,22 @@ function shareContract() {{
                     params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት'])
                 like = "ILIKE" if is_postgres() else "LIKE"
                 if category and str(category).strip().lower() not in ('', 'all', 'null', 'none', 'undefined', '✨ ሁሉም', '✨ all', 'ሁሉም'):
-                    # only main_category — column `category` may not exist
-                    where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
-                    params.extend([category, f"%{category}%"])
+                    # Map EN/AM aliases so Cars/Property tabs never return empty when data exists
+                    cat_raw = str(category).strip()
+                    cat_l = cat_raw.lower()
+                    aliases = [cat_raw]
+                    if cat_l in ('መኪና', 'car', 'cars', 'vehicle', 'vehicles', 'auto'):
+                        aliases = ['መኪና', 'car', 'cars', 'vehicle', 'መኪኖች']
+                    elif cat_l in ('ቤት', 'house', 'home', 'property', 'realestate', 'real_estate', 'ንብረት'):
+                        aliases = ['ቤት', 'house', 'property', 'home', 'ንብረት']
+                    # Match main_category OR category (legacy rows)
+                    parts = []
+                    for a in aliases:
+                        parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                    where.append("(" + " OR ".join(parts) + ")")
                 if chassis_only:
                     where.append(
                         f"(CAST(COALESCE(extra_data,'') AS TEXT) {like} {p} "
