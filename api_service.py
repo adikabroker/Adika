@@ -3,7 +3,7 @@ def sanitize_and_route_url(scanned_data: str) -> str:
     """
     Force ALL scanned QR output (UUID, UPIN, dead-domain links) onto the
     active portal only: https://addislandfarm.gov.et/verify/...
-    Never return addiscadaster / addisland.gov.et / other NXDOMAIN hosts.
+    Never return any host except addislandfarm.gov.et.
     """
     import re as _re
     text = (scanned_data or "").strip()
@@ -1616,7 +1616,7 @@ def register_api_routes(web_app):
                 m3 = _re.search(r'(\d{2,5}(?:[.,]\d{1,3})?)\s*(?:m²|m2)', s, _re.I)
                 if m3:
                     out["area"] = m3.group(1).replace(",", ".") + " m²"
-                m4 = _re.search(r'https?://[^\s\"\']+(?:addiscadaster|land\.)[^\s\"\']+', s, _re.I)
+                m4 = _re.search(r'https?://[^\s\"\']*addislandfarm\.gov\.et[^\s\"\']*', s, _re.I)
                 if m4:
                     out["url"] = m4.group(0)
                 return out
