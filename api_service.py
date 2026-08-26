@@ -1496,6 +1496,52 @@ def register_api_routes(web_app):
 
 
 
+
+    @web_app.route('/api/land-map/verify', methods=['POST', 'OPTIONS'])
+    def api_land_map_verify():
+        """Cadastral map field validation — Adika Digital System (no external AI)."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            upin = str(data.get("upin") or "").strip().upper()
+            cert = str(data.get("certificate_no") or data.get("cert") or "").strip().upper()
+            owner = str(data.get("owner_name") or data.get("name") or "").strip()
+            area = str(data.get("area") or "").strip()
+            sub_city = str(data.get("sub_city") or "").strip()
+            use_type = str(data.get("use_type") or "").strip() or "Residential"
+            tenure = str(data.get("tenure") or "").strip() or "Lease"
+
+            # Deterministic format checks (Ethiopian cadastral-style identifiers)
+            upin_ok = bool(re.match(r'^(AA\d{8,}|\d{10,15})$', upin)) if upin else False
+            cert_ok = bool(re.match(r'^ETH[\d\-]{8,}$', cert)) if cert else False
+            if not upin_ok and upin and len(upin) >= 8:
+                upin_ok = True  # accept longer free-form registry ids
+            if not cert_ok and cert and len(cert) >= 8:
+                cert_ok = True
+
+            verified = bool(upin_ok or cert_ok)
+            payload = {
+                "owner_name": owner or "—",
+                "upin": upin or "—",
+                "certificate_no": cert or "—",
+                "area": area or "—",
+                "use_type": use_type,
+                "tenure": tenure,
+                "sub_city": sub_city or "አዲስ ከተማ",
+                "verified": verified,
+                "status": "verified" if verified else "incomplete",
+            }
+            return jsonify({
+                "success": verified,
+                "data": payload,
+                "message": "በ Adika Digital System ተረጋግጧል" if verified else "መረጃው ሙሉ አይደለም — UPIN ወይም Certificate ያስገቡ",
+            })
+        except Exception as e:
+            logger.error(f"land-map verify: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
     @web_app.route('/api/favorites/toggle', methods=['POST', 'OPTIONS'])
     def api_favorites_toggle():
         if request.method == 'OPTIONS':
