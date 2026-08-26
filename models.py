@@ -2244,216 +2244,203 @@ def get_user_contracts(user_id, limit=20):
                 pass
 
 
-def build_amharic_vehicle_contract(seller, buyer, vehicle, financial, witnesses=None):
-    """Formal Amharic vehicle sale contract text."""
-    seller = seller or {}
-    buyer = buyer or {}
-    vehicle = vehicle or {}
-    financial = financial or {}
+
+def _etb_words(n):
+    """Simple ETB amount in Amharic digits-as-text fallback (numeric with ብር)."""
+    try:
+        n = int(float(str(n).replace(",", "") or 0))
+    except Exception:
+        return str(n)
+    return f"{n:,} ብር"
+
+
+def _party_line(label, p):
+    p = p or {}
+    return (
+        f"{label}: {p.get('name') or '—'}፣ "
+        f"ዜግነት: {p.get('nationality') or 'ኢትዮጵያዊ'}፣ "
+        f"አድራሻ: ክ/ከተማ: {p.get('sub_city') or '—'}፣ "
+        f"ወረዳ: {p.get('woreda') or '—'}፣ "
+        f"የቤት ቁጥር: {p.get('house_no') or '—'}፣ "
+        f"ስልክ: {p.get('phone') or '—'}"
+    )
+
+
+def _witness_block(witnesses):
     witnesses = witnesses or []
+    lines = []
+    for i in range(3):
+        w = witnesses[i] if i < len(witnesses) else {}
+        lines.append(
+            f"ምስክር {i+1}: {w.get('name') or '________________'}፣ "
+            f"ዜግነት: {w.get('nationality') or 'ኢትዮጵያዊ'}፣ "
+            f"አድራሻ: {w.get('address') or '________________'}፣ "
+            f"ስልክ: {w.get('phone') or '________'}፣ ፊርማ: ________"
+        )
+    return "\n".join(lines)
+
+
+def build_amharic_vehicle_sale_contract(seller, buyer, vehicle, financial, witnesses=None):
+    seller, buyer, vehicle, financial = seller or {}, buyer or {}, vehicle or {}, financial or {}
     total = int(float(financial.get("total_price") or 0))
     advance = int(float(financial.get("advance") or 0))
     balance = int(float(financial.get("balance") or max(0, total - advance)))
+    penalty = int(float(financial.get("penalty") or 0))
     deadline = financial.get("deadline") or "______________"
+    cdate = financial.get("contract_date") or "______________"
+    plate = vehicle.get("plate") or "—"
+    engine = vehicle.get("engine") or "—"
+    chassis = vehicle.get("chassis") or "—"
+    model = vehicle.get("model") or "—"
 
-    def money(n):
-        try:
-            return f"{int(n):,} ብር"
-        except Exception:
-            return f"{n} ብር"
+    return f"""የመኪና ሽያጭ ውል ስምምነት
 
-    w1 = witnesses[0] if len(witnesses) > 0 else {}
-    w2 = witnesses[1] if len(witnesses) > 1 else {}
+ቀን: {cdate}
 
-    text = f"""የመኪና ሽያጭ ውል
-========================
-የተዋዋዮች:
-1. ሻጭ: {seller.get('name') or '—'} | ስልክ: {seller.get('phone') or '—'} | መታወቂያ: {seller.get('id_number') or '—'}
-   ክፍለ ከተማ: {seller.get('sub_city') or '—'} | ወረዳ: {seller.get('woreda') or '—'}
-2. ገዢ: {buyer.get('name') or '—'} | ስልክ: {buyer.get('phone') or '—'} | መታወቂያ: {buyer.get('id_number') or '—'}
+{_party_line("ውል ሰጪ (ሻጭ)", seller)}
+{_party_line("ውል ተቀባይ (ገዢ)", buyer)}
 
-የመኪናው መግለጫ:
-- ሞዴል: {vehicle.get('model') or '—'}
-- ሰሌዳ/Folder: {vehicle.get('plate') or '—'}
-- ሻንሲ (Chassis): {vehicle.get('chassis') or '—'}
-- ሞተር (Engine): {vehicle.get('engine') or '—'}
-- ሊብሬ: {vehicle.get('libre') or '—'}
+እኔ ውል ሰጪ (ሻጭ) በስሜ የተመዘገበውን የሰሌዳ ቁጥር {plate}፣ የሞተር ቁጥር {engine}፣ የቻሲ ቁጥር {chassis} የሆነውን {model} መኪና ባለበት ሁኔታ ለውል ተቀባይ (ገዢ) በብር {_etb_words(total)} ({total:,}) የሸጥኩ ሲሆን፤ የገንዘቡን አከፋፈል በተመለከተ በዛሬው ዕለት ቅድመ ክፍያ ብር {_etb_words(advance)} ({advance:,}) ተቀብዬ፣ ቀሪውን ብር {_etb_words(balance)} ({balance:,}) ከዛሬ ጀምሮ እስከ {deadline} ድረስ አጠናቆ ገዢ የሚያስረክበኝ መሆኑን ተስማምተን መኪናውንና ሰነዶቹን ለገዢ ያስረከብኩ መሆኑን አረጋግጣለሁ።
 
-የገንዘብ ሁኔታ:
-- ጠቅላላ ዋጋ: {money(total)}
-- የተከፈለ ቅድመ ክፍያ: {money(advance)}
-- ቀሪ ክፍያ: {money(balance)}
-- ቀሪ ክፍያ የሚጠናቀቅበት ቀን: {deadline}
+እኔ ሻጭ በዚህ በሸጥኩት መኪና ላይ "በዕዳ ወይም እገዳ ይይዛልኛል / ይገባኛል" ብሎ የሚከራከር የሶስተኛ ወገን ቢመጣ በወንጀልና በፍትሐብሔር ቀርቤ ተከራክሬ መልስ የምሰጥና ገዢውን ነፃ የማወጣ ሲሆን፤ ይህ መኪና ከሽያጩ በፊት የነበረ ማንኛውም የመንግሥት፣ የትራፊክ ቅጣት፣ የደብርም ሆነ ልዩ ልዩ ዕዳ ቢኖር ከፋዩ እኔው ራሴ ሻጭ መሆኔን አረጋግጣለሁ።
 
-አንቀጾች:
-1. ሻጩ ከላይ የተገለጸውን መኪና ለገዢው በሙሉ ባለቤትነት ያስተላልፋል።
-2. ገዢው ቀሪ ክፍያውን በተጠቀሰው ቀን ወይም በፊት ይከፍላል።
-3. የባለቤትነት ሽግግር ከሙሉ ክፍያ በኋላ ይጠናቀቃል።
-4. ከውሉ በፊት የነበሩ ግዴታዎች/እዳዎች በሻጩ ላይ ይቆያሉ።
-5. ከውሉ በኋላ የሚከሰቱ ጉዳቶች በገዢው ላይ ናቸው።
+እኔ ገዢ መኪናውን ከተረከብኩበት ዕለት ማለትም ከዛሬ {cdate} ጀምሮ ለሚመጣ ማንኛውም የትራፊክ አደጋ፣ በሰውና ንብረት ላይ ለሚደርስ ጉዳት፣ የወንጀልም ሆነ የመንግሥት ኃላፊነት ሙሉ በሙሉ ተጠያቂው እኔው ራሴ ገዢ ስሆን፣ በዚህ ጉዳይ ላይ ሻጭን ተጠያቂ የማላደርግ መሆኑን ተስማምቼ መኪናውን መረከቤን አረጋግጣለሁ። ገዢ ቀሪውን ገንዘብ አጠናቆ ሲከፍል ሻጭ በ 10 ቀናት ውስጥ የባለቤትነት ስም ዝውውር የማዛወር ግዴታ አለበት።
 
-ምስክሮች:
-1. {w1.get('name') or '________________'} | መታወቂያ: {w1.get('id_number') or '________'}
-2. {w2.get('name') or '________________'} | መታወቂያ: {w2.get('id_number') or '________'}
+ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 / 2005 / 2266 መሠረት የተደረገ ነው። ይህንን ውል ለማፍረስ የሚሞክር ወገን ቢኖር ብር {_etb_words(penalty) if penalty else '______________'} ({penalty:,} ብር) ከፍሎ ውሉ እና ገደቡ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
 
-ፊርማዎች:
-ሻጭ: ________________     ገዢ: ________________
-ምስክር 1: ________________  ምስክር 2: ________________
+እኛ ተዋዋዮችና ምስክሮች በዚህ ውል መሠረት ተስማምተን ገንዘቡም ሲከፈልና ሲቀበል በአካል ተገኝተን በፊርማችን አረጋግጠናል።
 
-ቀን: ________________     ቦታ: አዲስ አበባ
+{_witness_block(witnesses)}
+
+ውል ሰጪ (ሻጭ) ፊርማ: ________________
+ውል ተቀባይ (ገዢ) ፊርማ: ________________
 """
-    return text
 
 
+def build_amharic_vehicle_rental_contract(lessor, lessee, vehicle, financial, witnesses=None):
+    lessor, lessee, vehicle, financial = lessor or {}, lessee or {}, vehicle or {}, financial or {}
+    rate = int(float(financial.get("rent_rate") or 0))
+    period = financial.get("rent_period") or "በወር"
+    start = financial.get("rent_start") or "______________"
+    end = financial.get("rent_end") or "______________"
+    penalty = int(float(financial.get("penalty") or 0))
+    cdate = financial.get("contract_date") or "______________"
+    plate = vehicle.get("plate") or "—"
+    engine = vehicle.get("engine") or "—"
+    chassis = vehicle.get("chassis") or "—"
+    model = vehicle.get("model") or "—"
 
-# ========== FAVORITES / BOOKMARKS (price-drop alerts) ==========
+    return f"""የመኪና ኪራይ ውል ስምምነት
 
-def ensure_favorites_table():
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        if is_postgres():
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS favorites (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL,
-                    chat_id BIGINT,
-                    listing_id INTEGER NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(user_id, listing_id)
-                )
-            """)
-            try:
-                cur.execute("CREATE INDEX IF NOT EXISTS favorites_listing_idx ON favorites (listing_id)")
-            except Exception:
-                pass
-        else:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS favorites (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    chat_id INTEGER,
-                    listing_id INTEGER NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(user_id, listing_id)
-                )
-            """)
-            try:
-                cur.execute("CREATE INDEX IF NOT EXISTS favorites_listing_idx ON favorites (listing_id)")
-            except Exception:
-                pass
-            conn.commit()
-    except Exception as e:
-        logger.error("ensure_favorites_table: %s", e)
-    finally:
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
+ቀን: {cdate}
+
+{_party_line("አከራይ", lessor)}
+{_party_line("ተከራይ", lessee)}
+
+እኔ አከራይ በስሜ የተመዘገበውን የሰሌዳ ቁጥር {plate}፣ የሞተር ቁጥር {engine}፣ የቻሲ ቁጥር {chassis} የሆነውን {model} መኪና ከ {start} ጀምሮ እስከ {end} ድረስ ለተከራይ አከራይቼ ያስረከብኩ ሲሆን፤ ተከራይም {period} ብር {_etb_words(rate)} ({rate:,}) ለመክፈል ተስማምቶ መኪናውን በሙሉ ጤንነት ተረክቧል።
+
+ተከራይ መኪናውን ከተረከበበት ሰዓት ጀምሮ እስከሚያስረክብበት ቀን ድረስ ለሚደርስ ማንኛውም የትራፊክ አደጋ፣ የመኪና ስርቆት፣ በሰው ወይም በንብረት ላይ ለሚደርስ ጉዳት፣ እንዲሁም ተሽከርካሪው በቁጥጥሩ ስር እያለ ለሚፈጸም ማንኛውም ህገ-ወጥ ድርጊትና ወንጀል ሙሉ በሙሉ በህግ ፊት ተጠያቂ ይሆናል። አከራይም መኪናው ከኪራዩ በፊት ከማንኛውም እገዳና የሶስተኛ ወገን ጥያቄ ነፃ መሆኑን ያረጋግጣል።
+
+ተከራይ የመኪናውን ዘይት፣ ውሃ እና አጠቃላይ እንክብካቤ የማድረግ ግዴታ ያለበት ሲሆን፣ ከተፈጥሯዊ ያረጀ አሰራር (Normal wear and tear) ውጪ ለሚደርስ ማንኛውም የሜካኒክስና የቦዲ ጉዳት ወጪውን ይሸፍናል። የኪራይ ዘመኑ ሲያልቅ ተከራይ መኪናውን በተረከበበት ሁኔታ የማስረከብ ግዴታ አለበት።
+
+ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 እና 2896 መሠረት የተደረገ ነው። ይህንን ውል ለማፍረስ የሚሞክር ወገን ቢኖር ብር {_etb_words(penalty) if penalty else '______________'} ({penalty:,} ብር) ከፍሎ ውሉ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
+
+እኛ ተዋዋዮችና ምስክሮች በዚህ ውል መሠረት ተስማምተን በአካል ተገኝተን በፊርማችን አረጋግጠናል።
+
+{_witness_block(witnesses)}
+
+አከራይ ፊርማ: ________________
+ተከራይ ፊርማ: ________________
+"""
 
 
-def toggle_favorite(user_id, listing_id, chat_id=None, action=None):
-    """Add or remove favorite. action: 'add'|'remove'|None (toggle). Returns {'favorited': bool}."""
-    ensure_favorites_table()
-    conn = None
-    try:
-        uid = int(user_id)
-        lid = int(listing_id)
-        cid = int(chat_id) if chat_id else uid
-        conn = get_db_connection()
-        cur = conn.cursor()
-        p = get_placeholder()
-        cur.execute(f"SELECT id FROM favorites WHERE user_id = {p} AND listing_id = {p}", (uid, lid))
-        row = cur.fetchone()
-        exists = bool(row)
-        if action == "add" or (action is None and not exists):
-            if not exists:
-                cur.execute(
-                    f"INSERT INTO favorites (user_id, chat_id, listing_id) VALUES ({p}, {p}, {p})",
-                    (uid, cid, lid),
-                )
-                if not is_postgres():
-                    conn.commit()
-            return {"favorited": True}
-        if action == "remove" or (action is None and exists):
-            cur.execute(f"DELETE FROM favorites WHERE user_id = {p} AND listing_id = {p}", (uid, lid))
-            if not is_postgres():
-                conn.commit()
-            return {"favorited": False}
-        return {"favorited": exists}
-    except Exception as e:
-        logger.error("toggle_favorite: %s", e)
-        return {"favorited": False, "error": str(e)}
-    finally:
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
+def build_amharic_house_sale_contract(seller, buyer, prop, financial, witnesses=None):
+    seller, buyer, prop, financial = seller or {}, buyer or {}, prop or {}, financial or {}
+    total = int(float(financial.get("total_price") or 0))
+    advance = int(float(financial.get("advance") or 0))
+    balance = int(float(financial.get("balance") or max(0, total - advance)))
+    penalty = int(float(financial.get("penalty") or 0))
+    deadline = financial.get("deadline") or "______________"
+    cdate = financial.get("contract_date") or "______________"
+    hsc = prop.get("sub_city") or "—"
+    hw = prop.get("woreda") or "—"
+    deed = prop.get("title_deed") or "—"
+    area = prop.get("area_sqm") or "—"
+    use = prop.get("use_type") or "የመኖሪያ"
+
+    return f"""የቤት ሽያጭ ውል ስምምነት
+
+ቀን: {cdate}
+
+{_party_line("ውል ሰጪ (ሻጭ)", seller)}
+{_party_line("ውል ተቀባይ (ገዢ)", buyer)}
+
+እኔ ውል ሰጪ (ሻጭ) አድራሻው ክ/ከተማ {hsc}፣ ወረዳ {hw}፣ የካርታ / የደብተር ቁጥር {deed}፣ የቦታው ስፋት {area} ካ.ሜ የሆነውን {use} ቤት ባለበት ሁኔታ ለውል ተቀባይ (ገዢ) በብር {_etb_words(total)} ({total:,}) የሸጥኩ ሲሆን፤ በዛሬው ዕለት በቅድመ ክፍያ ብር {_etb_words(advance)} ({advance:,}) ተቀብዬ፣ ቀሪውን ብር {_etb_words(balance)} ({balance:,}) ከዛሬ ጀምሮ እስከ {deadline} ድረስ ገዢ አጠናቆ የሚያስረክበኝ መሆኑን ተስማምተናል።
+
+እኔ ሻጭ ይህ ቤት ከማንኛውም የባንክ ዕዳ፣ እገዳ፣ የካርታ እግድ እና "ይይዛልኛል / ይገባኛል" ከሚል የሶስተኛ ወገን ወይም የቤተሰብ ጥያቄ ነፃ መሆኑን የማረጋግጥ ሲሆን፤ ማንኛውም ተቃዋሚ ወገን ቢመጣ በአካል ቀርቤ ተከራክሬ መልስ የምሰጥና ገዢውን ነፃ የማወጣ መሆኔን፣ እንዲሁም ከውሉ ቀን በፊት የነበሩ የቤት ግብር፣ የመብራት፣ የውሃ እና የመንግሥት ዕዳዎችን ሙሉ በሙሉ የምከፍል መሆኑን አረጋግጣለሁ።
+
+እኔ ገዢ ቀሪውን ክፍያ አጠናቅቄ ስከፍል ሻጭ በ 15 ቀናት ውስጥ የካርታ ስም ዝውውር (ስም ማዛወር) እና የይዞታ ማስተላለፍ ግዴታውን የሚወጣ ሲሆን፤ ውሉ ከተፈረመበት ቀን ጀምሮ ለሚመጡ ማናቸውም የመንግሥት ግብሮችና ወጪዎች ገዢ ኃላፊነቱን ይወስዳል።
+
+ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 እና 2872 (ቤትና ቦታ ሽያጭ ድንጋጌ) መሠረት የተደረገ ነው። ይህንን ውል ለማፍረስ የሚሞክር ወገን ቢኖር ብር {_etb_words(penalty) if penalty else '______________'} ({penalty:,} ብር) ከፍሎ ውሉ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
+
+እኛ ተዋዋዮችና ምስክሮች በዚህ ውል መሠረት ተስማምተን በአካል ተገኝተን በፊርማችን አረጋግጠናል።
+
+{_witness_block(witnesses)}
+
+ውል ሰጪ (ሻጭ) ፊርማ: ________________
+ውል ተቀባይ (ገዢ) ፊርማ: ________________
+"""
 
 
-def get_favorite_subscribers(listing_id):
-    """Return list of {user_id, chat_id} who bookmarked listing."""
-    ensure_favorites_table()
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        p = get_placeholder()
-        cur.execute(
-            f"SELECT user_id, chat_id FROM favorites WHERE listing_id = {p}",
-            (int(listing_id),),
-        )
-        rows = cur.fetchall() or []
-        out = []
-        for row in rows:
-            d = dict(row) if isinstance(row, dict) else {"user_id": row[0], "chat_id": row[1] if len(row) > 1 else row[0]}
-            out.append({
-                "user_id": d.get("user_id"),
-                "chat_id": d.get("chat_id") or d.get("user_id"),
-            })
-        return out
-    except Exception as e:
-        logger.error("get_favorite_subscribers: %s", e)
-        return []
-    finally:
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
+def build_amharic_house_rental_contract(lessor, lessee, prop, financial, witnesses=None):
+    lessor, lessee, prop, financial = lessor or {}, lessee or {}, prop or {}, financial or {}
+    rate = int(float(financial.get("rent_rate") or 0))
+    months = financial.get("rent_advance_months") or "—"
+    paid = int(float(financial.get("rent_advance_total") or 0))
+    start = financial.get("rent_start") or "______________"
+    duration = financial.get("rent_end") or "______________"
+    penalty = int(float(financial.get("penalty") or 0))
+    cdate = financial.get("contract_date") or "______________"
+    hsc = prop.get("sub_city") or "—"
+    hw = prop.get("woreda") or "—"
+    hno = prop.get("house_no") or "—"
+    use = prop.get("use_type") or "የመኖሪያ"
+
+    return f"""የቤት ኪራይ ውል ስምምነት
+
+ቀን: {cdate}
+
+{_party_line("አከራይ", lessor)}
+{_party_line("ተከራይ", lessee)}
+
+እኔ አከራይ አድራሻው ክ/ከተማ {hsc}፣ ወረዳ {hw}፣ የቤት ቁጥር {hno} የሆነውን {use} ቤት ከ {start} ጀምሮ ለ {duration} ወራት / ዓመታት ለተከራይ ያከራየሁ ሲሆን፤ ተከራይም በወር ብር {_etb_words(rate)} ({rate:,}) ለመክፈል ተስማምቶ በዛሬው ዕለት የ {months} ወር ቅድመ ኪራይ ብር {_etb_words(paid)} ({paid:,}) ገቢ አድርጎ ቤቱን ተረክቧል።
+
+ተከራይ ቤቱን ለመኖሪያ / ለንግድ አገልግሎት ብቻ የመጠቀም፣ የህንጻውን አካል ሳያፈርስና ሳይለውጥ በጥንቃቄ የመጠበቅ፣ እንዲሁም የወርሃዊ የመብራት፣ የውሃ እና የቆሻሻ ክፍያዎችን በወቅቱ የመክፈል ግዴታ አለበት። ተከራይ ከአከራይ ፈቃድ ውጪ ቤቱን ለሶስተኛ ወገን አሳልፎ ማከራየት አይችልም።
+
+አከራይ ተከራይ በሰላም የመኖሩን/ የመጠቀሙን መብት የማስከበር ግዴታ ያለበት ሲሆን፣ የኪራይ ዘመኑ ሲያልቅ ተከራይ ቤቱን በተረከበበት ሁኔታና ሰላማዊ መንገድ ለአከራይ ያስረክባል። ውሉን ማደስ ከተፈለገ ከውሉ ማለቂያ 1 ወር በፊት ተዋዋዮች መነጋገር አለባቸው።
+
+ይህ ውል በ ፍ/ብ/ሕ/ቁጥር 1731 እና 2945 (የቤት ኪራይ ድንጋጌ) መሠረት የተደረገ ነው። ውሉን ያለበቂ ምክንያት ያፈረሰ ወገን የ {_etb_words(penalty) if penalty else '______________'} ({penalty:,} ብር) ካሳ ከፍሎ ውሉ በ ፍ/ብ/ሕ/ቁጥር 1889 / 1890 መሠረት በሕግ ፊት የጸና ይሆናል።
+
+እኛ ተዋዋዮችና ምስክሮች በዚህ ውል መሠረት ተስማምተን በአካል ተገኝተን በፊርማችን አረጋግጠናል።
+
+{_witness_block(witnesses)}
+
+አከራይ ፊርማ: ________________
+ተከራይ ፊርማ: ________________
+"""
 
 
-def update_listing_price(listing_id, new_price):
-    """Update listing price; returns (ok, old_price, title, category)."""
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        p = get_placeholder()
-        lid = int(listing_id)
-        cur.execute(f"SELECT price, sub_category, main_category, description FROM listings WHERE id = {p}", (lid,))
-        row = cur.fetchone()
-        if not row:
-            return False, None, None, None
-        d = dict(row) if isinstance(row, dict) else {
-            "price": row[0], "sub_category": row[1], "main_category": row[2], "description": row[3] if len(row) > 3 else ""
-        }
-        old_price = d.get("price")
-        title = d.get("sub_category") or d.get("main_category") or f"#{lid}"
-        cat = d.get("main_category") or ""
-        cur.execute(f"UPDATE listings SET price = {p} WHERE id = {p}", (str(new_price), lid))
-        if not is_postgres():
-            conn.commit()
-        return True, old_price, title, cat
-    except Exception as e:
-        logger.error("update_listing_price: %s", e)
-        return False, None, None, None
-    finally:
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
+def build_amharic_vehicle_contract(seller, buyer, vehicle, financial, witnesses=None):
+    """Backward-compatible alias → vehicle sale."""
+    return build_amharic_vehicle_sale_contract(seller, buyer, vehicle, financial, witnesses)
+
+
+def build_contract_by_type(contract_type, seller, buyer, vehicle=None, property_info=None, financial=None, witnesses=None):
+    ct = (contract_type or "vehicle_sale").lower().strip()
+    if ct in ("vehicle_rental", "car_rental", "መኪና_ኪራይ"):
+        return build_amharic_vehicle_rental_contract(seller, buyer, vehicle, financial, witnesses)
+    if ct in ("house_sale", "property_sale", "ቤት_ሽያጭ"):
+        return build_amharic_house_sale_contract(seller, buyer, property_info, financial, witnesses)
+    if ct in ("house_rental", "property_rental", "ቤት_ኪራይ"):
+        return build_amharic_house_rental_contract(seller, buyer, property_info, financial, witnesses)
+    return build_amharic_vehicle_sale_contract(seller, buyer, vehicle, financial, witnesses)
