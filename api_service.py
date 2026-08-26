@@ -19,13 +19,57 @@ from flask import request, jsonify, Response
 
 from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY
 from models import (
-    toggle_favorite, get_favorite_subscribers, update_listing_price, ensure_favorites_table,
-    save_contract, get_contract, get_user_contracts, build_amharic_vehicle_contract, build_contract_by_type, ensure_contracts_table,
     LAST_DB_ERROR,
     get_db_connection, get_placeholder, is_postgres, add_listing, get_listing_by_id,
     update_listing_status, save_search_alert, get_matching_alerts, expire_old_listings,
     get_active_brokers, get_platform_stats, count_listings, count_brokers,
 )
+
+# Optional modules — guard against partial deploys
+try:
+    from models import (
+        toggle_favorite, get_favorite_subscribers, update_listing_price, ensure_favorites_table,
+    )
+except ImportError as _fav_imp_err:
+    logger.warning("favorites helpers missing from models: %s", _fav_imp_err)
+
+    def ensure_favorites_table():
+        return None
+
+    def toggle_favorite(user_id, listing_id, chat_id=None, action=None):
+        return {"favorited": False, "error": "favorites not deployed"}
+
+    def get_favorite_subscribers(listing_id):
+        return []
+
+    def update_listing_price(listing_id, new_price):
+        return False, None, None, None
+
+try:
+    from models import (
+        save_contract, get_contract, get_user_contracts,
+        build_amharic_vehicle_contract, build_contract_by_type, ensure_contracts_table,
+    )
+except ImportError as _ctr_imp_err:
+    logger.warning("contract helpers missing from models: %s", _ctr_imp_err)
+
+    def ensure_contracts_table():
+        return None
+
+    def save_contract(*a, **k):
+        return None
+
+    def get_contract(contract_id):
+        return None
+
+    def get_user_contracts(user_id, limit=20):
+        return []
+
+    def build_amharic_vehicle_contract(*a, **k):
+        return ""
+
+    def build_contract_by_type(*a, **k):
+        return ""
 
 # Set by webapp.py after import (avoids circular imports)
 bot_app = None
