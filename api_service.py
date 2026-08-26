@@ -19,6 +19,7 @@ from flask import request, jsonify, Response
 
 from config import logger, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL, OPENROUTER_API_KEY
 from models import (
+    toggle_favorite, get_favorite_subscribers, update_listing_price, ensure_favorites_table,
     save_contract, get_contract, get_user_contracts, build_amharic_vehicle_contract, ensure_contracts_table,
     LAST_DB_ERROR,
     get_db_connection, get_placeholder, is_postgres, add_listing, get_listing_by_id,
@@ -1450,6 +1451,92 @@ def register_api_routes(web_app):
 
 
 
+
+    @web_app.route('/api/favorites/toggle', methods=['POST', 'OPTIONS'])
+    def api_favorites_toggle():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            user_id = data.get('user_id') or data.get('chat_id') or 0
+            chat_id = data.get('chat_id') or user_id
+            listing_id = data.get('listing_id')
+            action = data.get('action')  # add|remove|None
+            if not user_id or not listing_id:
+                return jsonify({"success": False, "message": "user_id and listing_id required"}), 400
+            result = toggle_favorite(user_id, listing_id, chat_id=chat_id, action=action)
+            return jsonify({"success": True, **result})
+        except Exception as e:
+            logger.error(f"api_favorites_toggle: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/update-listing', methods=['POST', 'OPTIONS'])
+    def api_update_listing():
+        """Update listing fields; on price drop notify all users who favorited it."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            data = request.json or {}
+            listing_id = data.get('listing_id') or data.get('id')
+            if not listing_id:
+                return jsonify({"success": False, "message": "listing_id required"}), 400
+
+            new_price = data.get('price') or data.get('new_price')
+            if new_price is None:
+                return jsonify({"success": False, "message": "price required"}), 400
+
+            def _num(v):
+                try:
+                    return float(str(v).replace(",", "").replace("ETB", "").replace("ብር", "").strip() or 0)
+                except Exception:
+                    return 0.0
+
+            ok, old_price, title, category = update_listing_price(listing_id, new_price)
+            if not ok:
+                return jsonify({"success": False, "message": "Listing not found or update failed"}), 404
+
+            old_n = _num(old_price)
+            new_n = _num(new_price)
+            notified = 0
+            if old_n > 0 and new_n > 0 and new_n < old_n:
+                subs = get_favorite_subscribers(listing_id) or []
+                try:
+                    price_fmt = f"{int(new_n):,}"
+                    old_fmt = f"{int(old_n):,}"
+                except Exception:
+                    price_fmt = str(new_price)
+                    old_fmt = str(old_price)
+                msg = (
+                    f"🔥 <b>የዋጋ ቅናሽ!</b>\n\n"
+                    f"<b>{title or 'ንብረት'}</b>\n"
+                    f"ዋጋ ከ {old_fmt} ወደ <b>{price_fmt} ETB</b> ቀንሷል!\n"
+                    f"📦 #ADK-{listing_id}\n\n"
+                    f"በ Adika Marketplace Mini App ይመልከቱ።"
+                )
+                for sub in subs:
+                    chat_id = sub.get("chat_id") or sub.get("user_id")
+                    if not chat_id:
+                        continue
+                    try:
+                        _send_notification_safe(msg, listing_id, chat_id)
+                        notified += 1
+                    except Exception as pe:
+                        logger.warning("price-drop push %s: %s", chat_id, pe)
+
+            return jsonify({
+                "success": True,
+                "listing_id": listing_id,
+                "old_price": old_price,
+                "new_price": new_price,
+                "price_dropped": bool(old_n > 0 and new_n < old_n),
+                "notified": notified,
+                "message": "ዋጋ ተዘምኗል" + (f" · {notified} ማሳወቂያ" if notified else ""),
+            })
+        except Exception as e:
+            logger.error(f"api_update_listing: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
     @web_app.route('/api/recommendations', methods=['POST', 'OPTIONS'])
     def api_recommendations():
         if request.method == 'OPTIONS':
@@ -1522,6 +1609,21 @@ def register_api_routes(web_app):
                 if target_cat:
                     where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
                     params.extend([target_cat, f"%{target_cat}%"])
+                # Indexed-friendly numeric range (±15%) — strip non-digits in SQL when possible
+                lo = int(avg_price * 0.85)
+                hi = int(avg_price * 1.15)
+                try:
+                    if is_postgres():
+                        where.append(
+                            f"(NULLIF(regexp_replace(CAST(COALESCE(price,'') AS TEXT), '[^0-9]', '', 'g'), '')::BIGINT "
+                            f"BETWEEN {p} AND {p})"
+                        )
+                        params.extend([lo, hi])
+                    else:
+                        # SQLite: filter in Python below; keep category filter only
+                        pass
+                except Exception:
+                    pass
             elif target_cat:
                 intent = "category"
                 intent_label = "በተመሳሳይ ምድብ"
