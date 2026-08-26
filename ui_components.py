@@ -4541,61 +4541,52 @@ EXPLORER_HTML = r"""
 
       function buildFinalUrl(scannedPayload) {
         var s = String(scannedPayload || "").trim();
-        if (!s) return "";
+        if (!s) return "https://addislandfarm.gov.et/";
+        var BASE = "https://addislandfarm.gov.et";
+        var VERIFY = BASE + "/verify";
 
-        // STRICT: only addislandfarm.gov.et (dead domains cause DNS_PROBE_FINISHED_NXDOMAIN)
-
-        // Already on active portal
+        // Already active portal
         if (/addislandfarm\.gov\.et/i.test(s)) {
           var m = s.match(/https?:\/\/[^\s\"'<>]*addislandfarm\.gov\.et[^\s\"'<>]*/i);
           return m ? m[0] : s;
         }
 
-        // Full URL on any host — extract token and re-host on addislandfarm
-        if (/^https?:\/\//i.test(s) || /https?:\/\//i.test(s)) {
+        // Any other URL / dead domain → extract token → rewrite
+        if (/https?:\/\//i.test(s)) {
           var urlPart = (s.match(/https?:\/\/[^\s\"'<>\]]+/i) || [s])[0];
           var pathTok = urlPart.match(/\/verify\/([A-Za-z0-9_\-]+)/i);
-          if (pathTok) return "https://addislandfarm.gov.et/verify/" + pathTok[1];
+          if (pathTok) return VERIFY + "/" + pathTok[1];
           var qTok = urlPart.match(/[?&](?:upin|plot|id|code|token)=([A-Za-z0-9_\-]+)/i);
-          if (qTok) return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(qTok[1]);
+          if (qTok) return VERIFY + "/" + encodeURIComponent(qTok[1]);
           var uuidIn = urlPart.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
-          if (uuidIn) return "https://addislandfarm.gov.et/verify/" + uuidIn[0];
-          return "https://addislandfarm.gov.et/";
+          if (uuidIn) return VERIFY + "/" + uuidIn[0];
+          return BASE + "/";
         }
 
-        // JSON
         try {
           if (s.charAt(0) === "{" || s.charAt(0) === "[") {
             var j = JSON.parse(s);
             if (Array.isArray(j)) j = j[0] || {};
-            var jUrl = j.url || j.verify_url || j.link || "";
-            if (jUrl) return buildFinalUrl(String(jUrl));
+            if (j.url) return buildFinalUrl(String(j.url));
             s = String(j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || j.token || s).trim();
           }
         } catch (e) {}
 
         var clean = s.trim();
-
-        // UUID → path
         if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clean)) {
-          return "https://addislandfarm.gov.et/verify/" + clean;
+          return VERIFY + "/" + clean;
         }
         var uuid2 = clean.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
-        if (uuid2) return "https://addislandfarm.gov.et/verify/" + uuid2[0];
+        if (uuid2) return VERIFY + "/" + uuid2[0];
 
-        // UPIN / codes → query on addislandfarm only
-        var upin =
-          (clean.match(/\b(AA\d{6,})\b/i) ||
-           clean.match(/\b(KK\d{6,})\b/i) ||
+        var code =
+          (clean.match(/\b((?:AA|KK)\d{6,})\b/i) ||
            clean.match(/\b(LTP[-_]?[A-Z0-9\-]+)\b/i) ||
-           clean.match(/\b([A-Z0-9]{8,20})\b/i) || [])[1];
-        if (upin) {
-          return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(upin);
-        }
-        if (clean.length >= 6 && clean.length <= 64) {
-          return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(clean);
-        }
-        return "https://addislandfarm.gov.et/";
+           clean.match(/\b(\d{8,})\b/) ||
+           clean.match(/\b([A-Za-z0-9_\-]{10,40})\b/) || [])[1];
+        if (code) return VERIFY + "/" + encodeURIComponent(code);
+        if (clean.length >= 6 && clean.length <= 64) return VERIFY + "/" + encodeURIComponent(clean);
+        return BASE + "/";
       }
 
 
