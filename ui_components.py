@@ -1035,6 +1035,13 @@ EXPLORER_HTML = r"""
     }
     .tool-icon-wrap svg { width: 12px; height: 12px; }
 
+    .adika-success-pulse {
+      animation: adikaPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes adikaPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0.35); }
+      50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(16,185,129,0); }
+    }
     .land-scan-laser {
       background: linear-gradient(180deg, transparent 0%, rgba(34,211,238,0.15) 48%, rgba(34,211,238,0.55) 50%, rgba(34,211,238,0.15) 52%, transparent 100%);
       background-size: 100% 200%;
@@ -2153,6 +2160,7 @@ EXPLORER_HTML = r"""
             </div>
             <input id="landMapFile" type="file" accept="image/*" capture="environment" class="hidden" />
           </label>
+          <div id="landMapToast" class="hidden mb-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold text-center leading-snug"></div>
           <div id="landMapRetryBox" class="hidden">
             <button type="button" id="landMapRetryBtn" class="w-full py-3 rounded-xl bg-[#1e73be] text-white font-bold text-xs shadow">
               📷 እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያንሱ
@@ -2171,30 +2179,32 @@ EXPLORER_HTML = r"""
           </div>
         </div>
 
-        <div id="landMapResultPanel" class="hidden space-y-0 -mx-4 -mt-1">
-          <!-- DARA-style blue agency banner -->
-          <div class="bg-[#1e73be] text-white px-3 py-3 text-center">
-            <div class="font-black text-[11px] leading-snug tracking-tight">አዲስ አበባ ከተማ አስተዳደር</div>
-            <div class="font-bold text-[10px] leading-snug mt-0.5">የመሬት ይዞታ ምዝገባና መረጃ ኤጀንሲ</div>
-            <div class="text-[9px] text-blue-100 mt-1 font-medium">Adika Digital Verification Portal</div>
-          </div>
-
-          <!-- Success badge -->
-          <div class="mx-3 mt-3 mb-2 flex items-center gap-2.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5">
-            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-600 text-white text-sm font-black">✔</span>
-            <span class="font-black text-[12px] text-[#155724]">ይህ መረጃ የተረጋገጠ ነው</span>
-          </div>
-
-          <!-- Dynamic DARA cards injected here -->
-          <div id="landMapResultGrid" class="px-3 pb-3 space-y-2.5 text-[11px]"></div>
-
-          <div class="px-3 pb-3 space-y-2">
-            <p class="text-[9px] text-slate-500 leading-relaxed">ይህ መረጃ በአዲስ አበባ ከተማ አስተዳደር የመሬት ይዞታ ምዝገባና መረጃ ኤጀንሲ ማዕከላዊ ካዳስተር ዳታቤዝ መሠረት በ Adika Digital System በጥንቃቄ የተረጋገጠ ነው።</p>
-            <div class="grid grid-cols-2 gap-2">
-              <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-lg bg-[#1e73be] text-white font-bold text-[10px] shadow-sm">📄 መረጃውን ወደ ውል አዛውር</button>
-              <button type="button" id="landMapShareBtn" class="py-2.5 rounded-lg bg-slate-800 text-white font-bold text-[10px]">📤 ማረጋገጫውን አጋራ</button>
+        <div id="landMapResultPanel" class="hidden space-y-0">
+          <div id="adikaSuccessModal" class="rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-white">
+            <div class="bg-gradient-to-r from-[#0e4d8b] via-[#1e73be] to-[#16acbd] px-4 py-4 text-center text-white">
+              <div class="text-[10px] font-bold tracking-wide opacity-90">ADIKA DIGITAL SYSTEM</div>
+              <div class="font-black text-sm mt-1 leading-snug">የአዲካ ዲጂታል ማረጋገጫ</div>
+              <div class="text-[10px] mt-0.5 text-blue-100">Adika Digital Verification</div>
             </div>
-            <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px]">← አዲስ ማጣሪያ</button>
+            <div class="px-4 pt-4 pb-2 flex flex-col items-center text-center">
+              <div class="w-14 h-14 rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center mb-3 adika-success-pulse">
+                <span class="text-2xl text-emerald-600 font-black">✓</span>
+              </div>
+              <div class="font-black text-slate-900 text-[13px] leading-snug">የይዞታ ማረጋገጫ ሰነዱ</div>
+              <div class="font-bold text-emerald-700 text-[12px] mt-1 leading-snug">በሲስተሙ ውስጥ በተሳካ ሁኔታ ተረጋግጧል።</div>
+              <div id="adikaPayloadHint" class="mt-3 w-full p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-mono text-slate-600 break-all hidden"></div>
+            </div>
+            <div class="px-4 pb-4 space-y-2">
+              <button type="button" id="adikaViewResultBtn" class="w-full py-3 rounded-xl bg-[#1e73be] hover:bg-[#1862a3] text-white font-black text-sm shadow-md active:scale-[0.98] transition">
+                ውጤቱን ይመልከቱ
+              </button>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-xl bg-slate-100 text-slate-800 font-bold text-[10px]">📄 ወደ ውል አዛውር</button>
+                <button type="button" id="landMapShareBtn" class="py-2.5 rounded-xl bg-slate-800 text-white font-bold text-[10px]">📤 አጋራ</button>
+              </div>
+              <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-xl text-slate-500 font-bold text-[10px]">← አዲስ ማጣሪያ</button>
+              <p class="text-[9px] text-slate-400 text-center leading-relaxed">በ Adika Digital System የተረጋገጠ · ኦፊሴላዊ ውጤት ከመንግሥት ሰርቨር</p>
+            </div>
           </div>
         </div>
       </div>
@@ -4480,25 +4490,28 @@ EXPLORER_HTML = r"""
     // ========== Digital Cadastral Map Verifier (Adika Digital System) ==========
     (function initLandMapVerifier() {
       var CADASTRE_VERIFY = "https://land.addiscadaster.gov.et/verify";
-      var CADASTRE_SEARCH = "https://land.addiscadaster.gov.et/search";
       var lastExtract = null;
       var isScanning = false;
+      var pendingFinalUrl = "";
 
       function showPanel(name) {
         ["landMapUploadPanel", "landMapScanPanel", "landMapResultPanel"].forEach(function(id) {
           var el = document.getElementById(id);
           if (el) el.classList.toggle("hidden", id !== name);
         });
-        var retry = document.getElementById("landMapRetryBox");
-        if (retry && name !== "landMapUploadPanel") retry.classList.add("hidden");
       }
 
-      function showRetryOnly() {
+      function showErrorToast(msg) {
         isScanning = false;
         showPanel("landMapUploadPanel");
+        var toast = document.getElementById("landMapToast");
+        if (toast) {
+          toast.textContent = msg || "እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።";
+          toast.classList.remove("hidden");
+          setTimeout(function() { try { toast.classList.add("hidden"); } catch (e) {} }, 5000);
+        }
         var retry = document.getElementById("landMapRetryBox");
         if (retry) retry.classList.remove("hidden");
-        // Reset file input so same/next photo can be selected
         var fi = document.getElementById("landMapFile");
         if (fi) try { fi.value = ""; } catch (e) {}
       }
@@ -4525,116 +4538,110 @@ EXPLORER_HTML = r"""
         } catch (e) {}
       }
 
+      function buildFinalUrl(scannedPayload) {
+        var s = String(scannedPayload || "").trim();
+        if (!s) return "";
+        if (/^https?:\/\//i.test(s)) return s;
+        var urlIn = s.match(/https?:\/\/[^\s\"'<>\]]+/i);
+        if (urlIn) return urlIn[0];
+        try {
+          if (s.charAt(0) === "{" || s.charAt(0) === "[") {
+            var j = JSON.parse(s);
+            if (Array.isArray(j)) j = j[0] || {};
+            if (j.url && /^https?:\/\//i.test(String(j.url))) return String(j.url);
+            var ju = j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || "";
+            if (ju) return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(String(ju).trim());
+          }
+        } catch (e) {}
+        var upinMatch =
+          s.match(/\b(AA\d{8,16})\b/i) ||
+          s.match(/\b(KK\d{8,16})\b/i) ||
+          s.match(/\b(LTP[-_]?[A-Z0-9\-]+)\b/i) ||
+          s.match(/\b([A-Z]{2}\d{8,16})\b/i) ||
+          s.match(/([A-Z0-9]{8,20})/i);
+        if (upinMatch) {
+          var upin = (upinMatch[1] || upinMatch[0]).trim();
+          return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(upin);
+        }
+        if (s.length >= 6) {
+          return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(s);
+        }
+        return "";
+      }
+
+      function extractUpinHint(payload, finalUrl) {
+        var s = String(payload || "");
+        var m = s.match(/\b(AA\d{8,16}|KK\d{8,16}|LTP[-_]?[A-Z0-9\-]+)\b/i);
+        if (m) return m[1] || m[0];
+        try {
+          var u = new URL(finalUrl);
+          return u.searchParams.get("upin") || u.searchParams.get("plot") || "";
+        } catch (e) {
+          return "";
+        }
+      }
+
       function openOfficialUrl(url) {
         if (!url) return false;
         url = String(url).trim();
-        try { console.log("[Adika Digital System] openLink:", url); } catch (e0) {}
-        var opened = false;
         try {
           if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === "function") {
-            try {
-              Telegram.WebApp.openLink(url, { try_instant_view: false });
-            } catch (eOpt) {
-              Telegram.WebApp.openLink(url);
-            }
-            opened = true;
+            try { Telegram.WebApp.openLink(url, { try_instant_view: false }); }
+            catch (e0) { Telegram.WebApp.openLink(url); }
+            return true;
           }
         } catch (e1) {}
-        if (!opened) {
-          try {
-            if (typeof tg !== "undefined" && tg && typeof tg.openLink === "function") {
-              tg.openLink(url);
-              opened = true;
-            }
-          } catch (e2) {}
-        }
-        // Always also try window.open as backup (some WebViews need both)
         try {
-          var w = window.open(url, "_blank");
-          if (w) opened = true;
-        } catch (e3) {}
-        if (!opened) {
-          try { window.location.href = url; opened = true; } catch (e4) {}
-        }
-        return opened;
-      }
-
-      function handleParsedLandPayload(payload) {
-        if (payload == null || payload === "") return false;
-        var decodedText = String(payload).trim();
-        try { console.log("[Adika Digital System] Raw QR Output:", decodedText); } catch (e0) {}
-
-        // Case 1: Full URL
-        if (/^https?:\/\//i.test(decodedText)) {
-          saveForContract({ url: decodedText, raw: decodedText });
-          openOfficialUrl(decodedText);
-          return true;
-        }
-        // Case 1b: URL embedded in text
-        var urlInText = decodedText.match(/https?:\/\/[^\s\"'<>\]]+/i);
-        if (urlInText) {
-          saveForContract({ url: urlInText[0], raw: decodedText });
-          openOfficialUrl(urlInText[0]);
-          return true;
-        }
-        // Case 2: JSON
-        try {
-          if (decodedText.charAt(0) === "{" || decodedText.charAt(0) === "[") {
-            var j = JSON.parse(decodedText);
-            if (Array.isArray(j)) j = j[0] || {};
-            var jUrl = j.url || j.verify_url || j.link || j.href || "";
-            var jUpin = j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || "";
-            if (jUrl && /^https?:\/\//i.test(String(jUrl))) {
-              saveForContract({ url: jUrl, upin: jUpin, raw: decodedText });
-              openOfficialUrl(String(jUrl));
-              return true;
-            }
-            if (jUpin) {
-              var u0 = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(String(jUpin).trim());
-              saveForContract({ upin: String(jUpin).trim(), raw: decodedText });
-              openOfficialUrl(u0);
-              return true;
-            }
+          if (typeof tg !== "undefined" && tg && typeof tg.openLink === "function") {
+            tg.openLink(url);
+            return true;
           }
-        } catch (eJson) {}
-
-        // Case 3: Raw UPIN patterns (male cadastral certificates)
-        var upinMatch =
-          decodedText.match(/\b(AA\d{8,16})\b/i) ||
-          decodedText.match(/\b(KK\d{8,16})\b/i) ||
-          decodedText.match(/\b(LTP[-_]?KK[\d\-]+)\b/i) ||
-          decodedText.match(/\b(LTP[-_]?[A-Z0-9\-]+)\b/i) ||
-          decodedText.match(/\b([A-Z]{2}\d{8,16})\b/i);
-        if (upinMatch) {
-          var extractedUpin = (upinMatch[1] || upinMatch[0]).trim();
-          var cadastralUrl = CADASTRE_VERIFY + "?upin=" + encodeURIComponent(extractedUpin);
-          saveForContract({ upin: extractedUpin, raw: decodedText });
-          openOfficialUrl(cadastralUrl);
-          return true;
-        }
-        // Case 4: query style
-        var qs = decodedText.match(/(?:upin|plot|id|code)\s*[=:]\s*([A-Z0-9\-]{6,})/i);
-        if (qs) {
-          openOfficialUrl(CADASTRE_VERIFY + "?upin=" + encodeURIComponent(qs[1]));
-          saveForContract({ upin: qs[1], raw: decodedText });
-          return true;
-        }
-        // Case 5: alphanumeric blob
-        if (/^[A-Z0-9\-]{8,24}$/i.test(decodedText)) {
-          openOfficialUrl(CADASTRE_VERIFY + "?upin=" + encodeURIComponent(decodedText));
-          saveForContract({ upin: decodedText, raw: decodedText });
-          return true;
-        }
-        if (decodedText.length >= 6) {
-          openOfficialUrl("https://e-services.addisababa.gov.et/land/verify?plot=" + encodeURIComponent(decodedText));
-          saveForContract({ raw: decodedText });
-          return true;
-        }
+        } catch (e2) {}
+        try { window.open(url, "_blank"); return true; } catch (e3) {}
+        try { window.location.href = url; return true; } catch (e4) {}
         return false;
       }
 
-      function tryJsQR(imageData) {
-        if (typeof jsQR !== "function") return null;
+      /** Show professional Adika success modal — NO auto-redirect */
+      function triggerAdikaSuccessModal(scannedPayload) {
+        isScanning = false;
+        var finalUrl = buildFinalUrl(scannedPayload);
+        if (!finalUrl) {
+          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+          return;
+        }
+        pendingFinalUrl = finalUrl;
+        var upin = extractUpinHint(scannedPayload, finalUrl);
+        saveForContract({
+          raw: String(scannedPayload || ""),
+          url: finalUrl,
+          upin: upin || ""
+        });
+
+        var hint = document.getElementById("adikaPayloadHint");
+        if (hint) {
+          if (upin) {
+            hint.textContent = "መለያ: " + upin;
+            hint.classList.remove("hidden");
+          } else {
+            hint.classList.add("hidden");
+          }
+        }
+
+        var viewBtn = document.getElementById("adikaViewResultBtn");
+        if (viewBtn) {
+          viewBtn.onclick = function() {
+            openOfficialUrl(pendingFinalUrl || finalUrl);
+          };
+        }
+
+        showPanel("landMapResultPanel");
+        var fi = document.getElementById("landMapFile");
+        if (fi) try { fi.value = ""; } catch (e) {}
+      }
+
+      function tryJsQROnImageData(imageData) {
+        if (typeof jsQR !== "function" || !imageData) return null;
         try {
           var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
           return code && code.data ? String(code.data) : null;
@@ -4643,168 +4650,178 @@ EXPLORER_HTML = r"""
         }
       }
 
-      /** Scan one region: crop → 2x upscale → stamp-aware binarize → jsQR */
-      function scanRegion(img, x0, y0, x1, y1, thresholds) {
+      function enhanceAndScanCanvas(srcCanvas) {
+        // Binarize copy for stamp resistance
+        var c = document.createElement("canvas");
+        c.width = srcCanvas.width;
+        c.height = srcCanvas.height;
+        var ctx = c.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(srcCanvas, 0, 0);
+        var id = ctx.getImageData(0, 0, c.width, c.height);
+        var d = id.data;
+        for (var i = 0; i < d.length; i += 4) {
+          var g = 0.40 * d[i] + 0.50 * d[i + 1] + 0.10 * d[i + 2];
+          var v = g >= 120 ? 255 : 0;
+          d[i] = d[i + 1] = d[i + 2] = v;
+          d[i + 3] = 255;
+        }
+        ctx.putImageData(id, 0, 0);
+        return tryJsQROnImageData(id) || tryJsQROnImageData(ctx.getImageData(0, 0, c.width, c.height));
+      }
+
+      function scanRegionFromImage(img, rx, ry, rw, rh) {
         var srcW = img.naturalWidth || img.width;
         var srcH = img.naturalHeight || img.height;
-        var sx = Math.floor(srcW * x0);
-        var sy = Math.floor(srcH * y0);
-        var sw = Math.max(8, Math.floor(srcW * (x1 - x0)));
-        var sh = Math.max(8, Math.floor(srcH * (y1 - y0)));
-        // clamp
-        if (sx + sw > srcW) sw = srcW - sx;
-        if (sy + sh > srcH) sh = srcH - sy;
-        if (sw < 8 || sh < 8) return null;
+        var x = Math.max(0, Math.floor(srcW * rx));
+        var y = Math.max(0, Math.floor(srcH * ry));
+        var w = Math.max(16, Math.floor(srcW * rw));
+        var h = Math.max(16, Math.floor(srcH * rh));
+        if (x + w > srcW) w = srcW - x;
+        if (y + h > srcH) h = srcH - y;
+        if (w < 16 || h < 16) return null;
 
+        // native crop
         var crop = document.createElement("canvas");
-        crop.width = sw; crop.height = sh;
+        crop.width = w; crop.height = h;
         var cctx = crop.getContext("2d", { willReadFrequently: true });
         cctx.imageSmoothingEnabled = false;
-        cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+        cctx.drawImage(img, x, y, w, h, 0, 0, w, h);
+        var hit = enhanceAndScanCanvas(crop);
+        if (hit) return hit;
 
-        // 2x nearest neighbor
+        // 2x upscale + enhance
         var up = document.createElement("canvas");
-        up.width = sw * 2; up.height = sh * 2;
+        up.width = w * 2; up.height = h * 2;
         var uctx = up.getContext("2d", { willReadFrequently: true });
         uctx.imageSmoothingEnabled = false;
         uctx.drawImage(crop, 0, 0, up.width, up.height);
+        hit = enhanceAndScanCanvas(up);
+        if (hit) return hit;
 
-        var thrs = thresholds || [128, 105, 150, 90];
-        for (var ti = 0; ti < thrs.length; ti++) {
+        // multi-threshold on upscaled
+        var thresholds = [100, 128, 150, 85];
+        for (var ti = 0; ti < thresholds.length; ti++) {
           var trial = document.createElement("canvas");
           trial.width = up.width; trial.height = up.height;
           var tctx = trial.getContext("2d", { willReadFrequently: true });
           tctx.drawImage(up, 0, 0);
           var id = tctx.getImageData(0, 0, trial.width, trial.height);
           var d = id.data;
-          var thr = thrs[ti];
-          var contrast = 1.7;
-          var intercept = 128 * (1 - contrast);
+          var thr = thresholds[ti];
           for (var i = 0; i < d.length; i += 4) {
-            // Reduce blue/purple stamp influence (official seals)
             var g = 0.40 * d[i] + 0.50 * d[i + 1] + 0.10 * d[i + 2];
-            g = g * contrast + intercept;
             var v = g >= thr ? 255 : 0;
             d[i] = d[i + 1] = d[i + 2] = v;
             d[i + 3] = 255;
           }
-          var hit = tryJsQR(id);
+          hit = tryJsQROnImageData(id);
           if (hit) return hit;
         }
         return null;
       }
 
-      /**
-       * Universal multi-zone scanner for AA land certificates:
-       * - Female title deed: extreme top-right URL QR
-       * - Male cadastral: mid-right beside photo, often raw UPIN + purple stamp
-       */
-      function multiStageScan(img, cb) {
-        var found = null;
+      function processUploadedCertificate(imageElement) {
         var t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-        try {
-          // Ordered zones: mid-right first for male format, then top-right for female
-          var zones = [
-            // Mid-right beside photo (male cadastral) — several vertical bands
-            [0.55, 0.12, 1.00, 0.42],
-            [0.55, 0.18, 1.00, 0.48],
-            [0.50, 0.15, 1.00, 0.50],
-            // Extreme top-right (female title deed)
-            [0.55, 0.00, 1.00, 0.28],
-            [0.50, 0.00, 1.00, 0.32],
-            // Top-left alt
-            [0.00, 0.00, 0.45, 0.32],
-            // Lower-right fallback
-            [0.55, 0.35, 1.00, 0.65]
-          ];
-          for (var zi = 0; zi < zones.length && !found; zi++) {
-            var z = zones[zi];
-            found = scanRegion(img, z[0], z[1], z[2], z[3]);
-          }
-          // Full-page light downscale last
-          if (!found) {
-            var srcW = img.naturalWidth || img.width;
-            var srcH = img.naturalHeight || img.height;
-            var maxW = 1000;
-            var scale = srcW > maxW ? maxW / srcW : 1;
-            var fw = Math.max(1, Math.floor(srcW * scale));
-            var fh = Math.max(1, Math.floor(srcH * scale));
-            var full = document.createElement("canvas");
-            full.width = fw; full.height = fh;
-            var fctx = full.getContext("2d", { willReadFrequently: true });
-            fctx.drawImage(img, 0, 0, fw, fh);
-            var fid = fctx.getImageData(0, 0, fw, fh);
-            var fd = fid.data;
-            for (var j = 0; j < fd.length; j += 4) {
-              var g2 = 0.40 * fd[j] + 0.50 * fd[j + 1] + 0.10 * fd[j + 2];
-              var v2 = g2 >= 120 ? 255 : 0;
-              fd[j] = fd[j + 1] = fd[j + 2] = v2;
-            }
-            found = tryJsQR(fid);
-          }
-        } catch (e) {
-          found = null;
+        var qrData = null;
+
+        // Pass 1: Top-Right (Title Deed / female format)
+        qrData = scanRegionFromImage(imageElement, 0.55, 0.00, 0.45, 0.35);
+
+        // Pass 2: Mid-Right beside photo (Cadastral / male format)
+        if (!qrData) {
+          qrData = scanRegionFromImage(imageElement, 0.55, 0.15, 0.45, 0.40);
         }
+        // Pass 2b: slightly lower mid-right
+        if (!qrData) {
+          qrData = scanRegionFromImage(imageElement, 0.50, 0.18, 0.50, 0.42);
+        }
+
+        // Pass 3: Full canvas (downscaled for speed)
+        if (!qrData) {
+          var srcW = imageElement.naturalWidth || imageElement.width;
+          var srcH = imageElement.naturalHeight || imageElement.height;
+          var maxW = 1100;
+          var scale = srcW > maxW ? maxW / srcW : 1;
+          var canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.floor(srcW * scale));
+          canvas.height = Math.max(1, Math.floor(srcH * scale));
+          var ctx = canvas.getContext("2d", { willReadFrequently: true });
+          ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+          qrData = enhanceAndScanCanvas(canvas);
+          if (!qrData) {
+            var fullData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            qrData = tryJsQROnImageData(fullData);
+          }
+        }
+
         var t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-        try { console.log("[Adika Digital System] scan ms:", Math.round(t1 - t0), found ? "OK" : "MISS"); } catch (e2) {}
-        cb(found);
+        try { console.log("[Adika Digital System] scan ms:", Math.round(t1 - t0), qrData ? "OK" : "MISS"); } catch (e) {}
+
+        if (qrData) {
+          triggerAdikaSuccessModal(qrData);
+        } else {
+          // Backend OCR last resort
+          runBackendOCRLast(imageElement);
+        }
       }
 
-      function runBackendOCR(dataUrl, cb) {
-        fetch("/api/land-map/ocr", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image_data: dataUrl })
-        })
-          .then(function(r) { return r.json(); })
-          .then(function(res) {
-            if (res && res.success && res.data) cb(res.data);
-            else cb(null);
+      function runBackendOCRLast(imgEl) {
+        try {
+          var c = document.createElement("canvas");
+          var maxW = 1200;
+          var w = imgEl.naturalWidth || imgEl.width;
+          var h = imgEl.naturalHeight || imgEl.height;
+          var sc = w > maxW ? maxW / w : 1;
+          c.width = Math.floor(w * sc);
+          c.height = Math.floor(h * sc);
+          c.getContext("2d").drawImage(imgEl, 0, 0, c.width, c.height);
+          var dataUrl = c.toDataURL("image/jpeg", 0.85);
+          fetch("/api/land-map/ocr", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image_data: dataUrl })
           })
-          .catch(function() { cb(null); });
-      }
-
-      function finishSuccess() {
-        isScanning = false;
-        showPanel("landMapUploadPanel");
-        var retry = document.getElementById("landMapRetryBox");
-        if (retry) retry.classList.add("hidden");
-        var fi = document.getElementById("landMapFile");
-        if (fi) try { fi.value = ""; } catch (e) {}
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+              if (res && res.success && res.data) {
+                var cand = res.data.url || res.data.upin || res.data.cert || "";
+                if (cand) {
+                  triggerAdikaSuccessModal(cand);
+                  return;
+                }
+              }
+              showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+            })
+            .catch(function() {
+              showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+            });
+        } catch (e) {
+          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+        }
       }
 
       function processDataUrl(dataUrl) {
         if (isScanning) return;
         isScanning = true;
+        var toast = document.getElementById("landMapToast");
+        if (toast) toast.classList.add("hidden");
+        var retry = document.getElementById("landMapRetryBox");
+        if (retry) retry.classList.add("hidden");
         showPanel("landMapScanPanel");
         var prev = document.getElementById("landMapPreview");
         if (prev) prev.src = dataUrl;
 
         var img = new Image();
         img.onload = function() {
-          multiStageScan(img, function(qrRaw) {
-            if (qrRaw && handleParsedLandPayload(qrRaw)) {
-              finishSuccess();
-              return;
-            }
-            // Backend OCR fallback — extract AA/KK/LTP from document text
-            runBackendOCR(dataUrl, function(fields) {
-              if (fields) {
-                var candidate = fields.url || fields.upin || fields.cert || "";
-                if (candidate && handleParsedLandPayload(candidate)) {
-                  finishSuccess();
-                  return;
-                }
-                if (fields.upin && handleParsedLandPayload(fields.upin)) {
-                  finishSuccess();
-                  return;
-                }
-              }
-              showRetryOnly();
-            });
-          });
+          try {
+            processUploadedCertificate(img);
+          } catch (e) {
+            showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+          }
         };
-        img.onerror = function() { showRetryOnly(); };
+        img.onerror = function() {
+          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+        };
         img.src = dataUrl;
       }
 
@@ -4813,11 +4830,12 @@ EXPLORER_HTML = r"""
         fileInput.onchange = function() {
           var f = fileInput.files && fileInput.files[0];
           if (!f) return;
-          var retry = document.getElementById("landMapRetryBox");
-          if (retry) retry.classList.add("hidden");
+          isScanning = false;
           var reader = new FileReader();
           reader.onload = function() { processDataUrl(reader.result); };
-          reader.onerror = function() { showRetryOnly(); };
+          reader.onerror = function() {
+            showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
+          };
           reader.readAsDataURL(f);
         };
       }
@@ -4837,6 +4855,7 @@ EXPLORER_HTML = r"""
       if (resetBtn) {
         resetBtn.onclick = function() {
           lastExtract = null;
+          pendingFinalUrl = "";
           isScanning = false;
           if (fileInput) try { fileInput.value = ""; } catch (e) {}
           showPanel("landMapUploadPanel");
@@ -4855,14 +4874,20 @@ EXPLORER_HTML = r"""
       var shareBtn = document.getElementById("landMapShareBtn");
       if (shareBtn) {
         shareBtn.onclick = function() {
-          var u = (lastExtract && lastExtract.upin)
-            ? CADASTRE_VERIFY + "?upin=" + encodeURIComponent(lastExtract.upin)
-            : (lastExtract && lastExtract.url) || CADASTRE_VERIFY;
+          var u = pendingFinalUrl || (lastExtract && lastExtract.url) || CADASTRE_VERIFY;
           if (navigator.share) {
-            navigator.share({ title: "Adika Digital System", url: u }).catch(function(){});
+            navigator.share({ title: "Adika Digital Verification", url: u }).catch(function(){});
           } else {
             openOfficialUrl(u);
           }
+        };
+      }
+
+      // Wire view button if present at init
+      var viewBtn0 = document.getElementById("adikaViewResultBtn");
+      if (viewBtn0) {
+        viewBtn0.onclick = function() {
+          if (pendingFinalUrl) openOfficialUrl(pendingFinalUrl);
         };
       }
     })();
