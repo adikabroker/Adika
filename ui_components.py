@@ -4681,76 +4681,135 @@ EXPLORER_HTML = r"""
         return null;
       }
 
+      function hardBinarize(ctx, w, h, threshold) {
+        var thr = threshold == null ? 128 : threshold;
+        var imgData = ctx.getImageData(0, 0, w, h);
+        var d = imgData.data;
+        for (var i = 0; i < d.length; i += 4) {
+          // grayscale luminance
+          var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          var v = g >= thr ? 255 : 0;
+          d[i] = d[i + 1] = d[i + 2] = v;
+          d[i + 3] = 255;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        return imgData;
+      }
+
+      function enhanceTopRightQR(img) {
+        /** In-memory pipeline: top-right crop → 3x nearest-neighbor → B&W threshold → ImageData for jsQR */
+        var srcW = img.naturalWidth || img.width;
+        var srcH = img.naturalHeight || img.height;
+        if (!srcW || !srcH) return null;
+
+        // 1) Top-right quarter: X 50–100%, Y 0–35%
+        var sx = Math.floor(srcW * 0.50);
+        var sy = 0;
+        var sw = Math.max(1, srcW - sx);
+        var sh = Math.max(1, Math.floor(srcH * 0.35));
+
+        // intermediate crop canvas
+        var crop = document.createElement("canvas");
+        crop.width = sw;
+        crop.height = sh;
+        var cctx = crop.getContext("2d");
+        cctx.imageSmoothingEnabled = false;
+        cctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+        // 2) 3x upscale (nearest neighbor for sharp QR modules)
+        var out = document.createElement("canvas");
+        out.width = Math.max(1, sw * 3);
+        out.height = Math.max(1, sh * 3);
+        var octx = out.getContext("2d");
+        octx.imageSmoothingEnabled = false;
+        try { octx.imageSmoothingQuality = "low"; } catch (e) {}
+        octx.drawImage(crop, 0, 0, out.width, out.height);
+
+        // Optional CSS-like contrast via canvas filter if supported
+        try {
+          octx.filter = "grayscale(100%) contrast(250%) brightness(90%)";
+          octx.drawImage(out, 0, 0);
+          octx.filter = "none";
+        } catch (e2) {}
+
+        // 3) Hard binarize — try multiple thresholds for blur/exposure variance
+        var thresholds = [128, 110, 145, 100, 160];
+        var results = [];
+        for (var ti = 0; ti < thresholds.length; ti++) {
+          var trial = document.createElement("canvas");
+          trial.width = out.width;
+          trial.height = out.height;
+          var tctx = trial.getContext("2d");
+          tctx.imageSmoothingEnabled = false;
+          tctx.drawImage(out, 0, 0);
+          // grayscale boost if filter failed
+          toGrayscaleContrast(tctx, trial.width, trial.height, 1.8);
+          var idata = hardBinarize(tctx, trial.width, trial.height, thresholds[ti]);
+          results.push({ canvas: trial, imageData: idata, thr: thresholds[ti] });
+        }
+        return results;
+      }
+
       function multiStageScan(img, cb) {
         var found = null;
         try {
-          var base = drawScaled(img, 1600);
-
-          // PRIORITY: Top-right QR zone (AA land certificates place QR top-right)
-          var topRightCrops = [
-            [0.55, 0.00, 0.45, 0.32],
-            [0.50, 0.00, 0.50, 0.35],
-            [0.60, 0.00, 0.40, 0.28],
-            [0.45, 0.00, 0.55, 0.40],
-            [0.58, 0.02, 0.40, 0.30],
-            [0.50, 0.05, 0.48, 0.38]
-          ];
-          for (var i = 0; i < topRightCrops.length && !found; i++) {
-            var r = topRightCrops[i];
-            var crop = cropRegion(base.canvas, r[0], r[1], r[2], r[3], 900);
-            // 2x scale already in cropRegion; try raw then enhance
-            found = tryJsQR(getImageData(crop.canvas));
-            if (!found) {
-              toGrayscaleContrast(crop.ctx, crop.canvas.width, crop.canvas.height, 1.5);
-              found = tryJsQR(getImageData(crop.canvas));
-            }
-            if (!found) {
-              sharpen(crop.ctx, crop.canvas.width, crop.canvas.height);
-              found = tryJsQR(getImageData(crop.canvas));
-            }
-            // Extra 2x upscale of this crop for blurry phone photos
-            if (!found) {
-              var up = document.createElement("canvas");
-              up.width = crop.canvas.width * 2;
-              up.height = crop.canvas.height * 2;
-              var uctx = up.getContext("2d");
-              uctx.imageSmoothingEnabled = false;
-              uctx.drawImage(crop.canvas, 0, 0, up.width, up.height);
-              toGrayscaleContrast(uctx, up.width, up.height, 1.6);
-              found = tryJsQR(getImageData(up));
+          // === PRIMARY: enhanced top-right QR snippet (<300ms on typical phones) ===
+          var enhanced = enhanceTopRightQR(img);
+          if (enhanced && enhanced.length) {
+            for (var ei = 0; ei < enhanced.length && !found; ei++) {
+              found = tryJsQR(enhanced[ei].imageData);
             }
           }
 
-          // Other corners / center
+          // Secondary: slightly larger top-right (45–100% x, 0–40% y) same pipeline
           if (!found) {
+            var srcW = img.naturalWidth || img.width;
+            var srcH = img.naturalHeight || img.height;
+            var sx2 = Math.floor(srcW * 0.45);
+            var sw2 = srcW - sx2;
+            var sh2 = Math.floor(srcH * 0.40);
+            var c2 = document.createElement("canvas");
+            c2.width = sw2; c2.height = sh2;
+            var cx2 = c2.getContext("2d");
+            cx2.imageSmoothingEnabled = false;
+            cx2.drawImage(img, sx2, 0, sw2, sh2, 0, 0, sw2, sh2);
+            var u2 = document.createElement("canvas");
+            u2.width = sw2 * 3; u2.height = sh2 * 3;
+            var ux2 = u2.getContext("2d");
+            ux2.imageSmoothingEnabled = false;
+            ux2.drawImage(c2, 0, 0, u2.width, u2.height);
+            toGrayscaleContrast(ux2, u2.width, u2.height, 1.7);
+            hardBinarize(ux2, u2.width, u2.height, 128);
+            found = tryJsQR(getImageData(u2));
+            if (!found) {
+              hardBinarize(ux2, u2.width, u2.height, 115);
+              found = tryJsQR(getImageData(u2));
+            }
+          }
+
+          // Tertiary: top-left (some certificates)
+          if (!found) {
+            var base = drawScaled(img, 1400);
             var regions = [
-              [0.00, 0.00, 0.45, 0.35],
-              [0.25, 0.10, 0.50, 0.40],
-              [0.50, 0.30, 0.50, 0.40],
-              [0.00, 0.30, 0.50, 0.40]
+              [0.50, 0.00, 0.50, 0.35],
+              [0.55, 0.00, 0.45, 0.30],
+              [0.00, 0.00, 0.45, 0.35]
             ];
             for (var ri = 0; ri < regions.length && !found; ri++) {
-              var rr = regions[ri];
-              var c2 = cropRegion(base.canvas, rr[0], rr[1], rr[2], rr[3], 800);
-              found = tryJsQR(getImageData(c2.canvas));
-              if (!found) {
-                toGrayscaleContrast(c2.ctx, c2.canvas.width, c2.canvas.height, 1.5);
-                found = tryJsQR(getImageData(c2.canvas));
-              }
+              var r = regions[ri];
+              var crop = cropRegion(base.canvas, r[0], r[1], r[2], r[3], 900);
+              toGrayscaleContrast(crop.ctx, crop.canvas.width, crop.canvas.height, 1.6);
+              hardBinarize(crop.ctx, crop.canvas.width, crop.canvas.height, 128);
+              found = tryJsQR(getImageData(crop.canvas));
             }
           }
 
-          // Full image multi-scale
+          // Last resort: full-frame grayscale
           if (!found) {
-            [900, 1200, 1800].forEach(function(sz) {
-              if (found) return;
-              var d = drawScaled(img, sz);
-              found = tryJsQR(getImageData(d.canvas));
-              if (!found) {
-                toGrayscaleContrast(d.ctx, d.canvas.width, d.canvas.height, 1.4);
-                found = tryJsQR(getImageData(d.canvas));
-              }
-            });
+            var full = drawScaled(img, 1200);
+            toGrayscaleContrast(full.ctx, full.canvas.width, full.canvas.height, 1.5);
+            hardBinarize(full.ctx, full.canvas.width, full.canvas.height, 128);
+            found = tryJsQR(getImageData(full.canvas));
           }
         } catch (e) {
           found = null;
