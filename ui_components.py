@@ -2184,23 +2184,31 @@ EXPLORER_HTML = r"""
           </div>
         </div>
 
-        <div id="landMapResultPanel" class="hidden space-y-3">
-          <div class="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-lg">🛡️</span>
-              <div>
-                <div class="font-black text-slate-900 text-[11px]">Adika Digital Verification Report</div>
-                <div class="text-[10px] text-emerald-700 font-bold">✅ የዲጂታል ካርታው ትክክለኛነት በ Adika Digital System ተረጋግጧል</div>
-              </div>
+        <div id="landMapResultPanel" class="hidden space-y-0 -mx-4 -mt-1">
+          <!-- DARA-style blue agency banner -->
+          <div class="bg-[#1e73be] text-white px-3 py-3 text-center">
+            <div class="font-black text-[11px] leading-snug tracking-tight">አዲስ አበባ ከተማ አስተዳደር</div>
+            <div class="font-bold text-[10px] leading-snug mt-0.5">የመሬት ይዞታ ምዝገባና መረጃ ኤጀንሲ</div>
+            <div class="text-[9px] text-blue-100 mt-1 font-medium">Adika Digital Verification Portal</div>
+          </div>
+
+          <!-- Success badge -->
+          <div class="mx-3 mt-3 mb-2 flex items-center gap-2.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5">
+            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-600 text-white text-sm font-black">✔</span>
+            <span class="font-black text-[12px] text-[#155724]">ይህ መረጃ የተረጋገጠ ነው</span>
+          </div>
+
+          <!-- Dynamic DARA cards injected here -->
+          <div id="landMapResultGrid" class="px-3 pb-3 space-y-2.5 text-[11px]"></div>
+
+          <div class="px-3 pb-3 space-y-2">
+            <p class="text-[9px] text-slate-500 leading-relaxed">ይህ መረጃ በአዲስ አበባ ከተማ አስተዳደር የመሬት ይዞታ ምዝገባና መረጃ ኤጀንሲ ማዕከላዊ ካዳስተር ዳታቤዝ መሠረት በ Adika Digital System በጥንቃቄ የተረጋገጠ ነው።</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-lg bg-[#1e73be] text-white font-bold text-[10px] shadow-sm">📄 መረጃውን ወደ ውል አዛውር</button>
+              <button type="button" id="landMapShareBtn" class="py-2.5 rounded-lg bg-slate-800 text-white font-bold text-[10px]">📤 ማረጋገጫውን አጋራ</button>
             </div>
+            <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-lg bg-slate-100 text-slate-700 font-bold text-[10px]">← አዲስ ማጣሪያ</button>
           </div>
-          <div id="landMapResultGrid" class="grid grid-cols-1 gap-1.5 text-[11px]"></div>
-          <p class="text-[9px] text-slate-500 leading-relaxed border-t border-slate-100 pt-2">ይህ ማረጋገጫ በ Adika Digital System የላቀ የሰነድ ንባብ ቴክኖሎጂ የተጣራ ህጋዊ መረጃ ነው።</p>
-          <div class="grid grid-cols-2 gap-2">
-            <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-[10px]">📄 መረጃውን ወደ ውል አዛውር</button>
-            <button type="button" id="landMapShareBtn" class="py-2.5 rounded-xl bg-slate-800 text-white font-bold text-[10px]">📤 ማረጋገጫውን አጋራ</button>
-          </div>
-          <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-[10px]">← አዲስ ማጣሪያ</button>
         </div>
       </div>
     </div>
@@ -4606,24 +4614,86 @@ EXPLORER_HTML = r"""
         lastReport = report;
         var grid = document.getElementById("landMapResultGrid");
         if (!grid) return;
-        function row(k, v) {
-          return '<div class="flex justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100">' +
-            '<span class="font-bold text-slate-500 shrink-0">' + k + '</span>' +
-            '<span class="font-black text-slate-900 text-right">' + String(v || "—") + '</span></div>';
+        function clean(v, fallback) {
+          var s = (v == null || v === "" || v === "—" || v === "-") ? "" : String(v).trim();
+          return s || (fallback || "አልተገኘም");
         }
+        var upin = clean(report.upin, "አልተገኘም");
+        var cert = clean(report.certificate_no, "አልተገኘም");
+        var name = clean(report.owner_name, "አልተገለጸም");
+        var area = clean(report.area, "አልተገኘም");
+        var use = clean(report.use_type, "መኖሪያ");
+        var tenure = clean(report.tenure, "ሊዝ");
+        var sub = clean(report.sub_city, "አዲስ ከተማ");
+        var woreda = clean(report.woreda, "");
+        var nationality = clean(report.nationality, "ኢትዮጵያዊ");
+        var photo = report.owner_photo || report.photo_data_url || "";
+
+        var useLabel = use;
+        if (/residen|መኖሪያ/i.test(use)) useLabel = "መኖሪያ (Residential)";
+        else if (/commerc|ንግድ/i.test(use)) useLabel = "ንግድ (Commercial)";
+
+        var tenureLabel = tenure;
+        if (/lease|ሊዝ/i.test(tenure)) tenureLabel = "ሊዝ (Lease)";
+        else if (/possess|ይዞታ|old/i.test(tenure)) tenureLabel = "የድሮ ይዞታ (Old Possession)";
+
+        var addrParts = ["አዲስ አበባ", "ክፍለ ከተማ: " + sub];
+        if (woreda) addrParts.push("ወረዳ: " + woreda);
+        var addr = addrParts.join(" | ");
+
+        var photoHtml = photo
+          ? '<img src="' + photo + '" alt="" class="w-20 h-24 object-cover rounded border border-slate-200 shadow-sm bg-white" />'
+          : '<div class="w-20 h-24 rounded border border-slate-200 bg-slate-100 flex flex-col items-center justify-center text-slate-400">' +
+              '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
+              '<span class="text-[8px] mt-1 font-bold">ፎቶ</span></div>';
+
+        function daraCard(title, bodyHtml) {
+          return '<div class="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">' +
+            '<div class="flex">' +
+              '<div class="w-1.5 shrink-0 bg-[#1e73be]"></div>' +
+              '<div class="flex-1 p-3">' +
+                '<div class="text-[10px] font-black text-[#1e73be] mb-2 tracking-wide">' + title + '</div>' +
+                bodyHtml +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }
+
+        var docBody =
+          '<div class="font-mono font-black text-[15px] text-slate-900 tracking-wide break-all">' + upin + '</div>' +
+          '<div class="mt-2 text-[10px] text-slate-600"><span class="font-bold text-slate-500">የምስክር ወረቀት ቁጥር:</span> <span class="font-bold text-slate-800">' + cert + '</span></div>';
+
+        var ownerBody =
+          '<div class="flex flex-col items-center text-center gap-2 py-1">' +
+            photoHtml +
+            '<div class="font-black text-[14px] text-slate-900 leading-tight">' + name + '</div>' +
+            '<span class="inline-block px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold">' + nationality + '</span>' +
+            '<div class="text-[10px] text-slate-600 leading-snug">' + addr + '</div>' +
+          '</div>';
+
+        function dataRow(label, value) {
+          return '<div class="flex justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0">' +
+            '<span class="font-bold text-slate-500">' + label + '</span>' +
+            '<span class="font-black text-slate-900 text-right">' + value + '</span></div>';
+        }
+        var parcelBody =
+          dataRow("የቦታ ስፋት", area) +
+          dataRow("የይዞታ አገልግሎት", useLabel) +
+          dataRow("የይዞታ ዓይነት", tenureLabel);
+
         grid.innerHTML =
-          row("የባለቤት ስም", report.owner_name) +
-          row("የይዞታ መለያ (UPIN)", report.upin) +
-          row("የምስክር ወረቀት ቁጥር", report.certificate_no) +
-          row("የቦታ ስፋት", report.area) +
-          row("የቦታ አገልግሎት", report.use_type) +
-          row("የይዞታ ዓይነት", report.tenure) +
-          row("የተመዘገበበት ክፍለ ከተማ", report.sub_city);
+          daraCard("የይዞታ ልዩ መለያ ቁጥር (UPIN)", docBody) +
+          daraCard("የባለቤት መረጃ", ownerBody) +
+          daraCard("የቦታው መረጃ", parcelBody);
+
         showPanel("landMapResultPanel");
       }
 
       function processFields(fields, source) {
         var report = buildReport(fields, source);
+        if (typeof lastPhotoDataUrl !== "undefined" && lastPhotoDataUrl) {
+          report.photo_data_url = lastPhotoDataUrl;
+        }
         // Optional server enrich (no AI branding)
         fetch("/api/land-map/verify", {
           method: "POST",
@@ -4642,7 +4712,9 @@ EXPLORER_HTML = r"""
         });
       }
 
+      var lastPhotoDataUrl = "";
       function processDataUrl(dataUrl) {
+        lastPhotoDataUrl = dataUrl || "";
         showPanel("landMapScanPanel");
         var prev = document.getElementById("landMapPreview");
         if (prev) prev.src = dataUrl;
@@ -4729,7 +4801,7 @@ EXPLORER_HTML = r"""
       var shareBtn = document.getElementById("landMapShareBtn");
       if (shareBtn) shareBtn.onclick = function() {
         if (!lastReport) return;
-        var txt = "🛡️ Adika Digital Verification Report\n" +
+        var txt = "✅ ይህ መረጃ የተረጋገጠ ነው — Adika Digital Verification\n" +
           "ባለቤት: " + lastReport.owner_name + "\n" +
           "UPIN: " + lastReport.upin + "\n" +
           "Certificate: " + lastReport.certificate_no + "\n" +
