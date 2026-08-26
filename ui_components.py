@@ -4539,54 +4539,65 @@ EXPLORER_HTML = r"""
         } catch (e) {}
       }
 
-      function buildFinalUrl(scannedPayload) {
-        var s = String(scannedPayload || "").trim();
-        if (!s) return "https://addislandfarm.gov.et/";
+      function sanitizeAndEnforceActiveDomain(scannedInput) {
+        var cleanInput = scannedInput ? String(scannedInput).trim() : "";
         var BASE = "https://addislandfarm.gov.et";
         var VERIFY = BASE + "/verify";
 
-        // Already active portal
-        if (/addislandfarm\.gov\.et/i.test(s)) {
-          var m = s.match(/https?:\/\/[^\s\"'<>]*addislandfarm\.gov\.et[^\s\"'<>]*/i);
-          return m ? m[0] : s;
+        // 1. ABSOLUTE BLOCK: dead domain land.addiscadaster.gov.et
+        if (/land\.addiscadaster\.gov\.et|addiscadaster\.gov\.et|addisland\.gov\.et/i.test(cleanInput)) {
+          try { console.warn("[Adika] Blocked dead domain. Remapping to active portal."); } catch (e) {}
+          var match = cleanInput.match(/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})|([A-Z0-9]{8,20})/i);
+          if (match) {
+            cleanInput = match[1] || match[2] || match[0];
+          } else {
+            return BASE + "/";
+          }
         }
 
-        // Any other URL / dead domain → extract token → rewrite
-        if (/https?:\/\//i.test(s)) {
-          var urlPart = (s.match(/https?:\/\/[^\s\"'<>\]]+/i) || [s])[0];
-          var pathTok = urlPart.match(/\/verify\/([A-Za-z0-9_\-]+)/i);
+        // 2. Already valid addislandfarm link
+        if (/^https?:\/\//i.test(cleanInput)) {
+          if (/addislandfarm\.gov\.et/i.test(cleanInput)) {
+            return cleanInput;
+          }
+          // Force replace any other http host with addislandfarm
+          var pathTok = cleanInput.match(/\/verify\/([A-Za-z0-9_\-]+)/i);
           if (pathTok) return VERIFY + "/" + pathTok[1];
-          var qTok = urlPart.match(/[?&](?:upin|plot|id|code|token)=([A-Za-z0-9_\-]+)/i);
-          if (qTok) return VERIFY + "/" + encodeURIComponent(qTok[1]);
-          var uuidIn = urlPart.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+          var qTok = cleanInput.match(/[?&](?:upin|plot|id|code|token)=([A-Za-z0-9_\-]+)/i);
+          if (qTok) return VERIFY + "?upin=" + encodeURIComponent(qTok[1]);
+          var uuidIn = cleanInput.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
           if (uuidIn) return VERIFY + "/" + uuidIn[0];
+          var codeIn = cleanInput.match(/\b((?:AA|KK)\d{6,}|[A-Z0-9]{8,20})\b/i);
+          if (codeIn) return VERIFY + "?upin=" + encodeURIComponent(codeIn[1]);
           return BASE + "/";
         }
 
+        // JSON unwrap
         try {
-          if (s.charAt(0) === "{" || s.charAt(0) === "[") {
-            var j = JSON.parse(s);
+          if (cleanInput.charAt(0) === "{" || cleanInput.charAt(0) === "[") {
+            var j = JSON.parse(cleanInput);
             if (Array.isArray(j)) j = j[0] || {};
-            if (j.url) return buildFinalUrl(String(j.url));
-            s = String(j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || j.token || s).trim();
+            if (j.url) return sanitizeAndEnforceActiveDomain(String(j.url));
+            cleanInput = String(j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || j.token || cleanInput).trim();
           }
         } catch (e) {}
 
-        var clean = s.trim();
-        if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(clean)) {
-          return VERIFY + "/" + clean;
+        // 3. UUID → /verify/{uuid}
+        if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cleanInput)) {
+          return VERIFY + "/" + cleanInput;
         }
-        var uuid2 = clean.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+        var uuid2 = cleanInput.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
         if (uuid2) return VERIFY + "/" + uuid2[0];
 
-        var code =
-          (clean.match(/\b((?:AA|KK)\d{6,})\b/i) ||
-           clean.match(/\b(LTP[-_]?[A-Z0-9\-]+)\b/i) ||
-           clean.match(/\b(\d{8,})\b/) ||
-           clean.match(/\b([A-Za-z0-9_\-]{10,40})\b/) || [])[1];
-        if (code) return VERIFY + "/" + encodeURIComponent(code);
-        if (clean.length >= 6 && clean.length <= 64) return VERIFY + "/" + encodeURIComponent(clean);
+        // 4. Default: every code → addislandfarm verify
+        if (cleanInput.length >= 4) {
+          return VERIFY + "?upin=" + encodeURIComponent(cleanInput);
+        }
         return BASE + "/";
+      }
+
+      function buildFinalUrl(scannedPayload) {
+        return sanitizeAndEnforceActiveDomain(scannedPayload);
       }
 
 
@@ -4618,7 +4629,11 @@ EXPLORER_HTML = r"""
 
       function openOfficialUrl(url) {
         if (!url) return false;
-        url = String(url).trim();
+        url = sanitizeAndEnforceActiveDomain(String(url).trim());
+        // Final hard gate — never open dead DNS hosts
+        if (/addiscadaster|addisland\.gov\.et/i.test(url) && !/addislandfarm\.gov\.et/i.test(url)) {
+          url = "https://addislandfarm.gov.et/";
+        }
         try {
           if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === "function") {
             try { Telegram.WebApp.openLink(url, { try_instant_view: false }); }
