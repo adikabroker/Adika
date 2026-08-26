@@ -2149,28 +2149,15 @@ EXPLORER_HTML = r"""
             <div class="rounded-2xl border-2 border-dashed border-[#1e73be]/50 bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 text-center active:scale-[0.99] transition">
               <div class="text-3xl mb-2">📷</div>
               <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ / QR ያንሱ</div>
-              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">ከፎቶው QR ከተነበበ በኋላ ወደ ኦፊሴላዊ የመሬት ካዳስተር ገጽ ይወሰዳሉ</div>
+              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">ፎቶ ብቻ — QR በራስ-ሰር ይነበባል እና ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
             </div>
             <input id="landMapFile" type="file" accept="image/*" capture="environment" class="hidden" />
           </label>
-          <div class="relative">
-            <div class="text-[10px] font-bold text-slate-400 text-center mb-2">— ወይም በእጅ —</div>
-            <input id="landMapUpin" type="text" placeholder="የይዞታ ልዩ መለያ (UPIN) ምሳ. AA00091305321" class="w-full p-2.5 rounded-xl bg-slate-50 border text-xs font-bold mb-2" />
-            <input id="landMapCert" type="text" placeholder="የምስክር ወረቀት ቁጥር ምሳ. ETH0001002000-00005635151" class="w-full p-2.5 rounded-xl bg-slate-50 border text-xs font-bold mb-2" />
-            <select id="landMapSubCity" class="w-full p-2.5 rounded-xl bg-slate-50 border text-xs font-bold mb-2">
-              <option>አዲስ ከተማ</option>
-              <option>አቃቂ ቃሊቲ</option>
-              <option>አራዳ</option>
-              <option>ቦሌ</option>
-              <option>ጉለሌ</option>
-              <option>ቂርቆስ</option>
-              <option>ኮልፌ ቀራንዮ</option>
-              <option>ልደታ</option>
-              <option>ንፋስ ስልክ ላፍቶ</option>
-              <option>የካ</option>
-              <option>ሌሚ ኩራ</option>
-            </select>
-            <button type="button" id="landMapManualBtn" class="w-full py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs">🔍 በ Adika Digital System መረጃውን አጣራ</button>
+          <div id="landMapRetryBox" class="hidden">
+            <button type="button" id="landMapRetryBtn" class="w-full py-3 rounded-xl bg-[#1e73be] text-white font-bold text-xs shadow">
+              📷 እባክዎን የካርታውን QR ኮድ አቅርበው እንደገና ያንሱ
+            </button>
+            <p class="text-[10px] text-slate-500 text-center mt-2 leading-relaxed">ፎቶው ላይ ያለውን QR በግልጽ ያስገቡ — የጽሁፍ ግቤት አያስፈልግም</p>
           </div>
         </div>
 
@@ -4490,7 +4477,7 @@ EXPLORER_HTML = r"""
 
 
 
-    // ========== Digital Cadastral Map Verifier → Official Cadastre Redirect ==========
+    // ========== Digital Cadastral Map Verifier — Photo-only multi-stage QR ==========
     (function initLandMapVerifier() {
       var CADASTRE_VERIFY = "https://land.addiscadaster.gov.et/verify";
       var CADASTRE_SEARCH = "https://land.addiscadaster.gov.et/search";
@@ -4501,6 +4488,14 @@ EXPLORER_HTML = r"""
           var el = document.getElementById(id);
           if (el) el.classList.toggle("hidden", id !== name);
         });
+        var retry = document.getElementById("landMapRetryBox");
+        if (retry) retry.classList.add("hidden");
+      }
+
+      function showRetryOnly() {
+        showPanel("landMapUploadPanel");
+        var retry = document.getElementById("landMapRetryBox");
+        if (retry) retry.classList.remove("hidden");
       }
 
       function saveForContract(extract) {
@@ -4510,7 +4505,7 @@ EXPLORER_HTML = r"""
           localStorage.setItem("adika_land_map_last", JSON.stringify(lastExtract));
           var draft = {};
           try { draft = JSON.parse(localStorage.getItem("adika_contract_draft_v2") || "{}") || {}; } catch (e) {}
-          draft.contract_type = draft.contract_type && String(draft.contract_type).indexOf("house") >= 0
+          draft.contract_type = (draft.contract_type && String(draft.contract_type).indexOf("house") >= 0)
             ? draft.contract_type : "house_sale";
           draft.property_info = draft.property_info || {};
           if (lastExtract.upin) draft.property_info.title_deed = lastExtract.upin;
@@ -4528,34 +4523,18 @@ EXPLORER_HTML = r"""
       function openOfficialUrl(url) {
         if (!url) return;
         try {
-          if (tg && typeof tg.openLink === "function") {
-            tg.openLink(url);
-            return;
-          }
+          if (tg && typeof tg.openLink === "function") { tg.openLink(url); return; }
         } catch (e) {}
-        try {
-          if (tg && typeof tg.openTelegramLink === "function" && url.indexOf("t.me") >= 0) {
-            tg.openTelegramLink(url);
-            return;
-          }
-        } catch (e2) {}
         window.open(url, "_blank", "noopener,noreferrer");
       }
 
       function buildOfficialUrl(extract) {
         extract = extract || {};
-        // Prefer full URL embedded in QR
-        if (extract.url && /^https?:\/\//i.test(extract.url)) {
-          return extract.url;
-        }
+        if (extract.url && /^https?:\/\//i.test(extract.url)) return extract.url;
         var upin = (extract.upin || "").trim();
         var cert = (extract.cert || "").trim();
-        if (upin) {
-          return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(upin);
-        }
-        if (cert) {
-          return CADASTRE_SEARCH + "?q=" + encodeURIComponent(cert);
-        }
+        if (upin) return CADASTRE_VERIFY + "?upin=" + encodeURIComponent(upin);
+        if (cert) return CADASTRE_SEARCH + "?q=" + encodeURIComponent(cert);
         return null;
       }
 
@@ -4563,7 +4542,6 @@ EXPLORER_HTML = r"""
         var out = { upin: "", cert: "", name: "", area: "", sub_city: "", url: "", raw: raw || "" };
         if (!raw) return out;
         var s = String(raw).trim();
-        // Direct government / http(s) link
         if (/^https?:\/\//i.test(s)) {
           out.url = s;
           try {
@@ -4571,6 +4549,11 @@ EXPLORER_HTML = r"""
             out.upin = u.searchParams.get("upin") || u.searchParams.get("UPIN") || u.searchParams.get("id") || "";
             out.cert = u.searchParams.get("cert") || u.searchParams.get("certificate") || "";
           } catch (e) {}
+          // path segment fallback e.g. /verify/AA0009...
+          if (!out.upin) {
+            var m = s.match(/\b(AA\d{8,})\b/i);
+            if (m) out.upin = m[1];
+          }
           return out;
         }
         try {
@@ -4579,8 +4562,6 @@ EXPLORER_HTML = r"""
             out.upin = j.upin || j.UPIN || j.parcel_id || "";
             out.cert = j.certificate || j.cert_no || "";
             out.name = j.owner || j.name || "";
-            out.area = j.area || j.area_sqm || "";
-            out.sub_city = j.sub_city || "";
             out.url = j.url || j.verify_url || j.link || "";
             return out;
           }
@@ -4594,98 +4575,218 @@ EXPLORER_HTML = r"""
             var v = decodeURIComponent((kv[1] || "").replace(/\+/g, " "));
             if (k.indexOf("upin") >= 0 || k === "id") out.upin = v;
             if (k.indexOf("cert") >= 0) out.cert = v;
-            if (k.indexOf("name") >= 0 || k.indexOf("owner") >= 0) out.name = v;
             if (k.indexOf("url") >= 0 || k.indexOf("link") >= 0) out.url = v;
           });
         } catch (e3) {}
-        var up = s.match(/\b(AA\d{8,})\b/i) || s.match(/\b(ETH[\d\-]{8,})\b/i);
+        var up = s.match(/\b(AA\d{8,})\b/i);
         if (up && !out.upin) out.upin = up[1];
+        var cert = s.match(/\b(ETH[\d\-]{8,})\b/i);
+        if (cert && !out.cert) out.cert = cert[1];
+        // bare AA code as entire payload
+        if (!out.upin && /^AA\d{8,}$/i.test(s)) out.upin = s;
         return out;
       }
 
-      function scanImageForQr(dataUrl, cb) {
+      function tryJsQR(imageData) {
+        if (typeof jsQR !== "function") return null;
         try {
-          if (typeof jsQR !== "function") { cb(null); return; }
-          var img = new Image();
-          img.onload = function() {
-            try {
-              var canvas = document.createElement("canvas");
-              var maxW = 1400;
-              var scale = img.width > maxW ? maxW / img.width : 1;
-              canvas.width = Math.max(1, Math.floor(img.width * scale));
-              canvas.height = Math.max(1, Math.floor(img.height * scale));
-              var ctx = canvas.getContext("2d");
-              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-              var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
-              cb(code && code.data ? code.data : null);
-            } catch (e) { cb(null); }
-          };
-          img.onerror = function() { cb(null); };
-          img.src = dataUrl;
-        } catch (e) { cb(null); }
+          var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
+          return code && code.data ? code.data : null;
+        } catch (e) {
+          return null;
+        }
       }
 
-      function showRedirectStatus(msg, extract) {
+      function getImageData(canvas) {
+        return canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+      }
+
+      function toGrayscaleContrast(ctx, w, h, contrast) {
+        var imgData = ctx.getImageData(0, 0, w, h);
+        var d = imgData.data;
+        var c = contrast || 1.35;
+        var intercept = 128 * (1 - c);
+        for (var i = 0; i < d.length; i += 4) {
+          var g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          g = g * c + intercept;
+          if (g < 0) g = 0;
+          if (g > 255) g = 255;
+          // mild threshold boost for QR modules
+          if (g > 160) g = 255;
+          else if (g < 90) g = 0;
+          d[i] = d[i + 1] = d[i + 2] = g;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        return imgData;
+      }
+
+      function sharpen(ctx, w, h) {
+        var weights = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+        var src = ctx.getImageData(0, 0, w, h);
+        var dst = ctx.createImageData(w, h);
+        var s = src.data, d = dst.data;
+        for (var y = 1; y < h - 1; y++) {
+          for (var x = 1; x < w - 1; x++) {
+            for (var ch = 0; ch < 3; ch++) {
+              var sum = 0;
+              var wi = 0;
+              for (var ky = -1; ky <= 1; ky++) {
+                for (var kx = -1; kx <= 1; kx++) {
+                  var idx = ((y + ky) * w + (x + kx)) * 4 + ch;
+                  sum += s[idx] * weights[wi++];
+                }
+              }
+              d[(y * w + x) * 4 + ch] = Math.max(0, Math.min(255, sum));
+            }
+            d[(y * w + x) * 4 + 3] = 255;
+          }
+        }
+        ctx.putImageData(dst, 0, 0);
+        return dst;
+      }
+
+      function drawScaled(img, maxW) {
+        var canvas = document.createElement("canvas");
+        var scale = img.width > maxW ? maxW / img.width : 1;
+        // also upscale tiny images
+        if (img.width < 400) scale = 800 / Math.max(img.width, 1);
+        canvas.width = Math.max(1, Math.floor(img.width * scale));
+        canvas.height = Math.max(1, Math.floor(img.height * scale));
+        var ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        return { canvas: canvas, ctx: ctx };
+      }
+
+      function cropRegion(srcCanvas, xRatio, yRatio, wRatio, hRatio, outMax) {
+        var sx = Math.floor(srcCanvas.width * xRatio);
+        var sy = Math.floor(srcCanvas.height * yRatio);
+        var sw = Math.floor(srcCanvas.width * wRatio);
+        var sh = Math.floor(srcCanvas.height * hRatio);
+        var canvas = document.createElement("canvas");
+        var scale = outMax / Math.max(sw, sh);
+        if (scale < 1) scale = 1;
+        if (scale > 3) scale = 3;
+        canvas.width = Math.max(1, Math.floor(sw * scale));
+        canvas.height = Math.max(1, Math.floor(sh * scale));
+        var ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+        return { canvas: canvas, ctx: ctx };
+      }
+
+      function extractUpinFromPixelsHeuristic(imageData) {
+        // Extremely lightweight: not true OCR — rely on QR primarily.
+        // Placeholder for pattern if we had OCR; returns null here.
+        return null;
+      }
+
+      function multiStageScan(img, cb) {
+        var found = null;
+        try {
+          // Stage A: full image at multiple scales
+          var scales = [1200, 800, 1600];
+          for (var si = 0; si < scales.length && !found; si++) {
+            var drawn = drawScaled(img, scales[si]);
+            found = tryJsQR(getImageData(drawn.canvas));
+          }
+
+          // Stage B: grayscale + contrast + sharpen on full frame
+          if (!found) {
+            var b = drawScaled(img, 1100);
+            toGrayscaleContrast(b.ctx, b.canvas.width, b.canvas.height, 1.45);
+            found = tryJsQR(getImageData(b.canvas));
+            if (!found) {
+              sharpen(b.ctx, b.canvas.width, b.canvas.height);
+              found = tryJsQR(getImageData(b.canvas));
+            }
+            // invert attempt via second pass with different threshold
+            if (!found) {
+              toGrayscaleContrast(b.ctx, b.canvas.width, b.canvas.height, 1.8);
+              found = tryJsQR(getImageData(b.canvas));
+            }
+          }
+
+          // Stage C: crop regions typical for AA land certificates (QR corners)
+          if (!found) {
+            var base = drawScaled(img, 1400);
+            var regions = [
+              [0.55, 0.0, 0.45, 0.40],  // top-right
+              [0.0, 0.0, 0.45, 0.40],   // top-left
+              [0.25, 0.15, 0.50, 0.45], // center-upper
+              [0.50, 0.35, 0.50, 0.45], // mid-right
+              [0.0, 0.35, 0.50, 0.45],  // mid-left
+              [0.20, 0.50, 0.60, 0.45]  // lower-center
+            ];
+            for (var ri = 0; ri < regions.length && !found; ri++) {
+              var r = regions[ri];
+              var crop = cropRegion(base.canvas, r[0], r[1], r[2], r[3], 700);
+              found = tryJsQR(getImageData(crop.canvas));
+              if (!found) {
+                toGrayscaleContrast(crop.ctx, crop.canvas.width, crop.canvas.height, 1.5);
+                found = tryJsQR(getImageData(crop.canvas));
+              }
+              if (!found) {
+                sharpen(crop.ctx, crop.canvas.width, crop.canvas.height);
+                found = tryJsQR(getImageData(crop.canvas));
+              }
+            }
+          }
+        } catch (e) {
+          found = null;
+        }
+        cb(found);
+      }
+
+      function showRedirectStatus(extract) {
         showPanel("landMapResultPanel");
         var grid = document.getElementById("landMapResultGrid");
         if (!grid) return;
         var upin = (extract && extract.upin) || "";
+        var url = buildOfficialUrl(extract) || "";
         grid.innerHTML =
-          '<div class="bg-[#1e73be] text-white px-3 py-3 text-center rounded-t-lg -mx-0">' +
+          '<div class="bg-[#1e73be] text-white px-3 py-3 text-center rounded-lg">' +
             '<div class="font-black text-[11px]">አዲስ አበባ ከተማ አስተዳደር</div>' +
             '<div class="font-bold text-[10px] mt-0.5">የመሬት ይዞታ ምዝገባና መረጃ ኤጀንሲ</div>' +
-            '<div class="text-[9px] text-blue-100 mt-1">Official Cadastre Portal</div>' +
           '</div>' +
           '<div class="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 mt-2">' +
             '<span class="flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-white text-sm font-black">✔</span>' +
-            '<span class="font-black text-[11px] text-[#155724]">ወደ ኦፊሴላዊ ማረጋገጫ ገጽ በመውሰድ ላይ…</span>' +
+            '<span class="font-black text-[11px] text-[#155724]">ወደ ኦፊሴላዊ ማረጋገጫ ገጽ…</span>' +
           '</div>' +
-          (upin ? '<div class="mt-2 p-3 bg-white border border-slate-200 rounded-lg shadow-sm"><div class="text-[10px] font-bold text-[#1e73be]">UPIN</div><div class="font-mono font-black text-sm text-slate-900">' + upin + '</div></div>' : '') +
-          '<p class="text-[10px] text-slate-500 mt-2 leading-relaxed">' + (msg || "") + '</p>' +
+          (upin ? '<div class="mt-2 p-3 bg-white border border-slate-200 rounded-lg"><div class="text-[10px] font-bold text-[#1e73be]">UPIN</div><div class="font-mono font-black text-sm">' + upin + '</div></div>' : '') +
           '<button type="button" id="landMapOpenAgainBtn" class="w-full mt-2 py-2.5 rounded-lg bg-[#1e73be] text-white font-bold text-[11px]">🌐 ኦፊሴላዊ ገጽ ክፈት</button>';
         var again = document.getElementById("landMapOpenAgainBtn");
-        if (again) {
-          again.onclick = function() {
-            var url = buildOfficialUrl(extract);
-            if (url) openOfficialUrl(url);
-          };
-        }
+        if (again) again.onclick = function() { if (url) openOfficialUrl(url); };
       }
 
-      function redirectWithExtract(extract, source) {
+      function redirectWithExtract(extract) {
         saveForContract(extract);
         var url = buildOfficialUrl(extract);
         if (!url) {
-          showPanel("landMapUploadPanel");
-          alert("QR/UPIN አልተነበበም። እባክዎ UPIN በእጅ ያስገቡ።");
+          showRetryOnly();
           return;
         }
-        showRedirectStatus(
-          "በ Adika ውስጥ መረጃው ተይዟል (ለውል auto-fill)። ኦፊሴላዊው ማረጋገጫ ከመንግሥት ሰርቨር ይከፈታል።",
-          extract
-        );
-        setTimeout(function() { openOfficialUrl(url); }, 350);
+        showRedirectStatus(extract);
+        setTimeout(function() { openOfficialUrl(url); }, 280);
       }
 
-      var lastPhotoDataUrl = "";
       function processDataUrl(dataUrl) {
-        lastPhotoDataUrl = dataUrl || "";
         showPanel("landMapScanPanel");
         var prev = document.getElementById("landMapPreview");
         if (prev) prev.src = dataUrl;
-        var started = Date.now();
-        scanImageForQr(dataUrl, function(qrRaw) {
-          var wait = Math.max(0, 600 - (Date.now() - started));
-          setTimeout(function() {
+        var img = new Image();
+        img.onload = function() {
+          multiStageScan(img, function(qrRaw) {
             if (qrRaw) {
-              redirectWithExtract(parseQrPayload(qrRaw), "qr");
+              redirectWithExtract(parseQrPayload(qrRaw));
             } else {
-              showPanel("landMapUploadPanel");
-              alert("ከፎቶው QR አልተነበበም። UPIN በእጅ ያስገቡ ወይም ግልጽ ፎቶ ይሞክሩ።");
+              // Silent failure — photo-only retry, NO alert()
+              showRetryOnly();
             }
-          }, wait);
-        });
+          });
+        };
+        img.onerror = function() { showRetryOnly(); };
+        img.src = dataUrl;
       }
 
       var fileInput = document.getElementById("landMapFile");
@@ -4693,26 +4794,21 @@ EXPLORER_HTML = r"""
         fileInput.onchange = function() {
           var f = fileInput.files && fileInput.files[0];
           if (!f) return;
+          var retry = document.getElementById("landMapRetryBox");
+          if (retry) retry.classList.add("hidden");
           var reader = new FileReader();
           reader.onload = function() { processDataUrl(reader.result); };
           reader.readAsDataURL(f);
         };
       }
 
-      var manualBtn = document.getElementById("landMapManualBtn");
-      if (manualBtn) {
-        manualBtn.onclick = function() {
-          var upin = ((document.getElementById("landMapUpin") || {}).value || "").trim();
-          var cert = ((document.getElementById("landMapCert") || {}).value || "").trim();
-          var sub = ((document.getElementById("landMapSubCity") || {}).value || "").trim();
-          if (!upin && !cert) {
-            alert("እባክዎ UPIN (ምሳ. AA00091305321) ያስገቡ");
-            return;
+      var retryBtn = document.getElementById("landMapRetryBtn");
+      if (retryBtn) {
+        retryBtn.onclick = function() {
+          if (fileInput) {
+            fileInput.value = "";
+            fileInput.click();
           }
-          showPanel("landMapScanPanel");
-          setTimeout(function() {
-            redirectWithExtract({ upin: upin, cert: cert, sub_city: sub }, "manual");
-          }, 400);
         };
       }
 
@@ -4737,12 +4833,11 @@ EXPLORER_HTML = r"""
       var shareBtn = document.getElementById("landMapShareBtn");
       if (shareBtn) {
         shareBtn.onclick = function() {
-          var url = buildOfficialUrl(lastExtract) || CADASTRE_SEARCH;
+          var url = buildOfficialUrl(lastExtract) || CADASTRE_VERIFY;
           if (navigator.share) {
-            navigator.share({ title: "Cadastre Verification", url: url, text: "ኦፊሴላዊ የመሬት ማረጋገጫ" }).catch(function(){});
+            navigator.share({ title: "Cadastre Verification", url: url }).catch(function(){});
           } else if (navigator.clipboard) {
             navigator.clipboard.writeText(url);
-            alert("ሊንኩ ተቀድቷል");
           } else {
             openOfficialUrl(url);
           }
