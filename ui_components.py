@@ -4684,53 +4684,73 @@ EXPLORER_HTML = r"""
       function multiStageScan(img, cb) {
         var found = null;
         try {
-          // Stage A: full image at multiple scales
-          var scales = [1200, 800, 1600];
-          for (var si = 0; si < scales.length && !found; si++) {
-            var drawn = drawScaled(img, scales[si]);
-            found = tryJsQR(getImageData(drawn.canvas));
+          var base = drawScaled(img, 1600);
+
+          // PRIORITY: Top-right QR zone (AA land certificates place QR top-right)
+          var topRightCrops = [
+            [0.55, 0.00, 0.45, 0.32],
+            [0.50, 0.00, 0.50, 0.35],
+            [0.60, 0.00, 0.40, 0.28],
+            [0.45, 0.00, 0.55, 0.40],
+            [0.58, 0.02, 0.40, 0.30],
+            [0.50, 0.05, 0.48, 0.38]
+          ];
+          for (var i = 0; i < topRightCrops.length && !found; i++) {
+            var r = topRightCrops[i];
+            var crop = cropRegion(base.canvas, r[0], r[1], r[2], r[3], 900);
+            // 2x scale already in cropRegion; try raw then enhance
+            found = tryJsQR(getImageData(crop.canvas));
+            if (!found) {
+              toGrayscaleContrast(crop.ctx, crop.canvas.width, crop.canvas.height, 1.5);
+              found = tryJsQR(getImageData(crop.canvas));
+            }
+            if (!found) {
+              sharpen(crop.ctx, crop.canvas.width, crop.canvas.height);
+              found = tryJsQR(getImageData(crop.canvas));
+            }
+            // Extra 2x upscale of this crop for blurry phone photos
+            if (!found) {
+              var up = document.createElement("canvas");
+              up.width = crop.canvas.width * 2;
+              up.height = crop.canvas.height * 2;
+              var uctx = up.getContext("2d");
+              uctx.imageSmoothingEnabled = false;
+              uctx.drawImage(crop.canvas, 0, 0, up.width, up.height);
+              toGrayscaleContrast(uctx, up.width, up.height, 1.6);
+              found = tryJsQR(getImageData(up));
+            }
           }
 
-          // Stage B: grayscale + contrast + sharpen on full frame
+          // Other corners / center
           if (!found) {
-            var b = drawScaled(img, 1100);
-            toGrayscaleContrast(b.ctx, b.canvas.width, b.canvas.height, 1.45);
-            found = tryJsQR(getImageData(b.canvas));
-            if (!found) {
-              sharpen(b.ctx, b.canvas.width, b.canvas.height);
-              found = tryJsQR(getImageData(b.canvas));
-            }
-            // invert attempt via second pass with different threshold
-            if (!found) {
-              toGrayscaleContrast(b.ctx, b.canvas.width, b.canvas.height, 1.8);
-              found = tryJsQR(getImageData(b.canvas));
-            }
-          }
-
-          // Stage C: crop regions typical for AA land certificates (QR corners)
-          if (!found) {
-            var base = drawScaled(img, 1400);
             var regions = [
-              [0.55, 0.0, 0.45, 0.40],  // top-right
-              [0.0, 0.0, 0.45, 0.40],   // top-left
-              [0.25, 0.15, 0.50, 0.45], // center-upper
-              [0.50, 0.35, 0.50, 0.45], // mid-right
-              [0.0, 0.35, 0.50, 0.45],  // mid-left
-              [0.20, 0.50, 0.60, 0.45]  // lower-center
+              [0.00, 0.00, 0.45, 0.35],
+              [0.25, 0.10, 0.50, 0.40],
+              [0.50, 0.30, 0.50, 0.40],
+              [0.00, 0.30, 0.50, 0.40]
             ];
             for (var ri = 0; ri < regions.length && !found; ri++) {
-              var r = regions[ri];
-              var crop = cropRegion(base.canvas, r[0], r[1], r[2], r[3], 700);
-              found = tryJsQR(getImageData(crop.canvas));
+              var rr = regions[ri];
+              var c2 = cropRegion(base.canvas, rr[0], rr[1], rr[2], rr[3], 800);
+              found = tryJsQR(getImageData(c2.canvas));
               if (!found) {
-                toGrayscaleContrast(crop.ctx, crop.canvas.width, crop.canvas.height, 1.5);
-                found = tryJsQR(getImageData(crop.canvas));
-              }
-              if (!found) {
-                sharpen(crop.ctx, crop.canvas.width, crop.canvas.height);
-                found = tryJsQR(getImageData(crop.canvas));
+                toGrayscaleContrast(c2.ctx, c2.canvas.width, c2.canvas.height, 1.5);
+                found = tryJsQR(getImageData(c2.canvas));
               }
             }
+          }
+
+          // Full image multi-scale
+          if (!found) {
+            [900, 1200, 1800].forEach(function(sz) {
+              if (found) return;
+              var d = drawScaled(img, sz);
+              found = tryJsQR(getImageData(d.canvas));
+              if (!found) {
+                toGrayscaleContrast(d.ctx, d.canvas.width, d.canvas.height, 1.4);
+                found = tryJsQR(getImageData(d.canvas));
+              }
+            });
           }
         } catch (e) {
           found = null;
@@ -4738,36 +4758,76 @@ EXPLORER_HTML = r"""
         cb(found);
       }
 
-      function showRedirectStatus(extract) {
-        showPanel("landMapResultPanel");
-        var grid = document.getElementById("landMapResultGrid");
-        if (!grid) return;
-        var upin = (extract && extract.upin) || "";
-        var url = buildOfficialUrl(extract) || "";
-        grid.innerHTML =
-          '<div class="bg-[#1e73be] text-white px-3 py-3 text-center rounded-lg">' +
-            '<div class="font-black text-[11px]">አዲስ አበባ ከተማ አስተዳደር</div>' +
-            '<div class="font-bold text-[10px] mt-0.5">የመሬት ይዞታ ምዝገባና መረጃ ኤጀንሲ</div>' +
-          '</div>' +
-          '<div class="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 mt-2">' +
-            '<span class="flex h-7 w-7 items-center justify-center rounded-full bg-green-600 text-white text-sm font-black">✔</span>' +
-            '<span class="font-black text-[11px] text-[#155724]">ወደ ኦፊሴላዊ ማረጋገጫ ገጽ…</span>' +
-          '</div>' +
-          (upin ? '<div class="mt-2 p-3 bg-white border border-slate-200 rounded-lg"><div class="text-[10px] font-bold text-[#1e73be]">UPIN</div><div class="font-mono font-black text-sm">' + upin + '</div></div>' : '') +
-          '<button type="button" id="landMapOpenAgainBtn" class="w-full mt-2 py-2.5 rounded-lg bg-[#1e73be] text-white font-bold text-[11px]">🌐 ኦፊሴላዊ ገጽ ክፈት</button>';
-        var again = document.getElementById("landMapOpenAgainBtn");
-        if (again) again.onclick = function() { if (url) openOfficialUrl(url); };
+      function extractCodesFromText(txt) {
+        var out = { upin: "", cert: "", name: "", area: "", sub_city: "", url: "" };
+        if (!txt) return out;
+        var s = String(txt);
+        // UPIN / Plot codes used on AA certificates
+        var up =
+          s.match(/\b(AA\d{9,14})\b/i) ||
+          s.match(/\b(KK\d{9,14})\b/i) ||
+          s.match(/\b(LTP[-_]?KK[\d\-]+)\b/i) ||
+          s.match(/\b(LTP[-_][A-Z]{0,4}\d[\d\-]+)\b/i);
+        if (up) out.upin = up[1].toUpperCase();
+        var cert = s.match(/\b(ETH[\d\-]{8,})\b/i);
+        if (cert) out.cert = cert[1].toUpperCase();
+        var area = s.match(/(\d{2,5}(?:[.,]\d{1,3})?)\s*(m²|m2|sq\.?\s*m)/i);
+        if (area) out.area = area[1].replace(",", ".") + " m²";
+        var nameM =
+          s.match(/(?:Full\s*Name|Owner|የባለይዞታው\s*ሙሉ\s*ስም|ሙሉ\s*ስም)\s*[:：\-]?\s*([A-Za-z\u1200-\u137F\s]{5,50})/i);
+        if (nameM) out.name = nameM[1].replace(/\s+/g, " ").trim();
+        var cities = [
+          ["Addis Ketema", "አዲስ ከተማ"], ["Kolfe", "ኮልፌ ቀራንዮ"], ["Bole", "ቦሌ"],
+          ["Arada", "አራዳ"], ["Yeka", "የካ"], ["Lideta", "ልደታ"], ["Kirkos", "ቂርቆስ"],
+          ["Gullele", "ጉለሌ"], ["Nifas", "ንፋስ ስልክ ላፍቶ"], ["Akaki", "አቃቂ ቃሊቲ"], ["Lemi", "ሌሚ ኩራ"]
+        ];
+        for (var i = 0; i < cities.length; i++) {
+          if (s.toLowerCase().indexOf(cities[i][0].toLowerCase()) >= 0 || s.indexOf(cities[i][1]) >= 0) {
+            out.sub_city = cities[i][1];
+            break;
+          }
+        }
+        var urlM = s.match(/https?:\/\/[^\s\"']+addiscadaster[^\s\"']+/i) ||
+                   s.match(/https?:\/\/[^\s\"']+land\.[^\s\"']+/i);
+        if (urlM) out.url = urlM[0];
+        return out;
       }
 
-      function redirectWithExtract(extract) {
-        saveForContract(extract);
-        var url = buildOfficialUrl(extract);
-        if (!url) {
-          showRetryOnly();
+      function runTesseractOCR(dataUrl, cb) {
+        function go(Tesseract) {
+          try {
+            Tesseract.recognize(dataUrl, "eng", {
+              logger: function() {}
+            }).then(function(res) {
+              var text = (res && res.data && res.data.text) || "";
+              cb(extractCodesFromText(text));
+            }).catch(function() { cb(null); });
+          } catch (e) { cb(null); }
+        }
+        if (window.Tesseract) {
+          go(window.Tesseract);
           return;
         }
-        showRedirectStatus(extract);
-        setTimeout(function() { openOfficialUrl(url); }, 280);
+        // Dynamic load — only on QR failure (cost/latency)
+        var s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+        s.onload = function() { go(window.Tesseract); };
+        s.onerror = function() { cb(null); };
+        document.head.appendChild(s);
+      }
+
+      function runBackendOCR(dataUrl, cb) {
+        fetch("/api/land-map/ocr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_data: dataUrl })
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            if (res && res.success && res.data) cb(res.data);
+            else cb(null);
+          })
+          .catch(function() { cb(null); });
       }
 
       function processDataUrl(dataUrl) {
@@ -4779,10 +4839,22 @@ EXPLORER_HTML = r"""
           multiStageScan(img, function(qrRaw) {
             if (qrRaw) {
               redirectWithExtract(parseQrPayload(qrRaw));
-            } else {
-              // Silent failure — photo-only retry, NO alert()
-              showRetryOnly();
+              return;
             }
+            // OCR fallback — client tesseract then backend — no alerts
+            runTesseractOCR(dataUrl, function(ocrFields) {
+              if (ocrFields && (ocrFields.upin || ocrFields.cert || ocrFields.url)) {
+                redirectWithExtract(ocrFields);
+                return;
+              }
+              runBackendOCR(dataUrl, function(serverFields) {
+                if (serverFields && (serverFields.upin || serverFields.cert || serverFields.url)) {
+                  redirectWithExtract(serverFields);
+                } else {
+                  showRetryOnly();
+                }
+              });
+            });
           });
         };
         img.onerror = function() { showRetryOnly(); };
