@@ -1630,7 +1630,7 @@ def register_api_routes(web_app):
 
     @web_app.route('/api/scan-qr', methods=['POST', 'OPTIONS'])
     def api_scan_qr():
-        """Backend QR decode (pyzbar/OpenCV when available) + strict domain routing."""
+        """Cadastre QR only — production multi-pass CV via scan_qr.scan_certificate_qr."""
         if request.method == 'OPTIONS':
             return ('', 204)
         try:
@@ -1643,28 +1643,58 @@ def register_api_routes(web_app):
                 if isinstance(b64, str) and b64:
                     if "," in b64 and b64.strip().startswith("data:"):
                         b64 = b64.split(",", 1)[1]
-                    import base64
-                    img_bytes = base64.b64decode(b64)
+                    import base64 as _b64
+                    img_bytes = _b64.b64decode(b64)
             if not img_bytes:
-                return jsonify({"success": False, "message": "No file uploaded"}), 400
-
-            raw_payload = decode_qr_from_bytes(img_bytes)
-            if not raw_payload:
                 return jsonify({
                     "success": False,
-                    "message": "QR code not readable",
-                }), 422
+                    "status": "failed_invalid_input",
+                    "message": "No file uploaded",
+                }), 400
 
-            target_url = sanitize_and_route_url(raw_payload)
-            return jsonify({
-                "success": True,
-                "payload": raw_payload,
-                "raw_payload": raw_payload,
-                "target_url": target_url,
-            })
+            try:
+                from scan_qr import scan_certificate_qr, ScanStatus
+            except ImportError as imp_err:
+                logger.error("scan_qr import failed: %s", imp_err)
+                # Minimal fallback: legacy decoder if present
+                raw_payload = None
+                try:
+                    raw_payload = decode_qr_from_bytes(img_bytes)
+                except Exception:
+                    raw_payload = None
+                if not raw_payload:
+                    return jsonify({
+                        "success": False,
+                        "status": "failed_no_qr_resolved",
+                        "message": "QR engine unavailable",
+                    }), 422
+                target_url = sanitize_and_route_url(raw_payload)
+                return jsonify({
+                    "success": bool(target_url),
+                    "status": "resolved" if target_url else "failed_unrecognized_payload",
+                    "payload": raw_payload,
+                    "raw_payload": raw_payload,
+                    "target_url": target_url,
+                    "url": target_url,
+                })
+
+            result = scan_certificate_qr(img_bytes)
+            body = result.to_dict()
+            body["success"] = result.status == ScanStatus.RESOLVED
+            body["payload"] = result.raw_payload
+            body["target_url"] = result.url
+            body["message"] = result.reason
+            code = 200 if body["success"] else (
+                400 if result.status == ScanStatus.FAILED_INVALID_INPUT else 422
+            )
+            return jsonify(body), code
         except Exception as e:
             logger.error(f"scan-qr: {e}", exc_info=True)
-            return jsonify({"success": False, "message": str(e)}), 500
+            return jsonify({
+                "success": False,
+                "status": "failed_invalid_input",
+                "message": str(e),
+            }), 500
 
 
     @web_app.route('/api/land-map/ocr', methods=['POST', 'OPTIONS'])
