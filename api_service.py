@@ -39,6 +39,110 @@ logger = logging.getLogger(__name__)
 bot_app = None
 bot_loop = None
 
+def _auth_secret() -> str:
+    return (
+        os.environ.get("JWT_SECRET")
+        or os.environ.get("BOT_TOKEN")
+        or os.environ.get("TELEGRAM_BOT_TOKEN")
+        or "adika-dev-secret-change-me"
+    )
+
+
+def generate_device_token(user_id: int, platform: str) -> str:
+    """HMAC device access token for Android / Expo clients."""
+    import base64
+    import hashlib
+    import hmac
+    import time
+    secret = _auth_secret()
+    issued = int(time.time())
+    expires = issued + 7 * 24 * 3600
+    payload = f"{int(user_id)}:{platform}:{issued}:{expires}"
+    signature = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"adk1.{base64.b64encode(payload.encode()).decode()}.{signature[:32]}"
+
+
+def verify_device_token(token: str):
+    """
+    Validate adk1.* Bearer token. Returns dict user claims or None.
+    Blocks forged / expired / non-device tokens.
+    """
+    import base64
+    import hashlib
+    import hmac
+    import time
+    if not token or not isinstance(token, str):
+        return None
+    token = token.strip()
+    if token.lower().startswith("bearer "):
+        token = token[7:].strip()
+    if not token.startswith("adk1."):
+        return None
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    _, payload_b64, sig = parts
+    secret = _auth_secret()
+    try:
+        # restore padding
+        pad = "=" * (-len(payload_b64) % 4)
+        payload = base64.b64decode(payload_b64 + pad).decode("utf-8")
+    except Exception:
+        return None
+    expected = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()[:32]
+    if not hmac.compare_digest(expected, sig):
+        # also accept shorter 16-char sig from older tokens
+        expected16 = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()[:16]
+        if not hmac.compare_digest(expected16, sig):
+            return None
+    bits = payload.split(":")
+    if len(bits) < 3:
+        return None
+    try:
+        user_id = int(bits[0])
+        platform = bits[1]
+        issued = int(bits[2])
+        expires = int(bits[3]) if len(bits) > 3 else issued + 7 * 24 * 3600
+    except Exception:
+        return None
+    now = int(time.time())
+    if now > expires + 60:
+        return None
+    if issued > now + 3600:
+        return None
+    return {
+        "user_id": user_id,
+        "id": user_id,
+        "platform": platform,
+        "issued_at": issued,
+        "expires_at": expires,
+    }
+
+
+def get_request_bearer_user():
+    """Extract verified device user from Authorization header, or None."""
+    try:
+        from flask import request as _req
+        auth = _req.headers.get("Authorization") or _req.headers.get("authorization") or ""
+        return verify_device_token(auth)
+    except Exception:
+        return None
+
+
+def require_device_auth_response():
+    """Return (user_dict, None) or (None, flask response tuple)."""
+    user = get_request_bearer_user()
+    if user:
+        return user, None
+    from flask import jsonify
+    return None, (jsonify({
+        "success": False,
+        "message": "Unauthorized — valid Adika device token required",
+        "code": "DEVICE_AUTH_REQUIRED",
+    }), 401)
+
+
+
 
 # Database helpers from models (required for listings API)
 try:
@@ -1500,6 +1604,13 @@ def register_api_routes(web_app):
     @web_app.route('/api/post-listing', methods=['POST'])
     def submit_listing():
         try:
+            # Mobile clients must send valid Bearer device token (blocks casual scrapers on write)
+            _platform = (request.headers.get('X-Adika-Platform') or '').lower()
+            _auth_h = request.headers.get('Authorization') or ''
+            if _platform in ('android', 'ios', 'expo') or _auth_h.startswith('Bearer adk1.'):
+                _user, _deny = require_device_auth_response()
+                if _deny is not None:
+                    return _deny
             data = request.json or {}
             user_id = data.get('user_id')
             category = data.get('category', 'መኪና')
@@ -1858,6 +1969,12 @@ def register_api_routes(web_app):
         if request.method == 'OPTIONS':
             return ('', 204)
         try:
+            _platform = (request.headers.get('X-Adika-Platform') or '').lower()
+            _auth_h = request.headers.get('Authorization') or ''
+            if _platform in ('android', 'ios', 'expo') or _auth_h.startswith('Bearer adk1.'):
+                _user, _deny = require_device_auth_response()
+                if _deny is not None:
+                    return _deny
             data = request.json or {}
             user_id = data.get('user_id') or data.get('chat_id') or 0
             chat_id = data.get('chat_id') or user_id
@@ -2414,6 +2531,120 @@ function shareContract() {{
         except Exception as e:
             logger.error(f"submit_request error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
+
+
+
+    @web_app.route('/api/auth/device', methods=['POST', 'OPTIONS'])
+    @web_app.route('/api/auth/android', methods=['POST', 'OPTIONS'])
+    def api_auth_device():
+        """Issue HMAC device token — Android/Expo only entry for protected APIs."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            import hashlib
+            import time
+
+            data = request.json or {}
+            device_id = str(data.get('device_id') or data.get('deviceId') or '').strip()
+            display_name = str(data.get('display_name') or data.get('name') or 'Adika User').strip()[:120]
+            if not device_id or len(device_id) < 8:
+                return jsonify({"success": False, "message": "device_id is required (min 8 chars)"}), 400
+
+            # Stable numeric id from device hardware id
+            num_hash = int(hashlib.md5(device_id.encode()).hexdigest()[:8], 16) % 900000 + 100000
+            token = generate_device_token(num_hash, "android")
+            return jsonify({
+                "success": True,
+                "access_token": token,
+                "token_type": "Bearer",
+                "expires_in": 604800,
+                "user": {
+                    "id": num_hash,
+                    "user_id": num_hash,
+                    "display_name": display_name or "Adika User",
+                    "platform": "android",
+                    "device_id": device_id,
+                },
+            }), 200
+        except Exception as e:
+            logger.error(f"api_auth_device: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
+    @web_app.route('/api/auth/verify', methods=['GET', 'POST', 'OPTIONS'])
+    def api_auth_verify():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        user = get_request_bearer_user()
+        if not user:
+            return jsonify({"success": False, "valid": False, "message": "Invalid or expired token"}), 401
+        return jsonify({"success": True, "valid": True, "user": user}), 200
+
+
+    @web_app.route('/api/auth/telegram', methods=['POST', 'OPTIONS'])
+    def api_auth_telegram():
+        """Optional: exchange Telegram initData for same token shape (Phase-0 light verify)."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            import hashlib
+            import hmac
+            import time
+            from urllib.parse import parse_qsl
+
+            data = request.json or {}
+            init_data = str(data.get('initData') or data.get('init_data') or '')
+            if not init_data:
+                return jsonify({'success': False, 'message': 'initData required'}), 400
+
+            bot_token = (
+                os.environ.get('BOT_TOKEN')
+                or os.environ.get('TELEGRAM_BOT_TOKEN')
+                or ''
+            )
+            parsed = dict(parse_qsl(init_data, keep_blank_values=True))
+            received_hash = parsed.pop('hash', '')
+            if bot_token and received_hash:
+                data_check = '\n'.join(f'{k}={v}' for k, v in sorted(parsed.items()))
+                secret = hmac.new(b'WebAppData', bot_token.encode(), hashlib.sha256).digest()
+                calc = hmac.new(secret, data_check.encode(), hashlib.sha256).hexdigest()
+                if not hmac.compare_digest(calc, received_hash):
+                    return jsonify({'success': False, 'message': 'Invalid initData signature'}), 401
+
+            import json as _json
+            user_raw = parsed.get('user') or '{}'
+            try:
+                user_obj = _json.loads(user_raw)
+            except Exception:
+                user_obj = {}
+            user_id = int(user_obj.get('id') or 0)
+            if not user_id:
+                return jsonify({'success': False, 'message': 'No user in initData'}), 400
+
+            secret = bot_token or os.environ.get('JWT_SECRET') or 'adika-dev-secret-change-me'
+            issued_at = int(time.time())
+            expires_at = issued_at + 7 * 24 * 3600
+            payload = f'{user_id}.tg.{issued_at}.{expires_at}'
+            sig = hmac.new(secret.encode(), payload.encode(), hashlib.sha256).hexdigest()[:32]
+            access_token = f'adk1.{payload}.{sig}'
+
+            return jsonify({
+                'success': True,
+                'access_token': access_token,
+                'token_type': 'Bearer',
+                'expires_in': 7 * 24 * 3600,
+                'expires_at': expires_at,
+                'user': {
+                    'id': user_id,
+                    'user_id': user_id,
+                    'display_name': user_obj.get('first_name') or 'Telegram User',
+                    'username': user_obj.get('username'),
+                    'platform': 'telegram',
+                },
+            })
+        except Exception as e:
+            logger.error(f'api_auth_telegram: {e}', exc_info=True)
+            return jsonify({'success': False, 'message': str(e)}), 500
 
 
     @web_app.route('/api/health', methods=['GET'])
