@@ -1976,7 +1976,10 @@ def register_api_routes(web_app):
                 if _deny is not None:
                     return _deny
             data = request.json or {}
+            auth_user = get_request_bearer_user()
             user_id = data.get('user_id') or data.get('chat_id') or 0
+            if auth_user:
+                user_id = auth_user.get('user_id') or user_id
             chat_id = data.get('chat_id') or user_id
             listing_id = data.get('listing_id')
             action = data.get('action')  # add|remove|None
@@ -2568,6 +2571,54 @@ function shareContract() {{
             }), 200
         except Exception as e:
             logger.error(f"api_auth_device: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+
+
+    @web_app.route('/api/auth/link-phone', methods=['POST', 'OPTIONS'])
+    def api_auth_link_phone():
+        """
+        Bind phone to current device token so Expo user can sync with Telegram account later.
+        Phase-0 OTP: env ADIKA_OTP_TEST_CODE (default 123456) until SMS provider is wired.
+        """
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            import re as _re
+            user, deny = require_device_auth_response()
+            if deny is not None:
+                return deny
+
+            data = request.json or {}
+            phone = str(data.get('phone') or '').strip()
+            otp = str(data.get('otp') or '').strip()
+            phone_digits = _re.sub(r'\D', '', phone)
+            # Ethiopia: 09xxxxxxxx or 2519xxxxxxxx
+            if len(phone_digits) < 9:
+                return jsonify({"success": False, "message": "ስልክ ቁጥር ትክክል አይደለም"}), 400
+
+            expected = (os.environ.get('ADIKA_OTP_TEST_CODE') or '123456').strip()
+            if otp != expected:
+                return jsonify({"success": False, "message": "OTP ትክክል አይደለም"}), 401
+
+            uid = int(user['user_id'])
+            token = generate_device_token(uid, "android")
+            return jsonify({
+                "success": True,
+                "access_token": token,
+                "token_type": "Bearer",
+                "expires_in": 604800,
+                "user": {
+                    "id": uid,
+                    "user_id": uid,
+                    "phone": phone_digits,
+                    "display_name": data.get('display_name') or f"User {phone_digits[-4:]}",
+                    "platform": "android",
+                },
+                "message": "ስልክ ተገናኝቷል — ከ Telegram ጋር ለማስማማት ተመሳሳይ ቁጥር ይጠቀሙ",
+            }), 200
+        except Exception as e:
+            logger.error(f"api_auth_link_phone: {e}", exc_info=True)
             return jsonify({"success": False, "message": str(e)}), 500
 
 
