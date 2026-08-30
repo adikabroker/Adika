@@ -650,6 +650,12 @@ def add_listing(user_chat_id, user_name, req_type, main_category, sub_category,
             "📝 Insert listing user=%s type=%s cat=%s backend=%s photos=%s",
             user_chat_id, req_type, main_category, _DB_BACKEND, len(photo_list),
         )
+        _user_ready = False
+        try:
+            _user_ready = bool(ensure_user_for_listing(cursor, user_chat_id, user_name, phone))
+        except Exception as _eu:
+            logger.warning("ensure_user_for_listing: %s", _eu)
+            _user_ready = False
 
         def _do_insert(with_extra=True, with_views=True):
             # Never allow NULL for NOT NULL columns on Supabase listings
@@ -680,7 +686,7 @@ def add_listing(user_chat_id, user_name, req_type, main_category, sub_category,
                 candidates.append(("extra_data", extra_param))
             if with_views:
                 candidates.append(("view_count", baseline_views))
-            # Only attach user_id when users row is guaranteed (avoids listings_user_id_fkey)
+            # user_id only when users row exists (FK safe). Otherwise omit entirely.
             if _user_ready and user_chat_id:
                 candidates.append(("user_id", user_chat_id))
 
