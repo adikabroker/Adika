@@ -1684,7 +1684,26 @@ def register_api_routes(web_app):
             full_desc += f"📝 Details: {description}\n"
             full_desc += f"📞 Phone: {phone}\n"
             if telegram_user: full_desc += f"📱 Telegram: {telegram_user}\n"
-            uid = int(user_id) if str(user_id).isdigit() else 0
+            # Keep uid from phone/user_id fallback above — never reset to 0 here
+            if uid <= 0:
+                _ph2 = "".join(ch for ch in str(phone or "") if ch.isdigit())
+                uid = int(_ph2[-9:]) if len(_ph2) >= 6 else 100000001
+            # Ensure users row exists (listings_user_id_fkey on Supabase)
+            try:
+                from models import ensure_user_for_listing, get_db_connection
+                _c = get_db_connection()
+                _cur = _c.cursor()
+                ensure_user_for_listing(_cur, uid, "WebApp User", str(phone or ""))
+                try:
+                    _c.commit()
+                except Exception:
+                    pass
+                try:
+                    _c.close()
+                except Exception:
+                    pass
+            except Exception as _ue:
+                logger.warning("pre-listing ensure_user: %s", _ue)
             extra = {
                 'fuel_type': fuel_type, 'transmission': transmission, 'mileage': mileage,
                 'condition': condition or house_condition, 'bedrooms': bedrooms,
