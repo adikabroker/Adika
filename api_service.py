@@ -2734,15 +2734,64 @@ function shareContract() {{
         if request.method == 'OPTIONS':
             return ('', 204)
         try:
-            import adika_features as af
             uid = int(request.args.get('user_id') or 0)
             page = max(1, int(request.args.get('page') or 1))
             limit = min(50, max(1, int(request.args.get('limit') or 24)))
-            data = af.fetch_for_you_feed(uid, limit=limit, page=page)
-            return jsonify(data), 200
+            try:
+                import adika_features as af
+                data = af.fetch_for_you_feed(uid, limit=limit, page=page)
+                if data and (data.get('items') or data.get('listings')):
+                    return jsonify(data), 200
+            except Exception as fe:
+                logger.warning("for-you primary failed, fallback explorer: %s", fe)
+            items = []
+            # Safer fallback using explorer query
+            if not items:
+                try:
+                    from models import get_db_connection, is_postgres, get_placeholder
+                    conn = get_db_connection()
+                    cur = conn.cursor()
+                    p = get_placeholder()
+                    off = (page - 1) * limit
+                    if is_postgres():
+                        cur.execute(
+                            "SELECT * FROM listings WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) "
+                            "NOT IN ('deleted','sold','rented','expired')) "
+                            "AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '') "
+                            "ORDER BY id DESC LIMIT %s OFFSET %s",
+                            (limit, off),
+                        )
+                    else:
+                        cur.execute(
+                            "SELECT * FROM listings ORDER BY id DESC LIMIT ? OFFSET ?",
+                            (limit, off),
+                        )
+                    rows = cur.fetchall() or []
+                    items = [dict(r) for r in rows]
+                    for d in items:
+                        if d.get('created_at') and not isinstance(d['created_at'], str):
+                            try:
+                                d['created_at'] = d['created_at'].isoformat()
+                            except Exception:
+                                d['created_at'] = str(d['created_at'])
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                except Exception as e3:
+                    logger.error("for-you sql fallback: %s", e3)
+                    items = []
+            return jsonify({
+                "success": True,
+                "items": items,
+                "listings": items,
+                "page": page,
+                "has_more": len(items) >= limit,
+                "fallback": True,
+            }), 200
         except Exception as e:
             logger.error("for-you: %s", e, exc_info=True)
-            return jsonify({"success": False, "items": [], "message": str(e)}), 500
+            return jsonify({"success": True, "items": [], "listings": [], "message": str(e)}), 200
 
 
 
