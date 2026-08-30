@@ -1656,6 +1656,12 @@ def register_api_routes(web_app):
             uid = 0
             if user_id and str(user_id).isdigit() and int(user_id) > 0:
                 uid = int(user_id)
+            if uid <= 0:
+                _ph = "".join(ch for ch in str(data.get("phone") or phone or "") if ch.isdigit())
+                if len(_ph) >= 6:
+                    uid = int(_ph[-9:])
+                else:
+                    uid = 900000000 + (abs(hash(str(data.get("title") or data.get("description") or "x"))) % 999999)
             negotiable_text = "✅ Negotiable / የሚደራደር" if negotiable else "❌ Fixed / የማይደራደር"
             urgent_text = "⚡ **URGENT SALE / አስቸኳይ ሽያጭ!** " if urgent_sale else ""
             full_desc = f"{urgent_text}"
@@ -1696,6 +1702,8 @@ def register_api_routes(web_app):
                         s = s[:350000]
                     safe_photos.append(s)
             resolved_sub = sub_category or (car_model if category == 'መኪና' else (f"{house_type} • {location_area}" if house_type and location_area else (house_type or location_area)))
+            if not (full_desc or "").strip():
+                full_desc = f"{category} {sub_category or car_model or 'listing'} — {price} ETB | {phone}"
             req_id = add_listing(
                 user_chat_id=uid,
                 user_name="WebApp User",
@@ -1745,7 +1753,15 @@ def register_api_routes(web_app):
                     "req_id": req_id
                 }), 200
             else:
-                return jsonify({"success": False, "status": "error", "message": "Failed to save listing"}), 500
+                try:
+                    from models import LAST_DB_ERROR as _ldb
+                except Exception:
+                    _ldb = ""
+                return jsonify({
+                    "success": False,
+                    "status": "error",
+                    "message": (_ldb or "Failed to save listing")[:300],
+                }), 500
         except Exception as e:
             logger.error(f"submit_listing error: {e}", exc_info=True)
             return jsonify({"success": False, "status": "error", "message": str(e)}), 500
@@ -2582,22 +2598,48 @@ function shareContract() {{
         if request.method == 'OPTIONS':
             return ('', 204)
         try:
-            import adika_features as af
-            af.ensure_feature_tables()
+            from models import add_broker, LAST_BROKER_ERROR
             data = request.json or {}
-            tid = int(data.get('telegram_id') or data.get('chat_id') or 0)
+            tid = data.get('telegram_id') or data.get('chat_id') or data.get('user_chat_id') or 0
+            try:
+                tid = int(tid)
+            except Exception:
+                tid = 0
             name = str(data.get('name') or data.get('full_name') or '').strip()
             phone = str(data.get('phone') or '').strip()
+            username = str(data.get('username') or data.get('telegram_username') or '').strip()
             cats = data.get('categories') or ['መኪና']
             if isinstance(cats, str):
                 cats = [c.strip() for c in cats.split(',') if c.strip()]
-            if not tid or not name or not phone:
-                return jsonify({"success": False, "message": "telegram_id, name, phone required"}), 400
-            ok, msg = af.register_broker(tid, name, phone, cats, str(data.get('username') or ''))
-            return jsonify({"success": ok, "message": msg if not ok else "registered", "broker_id": msg if ok else None}), (200 if ok else 500)
+            specialty = ", ".join(cats) if cats else "ደላላ"
+            if not name or not phone:
+                return jsonify({"success": False, "message": "ስም እና ስልክ ያስፈልጋሉ"}), 400
+            if tid <= 0:
+                digits = "".join(ch for ch in phone if ch.isdigit()) or "100000001"
+                tid = int(digits[-9:]) if len(digits) >= 3 else 100000001
+            rid = add_broker(
+                chat_id=tid,
+                full_name=name,
+                phone=phone,
+                role_type="ደላላ",
+                sub_city=str(data.get('sub_city') or "አዲስ አበባ"),
+                specialty=specialty,
+                username=username,
+            )
+            if rid:
+                return jsonify({
+                    "success": True,
+                    "message": "Registered successfully",
+                    "broker_id": rid,
+                }), 200
+            return jsonify({
+                "success": False,
+                "message": LAST_BROKER_ERROR or "ምዝገባ አልተሳካም",
+            }), 500
         except Exception as e:
             logger.error("api_broker_register: %s", e, exc_info=True)
             return jsonify({"success": False, "message": str(e)}), 500
+
 
     @web_app.route('/api/otp/send', methods=['POST', 'OPTIONS'])
     def api_otp_send():
