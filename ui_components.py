@@ -225,7 +225,7 @@ SELLER_FORM_HTML = r"""
             body: JSON.stringify(data)
           });
           const result = await res.json().catch(() => ({}));
-          if (res.ok && (result.status === 'success' || !result.status)) {
+          if (res.ok && (result.success === true || result.status === 'success' || result.req_id)) {
             setStatus('ok');
             resetForm();
             try { localStorage.removeItem('adika_draft_seller'); } catch (e) {}
@@ -541,7 +541,16 @@ SELLER_FORM_HTML = r"""
                 <span className="lang-am">ተመለስ</span><span className="lang-en">Back</span>
               </button>
             ) : (
-              <button type="button" onClick={() => tg.close()}
+              <button type="button" onClick={() => {
+                  try { resetForm(); } catch (e) {}
+                  try {
+                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
+                      window.Telegram.WebApp.close();
+                    } else {
+                      window.location.href = '/explorer';
+                    }
+                  } catch (e) { window.location.href = '/explorer'; }
+                }}
                 className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">
                 <span className="lang-am">ሰርዝ</span><span className="lang-en">Cancel</span>
               </button>
@@ -686,7 +695,7 @@ BUYER_FORM_HTML = r"""
             body: JSON.stringify(data)
           });
           const result = await res.json();
-          if (result.status === 'success' || res.ok) {
+          if (res.ok && (result.success === true || result.status === 'success' || result.req_id)) {
             setStatus('ok');
             resetForm();
             try { localStorage.removeItem('adika_draft_buyer'); } catch (e) {}
@@ -842,7 +851,13 @@ BUYER_FORM_HTML = r"""
           </div>
 
           <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex gap-2 z-40">
-            <button type="button" onClick={() => tg.close()}
+            <button type="button" onClick={() => {
+                  try { if (typeof resetForm === 'function') resetForm(); } catch(e) {}
+                  try {
+                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) window.Telegram.WebApp.close();
+                    else window.location.href = '/explorer';
+                  } catch (e) { window.location.href = '/explorer'; }
+                }}
               className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">
               <span className="lang-am">ሰርዝ</span><span className="lang-en">Cancel</span>
             </button>
@@ -2117,13 +2132,15 @@ EXPLORER_HTML = r"""
         </div>
 
         <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <label class="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
-            <span>📷</span>
-            <span>የውክልና ሰነዱን ፎቶ ይጭኑ</span>
+          <label class="block cursor-pointer">
+            <div class="rounded-2xl border-2 border-dashed border-[#16acbd]/50 bg-gradient-to-br from-slate-50 to-cyan-50/50 p-6 text-center active:scale-[0.99] transition">
+              <div class="text-3xl mb-2">📷</div>
+              <div class="font-black text-slate-800 text-sm">የውክልናውን ፎቶ ያስገቡ</div>
+              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">ከጋለሪ ይምረጡ ወይም ፎቶ ያንሱ — በ Adika Digital System ይመረመራል</div>
+            </div>
+            <input id="poaImageFile" type="file" accept="image/*,application/pdf" class="hidden" />
           </label>
-          <input id="poaImageFile" type="file" accept="image/*" capture="environment"
-            class="w-full text-xs text-slate-500 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-[#16acbd] file:text-white hover:file:bg-[#1394a3] cursor-pointer bg-slate-50 p-1.5 rounded-xl border border-slate-200 transition-all" />
-          <p class="text-[10px] text-slate-400 leading-snug">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
+          <p class="text-[10px] text-slate-400 leading-snug text-center">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
         </div>
 
         <div id="poaScanBusy" class="hidden p-3 text-center text-[11px] text-slate-500 bg-white rounded-xl border border-slate-100">
@@ -2158,7 +2175,7 @@ EXPLORER_HTML = r"""
               <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ ያስገቡ</div>
               <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
             </div>
-            <input id="landMapFile" type="file" accept="image/*" capture="environment" class="hidden" />
+            <input id="landMapFile" type="file" accept="image/*" class="hidden" />
           </label>
           <div id="landMapToast" class="hidden mb-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold text-center leading-snug"></div>
           <div id="landMapRetryBox" class="hidden">
@@ -3048,7 +3065,10 @@ EXPLORER_HTML = r"""
       var page = append ? state.page + 1 : 1;
       var qs = "page=" + page + "&limit=12&order=DESC&active_only=1&type=" +
         (state.tab === "marketplace" ? "SELL" : "BUY");
-      if (state.category) qs += "&category=" + encodeURIComponent(state.category);
+      var cat = (state.category || "").trim();
+      if (cat && !/^(all|ሁሉም|✨)/i.test(cat)) {
+        qs += "&category=" + encodeURIComponent(cat);
+      }
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
       if (state.chassisOnly) qs += "&chassis_only=1";
 
@@ -3061,7 +3081,14 @@ EXPLORER_HTML = r"""
           finishLoading(items, append, state.hasMore);
         })
         .catch(function(err){
+          console.error("[Adika] listings fetch failed", err);
           finishLoading([], append, false);
+          try {
+            if (statusEl) {
+              statusEl.style.display = "block";
+              statusEl.innerHTML = '<span class="text-red-600 text-xs font-bold">ዝርዝር መጫን አልተቻለም — ኔትወርክ/ሰርቨር ያረጋግጡ</span>';
+            }
+          } catch (e) {}
         });
     }
 
