@@ -1604,14 +1604,26 @@ def register_api_routes(web_app):
     @web_app.route('/api/post-listing', methods=['POST'])
     def submit_listing():
         try:
-            # Mobile clients must send valid Bearer device token (blocks casual scrapers on write)
-            _platform = (request.headers.get('X-Adika-Platform') or '').lower()
+            # Protect writes only when client claims device auth (Bearer adk1.*)
+            # Mini App / Telegram web posts without Authorization remain allowed
             _auth_h = request.headers.get('Authorization') or ''
-            if _platform in ('android', 'ios', 'expo') or _auth_h.startswith('Bearer adk1.'):
+            if _auth_h.startswith('Bearer adk1.'):
                 _user, _deny = require_device_auth_response()
                 if _deny is not None:
                     return _deny
             data = request.json or {}
+            # Normalize mobile / Mini App aliases
+            if not data.get('category') and data.get('main_category'):
+                data['category'] = data.get('main_category')
+            if not data.get('sub_category') and data.get('title'):
+                data['sub_category'] = data.get('title')
+            if not data.get('car_model') and data.get('title'):
+                data['car_model'] = data.get('title')
+            if not data.get('description') and data.get('details'):
+                data['description'] = data.get('details')
+            if data.get('req_type') and str(data.get('req_type')).upper() in ('BUY', 'REQUEST'):
+                # Route buyer payloads that hit post-listing by mistake
+                data['_force_buy'] = True
             user_id = data.get('user_id')
             category = data.get('category', 'መኪና')
             sub_category = data.get('sub_category', '')
@@ -1682,10 +1694,10 @@ def register_api_routes(web_app):
             req_id = add_listing(
                 user_chat_id=uid,
                 user_name="WebApp User",
-                req_type="SELL",
+                req_type=("BUY" if data.get("_force_buy") else "SELL"),
                 main_category=(category or "መኪና"),
                 sub_category=resolved_sub,
-                action_type="መሸጥ",
+                action_type=("መግዛት" if data.get("_force_buy") else "መሸጥ"),
                 property_type="",
                 description=full_desc,
                 price=str(price),
@@ -1697,10 +1709,10 @@ def register_api_routes(web_app):
                 req_id = add_listing(
                     user_chat_id=uid,
                     user_name="WebApp User",
-                    req_type="SELL",
+                    req_type=("BUY" if data.get("_force_buy") else "SELL"),
                     main_category=(category or "መኪና"),
                     sub_category=resolved_sub,
-                    action_type="መሸጥ",
+                    action_type=("መግዛት" if data.get("_force_buy") else "መሸጥ"),
                     property_type="",
                     description=full_desc,
                     price=str(price),
@@ -2486,6 +2498,8 @@ function shareContract() {{
 
 
     @web_app.route('/api/submit-request', methods=['POST'])
+    @web_app.route('/api/post-request', methods=['POST'])
+    @web_app.route('/api/buyer-request', methods=['POST'])
     def submit_request():
         try:
             data = request.json or {}
@@ -2527,10 +2541,18 @@ function shareContract() {{
                 notification_text = f"🔔 **New Buyer Request (#ADK-{req_id})**\n\n{full_desc}"
                 _send_notification_safe(notification_text, req_id, uid)
                 if create_alert and uid > 0:
-                    save_search_alert(uid, category, budget_min, budget_max)
-                return jsonify({"status": "success", "req_id": req_id})
+                    try:
+                        save_search_alert(uid, category, budget_min, budget_max)
+                    except Exception:
+                        pass
+                return jsonify({
+                    "success": True,
+                    "status": "success",
+                    "message": "የፈላጊ ጥያቄዎ ተመዝግቧል!",
+                    "req_id": req_id
+                }), 200
             else:
-                return jsonify({"status": "error", "message": "Failed to save request"}), 500
+                return jsonify({"success": False, "status": "error", "message": "Failed to save request"}), 500
         except Exception as e:
             logger.error(f"submit_request error: {e}", exc_info=True)
             return jsonify({"status": "error", "message": str(e)}), 500
@@ -2754,10 +2776,10 @@ function shareContract() {{
                     params.extend(['መሸጥ', 'SELL', 'sell', 'ለመሸጥ', 'Sale'])
                 elif req_type == 'BUY':
                     where.append(
-                        f"(UPPER(COALESCE(req_type,'')) = 'BUY' "
-                        f"OR COALESCE(action_type,'') IN ({p},{p},{p},{p}))"
+                        f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('BUY','REQUEST','WANT') "
+                        f"OR COALESCE(action_type,'') IN ({p},{p},{p},{p},{p},{p}))"
                     )
-                    params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት'])
+                    params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ', 'Request'])
                 like = "ILIKE" if is_postgres() else "LIKE"
                 if category and str(category).strip().lower() not in ('', 'all', 'null', 'none', 'undefined', '✨ ሁሉም', '✨ all', 'ሁሉም'):
                     # Map EN/AM aliases so Cars/Property tabs never return empty when data exists
@@ -2807,13 +2829,16 @@ function shareContract() {{
                         list(params) + [limit, offset],
                     )
                     rows = cur.fetchall() or []
-                    # If filters returned empty, show any non-deleted listings (Telegram sync safety net)
-                    if not rows and page == 1:
+                    # If SELL filters returned empty, soft fallback (legacy Telegram posts).
+                    # NEVER fallback for BUY — that incorrectly mixes seller cards into Buyers tab.
+                    if not rows and page == 1 and req_type != 'BUY':
                         try:
                             cur.execute(
                                 f"SELECT COUNT(*) AS cnt FROM listings WHERE "
                                 f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN "
-                                f"('deleted','sold','rented','expired'))"
+                                f"('deleted','sold','rented','expired')) "
+                                f"AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') "
+                                f"OR COALESCE(req_type,'') = '')"
                             )
                             tr = cur.fetchone()
                             total = tr['cnt'] if isinstance(tr, dict) else (tr[0] if tr else 0)
@@ -2821,11 +2846,13 @@ function shareContract() {{
                                 f"SELECT * FROM listings WHERE "
                                 f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN "
                                 f"('deleted','sold','rented','expired')) "
+                                f"AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') "
+                                f"OR COALESCE(req_type,'') = '') "
                                 f"ORDER BY id DESC LIMIT {p} OFFSET {p}",
                                 [limit, offset],
                             )
                             rows = cur.fetchall() or []
-                            logger.info("explorer empty-filter fallback returned %s rows", len(rows))
+                            logger.info("explorer SELL empty-filter fallback returned %s rows", len(rows))
                         except Exception as _fb0:
                             logger.warning("explorer empty fallback: %s", _fb0)
                 except Exception as qerr:
