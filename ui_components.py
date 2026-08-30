@@ -2358,6 +2358,8 @@ EXPLORER_HTML = r"""
 
     var state = {
       tab: "marketplace",
+      feedMode: "foryou", // foryou | all | category
+      roleChosen: false,
       category: "",
       q: "",
       page: 1,
@@ -3063,16 +3065,21 @@ EXPLORER_HTML = r"""
       }
 
       var page = append ? state.page + 1 : 1;
+      var isBuy = state.tab !== "marketplace";
+      var useForYou = (!isBuy && state.feedMode === "foryou" && !state.q);
       var qs = "page=" + page + "&limit=12&order=DESC&active_only=1&type=" +
-        (state.tab === "marketplace" ? "SELL" : "BUY");
+        (isBuy ? "BUY" : "SELL");
       var cat = (state.category || "").trim();
-      if (cat && !/^(all|ሁሉም|✨)/i.test(cat)) {
+      if (!useForYou && cat && !/^(all|ሁሉም|✨|foryou)/i.test(cat)) {
         qs += "&category=" + encodeURIComponent(cat);
       }
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
       if (state.chassisOnly) qs += "&chassis_only=1";
 
-      fetch("/api/explorer/listings?" + qs)
+      var feedUrl = useForYou
+        ? ("/api/feed/for-you?page=" + page + "&limit=12&user_id=" + encodeURIComponent(state.userId || "0"))
+        : ("/api/explorer/listings?" + qs);
+      fetch(feedUrl)
         .then(function(res){ return res.json(); })
         .then(function(data){
           var items = data.items || data.listings || [];
@@ -5360,6 +5367,158 @@ EXPLORER_HTML = r"""
       syncTypeUI();
     })();
 
+
+
+  <!-- Role selection (first launch) -->
+  <div id="roleSelectModal" class="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl">
+      <div class="font-black text-lg text-slate-900 mb-1">እንኳን ወደ Adika በደህና መጡ</div>
+      <div class="text-xs text-slate-500 mb-4">እባክዎ ሚናዎን ይምረጡ</div>
+      <button type="button" id="roleUserBtn" class="w-full py-3.5 mb-2 rounded-xl bg-[#16acbd] text-white font-bold text-sm">
+        👤 ተራ ተጠቃሚ / ፈላጊ / ሻጭ
+      </button>
+      <button type="button" id="roleBrokerBtn" class="w-full py-3.5 rounded-xl bg-slate-900 text-white font-bold text-sm">
+        🏢 ደላላ / ኤጀንት ነኝ
+      </button>
+    </div>
+  </div>
+
+  <!-- Broker registration -->
+  <div id="brokerRegModal" class="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-3">
+        <div class="font-black text-base text-slate-900">ደላላ ምዝገባ</div>
+        <button type="button" onclick="closeModal('brokerRegModal')" class="w-8 h-8 rounded-full bg-slate-100 font-bold">✕</button>
+      </div>
+      <label class="text-xs font-bold text-slate-600">ሙሉ ስም</label>
+      <input id="brName" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="ስም" />
+      <label class="text-xs font-bold text-slate-600">ስልክ ቁጥር</label>
+      <input id="brPhone" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="09xxxxxxxx" />
+      <label class="text-xs font-bold text-slate-600">Telegram username</label>
+      <input id="brUser" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="@username" />
+      <div class="text-xs font-bold text-slate-600 mb-1">የሚሰሩበት ምድብ</div>
+      <div class="flex flex-wrap gap-2 mb-3">
+        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
+        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
+        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
+      </div>
+      <button type="button" id="brSubmitBtn" class="w-full py-3 rounded-xl bg-[#16acbd] text-white font-bold text-sm">መመዝገብ</button>
+      <button type="button" id="openBrokerRegFromMenu" class="hidden">ደላላ ነዎት? ይመዝገቡ</button>
+    </div>
+  </div>
+
+
+    // ---- For You + Role / Broker ----
+    (function initParityFeatures() {
+      try {
+        state.userId = (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.id) || 0;
+      } catch (e) { state.userId = 0; }
+
+      function openM(id) {
+        var m = document.getElementById(id);
+        if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
+      }
+      function closeM(id) {
+        var m = document.getElementById(id);
+        if (m) { m.classList.add("hidden"); m.classList.remove("flex"); }
+      }
+
+      // Prefill category strip: For You first
+      function paintFeedModes() {
+        if (!catsEl) return;
+        var modes = [
+          { id: "foryou", label: "✨ ለእርስዎ" },
+          { id: "all", label: "🌐 ሁሉም" },
+          { id: "መኪና", label: "🚗 መኪና" },
+          { id: "ቤት", label: "🏠 ቤት" },
+          { id: "ንግድ", label: "🏢 ንግድ" }
+        ];
+        catsEl.innerHTML = "";
+        modes.forEach(function(m) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.setAttribute("data-id", m.id);
+          var on = (state.feedMode === "foryou" && m.id === "foryou")
+            || (state.feedMode === "all" && m.id === "all")
+            || (state.feedMode === "cat" && state.category === m.id);
+          b.className = on
+            ? "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm"
+            : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
+          b.textContent = m.label;
+          b.onclick = function() {
+            if (m.id === "foryou") { state.feedMode = "foryou"; state.category = ""; }
+            else if (m.id === "all") { state.feedMode = "all"; state.category = ""; }
+            else { state.feedMode = "cat"; state.category = m.id; }
+            paintFeedModes();
+            load(false);
+          };
+          catsEl.appendChild(b);
+        });
+      }
+      paintFeedModes();
+
+      // Role gate
+      var roleKey = "adika_role_v1";
+      var hasRole = false;
+      try { hasRole = !!localStorage.getItem(roleKey); } catch (e) {}
+      if (!hasRole) openM("roleSelectModal");
+
+      var roleUser = document.getElementById("roleUserBtn");
+      var roleBroker = document.getElementById("roleBrokerBtn");
+      if (roleUser) roleUser.onclick = function() {
+        try { localStorage.setItem(roleKey, "user"); } catch (e) {}
+        closeM("roleSelectModal");
+        state.feedMode = "foryou";
+        paintFeedModes();
+        load(false);
+      };
+      if (roleBroker) roleBroker.onclick = function() {
+        try { localStorage.setItem(roleKey, "broker"); } catch (e) {}
+        closeM("roleSelectModal");
+        openM("brokerRegModal");
+      };
+
+      var brSubmit = document.getElementById("brSubmitBtn");
+      if (brSubmit) brSubmit.onclick = function() {
+        var name = (document.getElementById("brName") || {}).value || "";
+        var phone = (document.getElementById("brPhone") || {}).value || "";
+        var user = (document.getElementById("brUser") || {}).value || "";
+        var cats = [];
+        document.querySelectorAll(".brCat:checked").forEach(function(c) { cats.push(c.value); });
+        var tid = state.userId || 0;
+        if (!name || !phone) { alert("ስም እና ስልክ ያስፈልጋሉ"); return; }
+        brSubmit.disabled = true;
+        fetch("/api/brokers/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            telegram_id: tid,
+            name: name,
+            phone: phone,
+            username: user,
+            categories: cats
+          })
+        }).then(function(r){ return r.json(); }).then(function(d){
+          if (d.success) {
+            alert("✅ እንደ ደላላ ተመዝግበዋል!");
+            closeM("brokerRegModal");
+          } else {
+            alert(d.message || "ምዝገባ አልተሳካም");
+          }
+        }).catch(function(){ alert("ኔትወርክ ስህተት"); })
+        .finally(function(){ brSubmit.disabled = false; });
+      };
+
+      // Floating entry for brokers
+      try {
+        var fabHelp = document.createElement("button");
+        fabHelp.type = "button";
+        fabHelp.textContent = "ደላላ ነዎት? ይመዝገቡ";
+        fabHelp.className = "fixed bottom-24 right-3 z-40 px-3 py-2 rounded-full bg-slate-900 text-white text-[10px] font-bold shadow-lg";
+        fabHelp.onclick = function() { openM("brokerRegModal"); };
+        document.body.appendChild(fabHelp);
+      } catch (e) {}
+    })();
 
     setTabs();
     load(false);
