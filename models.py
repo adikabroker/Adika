@@ -502,33 +502,40 @@ def get_listings_column_set():
 
 
 def ensure_user_for_listing(cursor, user_id, user_name="Adika User", phone=""):
-    """Upsert a minimal users row so listings.user_id FK succeeds on Supabase."""
+    """Upsert a minimal users row so listings.user_id FK succeeds on Supabase.
+    Returns True if user exists or was created; False otherwise.
+    """
     if not user_id:
-        return
+        return False
     try:
         uid = int(user_id)
     except Exception:
-        return
+        return False
     if uid <= 0:
-        return
+        return False
     p = get_placeholder()
     try:
         cursor.execute(f"SELECT 1 FROM users WHERE id = {p} LIMIT 1", (uid,))
         if cursor.fetchone():
-            return
+            return True
     except Exception as e:
         logger.warning("users select: %s", e)
-        return
+        return False
     name = (str(user_name) or "Adika User")[:120]
     phone = (str(phone) or "")[:40]
     attempts = []
     if is_postgres():
         attempts = [
             (f"INSERT INTO users (id) VALUES ({p}) ON CONFLICT (id) DO NOTHING", (uid,)),
-            (f"INSERT INTO users (id, full_name) VALUES ({p}, {p}) ON CONFLICT (id) DO NOTHING", (uid, name)),
-            (f"INSERT INTO users (id, name) VALUES ({p}, {p}) ON CONFLICT (id) DO NOTHING", (uid, name)),
-            (f"INSERT INTO users (id, phone) VALUES ({p}, {p}) ON CONFLICT (id) DO NOTHING", (uid, phone or "N/A")),
-            (f"INSERT INTO users (id, full_name, phone) VALUES ({p}, {p}, {p}) ON CONFLICT (id) DO NOTHING", (uid, name, phone or "N/A")),
+            (f"INSERT INTO users (id) VALUES ({p}) ON CONFLICT DO NOTHING", (uid,)),
+            (f"INSERT INTO users (id, full_name) VALUES ({p}, {p}) ON CONFLICT DO NOTHING", (uid, name)),
+            (f"INSERT INTO users (id, name) VALUES ({p}, {p}) ON CONFLICT DO NOTHING", (uid, name)),
+            (f"INSERT INTO users (id, phone) VALUES ({p}, {p}) ON CONFLICT DO NOTHING", (uid, phone or "N/A")),
+            (f"INSERT INTO users (id, full_name, phone) VALUES ({p}, {p}, {p}) ON CONFLICT DO NOTHING", (uid, name, phone or "N/A")),
+            (f"INSERT INTO users (id, telegram_id) VALUES ({p}, {p}) ON CONFLICT DO NOTHING", (uid, uid)),
+            (f"INSERT INTO users (id, chat_id) VALUES ({p}, {p}) ON CONFLICT DO NOTHING", (uid, uid)),
+            # Last: plain insert without ON CONFLICT
+            (f"INSERT INTO users (id) VALUES ({p})", (uid,)),
         ]
     else:
         attempts = [
@@ -544,13 +551,14 @@ def ensure_user_for_listing(cursor, user_id, user_name="Adika User", phone=""):
             except Exception:
                 pass
             logger.info("ensure_user_for_listing ok id=%s", uid)
-            return
+            return True
         except Exception as e:
             logger.warning("ensure_user attempt failed: %s", e)
             try:
                 cursor.connection.rollback()
             except Exception:
                 pass
+    return False
 
 
 def add_listing(user_chat_id, user_name, req_type, main_category, sub_category,
@@ -653,7 +661,8 @@ def add_listing(user_chat_id, user_name, req_type, main_category, sub_category,
 
             candidates = [
                 ("user_chat_id", user_chat_id),
-                ("user_id", user_chat_id),
+                # Do NOT set user_id by default — Supabase listings_user_id_fkey requires users row.
+                # user_chat_id is the marketplace owner key and has no FK in production.
                 ("user_name", user_name or "User"),
                 ("req_type", req_val),
                 ("main_category", cat_val),
@@ -671,6 +680,9 @@ def add_listing(user_chat_id, user_name, req_type, main_category, sub_category,
                 candidates.append(("extra_data", extra_param))
             if with_views:
                 candidates.append(("view_count", baseline_views))
+            # Only attach user_id when users row is guaranteed (avoids listings_user_id_fkey)
+            if _user_ready and user_chat_id:
+                candidates.append(("user_id", user_chat_id))
 
             cols, vals = [], []
             for col, val in candidates:
