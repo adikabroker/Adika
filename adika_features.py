@@ -118,61 +118,152 @@ def register_broker(
     categories: List[str],
     username: str = "",
 ) -> Tuple[bool, str]:
+    """Upsert broker without relying on ON CONFLICT (PG may lack unique constraint)."""
     from models import get_db_connection, is_postgres
     ensure_feature_tables()
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        p = _ph()
+        ph = _ph()
         cats = json.dumps(categories or ["መኪና"], ensure_ascii=False)
-        if is_postgres():
+        tid = int(telegram_id)
+        full_name = (name or "")[:120]
+        phone_s = (phone or "")[:40]
+        user_s = (username or "").lstrip("@")[:64]
+
+        # 1) Find existing by chat_id OR phone
+        existing_id = None
+        try:
             cur.execute(
-                f"""
-                INSERT INTO brokers (chat_id, full_name, phone, role_type, sub_city, status, categories, verified_status, telegram_username)
-                VALUES ({p},{p},{p},{p},{p},{p},{p}::jsonb,{p},{p})
-                ON CONFLICT (chat_id) DO UPDATE SET
-                  full_name=EXCLUDED.full_name,
-                  phone=EXCLUDED.phone,
-                  categories=EXCLUDED.categories,
-                  telegram_username=EXCLUDED.telegram_username,
-                  verified_status=COALESCE(brokers.verified_status,'pending')
-                RETURNING id
-                """,
-                (
-                    int(telegram_id),
-                    name[:120],
-                    phone[:40],
-                    "broker",
-                    "አዲስ አበባ",
-                    "active",
-                    cats,
-                    "verified",
-                    (username or "")[:64],
-                ),
+                f"SELECT id FROM brokers WHERE chat_id = {ph} LIMIT 1",
+                (tid,),
             )
             row = cur.fetchone()
-            rid = row["id"] if isinstance(row, dict) else (row[0] if row else 0)
-        else:
-            cur.execute(
-                f"""
-                INSERT OR REPLACE INTO brokers (chat_id, full_name, phone, role_type, sub_city, status, categories, verified_status, telegram_username)
-                VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p})
-                """,
-                (
-                    int(telegram_id),
-                    name[:120],
-                    phone[:40],
-                    "broker",
-                    "አዲስ አበባ",
-                    "active",
-                    cats,
-                    "verified",
-                    (username or "")[:64],
-                ),
-            )
-            conn.commit()
-            rid = cur.lastrowid
+            if row:
+                existing_id = row["id"] if isinstance(row, dict) else row[0]
+        except Exception as e1:
+            logger.warning("broker select chat_id: %s", e1)
+
+        if existing_id is None and phone_s:
+            try:
+                cur.execute(
+                    f"SELECT id FROM brokers WHERE phone = {ph} LIMIT 1",
+                    (phone_s,),
+                )
+                row = cur.fetchone()
+                if row:
+                    existing_id = row["id"] if isinstance(row, dict) else row[0]
+            except Exception:
+                pass
+
+        if existing_id is not None:
+            # UPDATE path — only touch columns that exist
+            try:
+                if is_postgres():
+                    cur.execute(
+                        f"""
+                        UPDATE brokers SET
+                          full_name = {ph},
+                          phone = {ph},
+                          status = {ph},
+                          chat_id = {ph}
+                        WHERE id = {ph}
+                        RETURNING id
+                        """,
+                        (full_name, phone_s, "active", tid, existing_id),
+                    )
+                    row = cur.fetchone()
+                    rid = row["id"] if isinstance(row, dict) else existing_id
+                else:
+                    cur.execute(
+                        f"""
+                        UPDATE brokers SET
+                          full_name = {ph},
+                          phone = {ph},
+                          status = {ph},
+                          chat_id = {ph}
+                        WHERE id = {ph}
+                        """,
+                        (full_name, phone_s, "active", tid, existing_id),
+                    )
+                    conn.commit()
+                    rid = existing_id
+            except Exception as ue:
+                logger.warning("broker update core: %s", ue)
+                rid = existing_id
+            # optional columns
+            for col, val in (
+                ("categories", cats),
+                ("verified_status", "verified"),
+                ("telegram_username", user_s),
+                ("role_type", "broker"),
+            ):
+                try:
+                    if is_postgres() and col == "categories":
+                        cur.execute(
+                            f"UPDATE brokers SET {col} = {ph}::jsonb WHERE id = {ph}",
+                            (val, rid),
+                        )
+                    else:
+                        cur.execute(
+                            f"UPDATE brokers SET {col} = {ph} WHERE id = {ph}",
+                            (val, rid),
+                        )
+                        if not is_postgres():
+                            conn.commit()
+                except Exception:
+                    pass
+            return True, str(rid)
+
+        # 2) INSERT path
+        try:
+            if is_postgres():
+                cur.execute(
+                    f"""
+                    INSERT INTO brokers (chat_id, full_name, phone, role_type, sub_city, status)
+                    VALUES ({ph},{ph},{ph},{ph},{ph},{ph})
+                    RETURNING id
+                    """,
+                    (tid, full_name, phone_s, "broker", "አዲስ አበባ", "active"),
+                )
+                row = cur.fetchone()
+                rid = row["id"] if isinstance(row, dict) else (row[0] if row else 0)
+            else:
+                cur.execute(
+                    f"""
+                    INSERT INTO brokers (chat_id, full_name, phone, role_type, sub_city, status)
+                    VALUES ({ph},{ph},{ph},{ph},{ph},{ph})
+                    """,
+                    (tid, full_name, phone_s, "broker", "አዲስ አበባ", "active"),
+                )
+                conn.commit()
+                rid = cur.lastrowid
+        except Exception as ie:
+            # last resort minimal insert
+            logger.error("broker insert: %s", ie)
+            return False, str(ie)
+
+        for col, val in (
+            ("categories", cats),
+            ("verified_status", "verified"),
+            ("telegram_username", user_s),
+        ):
+            try:
+                if is_postgres() and col == "categories":
+                    cur.execute(
+                        f"UPDATE brokers SET {col} = {ph}::jsonb WHERE id = {ph}",
+                        (val, rid),
+                    )
+                else:
+                    cur.execute(
+                        f"UPDATE brokers SET {col} = {ph} WHERE id = {ph}",
+                        (val, rid),
+                    )
+                    if not is_postgres():
+                        conn.commit()
+            except Exception:
+                pass
         return True, str(rid)
     except Exception as e:
         logger.error("register_broker: %s", e, exc_info=True)
@@ -183,6 +274,7 @@ def register_broker(
                 conn.close()
             except Exception:
                 pass
+
 
 
 def _cat_match(broker_cats: Any, category: str) -> bool:
