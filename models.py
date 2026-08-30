@@ -500,6 +500,59 @@ def get_listings_column_set():
     return cols
 
 
+
+def ensure_user_for_listing(cursor, user_id, user_name="Adika User", phone=""):
+    """Upsert a minimal users row so listings.user_id FK succeeds on Supabase."""
+    if not user_id:
+        return
+    try:
+        uid = int(user_id)
+    except Exception:
+        return
+    if uid <= 0:
+        return
+    p = get_placeholder()
+    try:
+        cursor.execute(f"SELECT 1 FROM users WHERE id = {p} LIMIT 1", (uid,))
+        if cursor.fetchone():
+            return
+    except Exception as e:
+        logger.warning("users select: %s", e)
+        return
+    name = (str(user_name) or "Adika User")[:120]
+    phone = (str(phone) or "")[:40]
+    attempts = []
+    if is_postgres():
+        attempts = [
+            (f"INSERT INTO users (id) VALUES ({p}) ON CONFLICT (id) DO NOTHING", (uid,)),
+            (f"INSERT INTO users (id, full_name) VALUES ({p}, {p}) ON CONFLICT (id) DO NOTHING", (uid, name)),
+            (f"INSERT INTO users (id, name) VALUES ({p}, {p}) ON CONFLICT (id) DO NOTHING", (uid, name)),
+            (f"INSERT INTO users (id, phone) VALUES ({p}, {p}) ON CONFLICT (id) DO NOTHING", (uid, phone or "N/A")),
+            (f"INSERT INTO users (id, full_name, phone) VALUES ({p}, {p}, {p}) ON CONFLICT (id) DO NOTHING", (uid, name, phone or "N/A")),
+        ]
+    else:
+        attempts = [
+            (f"INSERT OR IGNORE INTO users (id) VALUES ({p})", (uid,)),
+            (f"INSERT OR IGNORE INTO users (id, full_name) VALUES ({p}, {p})", (uid, name)),
+            (f"INSERT OR IGNORE INTO users (id, name) VALUES ({p}, {p})", (uid, name)),
+        ]
+    for sql, params in attempts:
+        try:
+            cursor.execute(sql, params)
+            try:
+                cursor.connection.commit()
+            except Exception:
+                pass
+            logger.info("ensure_user_for_listing ok id=%s", uid)
+            return
+        except Exception as e:
+            logger.warning("ensure_user attempt failed: %s", e)
+            try:
+                cursor.connection.rollback()
+            except Exception:
+                pass
+
+
 def add_listing(user_chat_id, user_name, req_type, main_category, sub_category,
                 action_type, property_type, description, price=None, phone=None, 
                 photo_id=None, extra_data=None, photos=None):
@@ -700,10 +753,35 @@ def add_listing(user_chat_id, user_name, req_type, main_category, sub_category,
                 last_err = ie
                 logger.warning("insert attempt failed (extra=%s views=%s): %s", with_extra, with_views, ie)
                 try:
-                    if not is_postgres():
-                        conn.rollback()
+                    conn.rollback()
                 except Exception:
                     pass
+                # FK on user_id: drop user_id from candidates and retry once
+                err_s = str(ie).lower()
+                if "user_id" in err_s and ("foreign key" in err_s or "fkey" in err_s):
+                    try:
+                        ensure_user_for_listing(cursor, user_chat_id, user_name, phone)
+                        req_id = _do_insert(with_extra=with_extra, with_views=with_views)
+                        if req_id:
+                            break
+                    except Exception as ie2:
+                        last_err = ie2
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
+                        # Last resort: remove user_id from existing_cols so insert skips it
+                        existing_cols.discard("user_id")
+                        try:
+                            req_id = _do_insert(with_extra=False, with_views=False)
+                            if req_id:
+                                break
+                        except Exception as ie3:
+                            last_err = ie3
+                            try:
+                                conn.rollback()
+                            except Exception:
+                                pass
 
         if not req_id:
             LAST_DB_ERROR = str(last_err or "insert returned no id")
