@@ -3051,10 +3051,12 @@ EXPLORER_HTML = r"""
     }
 
     function load(append) {
-      if (state.loading) return;
+      // Allow re-entry if previous request hung
+      if (state.loading && state._loadStartedAt && (Date.now() - state._loadStartedAt) < 12000) return;
       state.loading = true;
+      state._loadStartedAt = Date.now();
       if (!append) {
-        statusEl.style.display = "none";
+        try { statusEl.style.display = "none"; } catch (e) {}
         var sk = "";
         for (var si = 0; si < 6; si++) {
           sk += '<div class="adika-card animate-pulse">' +
@@ -3080,19 +3082,51 @@ EXPLORER_HTML = r"""
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
       if (state.chassisOnly) qs += "&chassis_only=1";
 
+      var explorerUrl = "/api/explorer/listings?" + qs;
       var feedUrl = useForYou
         ? ("/api/feed/for-you?page=" + page + "&limit=12&user_id=" + encodeURIComponent(state.userId || "0"))
-        : ("/api/explorer/listings?" + qs);
-      fetch(feedUrl)
-        .then(function(res){ return res.json(); })
-        .then(function(data){
-          var items = data.items || data.listings || [];
-          state.page = page;
-          state.hasMore = !!(data.has_more || data.hasMore);
-          finishLoading(items, append, state.hasMore);
+        : explorerUrl;
+
+      function applyData(data) {
+        var items = (data && (data.items || data.listings)) || [];
+        state.page = page;
+        state.hasMore = !!(data && (data.has_more || data.hasMore));
+        finishLoading(items, append, state.hasMore);
+      }
+
+      function fetchWithTimeout(url, ms) {
+        var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        var timer = setTimeout(function(){ try { if (ctrl) ctrl.abort(); } catch (e) {} }, ms || 10000);
+        return fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
+          .then(function(res){ return res.json().then(function(j){ return { ok: res.ok, data: j }; }); })
+          .finally(function(){ clearTimeout(timer); });
+      }
+
+      fetchWithTimeout(feedUrl, 10000)
+        .then(function(r){
+          var items = (r.data && (r.data.items || r.data.listings)) || [];
+          if ((!r.ok || !items.length) && useForYou) {
+            return fetchWithTimeout(explorerUrl, 10000).then(function(r2){ applyData(r2.data || {}); });
+          }
+          applyData(r.data || {});
         })
         .catch(function(err){
           console.error("[Adika] listings fetch failed", err);
+          if (useForYou) {
+            return fetchWithTimeout(explorerUrl, 10000)
+              .then(function(r2){ applyData(r2.data || {}); })
+              .catch(function(err2){
+                state.loading = false;
+                finishLoading([], append, false);
+                try {
+                  if (statusEl) {
+                    statusEl.style.display = "block";
+                    statusEl.innerHTML = '<span class="text-red-600 text-xs font-bold">ዝርዝር መጫን አልተቻለም — ኔትወርክ/ሰርቨር ያረጋግጡ</span>';
+                  }
+                } catch (e) {}
+              });
+          }
+          state.loading = false;
           finishLoading([], append, false);
           try {
             if (statusEl) {
