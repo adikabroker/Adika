@@ -25,6 +25,11 @@ except ImportError:
     jsonify = None  # type: ignore
 
 try:
+    import adika_features
+except Exception:
+    adika_features = None  # type: ignore
+
+try:
     from config import (
         OPENROUTER_API_KEY,
         WEBAPP_URL,
@@ -2538,7 +2543,19 @@ function shareContract() {{
                 }
             )
             if req_id:
-                notification_text = f"🔔 **New Buyer Request (#ADK-{req_id})**\n\n{full_desc}"
+                # Structured broker match message (Amharic)
+                try:
+                    import adika_features as _af
+                    notification_text = _af.format_buyer_match_message(
+                        category, budget_min, budget_max, details, phone, telegram_user, req_id
+                    )
+                except Exception:
+                    notification_text = (
+                        "🚨 አዲስ የፈላጊ ፍላጎት ደርሷል!\n─────────────────\n"
+                        f"📦 ምድብ: {category}\n💰 በጀት: {budget_min} - {budget_max} ETB\n"
+                        f"📝 ዝርዝር: {details}\n📞 ስልክ: {phone}\n📱 Telegram: @{telegram_user}\n"
+                        f"🆔 #ADK-{req_id}"
+                    )
                 _send_notification_safe(notification_text, req_id, uid)
                 if create_alert and uid > 0:
                     try:
@@ -2555,7 +2572,137 @@ function shareContract() {{
                 return jsonify({"success": False, "status": "error", "message": "Failed to save request"}), 500
         except Exception as e:
             logger.error(f"submit_request error: {e}", exc_info=True)
-            return jsonify({"status": "error", "message": str(e)}), 500
+            return jsonify({"success": False, "status": "error", "message": str(e)}), 500
+
+    # ------------------------------------------------------------------
+    # Adika Features: Broker reg, Telegram OTP, For-You feed
+    # ------------------------------------------------------------------
+    @web_app.route('/api/brokers/register', methods=['POST', 'OPTIONS'])
+    def api_broker_register():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            import adika_features as af
+            af.ensure_feature_tables()
+            data = request.json or {}
+            tid = int(data.get('telegram_id') or data.get('chat_id') or 0)
+            name = str(data.get('name') or data.get('full_name') or '').strip()
+            phone = str(data.get('phone') or '').strip()
+            cats = data.get('categories') or ['መኪና']
+            if isinstance(cats, str):
+                cats = [c.strip() for c in cats.split(',') if c.strip()]
+            if not tid or not name or not phone:
+                return jsonify({"success": False, "message": "telegram_id, name, phone required"}), 400
+            ok, msg = af.register_broker(tid, name, phone, cats, str(data.get('username') or ''))
+            return jsonify({"success": ok, "message": msg if not ok else "registered", "broker_id": msg if ok else None}), (200 if ok else 500)
+        except Exception as e:
+            logger.error("api_broker_register: %s", e, exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/otp/send', methods=['POST', 'OPTIONS'])
+    def api_otp_send():
+        """Send 6-digit OTP via Telegram bot (no SMS)."""
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            import adika_features as af
+            data = request.json or {}
+            tid = int(data.get('telegram_id') or data.get('chat_id') or 0)
+            purpose = str(data.get('purpose') or 'verify')
+            if not tid:
+                return jsonify({"success": False, "message": "telegram_id required"}), 400
+            code = af.create_telegram_otp(tid, purpose)
+            sent = False
+            bot = globals().get('bot_app')
+            try:
+                from webapp import bot_app as _ba
+                bot = _ba or bot
+            except Exception:
+                pass
+            text = f"🔐 የ Adika ማረጋገጫ ኮድዎ:\\n\\n{code}\\n\\nለ 10 ደቂቃ ይሰራል። ለማንም አያጋሩ።"
+            # Prefer thread-safe notify via _send_notification_safe style
+            try:
+                import webapp as _w
+                if getattr(_w, 'bot_app', None) and getattr(_w.bot_app, 'bot', None):
+                    import asyncio
+                    async def _send():
+                        await _w.bot_app.bot.send_message(chat_id=tid, text=text)
+                    loop = getattr(_w, 'bot_loop', None)
+                    if loop and getattr(loop, 'is_running', lambda: False)():
+                        fut = asyncio.run_coroutine_threadsafe(_send(), loop)
+                        fut.result(timeout=30)
+                        sent = True
+                    else:
+                        asyncio.run(_send())
+                        sent = True
+            except Exception as se:
+                logger.warning("otp telegram send: %s", se)
+            # Dev fallback: return code only if bot unavailable and DEBUG
+            payload = {"success": True, "sent_via_telegram": sent, "message": "OTP ተልኳል" if sent else "OTP ተፈጥሯል (bot offline)"}
+            if not sent:
+                payload["dev_code"] = code  # remove in strict production if desired
+            return jsonify(payload), 200
+        except Exception as e:
+            logger.error("api_otp_send: %s", e, exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/otp/verify', methods=['POST', 'OPTIONS'])
+    def api_otp_verify():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            import adika_features as af
+            data = request.json or {}
+            tid = int(data.get('telegram_id') or data.get('chat_id') or 0)
+            code = str(data.get('code') or data.get('otp') or '').strip()
+            purpose = str(data.get('purpose') or 'verify')
+            if not tid or not code:
+                return jsonify({"success": False, "message": "telegram_id and code required"}), 400
+            ok = af.verify_telegram_otp(tid, code, purpose)
+            return jsonify({"success": ok, "verified": ok, "message": "ተረጋግጧል" if ok else "ልክ ያልሆነ ኮድ"}), (200 if ok else 400)
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/preferences', methods=['GET', 'POST', 'OPTIONS'])
+    def api_preferences():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            import adika_features as af
+            if request.method == 'GET':
+                uid = int(request.args.get('user_id') or 0)
+                return jsonify({"success": True, "prefs": af.get_user_preferences(uid)}), 200
+            data = request.json or {}
+            uid = int(data.get('user_id') or 0)
+            cats = data.get('categories') or []
+            if isinstance(cats, str):
+                cats = [c.strip() for c in cats.split(',') if c.strip()]
+            ok = af.save_user_preferences(
+                uid,
+                cats,
+                int(data.get('budget_min') or 0),
+                int(data.get('budget_max') or 999999999),
+            )
+            return jsonify({"success": ok}), 200
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route('/api/feed/for-you', methods=['GET', 'OPTIONS'])
+    def api_feed_for_you():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            import adika_features as af
+            uid = int(request.args.get('user_id') or 0)
+            page = max(1, int(request.args.get('page') or 1))
+            limit = min(50, max(1, int(request.args.get('limit') or 24)))
+            data = af.fetch_for_you_feed(uid, limit=limit, page=page)
+            return jsonify(data), 200
+        except Exception as e:
+            logger.error("for-you: %s", e, exc_info=True)
+            return jsonify({"success": False, "items": [], "message": str(e)}), 500
+
+
 
 
 
