@@ -1111,6 +1111,22 @@ EXPLORER_HTML = r"""
   </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
+  <!-- EMERGENCY: never leave infinite loading spinner -->
+  <script>
+  (function(){
+    function killSpinner(){
+      try {
+        var s = document.getElementById("status");
+        if (s) { s.style.display = "none"; s.innerHTML = ""; }
+        if (window.__adikaState) window.__adikaState.loading = false;
+      } catch (e) {}
+    }
+    setTimeout(killSpinner, 3000);
+    setTimeout(killSpinner, 6000);
+    document.addEventListener("click", function(){ setTimeout(killSpinner, 50); }, true);
+  })();
+  </script>
+
 
   <!-- ================================================================= -->
   <!-- 1. FIXED STICKY TEAL HEADER (Compact 3-Row Layout)                -->
@@ -2360,7 +2376,7 @@ EXPLORER_HTML = r"""
       } catch (e) {}
     }
 
-    var state = {
+    var state = window.__adikaState = {
       tab: "marketplace",
       feedMode: "foryou", // foryou | all | category
       roleChosen: false,
@@ -3013,40 +3029,56 @@ EXPLORER_HTML = r"""
     };
 
     function finishLoading(items, append, hasMore) {
-      state.loading = false;
-      if (!append) {
-        grid.innerHTML = "";
-        state.items = items;
-      } else {
-        state.items = state.items.concat(items);
-      }
-      if (!items || !items.length) {
-        if (!append) {
-          statusEl.style.display = "block";
-          statusEl.innerHTML =
-            '<div class="py-12 px-4 text-center">' +
-              '<div class="text-4xl mb-2">📭</div>' +
-              '<div class="text-slate-700 font-bold text-sm mb-1">' +
-                '<span class="lang-am">ምንም አይነት ማስታወቂያ አልተገኘም</span>' +
-                '<span class="lang-en">No listings found</span>' +
-              '</div>' +
-              '<p class="text-slate-500 text-xs">' +
-                '<span class="lang-am">እባክዎ ሌላ ምድብ ወይም የፍለጋ ቃል ይሞክሩ</span>' +
-                '<span class="lang-en">Please try a different category or search term</span>' +
-              '</p>' +
-            '</div>';
+      // ALWAYS unlock UI — finally semantics
+      try { state.loading = false; } catch (e) {}
+      try {
+        if (statusEl) {
+          statusEl.style.display = "none";
+          statusEl.innerHTML = "";
         }
-        moreBtn.classList.add("hidden");
-        return;
-      }
-      statusEl.style.display = "none";
-      for (var i = 0; i < items.length; i++) {
-        grid.appendChild(createCardElement(items[i]));
-      }
-      if (hasMore) {
-        moreBtn.classList.remove("hidden");
-      } else {
-        moreBtn.classList.add("hidden");
+      } catch (e) {}
+      items = items || [];
+      try {
+        if (!append) {
+          if (grid) grid.innerHTML = "";
+          state.items = items;
+        } else {
+          state.items = (state.items || []).concat(items);
+        }
+        if (!items.length) {
+          if (!append && statusEl) {
+            statusEl.style.display = "block";
+            statusEl.innerHTML =
+              '<div class="py-10 px-4 text-center">' +
+                '<div class="text-4xl mb-2">📭</div>' +
+                '<div class="text-slate-700 font-bold text-sm mb-1">' +
+                  '<span class="lang-am">ምንም ማስታወቂያ አልተገኘም</span>' +
+                  '<span class="lang-en">No listings found</span>' +
+                '</div>' +
+                '<p class="text-slate-500 text-xs mt-1">' +
+                  '<span class="lang-am">ታቦችን ወይም ፍለጋን ይሞክሩ</span>' +
+                '</p></div>';
+          }
+          try { if (moreBtn) moreBtn.classList.add("hidden"); } catch (e) {}
+          return;
+        }
+        for (var i = 0; i < items.length; i++) {
+          try {
+            if (grid) grid.appendChild(createCardElement(items[i]));
+          } catch (cardErr) {
+            console.error("[Adika] card render", cardErr);
+          }
+        }
+        try {
+          if (moreBtn) {
+            if (hasMore) moreBtn.classList.remove("hidden");
+            else moreBtn.classList.add("hidden");
+          }
+        } catch (e) {}
+      } catch (err) {
+        console.error("[Adika] finishLoading", err);
+        try { state.loading = false; } catch (e) {}
+        try { if (statusEl) { statusEl.style.display = "none"; } } catch (e) {}
       }
     }
 
@@ -5645,7 +5677,37 @@ EXPLORER_HTML = r"""
     })();
 
     setTabs();
-    load(false);
+
+    // Bind critical UI BEFORE network — never depend on fetch success
+    try {
+      document.addEventListener("click", function (ev) {
+        var t = ev.target;
+        if (!t) return;
+        var tabS = t.closest && t.closest("#tabSell");
+        var tabB = t.closest && t.closest("#tabBuy");
+        if (tabS) {
+          try { state.loading = false; state.tab = "marketplace"; setTabs(); load(false); } catch (e) {}
+        } else if (tabB) {
+          try { state.loading = false; state.tab = "requests"; setTabs(); load(false); } catch (e) {}
+        }
+      }, false);
+    } catch (e) {}
+
+    // Kick off feed — failures cannot freeze UI (load has 3s timeout + finally)
+    try {
+      state.loading = false;
+      load(false);
+    } catch (e) {
+      console.error("[Adika] initial load", e);
+      try { state.loading = false; } catch (e2) {}
+      try { if (statusEl) statusEl.style.display = "none"; } catch (e3) {}
+    }
+
+    // Absolute last-resort spinner kill
+    setTimeout(function () {
+      try { state.loading = false; } catch (e) {}
+      try { if (statusEl) { statusEl.style.display = "none"; } } catch (e) {}
+    }, 3500);
   })();
   </script>
 </body>
