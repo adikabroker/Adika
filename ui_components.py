@@ -1,6 +1,5 @@
-# ui_components.py — HTML/CSS templates for Adika Telegram Mini App
-# Seller form, Buyer form, and Explorer (Marketplace) pages.
-"""UI template constants. No Flask dependency."""
+# -*- coding: utf-8 -*-
+"""Adika Mini App HTML templates (Telegram WebApp)."""
 
 SELLER_FORM_HTML = r"""
 <!DOCTYPE html>
@@ -5735,63 +5734,4 @@ EXPLORER_HTML = r"""
 </body>
 </html>
 """
-
-
-# ---------------------------------------------------------------------------
-# Streamlit & Python Chat Interface Helper
-# ---------------------------------------------------------------------------
-try:
-    import streamlit as st
-except ImportError:
-    st = None
-
-try:
-    from api_service import generate_advisor_response
-except Exception:
-    def generate_advisor_response(prompt, history=None, budget=None, system_prompt=None):
-        full_prompt = f"System Context: {system_prompt}\nUser Budget: {budget} ETB\nUser Question: {prompt}"
-        try:
-            from api_service import _gemini_generate
-            return _gemini_generate(prompt=full_prompt, api_key=None, system=system_prompt)
-        except Exception:
-            return "ይቅርታ፣ አሁን ላይ ከኦፕሬተራችን ጋር ማገናኘት አልተቻለም። እባክዎ ጥቂት ቆይተው እንደገና ይሞክሩ።"
-
-
-def render_chat_interface(user_budget):
-    if st is None:
-        return
-    st.markdown("### 💬 ከአዲካ የፋይናንስ ኦፕሬተር ጋር ይወያዩ")
-    
-    # 1. State ማስጀመሪያ
-    if "messages" not in st.session_state:
-        st.session_state.messages = [
-            {"role": "assistant", "content": f"ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። በያዙት {user_budget:,.0f} ETB በጀት ዙሪያ የሚፈልጉትን ማንኛውንም ጥያቄ መጠየቅ ይችላሉ።"}
-        ]
-
-    # 2. የቻት ታሪክ ማሳያ (Scrollable Container)
-    chat_container = st.container()
-    with chat_container:
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
-
-    # 3. ጥያቄ መቀበያ እና የኤፒአይ ጥሪ
-    if prompt := st.chat_input("ጥያቄዎን እዚህ ያስገቡ..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        with st.chat_message("user"):
-            st.write(prompt)
-
-        with st.chat_message("assistant"):
-            with st.spinner("ኦፕሬተሩ መልስ በመጻፍ ላይ ነው..."):
-                response = generate_advisor_response(
-                    prompt=prompt, 
-                    history=st.session_state.messages, 
-                    budget=user_budget
-                )
-                st.write(response)
-                
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        st.rerun()
-
 
