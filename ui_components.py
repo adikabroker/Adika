@@ -1130,7 +1130,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 1. FIXED STICKY TEAL HEADER (Compact 3-Row Layout)                -->
   <!-- ================================================================= -->
-  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 16px rgba(15,23,42,0.12);">
+  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 4px 20px rgba(15,23,42,0.10);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
       <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
@@ -1199,7 +1199,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto pb-24 px-2.5" style="padding-top: 180px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto pb-24 px-2.5" style="padding-top: 148px;">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -1309,7 +1309,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 3. FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+)         -->
   <!-- ================================================================= -->
-  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] bg-white/95 backdrop-blur-xl rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] border border-white/60 px-4 py-2 flex items-center justify-between max-w-md mx-auto">
+  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.55); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);">
     <!-- Left Section: Home & AI Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
       <button id="navHome" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
@@ -2392,25 +2392,40 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Broker registration -->
-  <div id="brokerRegModal" class="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center mb-3">
+  <div id="brokerRegModal" class="fixed inset-0 z-[200] bg-black/55 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center px-5 pt-4 pb-2 border-b border-slate-100 shrink-0">
         <div class="font-black text-base text-slate-900">ደላላ ምዝገባ</div>
         <button type="button" onclick="closeModal('brokerRegModal')" class="w-8 h-8 rounded-full bg-slate-100 font-bold">✕</button>
       </div>
-      <label class="text-xs font-bold text-slate-600">ሙሉ ስም</label>
-      <input id="brName" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="ስም" />
-      <label class="text-xs font-bold text-slate-600">ስልክ ቁጥር</label>
-      <input id="brPhone" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="09xxxxxxxx" />
-      <label class="text-xs font-bold text-slate-600">Telegram username</label>
-      <input id="brUser" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="@username" />
-      <div class="text-xs font-bold text-slate-600 mb-1">የሚሰሩበት ምድብ</div>
-      <div class="flex flex-wrap gap-2 mb-3">
-        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
-        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
-        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
+      <div class="px-5 py-3 overflow-y-auto flex-1" style="padding-bottom: 8px;">
+        <label class="text-xs font-bold text-slate-600">ሙሉ ስም</label>
+        <input id="brName" class="w-full mb-2.5 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="ስም" />
+        <label class="text-xs font-bold text-slate-600">ስልክ ቁጥር</label>
+        <input id="brPhone" class="w-full mb-2.5 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="09xxxxxxxx" />
+        <label class="text-xs font-bold text-slate-600">Telegram username</label>
+        <input id="brUser" class="w-full mb-2.5 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="@username" />
+        <div class="text-xs font-bold text-slate-600 mb-1">የሚሰሩበት ምድብ</div>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
+          <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
+          <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
+        </div>
+        <label class="text-xs font-bold text-slate-600">የመታወቂያ ፎቶ (አማራጭ)</label>
+        <div class="mt-1 mb-2 flex gap-2 items-center">
+          <label class="flex-1 py-3 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-600 cursor-pointer active:bg-slate-100">
+            📷 ፎቶ አንሳ / ምረጥ
+            <input id="brIdPhoto" type="file" accept="image/*" capture="environment" class="hidden" />
+          </label>
+          <img id="brIdPreview" alt="" class="hidden w-14 h-14 rounded-xl object-cover border border-slate-200" />
+        </div>
+        <p class="text-[10px] text-slate-400 mb-2">ምዝገባው ለአድሚን ይላካል — ከተረጋገጠ በኋላ ደላላ ይሆናሉ።</p>
       </div>
-      <button type="button" id="brSubmitBtn" class="w-full py-3 rounded-xl bg-[#16acbd] text-white font-bold text-sm">መመዝገብ</button>
+      <div class="px-5 pt-2 pb-5 border-t border-slate-100 shrink-0 bg-white" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
+        <button type="button" id="brSubmitBtn" class="w-full py-3.5 rounded-xl bg-[#16acbd] text-white font-black text-sm shadow-lg active:scale-[0.98]">
+          ✅ መመዝገብ / Submit
+        </button>
+      </div>
       <button type="button" id="openBrokerRegFromMenu" class="hidden">ደላላ ነዎት? ይመዝገቡ</button>
     </div>
   </div>
@@ -5661,6 +5676,25 @@ EXPLORER_HTML = r"""
         openM("brokerRegModal");
       };
 
+      var brIdPhoto = document.getElementById("brIdPhoto");
+      var brIdPreview = document.getElementById("brIdPreview");
+      var brIdDataUrl = "";
+      if (brIdPhoto) {
+        brIdPhoto.onchange = function() {
+          var f = brIdPhoto.files && brIdPhoto.files[0];
+          if (!f) return;
+          var reader = new FileReader();
+          reader.onload = function(ev) {
+            brIdDataUrl = ev.target.result || "";
+            if (brIdPreview && brIdDataUrl) {
+              brIdPreview.src = brIdDataUrl;
+              brIdPreview.classList.remove("hidden");
+            }
+          };
+          reader.readAsDataURL(f);
+        };
+      }
+
       var brSubmit = document.getElementById("brSubmitBtn");
       if (brSubmit) brSubmit.onclick = function() {
         var name = (document.getElementById("brName") || {}).value || "";
@@ -5669,8 +5703,14 @@ EXPLORER_HTML = r"""
         var cats = [];
         document.querySelectorAll(".brCat:checked").forEach(function(c) { cats.push(c.value); });
         var tid = state.userId || 0;
+        try {
+          if ((!tid || tid === 0) && window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+            tid = Telegram.WebApp.initDataUnsafe.user.id || 0;
+          }
+        } catch (e) {}
         if (!name || !phone) { alert("ስም እና ስልክ ያስፈልጋሉ"); return; }
         brSubmit.disabled = true;
+        brSubmit.textContent = "እየተመዘገበ ነው…";
         fetch("/api/brokers/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -5679,17 +5719,23 @@ EXPLORER_HTML = r"""
             name: name,
             phone: phone,
             username: user,
-            categories: cats
+            categories: cats,
+            id_photo: brIdDataUrl || null
           })
         }).then(function(r){ return r.json(); }).then(function(d){
           if (d.success) {
-            alert("✅ እንደ ደላላ ተመዝግበዋል!");
+            alert("✅ ምዝገባዎ ተልኳል! አድሚን ካረጋገጠ በኋላ ደላላ ይሆናሉ።");
             closeM("brokerRegModal");
+            brIdDataUrl = "";
+            try { if (brIdPreview) { brIdPreview.classList.add("hidden"); brIdPreview.src = ""; } } catch (e) {}
           } else {
             alert(d.message || "ምዝገባ አልተሳካም");
           }
         }).catch(function(){ alert("ኔትወርክ ስህተት"); })
-        .finally(function(){ brSubmit.disabled = false; });
+        .finally(function(){
+          brSubmit.disabled = false;
+          brSubmit.textContent = "✅ መመዝገብ / Submit";
+        });
       };
 
       // Floating entry for brokers
