@@ -1085,25 +1085,29 @@ EXPLORER_HTML = r"""
       </div>
 
       <!-- Third Row: Category Pills (Horizontal Scroll) -->
-      <div id="cats" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm" data-id="">
-          <span class="lang-am">✨ ሁሉም</span>
-          <span class="lang-en">✨ All</span>
+      <div id="cats" class="flex gap-2 overflow-x-auto no-scrollbar py-1">
+        <button type="button" class="cat-pill flex items-center space-x-1 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-white text-cyan-800 shadow-md font-bold" data-id="for_you">
+          <span>✨</span>
+          <span class="lang-am">ለእርስዎ</span>
+          <span class="lang-en">For You</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="መኪና">
-          <span class="lang-am">🚗 መኪኖች</span>
-          <span class="lang-en">🚗 Cars</span>
+        <button type="button" class="cat-pill flex items-center space-x-1 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="all">
+          <span>🌐</span>
+          <span class="lang-am">ሁሉም</span>
+          <span class="lang-en">All</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ቤት">
-          <span class="lang-am">🏠 ቤቶች</span>
-          <span class="lang-en">🏠 Property</span>
+        <button type="button" class="cat-pill flex items-center space-x-1 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="car">
+          <span>🚗</span>
+          <span class="lang-am">መኪና</span>
+          <span class="lang-en">Car</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ንግድ">
-          <span class="lang-am">🏢 ንግድ</span>
-          <span class="lang-en">🏢 Commercial</span>
+        <button type="button" class="cat-pill flex items-center space-x-1 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="house">
+          <span>🏠</span>
+          <span class="lang-am">ቤት</span>
+          <span class="lang-en">House</span>
         </button>
-        <button id="filterChassisChip" type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40" data-filter="chassis">
-          <span>🔍 <span class="lang-am">ሻሲ ያላቸው ብቻ</span><span class="lang-en">VIN Verified</span></span>
+        <button id="filterChassisChip" type="button" class="cat-pill flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40" data-filter="chassis">
+          <span>🔍 <span class="lang-am">ሻሲ ያላቸው</span><span class="lang-en">VIN Verified</span></span>
         </button>
       </div>
     </div>
@@ -2053,7 +2057,7 @@ EXPLORER_HTML = r"""
 
     var state = {
       tab: "marketplace",
-      category: "",
+      category: "for_you",
       q: "",
       page: 1,
       hasMore: false,
@@ -2616,14 +2620,16 @@ EXPLORER_HTML = r"""
     };
 
     function selectCategory(catId) {
-      state.category = (!catId || catId === "all" || catId === "null" || catId === "undefined" || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም") ? "" : catId;
+      state.category = catId || "for_you";
       var buttons = catsEl.querySelectorAll("button");
       buttons.forEach(function(b) {
         var bId = b.getAttribute("data-id") || "";
-        if ((!state.category && (!bId || bId === "all")) || (state.category && bId === state.category)) {
-          b.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm";
-        } else {
-          b.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
+        if (bId && bId === state.category) {
+          b.className = "cat-pill flex items-center space-x-1 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-white text-cyan-800 shadow-md font-bold";
+        } else if (!bId && state.category === "for_you") {
+          b.className = "cat-pill flex items-center space-x-1 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-white text-cyan-800 shadow-md font-bold";
+        } else if (b.id !== "filterChassisChip") {
+          b.className = "cat-pill flex items-center space-x-1 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
         }
       });
       load(false);
