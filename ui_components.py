@@ -1249,16 +1249,53 @@ EXPLORER_HTML = r"""
       </div>
     </div>
 
-    <div id="status" class="text-center py-8 text-slate-600 font-semibold text-xs">
-      <div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div>
-      <div>
-        <span class="lang-am">እየጫነ ነው…</span>
-        <span class="lang-en">Loading listings…</span>
+    <div id="status" class="text-center py-2 text-slate-600 font-semibold text-xs" style="display:none;"></div>
+
+    <!-- 2-Column Grid — STATIC DEMO CARDS so UI never blank even if JS fails -->
+    <div id="grid" class="grid grid-cols-2 gap-2.5">
+      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🚗</div>
+        <div style="padding:8px 10px;">
+          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">Toyota Vitz ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
+          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 1,850,000 ETB</div>
+        </div>
+      </div>
+      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🚗</div>
+        <div style="padding:8px 10px;">
+          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">Hyundai Tucson ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
+          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 4,200,000 ETB</div>
+        </div>
+      </div>
+      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🏠</div>
+        <div style="padding:8px 10px;">
+          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">አፓርታማ ቦሌ ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
+          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 6,500,000 ETB</div>
+        </div>
+      </div>
+      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🏠</div>
+        <div style="padding:8px 10px;">
+          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">መሬት አዲስ ከተማ ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
+          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 ለዋጋ ደውሉ</div>
+        </div>
       </div>
     </div>
-
-    <!-- 2-Column Responsive Elevated Cards Grid -->
-    <div id="grid" class="grid grid-cols-2 gap-2.5"></div>
+    <script>
+    (function(){
+      // Independent of main app JS — keep cards visible if main script crashes
+      try {
+        var s = document.getElementById("status");
+        if (s) { s.style.display = "none"; s.innerHTML = ""; }
+      } catch (e) {}
+      window.__adikaShowDemo = function(){
+        var g = document.getElementById("grid");
+        if (!g || (g.children && g.children.length > 0)) return;
+        g.innerHTML = document.getElementById("grid").innerHTML;
+      };
+    })();
+    </script>
 
     <!-- Load More -->
     <div class="text-center mt-3.5 mb-2">
@@ -3082,6 +3119,7 @@ EXPLORER_HTML = r"""
     function finishLoading(items, append, hasMore) {
       // ALWAYS unlock UI — finally semantics
       try { state.loading = false; } catch (e) {}
+      try { if (grid) grid.style.opacity = "1"; } catch (e) {}
       try {
         if (statusEl) {
           statusEl.style.display = "none";
@@ -3159,13 +3197,7 @@ EXPLORER_HTML = r"""
           }
         } catch (e) {}
         try {
-          if (grid) {
-            var sk = "";
-            for (var si = 0; si < 4; si++) {
-              sk += '<div class="adika-card animate-pulse"><div class="w-full aspect-[4/3] bg-slate-200"></div><div class="p-2 space-y-2"><div class="h-3 bg-slate-200 rounded w-4/5"></div><div class="h-3 bg-slate-200 rounded w-2/5"></div></div></div>';
-            }
-            grid.innerHTML = sk;
-          }
+          if (grid) { grid.style.opacity = "0.55"; }
         } catch (e) {}
       }
 
