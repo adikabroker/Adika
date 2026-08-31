@@ -1201,11 +1201,17 @@ EXPLORER_HTML = r"""
         </div>
       </div>
 
-      <!-- Second Row: Sleek Quick Search Input Bar -->
-      <div class="relative">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
-        <input id="q" type="search" placeholder="ንብረት ይፈልጉ... / Search listings..." autocomplete="off"
-          class="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
+      <!-- Search + Broker glass badge -->
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1 min-w-0">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
+          <input id="q" type="search" placeholder="ንብረት ይፈልጉ... / Search..." autocomplete="off"
+            class="w-full pl-8 pr-3 py-1.5 rounded-full bg-white/90 text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
+        </div>
+        <button type="button" id="brokerCtaHome" class="shrink-0 backdrop-blur-3xl px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap active:scale-95 transition-all shadow-sm flex items-center gap-1"
+                style="background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.40); color: #004d40;">
+          <span>🤝</span><span>ደላላ ኖት?</span>
+        </button>
       </div>
 
       <!-- Third Row: Category Pills (Horizontal Scroll) -->
@@ -1247,12 +1253,49 @@ EXPLORER_HTML = r"""
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <!-- Compact Digital Tools Banner (4.5s rotate) + floating broker only -->
-    <div id="homeHero" class="mb-2">
-      <div id="smartToolsBanner" class="relative overflow-hidden rounded-2xl border border-cyan-500/30 shadow-xl cursor-pointer"
-           style="background: linear-gradient(90deg, #0b1220, #003b46, #0f172a); min-height: 72px;">
-        <div id="smartBannerTrack" class="relative px-3.5 py-2.5"></div>
-        <div id="smartBannerDots" class="flex justify-center gap-1 pb-2"></div>
+    <!-- Horizontal Stories/Reels style Digital Tools -->
+    <div id="homeHero" class="mb-2 -mx-1">
+      <div id="toolsReel" class="flex gap-2.5 overflow-x-auto no-scrollbar py-1 px-1 snap-x snap-mandatory">
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98] transition-transform"
+                data-tool="poa" style="background: linear-gradient(90deg,#0f172a,#0284c7,#0f172a);">
+          <div class="flex justify-between items-center">
+            <span class="text-[8px] font-black tracking-widest text-cyan-300 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">ዲጂታል ህግ</span>
+            <span class="text-[10px] font-bold text-cyan-300">ክፈት →</span>
+          </div>
+          <p class="text-xs font-black text-white mt-2 tracking-tight">📜 የውክልና ማጣሪያ</p>
+        </button>
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98]"
+                data-tool="chassis" style="background: linear-gradient(90deg,#0f172a,#0d9488,#0f172a);">
+          <div class="flex justify-between items-center">
+            <span class="text-[8px] font-black tracking-widest text-teal-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">VIN AUDIT</span>
+            <span class="text-[10px] font-bold text-teal-200">ክፈት →</span>
+          </div>
+          <p class="text-xs font-black text-white mt-2 tracking-tight">🔍 የሻሲ ማጣሪያ</p>
+        </button>
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98]"
+                data-tool="duty" style="background: linear-gradient(90deg,#0f172a,#4f46e5,#0f172a);">
+          <div class="flex justify-between items-center">
+            <span class="text-[8px] font-black tracking-widest text-indigo-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">CUSTOMS</span>
+            <span class="text-[10px] font-bold text-indigo-200">ክፈት →</span>
+          </div>
+          <p class="text-xs font-black text-white mt-2 tracking-tight">🧮 የቀረጥ ስሌት</p>
+        </button>
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98]"
+                data-tool="loan" style="background: linear-gradient(90deg,#0f172a,#9333ea,#0f172a);">
+          <div class="flex justify-between items-center">
+            <span class="text-[8px] font-black tracking-widest text-purple-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">MORTGAGE</span>
+            <span class="text-[10px] font-bold text-purple-200">ክፈት →</span>
+          </div>
+          <p class="text-xs font-black text-white mt-2 tracking-tight">🏦 የባንክ ብድር</p>
+        </button>
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98]"
+                data-tool="contract" style="background: linear-gradient(90deg,#0f172a,#b45309,#0f172a);">
+          <div class="flex justify-between items-center">
+            <span class="text-[8px] font-black tracking-widest text-amber-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">ውል</span>
+            <span class="text-[10px] font-bold text-amber-200">ክፈት →</span>
+          </div>
+          <p class="text-xs font-black text-white mt-2 tracking-tight">📝 የሽያጭ ውል</p>
+        </button>
       </div>
       <div class="hidden">
         <button id="heroAdvisorBtn" type="button"></button>
@@ -1260,6 +1303,9 @@ EXPLORER_HTML = r"""
         <button id="heroToolsBtn" type="button"></button>
         <div id="heroCarousel"></div>
         <div id="heroDots"></div>
+        <div id="smartBannerTrack"></div>
+        <div id="smartBannerDots"></div>
+        <div id="smartToolsBanner"></div>
       </div>
     </div>
 
@@ -1324,16 +1370,6 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 3. FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+)         -->
   <!-- ================================================================= -->
-  
-  <!-- Ultra-glass compact broker badge -->
-  <div id="brokerFloatCard" class="fixed bottom-16 right-3 z-[90]">
-    <button type="button" id="brokerCtaHome" class="backdrop-blur-3xl px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-1.5 active:scale-95 transition-all"
-            style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.40);">
-      <span class="text-xs">🤝</span>
-      <span class="text-[10px] font-black tracking-tight text-[#004d40]">ደላላ ኖት? ይመዝገቡ →</span>
-    </button>
-  </div>
-
   <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.22); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,0.35);">
     <!-- Left Section: Home & AI Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
@@ -5778,60 +5814,8 @@ EXPLORER_HTML = r"""
     })();
 
 
-    // ---- Digital Tools Banner: form tools → form, advisor → chat ----
-    (function initSmartToolsBanner() {
-      var slides = [
-        {
-          id: "poa_verify",
-          tag: "የህግ ረቂቅ ወኪል",
-          title: "📜 የውክልና ማጣሪያ እና ማረጋገጫ",
-          desc: "የውክልና ሰነዶችን ህጋዊነት በስካን ማረጋገጫ ፎርም ወዲያውኑ ያረጋግጡ",
-          cta: "ወደ ፎርም ሂድ →",
-          type: "form",
-          tool: "poa"
-        },
-        {
-          id: "sales_contract",
-          tag: "ህጋዊ ውል አዘጋጅ",
-          title: "📝 የሽያጭ ውል ማዘጋጃ ፎርም",
-          desc: "በህግ ባለሙያዎች የተረጋገጠ የመኪና እና የቤት የሽያጭ ውል ረቂቅ ያዘጋጁ",
-          cta: "ውል አዘጋጅ →",
-          type: "form",
-          tool: "contract"
-        },
-        {
-          id: "financial_advisor",
-          tag: "የፋይናንስ አማካሪ",
-          title: "🏦 የባንክ ብድር እና የፋይናንስ አማካሪ",
-          desc: "የቤትና የመኪና ብድር አማራጮችን ከአዲካ የፋይናንስ አማካሪ ጋር ይወያዩ",
-          cta: "አማካሪ አውራ →",
-          type: "chat",
-          tool: "loan"
-        },
-        {
-          id: "chassis_check",
-          tag: "የተሽከርካሪ ኦዲት",
-          title: "🔍 የሻሲ እና የታሪክ ማጣሪያ",
-          desc: "የመኪናውን ትክክለኛ ሞዴል፣ የአደጋ ታሪክ እና ዝርዝር መረጃ በ VIN ያግኙ",
-          cta: "ወደ ማጣሪያ ፎርም →",
-          type: "form",
-          tool: "chassis"
-        },
-        {
-          id: "customs_duty",
-          tag: "የታክስ ስሌት",
-          title: "🧮 የጉምሩክ ቀረጥ እና ታክስ አስሊ",
-          desc: "ለማንኛውም አይነት ተሽከርካሪ የጉምሩክ ቀረጥ መጠን ትክክለኛ ስሌት",
-          cta: "ቀረጥ አስላ →",
-          type: "form",
-          tool: "duty"
-        }
-      ];
-
-      var track = document.getElementById("smartBannerTrack");
-      var dotsWrap = document.getElementById("smartBannerDots");
-      if (!track) return;
-
+    // ---- Horizontal Tools Reel → form / chat ----
+    (function initToolsReel() {
       var btnMap = {
         poa: "toolPoaBtn",
         contract: "toolContractBtn",
@@ -5845,23 +5829,34 @@ EXPLORER_HTML = r"""
       function openFormTool(toolKey) {
         try {
           if (typeof showAnalysisView === "function") showAnalysisView(true);
+          // hide bottom nav while in tool view
+          try {
+            var nav = document.getElementById("adikaBottomNav");
+            var fab = document.getElementById("fabBtn");
+            if (nav) nav.style.display = "none";
+            if (fab) fab.style.display = "none";
+          } catch (e) {}
           setTimeout(function () {
             var id = btnMap[toolKey];
             var el = id ? document.getElementById(id) : null;
             if (el) el.click();
             else if (typeof openToolModal === "function") openToolModal(toolKey);
-          }, 160);
+          }, 120);
         } catch (e) {}
       }
 
       window.__adikaOpenToolChat = function (toolKey) {
         try {
           if (typeof showAnalysisView === "function") showAnalysisView(true);
-          var greetings = {
-            loan: "ሰላም! የባንክ ብድር እና የፋይናንስ አማካሪ — ጠቅላላ ዋጋ ወይም ወርሃዊ ገቢዎን ይንገሩኝ።",
-            general_assistant: "ሰላም! በአዲካ ዲጂታል ሲስተም እንኳን ደህና መጡ። እንዴት ልረዳዎ?"
-          };
-          var msg = greetings[toolKey] || greetings.general_assistant;
+          try {
+            var nav = document.getElementById("adikaBottomNav");
+            var fab = document.getElementById("fabBtn");
+            if (nav) nav.style.display = "none";
+            if (fab) fab.style.display = "none";
+          } catch (e) {}
+          var msg = toolKey === "loan"
+            ? "ሰላም! የባንክ ብድር እና የፋይናንስ አማካሪ — ጠቅላላ ዋጋ ወይም ወርሃዊ ገቢዎን ይንገሩኝ።"
+            : "ሰላም! በአዲካ ዲጂታል ሲስተም እንኳን ደህና መጡ። እንዴት ልረዳዎ?";
           setTimeout(function () {
             try {
               var log = document.getElementById("advisorChatLog");
@@ -5872,52 +5867,32 @@ EXPLORER_HTML = r"""
                 log.appendChild(div);
                 log.scrollTop = log.scrollHeight;
               }
-              if (window.state) window.state.advisorTool = toolKey;
             } catch (e) {}
           }, 200);
         } catch (e) {}
       };
 
-      function handleSlide(s) {
-        if (s.type === "chat") {
-          window.__adikaOpenToolChat(s.tool);
-        } else {
-          openFormTool(s.tool);
-        }
+      // restore nav when closing analysis
+      var _origShow = window.showAnalysisView;
+      if (typeof showAnalysisView === "function") {
+        window.showAnalysisView = function (on) {
+          try { _origShow(on); } catch (e) {}
+          try {
+            var nav = document.getElementById("adikaBottomNav");
+            var fab = document.getElementById("fabBtn");
+            if (nav) nav.style.display = on ? "none" : "";
+            if (fab) fab.style.display = on ? "none" : "";
+          } catch (e) {}
+        };
       }
 
-      function render(idx) {
-        var s = slides[idx];
-        track.innerHTML =
-          '<button type="button" class="smart-slide active w-full text-left" data-tool="' + s.tool + '">' +
-          '<div class="flex justify-between items-center mb-1">' +
-          '<span class="text-[8px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full border border-cyan-400/30 bg-cyan-500/20 text-cyan-300">' + s.tag + "</span>" +
-          '<span class="text-[9px] text-slate-400 font-mono">' + (idx + 1) + "/" + slides.length + "</span></div>" +
-          '<div class="flex items-center justify-between gap-2">' +
-          '<div class="min-w-0">' +
-          '<div class="text-[12px] font-extrabold text-white leading-tight truncate">' + s.title + "</div>" +
-          '<p class="text-[10px] text-slate-300 leading-tight mt-0.5 line-clamp-1">' + s.desc + "</p></div>" +
-          '<span class="shrink-0 text-[10px] font-bold text-cyan-400">' + s.cta + "</span></div></button>";
-        var btn = track.querySelector("button");
-        if (btn) btn.onclick = function () { handleSlide(s); };
-        if (dotsWrap) {
-          dotsWrap.innerHTML = "";
-          slides.forEach(function (_, i2) {
-            var d = document.createElement("button");
-            d.type = "button";
-            d.className = "smart-dot" + (i2 === idx ? " active" : "");
-            d.onclick = function (e) { e.stopPropagation(); cur = i2; render(cur); };
-            dotsWrap.appendChild(d);
-          });
-        }
-      }
-
-      var cur = 0;
-      render(0);
-      setInterval(function () {
-        cur = (cur + 1) % slides.length;
-        render(cur);
-      }, 4500);
+      document.querySelectorAll(".tool-reel-card").forEach(function (card) {
+        card.onclick = function () {
+          var tool = card.getAttribute("data-tool") || "";
+          if (tool === "loan") window.__adikaOpenToolChat("loan");
+          else openFormTool(tool);
+        };
+      });
 
       var br = document.getElementById("brokerCtaHome");
       if (br) {
@@ -5932,6 +5907,7 @@ EXPLORER_HTML = r"""
         };
       }
     })();
+
 
 
 
