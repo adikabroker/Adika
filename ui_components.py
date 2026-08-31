@@ -872,6 +872,7 @@ BUYER_FORM_HTML = r"""
 """
 
 EXPLORER_HTML = r"""
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2036,6 +2037,71 @@ EXPLORER_HTML = r"""
     </div>
   </div>
 
+  <!-- Cold Start Onboarding Modal (ለአልጎሪዝሙ መረጃ መሰብሰቢያ) -->
+  <div id="onboardingModal" class="fixed inset-0 z-[160] bg-black/60 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-3xl p-6 w-full max-w-md border border-white/40 shadow-2xl space-y-4">
+      
+      <div class="text-center space-y-1">
+        <h3 class="text-xl font-extrabold bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent">
+          ✨ ለእርስዎ የሚሆኑ አቅርቦቶችን እንምረጥ
+        </h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          አልጎሪዝሙ የሚፈልጉትን ንብረት ለይቶ እንዲያቀርብልዎ አጭር መረጃ ይስጡ።
+        </p>
+      </div>
+
+      <!-- Category selection -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block">የሚፈልጉት ንብረት አይነት፦</label>
+        <div id="obCatGroup" class="grid grid-cols-3 gap-2">
+          <button type="button" data-val="መኪና" class="ob-cat-btn py-2 text-xs font-bold rounded-xl border transition-all bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200/60">መኪና</button>
+          <button type="button" data-val="ቤት" class="ob-cat-btn py-2 text-xs font-bold rounded-xl border transition-all bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200/60">ቤት</button>
+          <button type="button" data-val="ሁሉም" class="ob-cat-btn py-2 text-xs font-bold rounded-xl border transition-all bg-cyan-600 text-white border-cyan-600 shadow-md">ሁሉም</button>
+        </div>
+      </div>
+
+      <!-- Fuel type selection -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block">የመኪና/ሃይል ምርጫ፦</label>
+        <div id="obFuelGroup" class="grid grid-cols-3 gap-2">
+          <button type="button" data-val="ኤሌክትሪክ" class="ob-fuel-btn py-2 text-xs font-bold rounded-xl border transition-all bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200/60">ኤሌክትሪክ</button>
+          <button type="button" data-val="ነዳጅ" class="ob-fuel-btn py-2 text-xs font-bold rounded-xl border transition-all bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200/60">ነዳጅ</button>
+          <button type="button" data-val="ሁሉም" class="ob-fuel-btn py-2 text-xs font-bold rounded-xl border transition-all bg-cyan-600 text-white border-cyan-600 shadow-md">ሁሉም</button>
+        </div>
+      </div>
+
+      <!-- Purpose selection -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block">የአገልግሎት አይነት፦</label>
+        <div id="obPurposeGroup" class="grid grid-cols-3 gap-2">
+          <button type="button" data-val="ለስራ" class="ob-purp-btn py-2 text-xs font-bold rounded-xl border transition-all bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200/60">ለስራ</button>
+          <button type="button" data-val="ለቤት" class="ob-purp-btn py-2 text-xs font-bold rounded-xl border transition-all bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200/60">ለቤት</button>
+          <button type="button" data-val="ሁሉም" class="ob-purp-btn py-2 text-xs font-bold rounded-xl border transition-all bg-cyan-600 text-white border-cyan-600 shadow-md">ሁሉም</button>
+        </div>
+      </div>
+
+      <!-- Budget input -->
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-700 dark:text-slate-300 block">ከፍተኛ የበጀት መጠን (ETB)፦</label>
+        <input
+          id="obMaxBudget"
+          type="number"
+          placeholder="ምሳሌ: 2,500,000"
+          class="w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 font-bold"
+        />
+      </div>
+
+      <button
+        id="obSaveBtn"
+        type="button"
+        class="w-full py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-extrabold text-sm rounded-xl shadow-lg hover:opacity-95 transition-all mt-2 active:scale-95"
+      >
+        ቀጥል (Save & Continue)
+      </button>
+
+    </div>
+  </div>
+
 <script>
   (function () {
     var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
@@ -2632,6 +2698,9 @@ EXPLORER_HTML = r"""
           b.className = "cat-pill flex items-center space-x-1 px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
         }
       });
+      if (state.category === "for_you") {
+        checkOnboarding();
+      }
       load(false);
     }
 
@@ -4062,7 +4131,67 @@ EXPLORER_HTML = r"""
       else alert(msg);
     };
 
+    // Cold Start Onboarding Modal Handlers
+    var obPrefs = {
+      category: 'ሁሉም',
+      fuelType: 'ሁሉም',
+      purpose: 'ሁሉም',
+      maxBudget: ''
+    };
+
+    function checkOnboarding() {
+      try {
+        var saved = localStorage.getItem('adika_user_preferences');
+        if (!saved && (state.category === 'for_you' || !state.category)) {
+          var m = document.getElementById('onboardingModal');
+          if (m) {
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+          }
+        }
+      } catch(e){}
+    }
+
+    function setupOnboardingGroup(btnClass, prefKey) {
+      var btns = document.querySelectorAll(btnClass);
+      btns.forEach(function(b) {
+        b.onclick = function() {
+          var val = b.getAttribute('data-val');
+          obPrefs[prefKey] = val;
+          btns.forEach(function(other) {
+            if (other.getAttribute('data-val') === val) {
+              other.className = btnClass.substring(1) + " py-2 text-xs font-bold rounded-xl border transition-all bg-cyan-600 text-white border-cyan-600 shadow-md";
+            } else {
+              other.className = btnClass.substring(1) + " py-2 text-xs font-bold rounded-xl border transition-all bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200/60";
+            }
+          });
+        };
+      });
+    }
+
+    setupOnboardingGroup('.ob-cat-btn', 'category');
+    setupOnboardingGroup('.ob-fuel-btn', 'fuelType');
+    setupOnboardingGroup('.ob-purp-btn', 'purpose');
+
+    var obSaveBtn = document.getElementById('obSaveBtn');
+    if (obSaveBtn) {
+      obSaveBtn.onclick = function() {
+        var budgetInput = document.getElementById('obMaxBudget');
+        if (budgetInput) obPrefs.maxBudget = budgetInput.value || '';
+        try {
+          localStorage.setItem('adika_user_preferences', JSON.stringify(obPrefs));
+        } catch(e){}
+        var m = document.getElementById('onboardingModal');
+        if (m) {
+          m.classList.add('hidden');
+          m.classList.remove('flex');
+        }
+        load(false);
+      };
+    }
+
     setTabs();
+    checkOnboarding();
     load(false);
   })();
   </script>
