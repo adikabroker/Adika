@@ -2378,7 +2378,7 @@ EXPLORER_HTML = r"""
 
     var state = window.__adikaState = {
       tab: "marketplace",
-      feedMode: "foryou", // foryou | all | category
+      feedMode: "all", // foryou | all | category
       roleChosen: false,
       category: "",
       q: "",
@@ -5617,14 +5617,16 @@ EXPLORER_HTML = r"""
       var roleKey = "adika_role_v1";
       var hasRole = false;
       try { hasRole = !!localStorage.getItem(roleKey); } catch (e) {}
-      if (!hasRole) openM("roleSelectModal");
+      // Do not block the marketplace behind role modal — optional entry only
+      // if (!hasRole) openM("roleSelectModal");
+      try { if (!hasRole) localStorage.setItem(roleKey, "user"); } catch (e) {}
 
       var roleUser = document.getElementById("roleUserBtn");
       var roleBroker = document.getElementById("roleBrokerBtn");
       if (roleUser) roleUser.onclick = function() {
         try { localStorage.setItem(roleKey, "user"); } catch (e) {}
         closeM("roleSelectModal");
-        state.feedMode = "foryou";
+        state.feedMode = "all";
         paintFeedModes();
         load(false);
       };
