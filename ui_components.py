@@ -225,7 +225,7 @@ SELLER_FORM_HTML = r"""
             body: JSON.stringify(data)
           });
           const result = await res.json().catch(() => ({}));
-          if (res.ok && (result.success === true || result.status === 'success' || result.req_id)) {
+          if (res.ok && (result.status === 'success' || !result.status)) {
             setStatus('ok');
             resetForm();
             try { localStorage.removeItem('adika_draft_seller'); } catch (e) {}
@@ -541,16 +541,7 @@ SELLER_FORM_HTML = r"""
                 <span className="lang-am">ተመለስ</span><span className="lang-en">Back</span>
               </button>
             ) : (
-              <button type="button" onClick={() => {
-                  try { resetForm(); } catch (e) {}
-                  try {
-                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                      window.Telegram.WebApp.close();
-                    } else {
-                      window.location.href = '/explorer';
-                    }
-                  } catch (e) { window.location.href = '/explorer'; }
-                }}
+              <button type="button" onClick={() => tg.close()}
                 className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">
                 <span className="lang-am">ሰርዝ</span><span className="lang-en">Cancel</span>
               </button>
@@ -695,7 +686,7 @@ BUYER_FORM_HTML = r"""
             body: JSON.stringify(data)
           });
           const result = await res.json();
-          if (res.ok && (result.success === true || result.status === 'success' || result.req_id)) {
+          if (result.status === 'success' || res.ok) {
             setStatus('ok');
             resetForm();
             try { localStorage.removeItem('adika_draft_buyer'); } catch (e) {}
@@ -851,13 +842,7 @@ BUYER_FORM_HTML = r"""
           </div>
 
           <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex gap-2 z-40">
-            <button type="button" onClick={() => {
-                  try { if (typeof resetForm === 'function') resetForm(); } catch(e) {}
-                  try {
-                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) window.Telegram.WebApp.close();
-                    else window.location.href = '/explorer';
-                  } catch (e) { window.location.href = '/explorer'; }
-                }}
+            <button type="button" onClick={() => tg.close()}
               className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">
               <span className="lang-am">ሰርዝ</span><span className="lang-en">Cancel</span>
             </button>
@@ -956,41 +941,6 @@ EXPLORER_HTML = r"""
     .hero-dot { width: 4px; height: 4px; border-radius: 999px; background: rgba(15,23,42,0.25); }
     .hero-dot.active { background: #0e7490; width: 12px; }
 
-    /* Instagram-style listing photo auto-enhancement (zero-cost CSS) */
-    .listing-photo-frame {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 4 / 3;
-      overflow: hidden;
-      border-radius: 0.75rem;
-      background: #e2e8f0;
-    }
-    .listing-photo-frame::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-      background: linear-gradient(145deg, #cbd5e1, #94a3b8);
-      filter: blur(12px);
-      transform: scale(1.08);
-    }
-    .listing-photo-enhance {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center;
-      border-radius: 0.75rem;
-      filter: contrast(108%) brightness(102%) saturate(110%);
-      -webkit-filter: contrast(108%) brightness(102%) saturate(110%);
-      transition: filter 0.2s ease, transform 0.2s ease;
-    }
-    .adika-card:active .listing-photo-enhance {
-      transform: scale(1.02);
-    }
-
-
     /* Glass chat bubbles */
     .chat-bubble-user {
       margin-left: 1.5rem; padding: 0.7rem 0.85rem; border-radius: 1rem;
@@ -1049,24 +999,6 @@ EXPLORER_HTML = r"""
       color: #fbbf24;
     }
     .tool-icon-wrap svg { width: 12px; height: 12px; }
-
-    .adika-success-pulse {
-      animation: adikaPulse 1.2s ease-in-out infinite;
-    }
-    @keyframes adikaPulse {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16,185,129,0.35); }
-      50% { transform: scale(1.05); box-shadow: 0 0 0 8px rgba(16,185,129,0); }
-    }
-    .land-scan-laser {
-      background: linear-gradient(180deg, transparent 0%, rgba(34,211,238,0.15) 48%, rgba(34,211,238,0.55) 50%, rgba(34,211,238,0.15) 52%, transparent 100%);
-      background-size: 100% 200%;
-      animation: landScan 1.4s linear infinite;
-    }
-    @keyframes landScan {
-      0% { background-position: 0% 0%; }
-      100% { background-position: 0% 100%; }
-    }
-
     .tools-grid-compact {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
     }
@@ -1111,27 +1043,11 @@ EXPLORER_HTML = r"""
   </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
-  <!-- EMERGENCY: never leave infinite loading spinner -->
-  <script>
-  (function(){
-    function killSpinner(){
-      try {
-        var s = document.getElementById("status");
-        if (s) { s.style.display = "none"; s.innerHTML = ""; }
-        if (window.__adikaState) window.__adikaState.loading = false;
-      } catch (e) {}
-    }
-    setTimeout(killSpinner, 3000);
-    setTimeout(killSpinner, 6000);
-    document.addEventListener("click", function(){ setTimeout(killSpinner, 50); }, true);
-  })();
-  </script>
-
 
   <!-- ================================================================= -->
   <!-- 1. FIXED STICKY TEAL HEADER (Compact 3-Row Layout)                -->
   <!-- ================================================================= -->
-  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 16px rgba(15,23,42,0.12);">
+  <header class="fixed top-0 left-0 right-0 z-50 bg-[#16acbd] text-white shadow-md p-2 flex flex-col gap-1.5">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
       <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
@@ -1170,20 +1086,16 @@ EXPLORER_HTML = r"""
 
       <!-- Third Row: Category Pills (Horizontal Scroll) -->
       <div id="cats" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm" data-id="foryou">
-          <span class="lang-am">✨ ለእርስዎ</span>
-          <span class="lang-en">✨ For You</span>
-        </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="all">
-          <span class="lang-am">🌐 ሁሉም</span>
-          <span class="lang-en">🌐 All</span>
+        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm" data-id="">
+          <span class="lang-am">✨ ሁሉም</span>
+          <span class="lang-en">✨ All</span>
         </button>
         <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="መኪና">
-          <span class="lang-am">🚗 መኪና</span>
+          <span class="lang-am">🚗 መኪኖች</span>
           <span class="lang-en">🚗 Cars</span>
         </button>
         <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ቤት">
-          <span class="lang-am">🏠 ቤት</span>
+          <span class="lang-am">🏠 ቤቶች</span>
           <span class="lang-en">🏠 Property</span>
         </button>
         <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ንግድ">
@@ -1191,7 +1103,7 @@ EXPLORER_HTML = r"""
           <span class="lang-en">🏢 Commercial</span>
         </button>
         <button id="filterChassisChip" type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40" data-filter="chassis">
-          <span>🔍 <span class="lang-am">ሻሲ ያላቸው</span><span class="lang-en">VIN</span></span>
+          <span>🔍 <span class="lang-am">ሻሲ ያላቸው ብቻ</span><span class="lang-en">VIN Verified</span></span>
         </button>
       </div>
     </div>
@@ -1200,7 +1112,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto pb-24 px-2.5" style="padding-top: 180px;">
+  <main class="w-full max-w-md mx-auto pt-32 pb-24 px-2.5">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -1249,53 +1161,16 @@ EXPLORER_HTML = r"""
       </div>
     </div>
 
-    <div id="status" class="text-center py-2 text-slate-600 font-semibold text-xs" style="display:none;"></div>
-
-    <!-- 2-Column Grid — STATIC DEMO CARDS so UI never blank even if JS fails -->
-    <div id="grid" class="grid grid-cols-2 gap-2.5">
-      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🚗</div>
-        <div style="padding:8px 10px;">
-          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">Toyota Vitz ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
-          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 1,850,000 ETB</div>
-        </div>
-      </div>
-      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🚗</div>
-        <div style="padding:8px 10px;">
-          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">Hyundai Tucson ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
-          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 4,200,000 ETB</div>
-        </div>
-      </div>
-      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🏠</div>
-        <div style="padding:8px 10px;">
-          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">አፓርታማ ቦሌ ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
-          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 6,500,000 ETB</div>
-        </div>
-      </div>
-      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🏠</div>
-        <div style="padding:8px 10px;">
-          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">መሬት አዲስ ከተማ ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
-          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 ለዋጋ ደውሉ</div>
-        </div>
+    <div id="status" class="text-center py-8 text-slate-600 font-semibold text-xs">
+      <div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div>
+      <div>
+        <span class="lang-am">እየጫነ ነው…</span>
+        <span class="lang-en">Loading listings…</span>
       </div>
     </div>
-    <script>
-    (function(){
-      // Independent of main app JS — keep cards visible if main script crashes
-      try {
-        var s = document.getElementById("status");
-        if (s) { s.style.display = "none"; s.innerHTML = ""; }
-      } catch (e) {}
-      window.__adikaShowDemo = function(){
-        var g = document.getElementById("grid");
-        if (!g || (g.children && g.children.length > 0)) return;
-        g.innerHTML = document.getElementById("grid").innerHTML;
-      };
-    })();
-    </script>
+
+    <!-- 2-Column Responsive Elevated Cards Grid -->
+    <div id="grid" class="grid grid-cols-2 gap-2.5"></div>
 
     <!-- Load More -->
     <div class="text-center mt-3.5 mb-2">
@@ -1310,7 +1185,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 3. FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+)         -->
   <!-- ================================================================= -->
-  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] bg-white/95 backdrop-blur-xl rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] border border-white/60 px-4 py-2 flex items-center justify-between max-w-md mx-auto">
+  <nav class="fixed bottom-3 left-3 right-3 z-50 bg-white/95 backdrop-blur-xl rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] border border-white/60 px-4 py-2 flex items-center justify-between max-w-md mx-auto">
     <!-- Left Section: Home & AI Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
       <button id="navHome" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
@@ -1374,16 +1249,13 @@ EXPLORER_HTML = r"""
   <div id="analysisView" class="fixed inset-0 z-[60] bg-[#b5eff3] hidden flex-col max-w-md mx-auto w-full">
     <div class="shrink-0 px-3 py-2 bg-[#16acbd] text-white flex items-center justify-between shadow-md">
       <div class="flex items-center gap-2 min-w-0">
-        <button id="analysisBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-bold">← ተመለስ</button>
+        <button id="analysisBackBtn" type="button" class="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-bold">← ወደ ዋና ገጽ</button>
         <div class="min-w-0 flex-1">
           <div class="font-black text-xs truncate">Adika Senior Financial Advisor</div>
           <div class="text-[10px] text-white/85 truncate">Live Advisor Chat</div>
         </div>
       </div>
-      <div class="flex items-center gap-1.5 shrink-0">
-        <span class="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">ዝግጁ</span>
-        <button type="button" onclick="navigateBack('analysisView')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
-      </div>
+      <span class="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">ዝግጁ</span>
     </div>
     <div class="chat-shell flex-1 flex flex-col min-h-0 bg-slate-50/70">
       <div class="px-3 pt-2 pb-1 shrink-0">
@@ -1420,12 +1292,7 @@ EXPLORER_HTML = r"""
               <span class="lang-en">Adika Digital Advisor & Tools Hub</span>
             </h3>
           </div>
-          <div class="flex items-center gap-1.5 shrink-0">
-            <button type="button" onclick="navigateBack('aiModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-              ← ተመለስ
-            </button>
-            <button id="aiModalClose" type="button" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm">✕</button>
-          </div>
+          <button id="aiModalClose" type="button" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold flex items-center justify-center text-sm">✕</button>
         </div>
         <!-- Sub-tabs for AI Hub -->
         <div class="grid grid-cols-2 gap-1 bg-black/20 p-0.5 rounded-xl text-xs font-bold">
@@ -1586,11 +1453,6 @@ EXPLORER_HTML = r"""
               <span class="tool-title">የሻሲ ማረጋገጫ</span>
               <span class="tool-sub">Chassis / VIN Specs</span>
             </button>
-            <button id="toolLandMapBtn" type="button" class="tool-card-pro">
-              <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/><circle cx="12" cy="10" r="2"/></svg></span>
-              <span class="tool-title">የዲጂታል ካርታ ማጣሪያ</span>
-              <span class="tool-sub">Cadastral Map Verification</span>
-            </button>
           </div>
         </div>
       </div>
@@ -1654,7 +1516,7 @@ EXPLORER_HTML = r"""
 
       <div class="px-3 py-2 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 gap-2">
         <div class="flex items-center gap-1.5 min-w-0">
-          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] shrink-0">← ተመለስ</button>
+          <button id="modalBackBtn" type="button" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] shrink-0">← ወደ ኋላ</button>
           <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-[#16acbd]/10 text-[#0e7490] text-[10px] font-bold truncate">Property</span>
           <span id="modalIdBadge" class="text-[10px] text-slate-400 font-semibold shrink-0">#ADK-</span>
         </div>
@@ -1697,22 +1559,6 @@ EXPLORER_HTML = r"""
           </h4>
           <p id="modalDesc" class="text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50/50 p-2.5 rounded-xl border border-slate-100"></p>
         </div>
-
-        <!-- Behavioral recommendations + Smart Alert -->
-        <div id="modalRecoSection" class="space-y-2.5 pt-1">
-          <div class="flex items-center justify-between gap-2">
-            <div id="modalRecoTitle" class="text-[11px] font-extrabold text-slate-800">🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች</div>
-            <div id="modalRecoIntent" class="text-[9px] font-bold text-[#0e7490] bg-[#16acbd]/10 px-2 py-0.5 rounded-full truncate max-w-[45%]"></div>
-          </div>
-          <div id="modalRecoScroll" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-0.5 px-0.5"></div>
-          <div id="modalAlertCard" class="hidden p-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 space-y-2 shadow-sm">
-            <p id="modalAlertText" class="text-[11px] text-slate-700 font-medium leading-relaxed"></p>
-            <button type="button" id="modalAlertBtn" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] active:scale-[0.98]">
-              🔔 አዎ! በቴሌግራም አሳውቀኝ (Subscribe to Alerts)
-            </button>
-            <div id="modalAlertStatus" class="text-[10px] font-bold text-emerald-700 hidden"></div>
-          </div>
-        </div>
       </div>
 
       <!-- Sticky bottom action bar -->
@@ -1746,14 +1592,7 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🧮 የኢትዮጵያ ጉምሩክ የቀረጥ ስሌት (Duty Calculator)</h3>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('dutyModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('dutyModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
-        </div>
+        <button onclick="closeToolModal('dutyModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm">✕</button>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
         <div>
@@ -1785,14 +1624,7 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🏦 የባንክ ብድርና ወርሃዊ ክፍያ (Bank Loan)</h3>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('loanModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('loanModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
-        </div>
+        <button onclick="closeToolModal('loanModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm">✕</button>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
         <div>
@@ -1823,14 +1655,7 @@ EXPLORER_HTML = r"""
           <div class="text-[9px] font-bold tracking-wide uppercase text-amber-400/90">Adika Institutional Analytics</div>
           <h3 class="font-black text-xs tracking-wide truncate">Comparison Engine</h3>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('compareModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('compareModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
-        </div>
+        <button onclick="closeToolModal('compareModal')" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm">✕</button>
       </div>
 
       <div class="px-3 pt-2.5 shrink-0">
@@ -1924,240 +1749,65 @@ EXPLORER_HTML = r"""
 
   <!-- Modal: Legal Contract Generator -->
   <div id="contractModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
-        <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ ውል ማዘጋጃ (Contract Wizard)</h3>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('contractModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">← ተመለስ</button>
-          <button type="button" onclick="closeModal('contractModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
-        </div>
+        <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ የሽያጭ ውል ማዘጋጃ (Contract Generator)</h3>
+        <button onclick="closeToolModal('contractModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm">✕</button>
       </div>
-
-      <div class="px-3 pt-2 pb-1 bg-slate-50 border-b border-slate-100 shrink-0">
-        <div class="grid grid-cols-4 gap-1 p-0.5 bg-slate-200/60 rounded-xl">
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm" data-step="0">ዓይነት</button>
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="1">ተዋዋዮች</button>
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="2">ንብረት</button>
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="3">ገንዘብ</button>
-        </div>
-      </div>
-
-      <div class="p-3.5 overflow-y-auto space-y-3 flex-1 text-xs">
-        <!-- STEP 0: Type -->
-        <div id="contractStep0" class="contract-step space-y-2">
-          <div class="text-[11px] font-black text-slate-800">የውል ዓይነት ይምረጡ</div>
-          <div class="grid grid-cols-1 gap-2">
-            <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border-2 border-[#16acbd] bg-[#16acbd]/5 cursor-pointer">
-              <input type="radio" name="cContractType" value="vehicle_sale" checked class="accent-[#16acbd]" />
-              <span class="font-bold text-slate-800">🚗 የመኪና ሽያጭ ውል (Vehicle Sale)</span>
-            </label>
-            <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
-              <input type="radio" name="cContractType" value="vehicle_rental" class="accent-[#16acbd]" />
-              <span class="font-bold text-slate-800">🔑 የመኪና ኪራይ ውል (Vehicle Rental)</span>
-            </label>
-            <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
-              <input type="radio" name="cContractType" value="house_sale" class="accent-[#16acbd]" />
-              <span class="font-bold text-slate-800">🏠 የቤት ሽያጭ ውል (House Sale)</span>
-            </label>
-            <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
-              <input type="radio" name="cContractType" value="house_rental" class="accent-[#16acbd]" />
-              <span class="font-bold text-slate-800">🏢 የቤት ኪራይ ውል (House Rental)</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- STEP 1: Parties -->
-        <div id="contractStep1" class="contract-step space-y-2.5 hidden">
-          <div class="text-[11px] font-black text-slate-800">የተዋዋዮች መረጃ</div>
-          <div class="p-2 rounded-xl bg-slate-50 border space-y-2">
-            <div class="text-[10px] font-extrabold text-[#0e7490]" id="cPartyALabel">ውል ሰጪ / ሻጭ / አከራይ</div>
-            <input id="cSellerName" type="text" placeholder="ሙሉ ስም *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-            <div class="grid grid-cols-2 gap-2">
-              <input id="cSellerNationality" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-              <input id="cSellerPhone" type="tel" placeholder="ስልክ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <select id="cSellerSubCity" class="w-full p-2 rounded-xl bg-white border text-xs font-bold">                <option value="">— ይምረጡ —</option>
-                <option>አዲስ ከተማ</option>
-                <option>አቃቂ ቃሊቲ</option>
-                <option>አራዳ</option>
-                <option>ቦሌ</option>
-                <option>ጉለሌ</option>
-                <option>ቂርቆስ</option>
-                <option>ኮልፌ ቀራንዮ</option>
-                <option>ልደታ</option>
-                <option>ንፋስ ስልክ ላፍቶ</option>
-                <option>የካ</option>
-                <option>ሌሚ ኩራ</option>
-              </select>
-              <input id="cSellerWoreda" type="text" placeholder="ወረዳ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-            </div>
-            <input id="cSellerHouseNo" type="text" placeholder="የቤት ቁጥር" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-          </div>
-          <div class="p-2 rounded-xl bg-slate-50 border space-y-2">
-            <div class="text-[10px] font-extrabold text-[#0e7490]" id="cPartyBLabel">ውል ተቀባይ / ገዢ / ተከራይ</div>
-            <input id="cBuyerName" type="text" placeholder="ሙሉ ስም *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-            <div class="grid grid-cols-2 gap-2">
-              <input id="cBuyerNationality" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-              <input id="cBuyerPhone" type="tel" placeholder="ስልክ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <select id="cBuyerSubCity" class="w-full p-2 rounded-xl bg-white border text-xs font-bold">                <option value="">— ይምረጡ —</option>
-                <option>አዲስ ከተማ</option>
-                <option>አቃቂ ቃሊቲ</option>
-                <option>አራዳ</option>
-                <option>ቦሌ</option>
-                <option>ጉለሌ</option>
-                <option>ቂርቆስ</option>
-                <option>ኮልፌ ቀራንዮ</option>
-                <option>ልደታ</option>
-                <option>ንፋስ ስልክ ላፍቶ</option>
-                <option>የካ</option>
-                <option>ሌሚ ኩራ</option>
-              </select>
-              <input id="cBuyerWoreda" type="text" placeholder="ወረዳ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-            </div>
-            <input id="cBuyerHouseNo" type="text" placeholder="የቤት ቁጥር" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-          </div>
-        </div>
-
-        <!-- STEP 2: Asset fields (dynamic by type) -->
-        <div id="contractStep2" class="contract-step space-y-2.5 hidden">
-          <div class="text-[11px] font-black text-slate-800">የንብረት / መኪና መረጃ</div>
-          <!-- Vehicle fields -->
-          <div id="cFieldsVehicle" class="space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold text-slate-500">መኪና</span>
-              <label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold cursor-pointer">
-                📷 ሊብሬ
-                <input id="cLibreFile" type="file" accept="image/*" class="hidden" />
-              </label>
-            </div>
-            <div id="cLibreStatus" class="hidden text-[10px] font-bold text-[#0e7490]"></div>
-            <input id="cPlate" type="text" placeholder="ሰሌዳ ቁጥር *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cChassis" type="text" placeholder="ቻሲ / Chassis *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
-            <input id="cEngine" type="text" placeholder="የሞተር ቁጥር" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
-            <input id="cCarModel" type="text" placeholder="የመኪና ዓይነት / ሞዴል *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-          <!-- House fields -->
-          <div id="cFieldsHouse" class="space-y-2 hidden">
-            <div class="grid grid-cols-2 gap-2">
-              <select id="cHouseSubCity" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">                <option value="">— ይምረጡ —</option>
-                <option>አዲስ ከተማ</option>
-                <option>አቃቂ ቃሊቲ</option>
-                <option>አራዳ</option>
-                <option>ቦሌ</option>
-                <option>ጉለሌ</option>
-                <option>ቂርቆስ</option>
-                <option>ኮልፌ ቀራንዮ</option>
-                <option>ልደታ</option>
-                <option>ንፋስ ስልክ ላፍቶ</option>
-                <option>የካ</option>
-                <option>ሌሚ ኩራ</option>
-              </select>
-              <input id="cHouseWoreda" type="text" placeholder="የቤት ወረዳ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            </div>
-            <input id="cHouseNo" type="text" placeholder="የቤት ቁጥር" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cTitleDeed" type="text" placeholder="የካርታ / ደብተር ቁጥር" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cAreaSqm" type="text" placeholder="ስፋት (ካ.ሜ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <select id="cHouseUse" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
-              <option value="የመኖሪያ">የመኖሪያ ቤት</option>
-              <option value="የንግድ">የንግድ ቤት</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- STEP 3: Money + Witnesses -->
-        <div id="contractStep3" class="contract-step space-y-2.5 hidden">
-          <div class="text-[11px] font-black text-slate-800">የገንዘብና ምስክሮች</div>
-          <!-- Sale financials -->
-          <div id="cFinSale" class="space-y-2">
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="font-bold text-slate-600 block mb-1">ጠቅላላ ዋጋ (ብር) *</label>
-                <input id="cTotalPrice" type="text" placeholder="2,200,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-              </div>
-              <div>
-                <label class="font-bold text-slate-600 block mb-1">ቅድመ ክፍያ (ብር)</label>
-                <input id="cAdvance" type="text" placeholder="500,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-              </div>
-            </div>
-            <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex justify-between items-center">
-              <span class="font-bold text-emerald-800 text-[10px]">ቀሪ ክፍያ</span>
-              <span id="cBalance" class="font-black text-emerald-900 text-sm">0 ብር</span>
-            </div>
-            <input id="cDeadline" type="text" placeholder="ማለቂያ ቀን (ምሳ. ጥቅምት 30 ቀን 2018 ዓ.ም)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-          <!-- Rental financials -->
-          <div id="cFinRental" class="space-y-2 hidden">
-            <div class="grid grid-cols-2 gap-2">
-              <input id="cRentRate" type="text" placeholder="የኪራይ ዋጋ (ብር) *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-              <select id="cRentPeriod" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
-                <option value="በወር">በወር</option>
-                <option value="በቀን">በቀን</option>
-              </select>
-            </div>
-            <input id="cRentStart" type="text" placeholder="መጀመሪያ ቀን (አማርኛ ጽሁፍ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cRentEnd" type="text" placeholder="ማለቂያ ቀን / የኪራይ ዘመን" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cRentAdvanceMonths" type="text" placeholder="የተከፈለ ቅድመ ወራት ብዛት (ለቤት ኪራይ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cRentAdvanceTotal" type="text" placeholder="ጠቅላላ የተከፈለ ቅድመ ኪራይ (ብር)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          </div>
-          <label class="font-bold text-slate-600 block mb-1">የውል ማፍረሻ ካሳ (በብር)</label>
-          <input id="cPenalty" type="text" value="50000" placeholder="50000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          <input id="cContractDate" type="text" placeholder="የውል ቀን (ምሳ. መስከረም 15 ቀን 2018 ዓ.ም)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-
-          <details class="rounded-xl border border-slate-200 bg-white" open>
-            <summary class="cursor-pointer px-3 py-2 font-bold text-slate-700 text-[11px]">👥 3 ምስክሮች</summary>
-            <div class="p-3 pt-1 space-y-3 border-t border-slate-100">
-              <div class="space-y-1.5 p-2 bg-slate-50 rounded-xl">
-                <div class="text-[10px] font-extrabold text-slate-500">ምስክር 1</div>
-                <input id="cWit1Name" type="text" placeholder="ሙሉ ስም" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                <div class="grid grid-cols-2 gap-1.5">
-                  <input id="cWit1Nat" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                  <input id="cWit1Phone" type="tel" placeholder="ስልክ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                </div>
-                <input id="cWit1Addr" type="text" placeholder="ክ/ከተማ · ወረዳ · ቤት ቁ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-              </div>
-              <div class="space-y-1.5 p-2 bg-slate-50 rounded-xl">
-                <div class="text-[10px] font-extrabold text-slate-500">ምስክር 2</div>
-                <input id="cWit2Name" type="text" placeholder="ሙሉ ስም" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                <div class="grid grid-cols-2 gap-1.5">
-                  <input id="cWit2Nat" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                  <input id="cWit2Phone" type="tel" placeholder="ስልክ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                </div>
-                <input id="cWit2Addr" type="text" placeholder="ክ/ከተማ · ወረዳ · ቤት ቁ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-              </div>
-              <div class="space-y-1.5 p-2 bg-slate-50 rounded-xl">
-                <div class="text-[10px] font-extrabold text-slate-500">ምስክር 3</div>
-                <input id="cWit3Name" type="text" placeholder="ሙሉ ስም" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                <div class="grid grid-cols-2 gap-1.5">
-                  <input id="cWit3Nat" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                  <input id="cWit3Phone" type="tel" placeholder="ስልክ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                </div>
-                <input id="cWit3Addr" type="text" placeholder="ክ/ከተማ · ወረዳ · ቤት ቁ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-              </div>
-            </div>
-          </details>
-        </div>
-
-        <div id="contractResult" class="hidden p-3 bg-slate-50 rounded-xl border space-y-2 font-medium text-xs"></div>
-      </div>
-
-      <div class="p-2.5 border-t border-slate-100 bg-white shrink-0 space-y-2">
-        <div class="flex gap-2">
-          <button type="button" id="cStepPrev" class="flex-1 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-[11px] hidden">← ቀድሞ</button>
-          <button type="button" id="cStepNext" class="flex-1 py-2 rounded-xl bg-slate-800 text-white font-bold text-[11px]">ቀጣይ →</button>
+      <div class="p-4 overflow-y-auto space-y-2.5 flex-1 text-xs">
+        <div>
+          <label class="font-bold text-slate-700 block mb-1">የውል ዓይነት</label>
+          <select id="contractType" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
+            <option value="vehicle">የመኪና ሽያጭ ውል (Vehicle Sale)</option>
+            <option value="property">የቤትና ይዞታ ሽያጭ ውል (Property Sale)</option>
+          </select>
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <button type="button" id="cSaveDraftBtn" class="py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-[11px]">💾 ረቂቅ አስቀምጥ</button>
-          <button type="button" id="cFinalizeBtn" class="py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-[11px] shadow">📄 ውል አጠናቅቅ</button>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">የሻጭ ሙሉ ስም</label>
+            <input id="contractSeller" type="text" placeholder="አቶ ተስፋዬ በቀለ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">የገዢ ሙሉ ስም</label>
+            <input id="contractBuyer" type="text" placeholder="ወ/ሮ ማርታ ደሳለኝ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
         </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">ጠቅላላ ዋጋ (ብር)</label>
+            <input id="contractPrice" type="text" placeholder="2,200,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">ቅድመ ክፍያ (ብር)</label>
+            <input id="contractAdvance" type="text" placeholder="500,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">የሰሌዳ / ሰነድ ቁጥር</label>
+            <input id="contractDocId" type="text" placeholder="ኮድ 3 - A12345" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">ሻንሲ ቁጥር (Chassis)</label>
+            <input id="contractChassis" type="text" placeholder="JTDKN36U48..." class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">የሞተር ቁጥር (Engine)</label>
+            <input id="contractEngine" type="text" placeholder="1NZ-FE-88992" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">የሊብሬ / የካርታ ቁጥር</label>
+            <input id="contractLibre" type="text" placeholder="LIB-AA-998822" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          </div>
+        </div>
+        <button id="contractGenerateBtn" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow active:scale-95">📄 ውል አዘጋጅ (Generate Contract)</button>
+        <div id="contractResult" class="hidden p-3 bg-slate-50 rounded-xl border space-y-2 font-medium"></div>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Power of Attorney Verification (Adika Digital) -->
-  <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <div id="poaModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
@@ -2172,14 +1822,7 @@ EXPLORER_HTML = r"""
             <div class="text-[10px] text-[#b5eff3] font-medium truncate">በአዲካ ዲጂታል ሲስተም የቀረበ የውክልና ሰነድ ማጣሪያ</div>
           </div>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('poaModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('poaModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
-        </div>
+        <button type="button" onclick="closeToolModal('poaModal')" class="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold text-sm transition-all flex items-center justify-center shrink-0">✕</button>
       </div>
 
       <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs bg-[#f8fafc]">
@@ -2189,15 +1832,13 @@ EXPLORER_HTML = r"""
         </div>
 
         <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <label class="block cursor-pointer">
-            <div class="rounded-2xl border-2 border-dashed border-[#16acbd]/50 bg-gradient-to-br from-slate-50 to-cyan-50/50 p-6 text-center active:scale-[0.99] transition">
-              <div class="text-3xl mb-2">📷</div>
-              <div class="font-black text-slate-800 text-sm">የውክልናውን ፎቶ ያስገቡ</div>
-              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">ከጋለሪ ይምረጡ ወይም ፎቶ ያንሱ — በ Adika Digital System ይመረመራል</div>
-            </div>
-            <input id="poaImageFile" type="file" accept="image/*,application/pdf" class="hidden" />
+          <label class="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+            <span>📷</span>
+            <span>የውክልና ሰነዱን ፎቶ ይጭኑ</span>
           </label>
-          <p class="text-[10px] text-slate-400 leading-snug text-center">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
+          <input id="poaImageFile" type="file" accept="image/*" capture="environment"
+            class="w-full text-xs text-slate-500 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[11px] file:font-bold file:bg-[#16acbd] file:text-white hover:file:bg-[#1394a3] cursor-pointer bg-slate-50 p-1.5 rounded-xl border border-slate-200 transition-all" />
+          <p class="text-[10px] text-slate-400 leading-snug">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
         </div>
 
         <div id="poaScanBusy" class="hidden p-3 text-center text-[11px] text-slate-500 bg-white rounded-xl border border-slate-100">
@@ -2209,94 +1850,11 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Modal: Diagnostic Sheet Analyzer -->
-
-  <!-- Modal: Digital Cadastral Map Verifier (Adika Digital System) -->
-  <div id="landMapModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-      <div class="px-4 py-3 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
-        <div class="min-w-0">
-          <div class="font-black text-xs tracking-tight">🛡️ የዲጂታል ካርታ ማጣሪያ</div>
-          <div class="text-[10px] text-cyan-100/90 font-medium">Adika Digital System - Cadastral Verification</div>
-        </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('landMapModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">← ተመለስ</button>
-          <button type="button" onclick="closeModal('landMapModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm">✕</button>
-        </div>
-      </div>
-
-      <div class="p-4 overflow-y-auto flex-1 space-y-3 text-xs">
-        <div id="landMapUploadPanel" class="space-y-3">
-          <label class="block cursor-pointer">
-            <div class="rounded-2xl border-2 border-dashed border-[#1e73be]/50 bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 text-center active:scale-[0.99] transition">
-              <div class="text-3xl mb-2">📷</div>
-              <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ ያስገቡ</div>
-              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
-            </div>
-            <input id="landMapFile" type="file" accept="image/*" class="hidden" />
-          </label>
-          <div id="landMapToast" class="hidden mb-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold text-center leading-snug"></div>
-          <div id="landMapRetryBox" class="hidden">
-            <button type="button" id="landMapRetryBtn" class="w-full py-3 rounded-xl bg-[#1e73be] text-white font-bold text-xs shadow">
-              📷 እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያንሱ
-            </button>
-            <p class="text-[10px] text-slate-500 text-center mt-2 leading-relaxed">በ Adika Digital System ማረጋገጫ ላይ ይገኛል</p>
-          </div>
-        </div>
-
-        <div id="landMapScanPanel" class="hidden space-y-3">
-          <div class="relative rounded-2xl overflow-hidden bg-slate-900 aspect-[4/3]">
-            <img id="landMapPreview" alt="" class="w-full h-full object-contain opacity-90" />
-            <div class="absolute inset-0 pointer-events-none land-scan-laser"></div>
-            <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/90 to-transparent p-3">
-              <div class="text-[10px] text-cyan-100 font-bold leading-relaxed">⚡ Adika Digital System የሰነዱን ምስል በማንበብ እና ከማዕከላዊ ዳታቤዝ ጋር በማገናኘት ላይ ይገኛል...</div>
-            </div>
-          </div>
-        </div>
-
-        <div id="landMapResultPanel" class="hidden space-y-0">
-          <div id="adikaSuccessModal" class="rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-white">
-            <div class="bg-gradient-to-r from-[#0e4d8b] via-[#1e73be] to-[#16acbd] px-4 py-4 text-center text-white">
-              <div class="text-[10px] font-bold tracking-wide opacity-90">ADIKA DIGITAL SYSTEM</div>
-              <div class="font-black text-sm mt-1 leading-snug">የአዲካ ዲጂታል ማረጋገጫ</div>
-              <div class="text-[10px] mt-0.5 text-blue-100">Adika Digital Verification</div>
-            </div>
-            <div class="px-4 pt-4 pb-2 flex flex-col items-center text-center">
-              <div class="w-14 h-14 rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center mb-3 adika-success-pulse">
-                <span class="text-2xl text-emerald-600 font-black">✓</span>
-              </div>
-              <div class="font-black text-slate-900 text-[13px] leading-snug">የይዞታ ማረጋገጫ ሰነዱ</div>
-              <div class="font-bold text-emerald-700 text-[12px] mt-1 leading-snug">በሲስተሙ ውስጥ በተሳካ ሁኔታ ተረጋግጧል።</div>
-              <div id="adikaPayloadHint" class="mt-3 w-full p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-mono text-slate-600 break-all hidden"></div>
-            </div>
-            <div class="px-4 pb-4 space-y-2">
-              <button type="button" id="adikaViewResultBtn" class="w-full py-3 rounded-xl bg-[#1e73be] hover:bg-[#1862a3] text-white font-black text-sm shadow-md active:scale-[0.98] transition">
-                ውጤቱን ይመልከቱ
-              </button>
-              <div class="grid grid-cols-2 gap-2">
-                <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-xl bg-slate-100 text-slate-800 font-bold text-[10px]">📄 ወደ ውል አዛውር</button>
-                <button type="button" id="landMapShareBtn" class="py-2.5 rounded-xl bg-slate-800 text-white font-bold text-[10px]">📤 አጋራ</button>
-              </div>
-              <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-xl text-slate-500 font-bold text-[10px]">← አዲስ ማጣሪያ</button>
-              <p class="text-[9px] text-slate-400 text-center leading-relaxed">በ Adika Digital System የተረጋገጠ · ኦፊሴላዊ ውጤት ከመንግሥት ሰርቨር</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <div id="diagModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🛠️ የምርመራ ወረቀት ተንታኝ (Diagnostic Analyzer)</h3>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('diagModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('diagModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
-        </div>
+        <button onclick="closeToolModal('diagModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm">✕</button>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
         <div>
@@ -2326,14 +1884,7 @@ EXPLORER_HTML = r"""
             <span class="lang-en">Chassis & VIN Verification</span>
           </h3>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('chassisModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('chassisModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
-        </div>
+        <button onclick="closeToolModal('chassisModal')" class="w-7 h-7 rounded-full bg-white/20 text-white font-bold text-sm" aria-label="Close">✕</button>
       </div>
       <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs">
         <div>
@@ -2366,18 +1917,122 @@ EXPLORER_HTML = r"""
 
         <div id="chassisResult" class="hidden font-medium"></div>
       </div>
-      <div class="p-2.5 border-t border-slate-100 bg-white shrink-0">
-        <button type="button" onclick="navigateBack('chassisModal')" class="w-full py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs active:scale-[0.98]">
-          ← ተመለስ
-        </button>
-      </div>
     </div>
   </div>
 
   <!-- ================================================================= -->
   <!-- 6. APPLICATION LOGIC & CSS CLASS TOGGLE                           -->
   <!-- ================================================================= -->
-  <script>
+  
+  <!-- Modal: Digital Cadastral Map Verifier (Adika Digital System) -->
+  <div id="landMapModal" class="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-4 py-3 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
+        <div class="min-w-0">
+          <div class="font-black text-xs tracking-tight">🛡️ የዲጂታል ካርታ ማጣሪያ</div>
+          <div class="text-[10px] text-cyan-100/90 font-medium">Adika Digital System - Cadastral Verification</div>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" onclick="closeToolModal('landMapModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm">✕</button>
+        </div>
+      </div>
+      <div class="p-4 overflow-y-auto flex-1 space-y-3 text-xs">
+        <div id="landMapUploadPanel" class="space-y-3">
+          <label class="block cursor-pointer">
+            <div class="rounded-2xl border-2 border-dashed border-[#1e73be]/50 bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 text-center active:scale-[0.99] transition">
+              <div class="text-3xl mb-2">📷</div>
+              <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ ያስገቡ</div>
+              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
+            </div>
+            <input id="landMapFile" type="file" accept="image/*" class="hidden" />
+          </label>
+          <div id="landMapToast" class="hidden mb-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold text-center leading-snug"></div>
+          <div id="landMapRetryBox" class="hidden">
+            <button type="button" id="landMapRetryBtn" class="w-full py-3 rounded-xl bg-[#1e73be] text-white font-bold text-xs shadow">
+              📷 እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያንሱ
+            </button>
+            <p class="text-[10px] text-slate-500 text-center mt-2 leading-relaxed">በ Adika Digital System ማረጋገጫ ላይ ይገኛል</p>
+          </div>
+        </div>
+        <div id="landMapScanPanel" class="hidden space-y-3">
+          <div class="relative rounded-2xl overflow-hidden bg-slate-900 aspect-[4/3]">
+            <img id="landMapPreview" alt="" class="w-full h-full object-contain opacity-90" />
+            <div class="absolute inset-0 pointer-events-none land-scan-laser"></div>
+            <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/90 to-transparent p-3">
+              <div class="text-[10px] text-cyan-100 font-bold leading-relaxed">⚡ Adika Digital System የሰነዱን ምስል በማንበብ እና ከማዕከላዊ ዳታቤዝ ጋር በማገናኘት ላይ ይገኛል...</div>
+            </div>
+          </div>
+        </div>
+        <div id="landMapResultPanel" class="hidden space-y-0">
+          <div id="adikaSuccessModal" class="rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-white">
+            <div class="bg-gradient-to-r from-[#0e4d8b] via-[#1e73be] to-[#16acbd] px-4 py-4 text-center text-white">
+              <div class="text-[10px] font-bold tracking-wide opacity-90">ADIKA DIGITAL SYSTEM</div>
+              <div class="font-black text-sm mt-1 leading-snug">የአዲካ ዲጂታል ማረጋገጫ</div>
+              <div class="text-[10px] mt-0.5 text-blue-100">Adika Digital Verification</div>
+            </div>
+            <div class="px-4 pt-4 pb-2 flex flex-col items-center text-center">
+              <div class="w-14 h-14 rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center mb-3 adika-success-pulse">
+                <span class="text-2xl text-emerald-600 font-black">✓</span>
+              </div>
+              <div class="font-black text-slate-900 text-[13px] leading-snug">የይዞታ ማረጋገጫ ሰነዱ</div>
+              <div class="font-bold text-emerald-700 text-[12px] mt-1 leading-snug">በሲስተሙ ውስጥ በተሳካ ሁኔታ ተረጋግጧል።</div>
+              <div id="adikaPayloadHint" class="mt-3 w-full p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-mono text-slate-600 break-all hidden"></div>
+            </div>
+            <div class="px-4 pb-4 space-y-2">
+              <button type="button" id="adikaViewResultBtn" class="w-full py-3 rounded-xl bg-[#1e73be] hover:bg-[#1862a3] text-white font-black text-sm shadow-md active:scale-[0.98] transition">
+                ውጤቱን ይመልከቱ
+              </button>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-xl bg-slate-100 text-slate-800 font-bold text-[10px]">📄 ወደ ውል አዛውር</button>
+                <button type="button" id="landMapShareBtn" class="py-2.5 rounded-xl bg-slate-800 text-white font-bold text-[10px]">📤 አጋራ</button>
+              </div>
+              <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-xl text-slate-500 font-bold text-[10px]">← አዲስ ማጣሪያ</button>
+              <p class="text-[9px] text-slate-400 text-center leading-relaxed">በ Adika Digital System የተረጋገጠ · ኦፊሴላዊ ውጤት ከመንግሥት ሰርቨር</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Role Selection Modal -->
+  <div id="roleSelectModal" class="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl">
+      <div class="font-black text-lg text-slate-900 mb-1">እንኳን ወደ Adika በደህና መጡ</div>
+      <div class="text-xs text-slate-500 mb-4">እባክዎ ሚናዎን ይምረጡ</div>
+      <button type="button" id="roleUserBtn" class="w-full py-3.5 mb-2 rounded-xl bg-[#16acbd] text-white font-bold text-sm">
+        👤 ተራ ተጠቃሚ / ፈላጊ / ሻጭ
+      </button>
+      <button type="button" id="roleBrokerBtn" class="w-full py-3.5 rounded-xl bg-slate-900 text-white font-bold text-sm">
+        🏢 ደላላ / ኤጀንት ነኝ
+      </button>
+    </div>
+  </div>
+
+  <!-- Broker Registration Modal -->
+  <div id="brokerRegModal" class="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-3">
+        <div class="font-black text-base text-slate-900">ደላላ ምዝገባ</div>
+        <button type="button" onclick="closeToolModal('brokerRegModal')" class="w-8 h-8 rounded-full bg-slate-100 font-bold">✕</button>
+      </div>
+      <label class="text-xs font-bold text-slate-600">ሙሉ ስም</label>
+      <input id="brName" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="ስም" />
+      <label class="text-xs font-bold text-slate-600">ስልክ ቁጥር</label>
+      <input id="brPhone" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="09xxxxxxxx" />
+      <label class="text-xs font-bold text-slate-600">Telegram username</label>
+      <input id="brUser" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="@username" />
+      <div class="text-xs font-bold text-slate-600 mb-1">የሚሰሩበት ምድብ</div>
+      <div class="flex flex-wrap gap-2 mb-3">
+        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
+        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
+        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
+      </div>
+      <button type="button" id="brSubmitBtn" class="w-full py-3 rounded-xl bg-[#16acbd] text-white font-bold text-sm">መመዝገብ</button>
+    </div>
+  </div>
+
+<script>
   (function () {
     var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
     if (tg) {
@@ -2390,33 +2045,14 @@ EXPLORER_HTML = r"""
     } catch(e) {}
 
     function toggleFav(id) {
-      var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
       try { localStorage.setItem('adika_favs', JSON.stringify(favorites)); } catch(e){}
       renderFavoritesUI();
-      // Persist bookmark for price-drop alerts (Telegram chat_id)
-      try {
-        var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
-        if (uid && id) {
-          fetch("/api/favorites/toggle", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              user_id: uid,
-              chat_id: uid,
-              listing_id: id,
-              action: wasFav ? "remove" : "add"
-            })
-          }).catch(function(){});
-        }
-      } catch (e) {}
     }
 
-    var state = window.__adikaState = {
+    var state = {
       tab: "marketplace",
-      feedMode: "all", // foryou | all | category
-      roleChosen: false,
       category: "",
       q: "",
       page: 1,
@@ -2426,195 +2062,8 @@ EXPLORER_HTML = r"""
       selectedItem: null
     };
 
-
-    // ---- Feed scroll + view history (recommendations) ----
-    var savedFeedScrollY = 0;
-    function pushViewHistory(item) {
-      try {
-        var extra = item.extra_data || {};
-        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-        var bm = {};
-        try { bm = extractBrandModel(item, extra) || {}; } catch (e) {}
-        var priceNum = 0;
-        try {
-          priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0;
-        } catch (e) {}
-        var entry = {
-          id: item.id,
-          category: item.main_category || item.category || "",
-          price: priceNum,
-          fuel_type: extra.fuel_type || "",
-          model: bm.display || item.sub_category || extra.car_model || "",
-          brand: bm.brand || ""
-        };
-        var hist = [];
-        try { hist = JSON.parse(localStorage.getItem("viewHistory") || "[]"); } catch (e) { hist = []; }
-        if (!Array.isArray(hist)) hist = [];
-        hist = hist.filter(function(h) { return String(h.id) !== String(entry.id); });
-        hist.unshift(entry);
-        hist = hist.slice(0, 3);
-        localStorage.setItem("viewHistory", JSON.stringify(hist));
-        // Zero-cost intent key (last 3 categories + prices)
-        try {
-          var intent = hist.map(function(h) {
-            return { category: h.category || "", price: h.price || 0, model: h.model || "", brand: h.brand || "" };
-          });
-          localStorage.setItem("adik_user_intent", JSON.stringify(intent));
-        } catch (e2) {}
-      } catch (e) {}
-    }
-    function getViewHistory() {
-      try {
-        var hist = JSON.parse(localStorage.getItem("viewHistory") || "[]");
-        if (!Array.isArray(hist) || !hist.length) {
-          hist = JSON.parse(localStorage.getItem("adik_user_intent") || "[]");
-        }
-        return Array.isArray(hist) ? hist : [];
-      } catch (e) { return []; }
-    }
-
-    function renderRecoCards(items, intentLabel) {
-      var sc = document.getElementById("modalRecoScroll");
-      var title = document.getElementById("modalRecoTitle");
-      var intentEl = document.getElementById("modalRecoIntent");
-      if (!sc) return;
-      if (intentEl) intentEl.textContent = intentLabel || "";
-      if (title) {
-        var isCar = true;
-        try {
-          isCar = !(state.selectedItem && (state.selectedItem.main_category === "ቤት" || state.selectedItem.category === "ቤት"));
-        } catch (e) {}
-        title.textContent = isCar ? "🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች" : "🤖 ለእርስዎ የተመረጡ ተቀራራቢ ንብረቶች";
-      }
-      if (!items || !items.length) {
-        sc.innerHTML = '<div class="text-[10px] text-slate-400 font-medium py-2">ተቀራራቢ ዝርዝር በቅርቡ...</div>';
-        return;
-      }
-      sc.innerHTML = items.map(function(it) {
-        var extra = it.extra_data || {};
-        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-        var photos = [];
-        try { photos = parsePhotosList(it); } catch (e) {}
-        var img = getImageUrl(photos[0] || it.photo_urls || it.listing_photos || "") || "";
-        var price = formatListingPrice(it.price);
-        var name = it.title || it.sub_category || it.main_category || "ንብረት";
-        return (
-          '<button type="button" class="reco-card shrink-0 w-[138px] text-left rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden active:scale-[0.98]" data-id="' + esc(String(it.id || "")) + '">' +
-            '<div class="aspect-[4/3] bg-slate-100">' +
-              (img ? '<img src="' + esc(img) + '" class="listing-photo-enhance" loading="lazy" />' : '<div class="w-full h-full flex items-center justify-center text-2xl">🚗</div>') +
-            '</div>' +
-            '<div class="p-1.5 space-y-0.5">' +
-              '<div class="text-[10px] font-extrabold text-slate-800 truncate">' + esc(name) + '</div>' +
-              '<div class="text-[9px] font-black text-[#0e7490]">💰 ' + esc(price) + '</div>' +
-            '</div>' +
-          '</button>'
-        );
-      }).join("");
-      sc.querySelectorAll(".reco-card").forEach(function(btn) {
-        btn.onclick = function() {
-          var id = btn.getAttribute("data-id");
-          var found = (items || []).find(function(x) { return String(x.id) === String(id); });
-          if (found) openDetailModal(found);
-          else {
-            // try from current feed state.items
-            var f2 = (state.items || []).find(function(x) { return String(x.id) === String(id); });
-            if (f2) openDetailModal(f2);
-          }
-        };
-      });
-    }
-
-    function loadRecommendations(item) {
-      var hist = getViewHistory();
-      var sc = document.getElementById("modalRecoScroll");
-      var alertCard = document.getElementById("modalAlertCard");
-      var alertText = document.getElementById("modalAlertText");
-      if (sc) sc.innerHTML = '<div class="text-[10px] text-slate-400 py-2">⏳ በመፈለግ ላይ...</div>';
-      fetch("/api/recommendations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ viewHistory: hist, exclude_id: item && item.id })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        renderRecoCards(data.items || [], data.intent_label || "");
-        // Smart alert card
-        if (alertCard && alertText && item) {
-          var extra = item.extra_data || {};
-          if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-          var bm = {};
-          try { bm = extractBrandModel(item, extra) || {}; } catch (e) {}
-          var priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0;
-          var lo = priceNum ? Math.round(priceNum * 0.85) : 0;
-          var hi = priceNum ? Math.round(priceNum * 1.15) : 0;
-          var modelName = bm.display || item.sub_category || "ንብረት";
-          var rangeTxt = (lo && hi) ? (lo.toLocaleString() + " – " + hi.toLocaleString() + " ETB") : modelName;
-          alertText.textContent = "💡 ከ " + rangeTxt + " / " + modelName + " ጋር ተመሳሳይ አዳዲስ ንብረቶች ሲለቀቁ በቴሌግራም እንዲደርስዎ ይፈልጋሉ?";
-          alertCard.classList.remove("hidden");
-          alertCard.dataset.minPrice = String(lo || 0);
-          alertCard.dataset.maxPrice = String(hi || 999999999);
-          alertCard.dataset.model = modelName;
-          alertCard.dataset.category = item.main_category || item.category || "መኪና";
-        }
-      })
-      .catch(function() {
-        renderRecoCards([], "");
-      });
-    }
-
     var grid = document.getElementById("grid");
     var statusEl = document.getElementById("status");
-
-    // ========== BULLETPROOF FALLBACK FEED (never blank UI) ==========
-    var DEMO_LISTINGS = [
-      { id: "demo-1", main_category: "መኪና", category: "መኪና", sub_category: "Toyota Vitz", brand: "Toyota", model: "Vitz", price: "1850000", description: "Toyota Vitz — ናሙና ማስታወቂያ", created_at: new Date().toISOString(), view_count: 42, photos: [], photo_urls: [] },
-      { id: "demo-2", main_category: "መኪና", category: "መኪና", sub_category: "Hyundai Tucson", brand: "Hyundai", model: "Tucson", price: "4200000", description: "Hyundai Tucson — ናሙና", created_at: new Date().toISOString(), view_count: 18, photos: [], photo_urls: [] },
-      { id: "demo-3", main_category: "ቤት", category: "ቤት", sub_category: "አፓርታማ ቦሌ", price: "6500000", description: "አፓርታማ ቦሌ — ናሙና", created_at: new Date().toISOString(), view_count: 27, photos: [], photo_urls: [] },
-      { id: "demo-4", main_category: "ቤት", category: "ቤት", sub_category: "መሬት አዲስ ከተማ", price: "0", description: "መሬት — ለዋጋ ደውሉ", created_at: new Date().toISOString(), view_count: 9, photos: [], photo_urls: [] }
-    ];
-
-    function formatDemoPrice(p) {
-      var n = Number(String(p || "").replace(/[^0-9.]/g, ""));
-      if (!n || n <= 0 || n > 300000000) return "ለዋጋ ደውሉ";
-      try { return Math.round(n).toLocaleString("en-US") + " ETB"; } catch (e) { return n + " ETB"; }
-    }
-
-    function renderFallbackCards(items) {
-      var g = document.getElementById("grid");
-      if (!g) return;
-      var list = (items && items.length) ? items : DEMO_LISTINGS;
-      var html = "";
-      for (var i = 0; i < list.length; i++) {
-        var it = list[i] || {};
-        var title = it.sub_category || it.brand || it.model || it.main_category || it.category || "ማስታወቂያ";
-        if (it.brand && it.model) title = (it.brand + " " + it.model).trim();
-        var priceTxt = formatDemoPrice(it.price);
-        var isCar = (it.main_category === "መኪና" || it.category === "መኪና");
-        var emoji = isCar ? "🚗" : "🏠";
-        html +=
-          '<div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">' +
-            '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:40px;">' + emoji + '</div>' +
-            '<div style="padding:8px 10px;">' +
-              '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">' +
-                '<div style="font-weight:800;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + title + ' ✓</div>' +
-                '<div style="font-size:10px;color:#64748b;flex-shrink:0;">now</div>' +
-              '</div>' +
-              '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">' +
-                '<div style="font-weight:800;font-size:12px;color:#0e7490;">💰 ' + priceTxt + '</div>' +
-                '<div style="color:#94a3b8;font-size:14px;">♡</div>' +
-              '</div>' +
-            '</div>' +
-          '</div>';
-      }
-      g.innerHTML = html;
-      try {
-        if (statusEl) { statusEl.style.display = "none"; statusEl.innerHTML = ""; }
-      } catch (e) {}
-    }
-
-    // Paint demo cards IMMEDIATELY — before any network call
-    try { renderFallbackCards(DEMO_LISTINGS); } catch (e) { console.error("[Adika] fallback render", e); }
-
     var moreBtn = document.getElementById("more");
     var tabSell = document.getElementById("tabSell");
     var tabBuy = document.getElementById("tabBuy");
@@ -2847,13 +2296,11 @@ EXPLORER_HTML = r"""
 
       var media;
       if (photos.length > 0) {
-        media = '<div class="listing-photo-frame">' +
-          '<img src="' + esc(getImageUrl(photos[0]) || photos[0] || "") + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.style.display=\'none\'" />' +
-          '</div>';
+        media = '<img src="' + esc(getImageUrl(photos[0]) || photos[0] || "") + '" alt="" class="w-full h-full object-cover" loading="lazy" />';
       } else {
-        media = '<div class="listing-photo-frame flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white p-2">' +
-          '<span class="text-3xl mb-1 relative z-10">' + icon + '</span>' +
-          '<span class="text-[9px] font-bold text-white/90 relative z-10">No Image</span>' +
+        media = '<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white p-2">' +
+          '<span class="text-3xl mb-1">' + icon + '</span>' +
+          '<span class="text-[9px] font-bold text-white/90">No Image</span>' +
           '</div>';
       }
 
@@ -2905,9 +2352,7 @@ EXPLORER_HTML = r"""
     }
 
     function openDetailModal(item) {
-      try { savedFeedScrollY = window.scrollY || window.pageYOffset || 0; } catch (e) { savedFeedScrollY = 0; }
       state.selectedItem = item;
-      pushViewHistory(item);
       var extra = item.extra_data || {};
       if (typeof extra === "string") {
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
@@ -2936,7 +2381,7 @@ EXPLORER_HTML = r"""
       // Image gallery carousel
       if (photos.length > 0) {
         var slides = photos.map(function(u, i) {
-          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img src="' + esc(getImageUrl(u) || u || "") + '" alt="" class="listing-photo-enhance" loading="' + (i === 0 ? "eager" : "lazy") + '" /></div>';
+          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img src="' + esc(getImageUrl(u) || u || "") + '" alt="" class="w-full h-full object-cover" loading="' + (i === 0 ? "eager" : "lazy") + '" /></div>';
         }).join("");
         var dots = photos.length > 1 ? ('<div class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">' +
           photos.map(function(_, i) {
@@ -3046,220 +2491,97 @@ EXPLORER_HTML = r"""
       if (item.id) {
         try { fetch("/api/views/" + item.id, { method: "POST" }).catch(function(){}); } catch(e){}
       }
-      loadRecommendations(item);
     }
 
-    function closeDetailModalPreserve() {
+    modalClose.onclick = function () {
       modalOverlay.classList.add("hidden");
       modalOverlay.classList.remove("flex");
       state.selectedItem = null;
-      try {
-        window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
-      } catch (e) {
-        try { window.scrollTo(0, savedFeedScrollY || 0); } catch (e2) {}
-      }
-    }
-    modalClose.onclick = closeDetailModalPreserve;
+    };
     var modalBackBtn = document.getElementById("modalBackBtn");
     if (modalBackBtn) {
-      modalBackBtn.onclick = function() { closeDetailModalPreserve(); };
-    };
-
-    (function bindSmartAlert() {
-      var btn = document.getElementById("modalAlertBtn");
-      if (!btn) return;
-      btn.onclick = function() {
-        var card = document.getElementById("modalAlertCard");
-        var status = document.getElementById("modalAlertStatus");
-        var userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
-        var payload = {
-          user_id: userId,
-          chat_id: userId,
-          target_category: (card && card.dataset.category) || "መኪና",
-          min_price: (card && card.dataset.minPrice) || "0",
-          max_price: (card && card.dataset.maxPrice) || "999999999",
-          model: (card && card.dataset.model) || "",
-          telegram_user: (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || {}
-        };
-        btn.disabled = true;
-        btn.textContent = "⏳ በመመዝገብ ላይ...";
-        fetch("/api/save-alert", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(res) {
-          btn.disabled = false;
-          btn.textContent = "🔔 አዎ! በቴሌግራም አሳውቀኝ (Subscribe to Alerts)";
-          if (status) {
-            status.classList.remove("hidden");
-            status.textContent = res.message || (res.success ? "✅ ተመዝግቧል!" : "❌ አልተሳካም");
-            status.className = "text-[10px] font-bold " + (res.success ? "text-emerald-700" : "text-rose-600");
-          }
-          if (res.success && tg && tg.showAlert) {
-            try { tg.showAlert(res.message || "ተመዝግቧል!"); } catch (e) {}
-          }
-        })
-        .catch(function() {
-          btn.disabled = false;
-          btn.textContent = "🔔 አዎ! በቴሌግራም አሳውቀኝ (Subscribe to Alerts)";
-          if (status) {
-            status.classList.remove("hidden");
-            status.textContent = "የኔትወርክ ስህተት";
-            status.className = "text-[10px] font-bold text-rose-600";
-          }
-        });
+      modalBackBtn.onclick = function() {
+        modalClose.onclick();
       };
-    })();
+    };
     modalOverlay.onclick = function (e) {
-      if (e.target === modalOverlay) closeDetailModalPreserve();
+      if (e.target === modalOverlay) modalClose.onclick();
     };
 
     function finishLoading(items, append, hasMore) {
-      // ALWAYS unlock UI — finally semantics
-      try { state.loading = false; } catch (e) {}
-      try { if (grid) grid.style.opacity = "1"; } catch (e) {}
-      try {
-        if (statusEl) {
-          statusEl.style.display = "none";
-          statusEl.innerHTML = "";
-        }
-      } catch (e) {}
-      items = items || [];
-      try {
+      state.loading = false;
+      if (!append) {
+        grid.innerHTML = "";
+        state.items = items;
+      } else {
+        state.items = state.items.concat(items);
+      }
+      if (!items || !items.length) {
         if (!append) {
-          if (grid) grid.innerHTML = "";
-          state.items = items;
-        } else {
-          state.items = (state.items || []).concat(items);
+          statusEl.style.display = "block";
+          statusEl.innerHTML =
+            '<div class="py-12 px-4 text-center">' +
+              '<div class="text-4xl mb-2">📭</div>' +
+              '<div class="text-slate-700 font-bold text-sm mb-1">' +
+                '<span class="lang-am">ምንም አይነት ማስታወቂያ አልተገኘም</span>' +
+                '<span class="lang-en">No listings found</span>' +
+              '</div>' +
+              '<p class="text-slate-500 text-xs">' +
+                '<span class="lang-am">እባክዎ ሌላ ምድብ ወይም የፍለጋ ቃል ይሞክሩ</span>' +
+                '<span class="lang-en">Please try a different category or search term</span>' +
+              '</p>' +
+            '</div>';
         }
-        if (!items.length) {
-          if (!append) {
-            // Never leave blank blue screen — show demo cards + soft message
-            try { renderFallbackCards(DEMO_LISTINGS); } catch (e) {}
-            try {
-              if (statusEl) {
-                statusEl.style.display = "block";
-                statusEl.innerHTML =
-                  '<div class="py-3 px-3 text-center text-slate-600 text-xs font-bold">' +
-                    '<span class="lang-am">የቀጥታ ዝርዝር በመጠባበቅ ላይ… ናሙና ካርዶች ተታይተዋል</span>' +
-                  '</div>';
-              }
-            } catch (e) {}
-          }
-          try { if (moreBtn) moreBtn.classList.add("hidden"); } catch (e) {}
-          return;
-        }
-        var painted = 0;
-        for (var i = 0; i < items.length; i++) {
-          try {
-            if (grid) {
-              grid.appendChild(createCardElement(items[i]));
-              painted++;
-            }
-          } catch (cardErr) {
-            console.error("[Adika] card render", cardErr);
-          }
-        }
-        if (painted === 0 && items.length) {
-          try { renderFallbackCards(items); } catch (e) {}
-        }
-        try {
-          if (moreBtn) {
-            if (hasMore) moreBtn.classList.remove("hidden");
-            else moreBtn.classList.add("hidden");
-          }
-        } catch (e) {}
-      } catch (err) {
-        console.error("[Adika] finishLoading", err);
-        try { state.loading = false; } catch (e) {}
-        try { if (statusEl) { statusEl.style.display = "none"; } } catch (e) {}
+        moreBtn.classList.add("hidden");
+        return;
+      }
+      statusEl.style.display = "none";
+      for (var i = 0; i < items.length; i++) {
+        grid.appendChild(createCardElement(items[i]));
+      }
+      if (hasMore) {
+        moreBtn.classList.remove("hidden");
+      } else {
+        moreBtn.classList.add("hidden");
       }
     }
 
-
-    window.__adikaForceExplorer = function () {
-      try {
-        state.feedMode = "all";
-        state.category = "";
-        state.tab = "marketplace";
-        state.loading = false;
-        load(false);
-      } catch (e) { console.error(e); }
-    };
-
     function load(append) {
-      // Simple, reliable loader — never discard successful API data
-      try { state.loading = true; } catch (e) {}
-      try { if (grid) grid.style.opacity = "0.7"; } catch (e) {}
-
-      var page = append ? (state.page + 1) : 1;
-      var isBuy = state.tab !== "marketplace";
-      // Prefer explorer (known-good) unless user explicitly chose For You
-      var useForYou = (!isBuy && state.feedMode === "foryou" && !state.q);
-      var qs = "page=" + page + "&limit=24&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
-      var cat = (state.category || "").trim();
-      if (!useForYou && cat && !/^(all|ሁሉም|✨|foryou)/i.test(cat)) {
-        qs += "&category=" + encodeURIComponent(cat);
+      if (state.loading) return;
+      state.loading = true;
+      if (!append) {
+        statusEl.style.display = "none";
+        var sk = "";
+        for (var si = 0; si < 6; si++) {
+          sk += '<div class="adika-card animate-pulse">' +
+            '<div class="w-full aspect-[4/3] bg-slate-200"></div>' +
+            '<div class="p-2 space-y-2">' +
+              '<div class="h-3 bg-slate-200 rounded w-4/5"></div>' +
+              '<div class="h-3 bg-slate-200 rounded w-2/5"></div>' +
+              '<div class="h-2 bg-slate-100 rounded w-3/5"></div>' +
+            '</div></div>';
+        }
+        grid.innerHTML = sk;
       }
+
+      var page = append ? state.page + 1 : 1;
+      var qs = "page=" + page + "&limit=12&order=DESC&active_only=1&type=" +
+        (state.tab === "marketplace" ? "SELL" : "BUY");
+      if (state.category) qs += "&category=" + encodeURIComponent(state.category);
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
       if (state.chassisOnly) qs += "&chassis_only=1";
 
-      var urls = [];
-      if (useForYou) {
-        urls.push("/api/feed/for-you?page=" + page + "&limit=24&user_id=" + encodeURIComponent(state.userId || "0"));
-      }
-      urls.push("/api/explorer/listings?" + qs);
-      urls.push("/api/listings?" + qs);
-
-      var done = false;
-      function applyItems(items, hasMore) {
-        if (done && !(items && items.length)) return;
-        done = true;
-        try { state.loading = false; } catch (e) {}
-        try { state.page = page; state.hasMore = !!hasMore; } catch (e) {}
-        try { finishLoading(items || [], append, !!hasMore); } catch (e) {
-          console.error("[Adika] applyItems", e);
-          try { if (items && items.length) renderFallbackCards(items); } catch (e2) {}
-        }
-      }
-
-      function tryUrl(i) {
-        if (i >= urls.length) {
-          applyItems([], false);
-          return;
-        }
-        var url = urls[i];
-        var timer = setTimeout(function () {
-          // soft timeout: try next URL, do NOT lock out later success
-          tryUrl(i + 1);
-        }, 8000);
-
-        fetch(url, { method: "GET", credentials: "same-origin" })
-          .then(function (res) {
-            return res.json().then(function (data) {
-              return { ok: res.ok, data: data || {} };
-            });
-          })
-          .then(function (r) {
-            clearTimeout(timer);
-            var items = (r.data.items || r.data.listings || r.data.results || []);
-            if (!Array.isArray(items)) items = [];
-            if (items.length > 0) {
-              applyItems(items, !!(r.data.has_more || r.data.hasMore));
-            } else {
-              tryUrl(i + 1);
-            }
-          })
-          .catch(function (err) {
-            clearTimeout(timer);
-            console.warn("[Adika] fetch fail", url, err);
-            tryUrl(i + 1);
-          });
-      }
-
-      tryUrl(0);
+      fetch("/api/explorer/listings?" + qs)
+        .then(function(res){ return res.json(); })
+        .then(function(data){
+          var items = data.items || data.listings || [];
+          state.page = page;
+          state.hasMore = !!(data.has_more || data.hasMore);
+          finishLoading(items, append, state.hasMore);
+        })
+        .catch(function(err){
+          finishLoading([], append, false);
+        });
     }
 
     // Dynamic Central FAB
@@ -3294,30 +2616,13 @@ EXPLORER_HTML = r"""
     };
 
     function selectCategory(catId) {
-      // Always unlock UI when user taps a category
-      try { state.loading = false; } catch (e) {}
-
-      catId = (catId || "").trim();
-      if (catId === "foryou" || catId === "ለእርስዎ") {
-        state.feedMode = "foryou";
-        state.category = "";
-      } else if (!catId || catId === "all" || catId === "null" || catId === "undefined" || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም" || catId === "🌐 ሁሉም") {
-        state.feedMode = "all";
-        state.category = "";
-      } else {
-        state.feedMode = "cat";
-        state.category = catId;
-      }
+      state.category = (!catId || catId === "all" || catId === "null" || catId === "undefined" || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም") ? "" : catId;
       var buttons = catsEl.querySelectorAll("button");
       buttons.forEach(function(b) {
-        if (b.getAttribute("data-filter") === "chassis") return;
         var bId = b.getAttribute("data-id") || "";
-        var on = (state.feedMode === "foryou" && bId === "foryou")
-          || (state.feedMode === "all" && (bId === "all" || bId === ""))
-          || (state.feedMode === "cat" && bId === state.category);
-        if (on) {
+        if ((!state.category && (!bId || bId === "all")) || (state.category && bId === state.category)) {
           b.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm";
-        } else if (b.getAttribute("data-filter") !== "chassis") {
+        } else {
           b.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
         }
       });
@@ -3375,62 +2680,6 @@ EXPLORER_HTML = r"""
       aiTabTools.className = "py-1 rounded-lg text-white/80 hover:text-white transition-all text-center";
     };
 
-
-    function adikaAdvisorCtaHtml(carModel, summary) {
-      var model = (carModel || "መኪናዎ").toString().trim() || "መኪናዎ";
-      var sum = (summary || "").toString().trim();
-      return (
-        '<div class="mt-3 p-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 via-cyan-50 to-sky-50 shadow-sm space-y-2">' +
-          '<div class="flex items-start gap-2">' +
-            '<span class="text-lg shrink-0">🤖</span>' +
-            '<p class="text-[11px] text-slate-700 leading-relaxed font-medium">' +
-              'ስለ <span class="font-black text-[#0e7490]">' + esc(model) + '</span> ተጨማሪ መረጃ ወይም የባለሙያ ምክር ይፈልጋሉ? ' +
-              '<span class="font-bold">Adika Digital Adviser</span>ን ያነጋግሩ!' +
-            '</p>' +
-          '</div>' +
-          '<button type="button" class="adika-advisor-cta-btn w-full text-center py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-[11px] shadow-md active:scale-[0.98]" ' +
-            'data-car="' + esc(model).replace(/"/g, '&quot;') + '" data-summary="' + esc(sum).replace(/"/g, '&quot;') + '">' +
-            '💬 አሁኑኑ አማክር (Chat Now)' +
-          '</button>' +
-        '</div>'
-      );
-    }
-
-    window.openAdviserChat = function(carModelName, diagnosticSummary) {
-      var model = (carModelName || "መኪና").toString().trim() || "መኪና";
-      var summary = (diagnosticSummary || "").toString().trim();
-      // Close any open tool modals first
-      ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal"].forEach(function(mid) {
-        try { closeToolModal(mid); } catch (e) {}
-      });
-      showAnalysisView(true);
-      var prompt = "ሰላም፣ ስለ " + model + " የምርመራ ውጤት ምክር እፈልጋለሁ።";
-      if (summary) prompt += "\n\nማጠቃለያ:\n" + summary;
-      else prompt += " Hello, I need advice regarding the diagnostic results for " + model + ".";
-      var input = document.getElementById("advisorChatInput");
-      if (input) {
-        input.value = prompt;
-        try {
-          input.style.height = "auto";
-          input.style.height = Math.min(input.scrollHeight, 120) + "px";
-        } catch (e) {}
-        input.focus();
-      }
-      // Ensure chat log has a welcome if empty
-      var log = document.getElementById("advisorChatLog");
-      if (log && !log.children.length) {
-        appendAdvisorChat("advisor", "ሰላም! እኔ Adika Senior Financial Advisor ነኝ። ስለ " + model + " ጥያቄዎን ይላኩ — ወይም ከታች ያለውን ቅድመ-ጥያቄ ይላኩ።");
-      }
-    };
-
-    // Delegate clicks on Advisor CTA buttons (works for dynamically injected HTML)
-    document.addEventListener("click", function(ev) {
-      var btn = ev.target && ev.target.closest ? ev.target.closest(".adika-advisor-cta-btn") : null;
-      if (!btn) return;
-      ev.preventDefault();
-      openAdviserChat(btn.getAttribute("data-car") || "", btn.getAttribute("data-summary") || "");
-    });
-
     window.openToolModal = function(id) {
       var m = document.getElementById(id);
       if (m) {
@@ -3445,38 +2694,7 @@ EXPLORER_HTML = r"""
         m.classList.add("hidden");
         m.classList.remove("flex");
       }
-      // restore main feed scroll when no tool modal is open
-      var anyOpen = false;
-      ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal"].forEach(function(mid) {
-        var el = document.getElementById(mid);
-        if (el && !el.classList.contains("hidden")) anyOpen = true;
-      });
-      var av = document.getElementById("analysisView");
-      if (av && !av.classList.contains("hidden")) anyOpen = true;
-      if (!anyOpen) document.body.style.overflow = "";
     };
-    window.closeModal = function(id) {
-      if (id) closeToolModal(id);
-      else {
-        ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal"].forEach(function(mid) {
-          closeToolModal(mid);
-        });
-        showAnalysisView(false);
-      }
-    };
-    window.navigateBack = function(id) {
-      // Same as close — returns user to main listing feed
-      if (id === "analysisView") showAnalysisView(false);
-      else closeModal(id);
-    };
-    // Overlay click closes tool modals (no page refresh)
-    ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal"].forEach(function(mid) {
-      var el = document.getElementById(mid);
-      if (!el) return;
-      el.addEventListener("click", function(e) {
-        if (e.target === el) closeToolModal(mid);
-      });
-    });
 
     // Tool Launchers
     document.getElementById("toolDutyBtn").onclick = function() { aiModalClose.onclick(); openToolModal("dutyModal"); };
@@ -3487,8 +2705,6 @@ EXPLORER_HTML = r"""
     document.getElementById("toolDiagBtn").onclick = function() { aiModalClose.onclick(); openToolModal("diagModal"); };
     if (document.getElementById("toolChassisBtn")) {
       document.getElementById("toolChassisBtn").onclick = function() { aiModalClose.onclick(); openToolModal("chassisModal"); };
-      var _lmBtn = document.getElementById("toolLandMapBtn");
-      if (_lmBtn) _lmBtn.onclick = function() { try { aiModalClose.onclick(); } catch(e){} openToolModal("landMapModal"); };
     }
 
     // AI Smart Financial Advisor Interactive Controls
@@ -4333,6 +3549,135 @@ EXPLORER_HTML = r"""
       if (btn) btn.onclick = function() { openExternalLink(url); };
     }
 
+    function showAdikaVerificationModal(finalUrl) {
+      var resEl = document.getElementById("poaResult");
+      if (resEl) {
+        showPoaStateA(finalUrl, resEl);
+      } else {
+        openExternalLink(finalUrl);
+      }
+    }
+
+    function processScannedQrPayload(scannedText) {
+      if (!scannedText) return null;
+
+      // 1. UUID Pattern check (Active online certificates like the working lady's map)
+      var uuidMatch = String(scannedText).match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+      if (uuidMatch) {
+        return "https://addislandfarm.gov.et/verify/" + uuidMatch[0];
+      }
+
+      // 2. Reject Old Deed numbers starting with 'AD' or static prefixes that lack active online records
+      if (String(scannedText).startsWith("AD") || (String(scannedText).includes("addisland") && !String(scannedText).includes("addislandfarm.gov.et"))) {
+        if (typeof alert === "function") {
+          alert("ይህ የቆየ የካርታ ቁጥር በመሆኑ በመንግስት ዲጂታል ፖርታል ላይ አልተመዘገበም። እባክዎን የቅርብ ጊዜውን ዲጂታል QR ኮድ ያንሱ።");
+        }
+        return null;
+      }
+
+      // 3. Fallback direct active link validation
+      if (String(scannedText).includes("addislandfarm.gov.et")) {
+        return String(scannedText);
+      }
+
+      return "https://addislandfarm.gov.et/";
+    }
+    window.processScannedQrPayload = processScannedQrPayload;
+
+    function extractCertificateId(scannedText) {
+      if (!scannedText) return null;
+      var cleanText = String(scannedText).trim();
+
+      // 1. Check if the scanned text contains a valid 36-character UUID (like f11b394e-...)
+      var uuidMatch = cleanText.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+      if (uuidMatch) {
+        return uuidMatch[0]; // Returns 'f11b394e-db93-44e8-a940-301d1a35f319'
+      }
+
+      // 2. Check if it's a Plot / Property code (like LTP-KK05004731 or KK052025004731)
+      var codeMatch = cleanText.match(/(LTP-)?[A-Z]{2}\d+/i);
+      if (codeMatch) {
+        return codeMatch[0];
+      }
+
+      // 3. DO NOT return static fallback string like "addisland"!
+      return null;
+    }
+    window.extractCertificateId = extractCertificateId;
+
+    function sanitizeAndEnforceActiveDomain(scannedInput) {
+      var cleanInput = scannedInput ? String(scannedInput).trim() : "";
+
+      if (!cleanInput) {
+        return "https://addislandfarm.gov.et/";
+      }
+
+      // If 'AD' prefix deed or old static 'addisland' prefix without active record, reject with alert
+      if (cleanInput.startsWith("AD") || (cleanInput.indexOf("addisland") !== -1 && cleanInput.indexOf("addislandfarm.gov.et") === -1)) {
+        if (typeof alert === "function") {
+          alert("ይህ የቆየ የካርታ ቁጥር በመሆኑ በመንግስት ዲጂታል ፖርታል ላይ አልተመዘገበም። እባክዎን የቅርብ ጊዜውን ዲጂታል QR ኮድ ያንሱ።");
+        }
+        return null;
+      }
+
+      // 1. ABSOLUTE BLOCK: If the scanned data contains the dead domain, strip/remap it immediately!
+      if (cleanInput.indexOf("land.addiscadaster.gov.et") !== -1 || cleanInput.indexOf("addiscadaster.gov.et") !== -1) {
+        console.warn("Blocked attempt to access dead domain. Remapping to active portal.");
+        cleanInput = cleanInput.replace(/https?:\/\/[^\/]*addiscadaster[^\/]*/i, "https://addislandfarm.gov.et");
+        if (cleanInput.indexOf("addiscadaster") !== -1) {
+          var certId = extractCertificateId(cleanInput);
+          if (certId) {
+            if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(certId)) {
+              return "https://addislandfarm.gov.et/verify/" + certId;
+            }
+            return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(certId);
+          }
+          return "https://addislandfarm.gov.et/";
+        }
+      }
+
+      // 2. If it's already a valid addislandfarm link, keep it untouched
+      if (cleanInput.startsWith("http://") || cleanInput.startsWith("https://")) {
+        if (cleanInput.indexOf("addislandfarm.gov.et") !== -1) {
+          return cleanInput;
+        }
+        // Force replace any other http domain with addislandfarm
+        return cleanInput.replace(/https?:\/\/[^\/]+/, "https://addislandfarm.gov.et");
+      }
+
+      // 3. If it's a 36-char UUID, map to addislandfarm verify path
+      if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cleanInput)) {
+        return "https://addislandfarm.gov.et/verify/" + cleanInput;
+      }
+
+      // 4. Check for Certificate / Plot / Property code
+      var cert = extractCertificateId(cleanInput);
+      if (cert) {
+        if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cert)) {
+          return "https://addislandfarm.gov.et/verify/" + cert;
+        }
+        return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(cert);
+      }
+
+      // 5. Default safe fallback: Every single scanned code MUST route to addislandfarm.gov.et
+      return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(cleanInput);
+    }
+
+    var formatTargetUrl = sanitizeAndEnforceActiveDomain;
+    var format_target_url = sanitizeAndEnforceActiveDomain;
+    var sanitizeAndRouteUrl = sanitizeAndEnforceActiveDomain;
+
+    function handleVerificationSuccess(scannedData) {
+      var finalUrl = processScannedQrPayload(scannedData) || sanitizeAndEnforceActiveDomain(scannedData);
+      if (finalUrl) {
+        showAdikaVerificationModal(finalUrl);
+      }
+    }
+    window.handleVerificationSuccess = handleVerificationSuccess;
+    window.sanitizeAndEnforceActiveDomain = sanitizeAndEnforceActiveDomain;
+    window.sanitizeAndRouteUrl = sanitizeAndEnforceActiveDomain;
+    window.showAdikaVerificationModal = showAdikaVerificationModal;
+
     function showPoaStateB(resEl) {
       resEl.classList.remove("hidden");
       resEl.innerHTML =
@@ -4356,22 +3701,16 @@ EXPLORER_HTML = r"""
       if (busy) busy.classList.remove("hidden");
       if (resEl) { resEl.classList.add("hidden"); resEl.innerHTML = ""; }
 
-      if (typeof jsQR !== "function") {
-        if (busy) busy.classList.add("hidden");
-        if (resEl) showPoaStateC(resEl);
-        return;
-      }
-
       var reader = new FileReader();
       reader.onerror = function() {
         if (busy) busy.classList.add("hidden");
         if (resEl) showPoaStateC(resEl);
       };
       reader.onload = function(event) {
+        var base64Data = event.target.result;
         var img = new Image();
         img.onerror = function() {
-          if (busy) busy.classList.add("hidden");
-          if (resEl) showPoaStateC(resEl);
+          tryBackendQrScan(base64Data);
         };
         img.onload = function() {
           try {
@@ -4395,25 +3734,45 @@ EXPLORER_HTML = r"""
             context.drawImage(img, 0, 0, width, height);
             var imageData = context.getImageData(0, 0, width, height);
 
-            var code = jsQR(imageData.data, imageData.width, imageData.height, {
+            var code = (typeof jsQR === "function") ? jsQR(imageData.data, imageData.width, imageData.height, {
               inversionAttempts: "attemptBoth"
-            });
+            }) : null;
 
-            if (busy) busy.classList.add("hidden");
-
-            if (code && code.data && String(code.data).indexOf("http") !== -1) {
-              var targetUrl = String(code.data).trim();
-              if (resEl) showPoaStateA(targetUrl, resEl);
+            if (code && code.data && String(code.data).trim()) {
+              if (busy) busy.classList.add("hidden");
+              handleVerificationSuccess(String(code.data).trim());
             } else {
-              if (resEl) showPoaStateB(resEl);
+              tryBackendQrScan(base64Data);
             }
           } catch (err) {
-            if (busy) busy.classList.add("hidden");
-            if (resEl) showPoaStateC(resEl);
+            tryBackendQrScan(base64Data);
           }
         };
-        img.src = event.target.result;
+        img.src = base64Data;
       };
+
+      function tryBackendQrScan(base64Img) {
+        fetch("/api/scan-qr", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_data: base64Img })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (busy) busy.classList.add("hidden");
+          if (data && data.success && (data.target_url || data.payload)) {
+            var finalUrl = data.target_url || sanitizeAndRouteUrl(data.payload);
+            showAdikaVerificationModal(finalUrl);
+          } else {
+            if (resEl) showPoaStateB(resEl);
+          }
+        })
+        .catch(function() {
+          if (busy) busy.classList.add("hidden");
+          if (resEl) showPoaStateB(resEl);
+        });
+      }
+
       reader.readAsDataURL(file);
     }
 
@@ -4500,7 +3859,6 @@ EXPLORER_HTML = r"""
                   '<div class="font-bold text-emerald-800 mb-0.5">💡 የዋጋ መደራደሪያ ምክር:</div>' +
                   '<div>' + esc(advice) + '</div>' +
                 '</div>' : '') +
-              adikaAdvisorCtaHtml(carModel, (advice ? advice : '') + (repCost ? (' | ጥገና ~' + Number(repCost).toLocaleString() + ' ETB') : '')) +
             '</div>';
         })
         .catch(function(){ resEl.innerHTML = '<div class="p-2 bg-rose-50 text-rose-700 rounded-xl text-xs">ትንተናውን ማጠናቀቅ አልተቻለም።</div>'; });
@@ -4575,7 +3933,6 @@ EXPLORER_HTML = r"""
                   '<div class="font-bold text-emerald-900 mb-0.5">ℹ️ የማረጋገጫ ማጠቃለያ:</div>' +
                   '<div>' + esc(d.details_amharic) + '</div>' +
                 '</div>' : '') +
-              adikaAdvisorCtaHtml(((sp.make || "") + " " + (sp.model || "")).trim() || vin) +
             '</div>';
         })
         .catch(function(){
@@ -4699,1035 +4056,8 @@ EXPLORER_HTML = r"""
       else alert(msg);
     };
 
-
-
-    // ========== Digital Cadastral Map Verifier (Adika Digital System) ==========
-    (function initLandMapVerifier() {
-      var CADASTRE_VERIFY = "https://addislandfarm.gov.et/verify";
-      // STRICT: only addislandfarm.gov.et (never dead DNS domains)
-      var lastExtract = null;
-      var isScanning = false;
-      var pendingFinalUrl = "";
-
-      function showPanel(name) {
-        ["landMapUploadPanel", "landMapScanPanel", "landMapResultPanel"].forEach(function(id) {
-          var el = document.getElementById(id);
-          if (el) el.classList.toggle("hidden", id !== name);
-        });
-      }
-
-      function showErrorToast(msg) {
-        isScanning = false;
-        showPanel("landMapUploadPanel");
-        var toast = document.getElementById("landMapToast");
-        if (toast) {
-          toast.textContent = msg || "እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።";
-          toast.classList.remove("hidden");
-          setTimeout(function() { try { toast.classList.add("hidden"); } catch (e) {} }, 5000);
-        }
-        var retry = document.getElementById("landMapRetryBox");
-        if (retry) retry.classList.remove("hidden");
-        var fi = document.getElementById("landMapFile");
-        if (fi) try { fi.value = ""; } catch (e) {}
-      }
-
-      function saveForContract(extract) {
-        lastExtract = extract || lastExtract;
-        if (!lastExtract) return;
-        try {
-          localStorage.setItem("adika_land_map_last", JSON.stringify(lastExtract));
-          var draft = {};
-          try { draft = JSON.parse(localStorage.getItem("adika_contract_draft_v2") || "{}") || {}; } catch (e) {}
-          draft.contract_type = (draft.contract_type && String(draft.contract_type).indexOf("house") >= 0)
-            ? draft.contract_type : "house_sale";
-          draft.property_info = draft.property_info || {};
-          if (lastExtract.upin) draft.property_info.title_deed = lastExtract.upin;
-          if (lastExtract.cert) draft.property_info.title_deed = lastExtract.cert || lastExtract.upin;
-          if (lastExtract.area) draft.property_info.area_sqm = String(lastExtract.area).replace(/[^\d.]/g, "");
-          if (lastExtract.sub_city) draft.property_info.sub_city = lastExtract.sub_city;
-          if (lastExtract.name) {
-            draft.seller_info = draft.seller_info || {};
-            draft.seller_info.name = lastExtract.name;
-          }
-          localStorage.setItem("adika_contract_draft_v2", JSON.stringify(draft));
-        } catch (e) {}
-      }
-
-      function extractCertificateId(scannedText) {
-        if (!scannedText) return null;
-        var s = String(scannedText).trim();
-        // 1. 36-char UUID (active digital certificates)
-        var uuidMatch = s.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
-        if (uuidMatch) return uuidMatch[0];
-        // 2. Reject old deed numbers AD… (not on digital portal)
-        if (/^AD\d+/i.test(s) || /\bAD\d{10,}\b/i.test(s)) return null;
-        // 3. Plot / Property codes (LTP-KK…, KK…, AA…) — not AD
-        var codeMatch = s.match(/\b((?:LTP-)?(?:KK|AA)\d+)\b/i);
-        if (codeMatch) return codeMatch[1] || codeMatch[0];
-        // 4. Broader AA/KK UPIN only
-        var upin = s.match(/\b(AA\d{6,}|KK\d{6,})\b/i);
-        if (upin) return upin[1];
-        // 5. DO NOT return static fallback like "addisland"
-        return null;
-      }
-
-      function processScannedQrPayload(scannedText) {
-        if (!scannedText) return null;
-        var s = String(scannedText).trim();
-        var uuidMatch = s.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
-        if (uuidMatch) {
-          return "https://addislandfarm.gov.et/verify/" + uuidMatch[0];
-        }
-        // Reject old deed AD… prefixes
-        if (/^AD/i.test(s) || /\bAD\d{8,}\b/i.test(s) || /addisland(?!farm)/i.test(s)) {
-          try {
-            var toast = document.getElementById("landMapToast");
-            if (toast) {
-              toast.textContent = "ይህ የቆየ የካርታ ቁጥር በመሆኑ በመንግስት ዲጂታል ፖርታል ላይ አልተመዘገበም። እባክዎን የቅርብ ጊዜውን ዲጂታል የካርታ ፎቶ ያስገቡ።";
-              toast.classList.remove("hidden");
-            } else {
-              alert("ይህ የቆየ የካርታ ቁጥር በመሆኑ በመንግስት ዲጂታል ፖርታል ላይ አልተመዘገበም። እባክዎን የቅርብ ጊዜውን ዲጂታል የካርታ ፎቶ ያስገቡ።");
-            }
-          } catch (e) {}
-          return null;
-        }
-        if (/addislandfarm\.gov\.et/i.test(s)) {
-          var m = s.match(/https?:\/\/[^\s"'<>]*addislandfarm\.gov\.et[^\s"'<>]*/i);
-          return m ? m[0] : s;
-        }
-        var id = extractCertificateId(s);
-        if (id && /^[0-9a-fA-F-]{36}$/.test(id)) {
-          return "https://addislandfarm.gov.et/verify/" + id;
-        }
-        if (id) {
-          return "https://addislandfarm.gov.et/verify?upin=" + encodeURIComponent(id);
-        }
-        return "https://addislandfarm.gov.et/";
-      }
-
-      function sanitizeAndEnforceActiveDomain(scannedInput) {
-        var cleanInput = scannedInput ? String(scannedInput).trim() : "";
-        var BASE = "https://addislandfarm.gov.et";
-        var VERIFY = BASE + "/verify";
-        if (!cleanInput) return BASE + "/";
-
-        // Block dead domains — extract real id only
-        if (/land\.addiscadaster\.gov\.et|addiscadaster\.gov\.et|addisland\.gov\.et/i.test(cleanInput)) {
-          try { console.warn("[Adika] Blocked dead domain. Remapping."); } catch (e) {}
-          var idDead = extractCertificateId(cleanInput);
-          if (idDead) {
-            if (/^[0-9a-fA-F-]{36}$/.test(idDead)) return VERIFY + "/" + idDead;
-            return VERIFY + "?upin=" + encodeURIComponent(idDead);
-          }
-          return BASE + "/";
-        }
-
-        // Full URL on active portal — keep
-        if (/^https?:\/\//i.test(cleanInput) && /addislandfarm\.gov\.et/i.test(cleanInput)) {
-          // Reject nonsense paths like /verify/addisland
-          var bad = cleanInput.match(/\/verify\/(addisland|verify|home|index|null|undefined)\/?$/i);
-          if (bad) return BASE + "/";
-          return cleanInput;
-        }
-
-        // Other http(s) URLs — extract certificate id then map
-        if (/^https?:\/\//i.test(cleanInput) || /https?:\/\//i.test(cleanInput)) {
-          var idFromUrl = extractCertificateId(cleanInput);
-          if (idFromUrl) {
-            if (/^[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}$/.test(idFromUrl)) return VERIFY + "/" + idFromUrl;
-            return VERIFY + "?upin=" + encodeURIComponent(idFromUrl);
-          }
-          return BASE + "/";
-        }
-
-        // JSON
-        try {
-          if (cleanInput.charAt(0) === "{" || cleanInput.charAt(0) === "[") {
-            var j = JSON.parse(cleanInput);
-            if (Array.isArray(j)) j = j[0] || {};
-            if (j.url) return sanitizeAndEnforceActiveDomain(String(j.url));
-            var jid = j.upin || j.UPIN || j.parcel_id || j.plot || j.code || j.id || j.token || "";
-            if (jid) return sanitizeAndEnforceActiveDomain(String(jid));
-          }
-        } catch (e) {}
-
-        // Extract structured id from raw text
-        var id = extractCertificateId(cleanInput);
-        if (id) {
-          if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)) {
-            return VERIFY + "/" + id;
-          }
-          return VERIFY + "?upin=" + encodeURIComponent(id);
-        }
-
-        // Last resort: only if input looks like a real token (not dictionary words)
-        if (/^[A-Za-z0-9_\-]{8,64}$/.test(cleanInput) &&
-            !/^(addisland|verify|null|undefined|http|https|www)$/i.test(cleanInput)) {
-          return VERIFY + "?upin=" + encodeURIComponent(cleanInput);
-        }
-        return BASE + "/";
-      }
-
-
-      function buildFinalUrl(scannedPayload) {
-        var processed = processScannedQrPayload(scannedPayload);
-        if (processed === null) return ""; // rejected (e.g. AD old deed)
-        return sanitizeAndEnforceActiveDomain(processed || scannedPayload);
-      }
-
-
-      function handleVerificationSuccess(scannedData) {
-        var finalUrl = buildFinalUrl(scannedData);
-        if (!finalUrl) {
-          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
-          return;
-        }
-        // Pass correctly formatted URL to Adika modal (no auto-redirect)
-        if (typeof triggerAdikaSuccessModal === "function") {
-          // Store pre-built URL path: pass object so modal uses exact finalUrl
-          triggerAdikaSuccessModal(scannedData, finalUrl);
-        }
-      }
-
-
-      function extractUpinHint(payload, finalUrl) {
-        var s = String(payload || "");
-        var m = s.match(/\b(AA\d{8,16}|KK\d{8,16}|LTP[-_]?[A-Z0-9\-]+)\b/i);
-        if (m) return m[1] || m[0];
-        try {
-          var u = new URL(finalUrl);
-          return u.searchParams.get("upin") || u.searchParams.get("plot") || "";
-        } catch (e) {
-          return "";
-        }
-      }
-
-      function openOfficialUrl(url) {
-        if (!url) return false;
-        url = sanitizeAndEnforceActiveDomain(String(url).trim());
-        // Final hard gate — never open dead DNS hosts
-        if (/addiscadaster|addisland\.gov\.et/i.test(url) && !/addislandfarm\.gov\.et/i.test(url)) {
-          url = "https://addislandfarm.gov.et/";
-        }
-        try {
-          if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === "function") {
-            try { Telegram.WebApp.openLink(url, { try_instant_view: false }); }
-            catch (e0) { Telegram.WebApp.openLink(url); }
-            return true;
-          }
-        } catch (e1) {}
-        try {
-          if (typeof tg !== "undefined" && tg && typeof tg.openLink === "function") {
-            tg.openLink(url);
-            return true;
-          }
-        } catch (e2) {}
-        try { window.open(url, "_blank"); return true; } catch (e3) {}
-        try { window.location.href = url; return true; } catch (e4) {}
-        return false;
-      }
-
-      /** Show professional Adika success modal — NO auto-redirect */
-      function triggerAdikaSuccessModal(scannedPayload, prebuiltUrl) {
-        isScanning = false;
-        var finalUrl = prebuiltUrl || buildFinalUrl(scannedPayload);
-        if (!finalUrl) {
-          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
-          return;
-        }
-        pendingFinalUrl = finalUrl;
-        var upin = extractUpinHint(scannedPayload, finalUrl);
-        saveForContract({
-          raw: String(scannedPayload || ""),
-          url: finalUrl,
-          upin: upin || ""
-        });
-
-        var hint = document.getElementById("adikaPayloadHint");
-        if (hint) {
-          // Show safe label — never show wrong host confusion
-          var label = upin || "";
-          if (!label && /addislandfarm\.gov\.et/i.test(finalUrl)) {
-            try { label = finalUrl.split("/verify/")[1] || ""; } catch (e) {}
-          }
-          if (label) {
-            hint.textContent = "መለያ: " + label;
-            hint.classList.remove("hidden");
-          } else if (/^https?:\/\//i.test(String(scannedPayload || ""))) {
-            hint.textContent = "ኦፊሴላዊ ማረጋገጫ ሊንክ ተገኝቷል";
-            hint.classList.remove("hidden");
-          } else {
-            hint.classList.add("hidden");
-          }
-        }
-
-        var viewBtn = document.getElementById("adikaViewResultBtn");
-        if (viewBtn) {
-          viewBtn.onclick = function() {
-            openOfficialUrl(pendingFinalUrl || finalUrl);
-          };
-        }
-
-        showPanel("landMapResultPanel");
-        var fi = document.getElementById("landMapFile");
-        if (fi) try { fi.value = ""; } catch (e) {}
-      }
-
-
-      function tryJsQROnImageData(imageData) {
-        if (typeof jsQR !== "function" || !imageData) return null;
-        try {
-          var code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
-          return code && code.data ? String(code.data) : null;
-        } catch (e) {
-          return null;
-        }
-      }
-
-      function enhanceAndScanCanvas(srcCanvas) {
-        // Binarize copy for stamp resistance
-        var c = document.createElement("canvas");
-        c.width = srcCanvas.width;
-        c.height = srcCanvas.height;
-        var ctx = c.getContext("2d", { willReadFrequently: true });
-        ctx.drawImage(srcCanvas, 0, 0);
-        var id = ctx.getImageData(0, 0, c.width, c.height);
-        var d = id.data;
-        for (var i = 0; i < d.length; i += 4) {
-          var g = 0.40 * d[i] + 0.50 * d[i + 1] + 0.10 * d[i + 2];
-          var v = g >= 120 ? 255 : 0;
-          d[i] = d[i + 1] = d[i + 2] = v;
-          d[i + 3] = 255;
-        }
-        ctx.putImageData(id, 0, 0);
-        return tryJsQROnImageData(id) || tryJsQROnImageData(ctx.getImageData(0, 0, c.width, c.height));
-      }
-
-      function scanRegionFromImage(img, rx, ry, rw, rh) {
-        var srcW = img.naturalWidth || img.width;
-        var srcH = img.naturalHeight || img.height;
-        var x = Math.max(0, Math.floor(srcW * rx));
-        var y = Math.max(0, Math.floor(srcH * ry));
-        var w = Math.max(16, Math.floor(srcW * rw));
-        var h = Math.max(16, Math.floor(srcH * rh));
-        if (x + w > srcW) w = srcW - x;
-        if (y + h > srcH) h = srcH - y;
-        if (w < 16 || h < 16) return null;
-
-        // native crop
-        var crop = document.createElement("canvas");
-        crop.width = w; crop.height = h;
-        var cctx = crop.getContext("2d", { willReadFrequently: true });
-        cctx.imageSmoothingEnabled = false;
-        cctx.drawImage(img, x, y, w, h, 0, 0, w, h);
-        var hit = enhanceAndScanCanvas(crop);
-        if (hit) return hit;
-
-        // 2x upscale + enhance
-        var up = document.createElement("canvas");
-        up.width = w * 2; up.height = h * 2;
-        var uctx = up.getContext("2d", { willReadFrequently: true });
-        uctx.imageSmoothingEnabled = false;
-        uctx.drawImage(crop, 0, 0, up.width, up.height);
-        hit = enhanceAndScanCanvas(up);
-        if (hit) return hit;
-
-        // multi-threshold on upscaled
-        var thresholds = [100, 128, 150, 85];
-        for (var ti = 0; ti < thresholds.length; ti++) {
-          var trial = document.createElement("canvas");
-          trial.width = up.width; trial.height = up.height;
-          var tctx = trial.getContext("2d", { willReadFrequently: true });
-          tctx.drawImage(up, 0, 0);
-          var id = tctx.getImageData(0, 0, trial.width, trial.height);
-          var d = id.data;
-          var thr = thresholds[ti];
-          for (var i = 0; i < d.length; i += 4) {
-            var g = 0.40 * d[i] + 0.50 * d[i + 1] + 0.10 * d[i + 2];
-            var v = g >= thr ? 255 : 0;
-            d[i] = d[i + 1] = d[i + 2] = v;
-            d[i + 3] = 255;
-          }
-          hit = tryJsQROnImageData(id);
-          if (hit) return hit;
-        }
-        return null;
-      }
-
-      function processUploadedCertificate(imageElement) {
-        var t0 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-        var qrData = null;
-
-        // Pass 1: Top-Right (Title Deed / female format)
-        qrData = scanRegionFromImage(imageElement, 0.55, 0.00, 0.45, 0.35);
-
-        // Pass 2: Mid-Right beside photo (Cadastral / male format)
-        if (!qrData) {
-          qrData = scanRegionFromImage(imageElement, 0.55, 0.15, 0.45, 0.40);
-        }
-        // Pass 2b: slightly lower mid-right
-        if (!qrData) {
-          qrData = scanRegionFromImage(imageElement, 0.50, 0.18, 0.50, 0.42);
-        }
-
-        // Pass 3: Full canvas (downscaled for speed)
-        if (!qrData) {
-          var srcW = imageElement.naturalWidth || imageElement.width;
-          var srcH = imageElement.naturalHeight || imageElement.height;
-          var maxW = 1100;
-          var scale = srcW > maxW ? maxW / srcW : 1;
-          var canvas = document.createElement("canvas");
-          canvas.width = Math.max(1, Math.floor(srcW * scale));
-          canvas.height = Math.max(1, Math.floor(srcH * scale));
-          var ctx = canvas.getContext("2d", { willReadFrequently: true });
-          ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
-          qrData = enhanceAndScanCanvas(canvas);
-          if (!qrData) {
-            var fullData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            qrData = tryJsQROnImageData(fullData);
-          }
-        }
-
-        var t1 = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-        try { console.log("[Adika Digital System] scan ms:", Math.round(t1 - t0), qrData ? "OK" : "MISS"); } catch (e) {}
-
-        if (qrData) {
-          handleVerificationSuccess(qrData);
-        } else {
-          // Backend OCR last resort
-          runBackendOCRLast(imageElement);
-        }
-      }
-
-      function runBackendOCRLast(imgEl) {
-        try {
-          var c = document.createElement("canvas");
-          var maxW = 1400;
-          var w = imgEl.naturalWidth || imgEl.width;
-          var h = imgEl.naturalHeight || imgEl.height;
-          var sc = w > maxW ? maxW / w : 1;
-          c.width = Math.floor(w * sc);
-          c.height = Math.floor(h * sc);
-          c.getContext("2d").drawImage(imgEl, 0, 0, c.width, c.height);
-          var dataUrl = c.toDataURL("image/jpeg", 0.9);
-
-          // 1) Backend pyzbar/OpenCV scan-qr
-          fetch("/api/scan-qr", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image_data: dataUrl })
-          })
-            .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, j: j }; }); })
-            .then(function(res) {
-              if (res.j && res.j.success && (res.j.target_url || res.j.payload)) {
-                if (res.j.target_url) {
-                  triggerAdikaSuccessModal(res.j.payload || res.j.target_url, res.j.target_url);
-                  return;
-                }
-                handleVerificationSuccess(res.j.payload);
-                return;
-              }
-              // 2) Fallback OCR field extract
-              return fetch("/api/land-map/ocr", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ image_data: dataUrl })
-              }).then(function(r2) { return r2.json(); });
-            })
-            .then(function(res2) {
-              if (!res2) return;
-              if (res2.success && res2.data) {
-                var cand = res2.data.url || res2.data.upin || res2.data.cert || "";
-                if (cand) { handleVerificationSuccess(cand); return; }
-              }
-              showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
-            })
-            .catch(function() {
-              showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
-            });
-        } catch (e) {
-          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
-        }
-      }
-
-      function processDataUrl(dataUrl) {
-        if (isScanning) return;
-        isScanning = true;
-        var toast = document.getElementById("landMapToast");
-        if (toast) toast.classList.add("hidden");
-        var retry = document.getElementById("landMapRetryBox");
-        if (retry) retry.classList.add("hidden");
-        showPanel("landMapScanPanel");
-        var prev = document.getElementById("landMapPreview");
-        if (prev) prev.src = dataUrl;
-
-        var img = new Image();
-        img.onload = function() {
-          try {
-            processUploadedCertificate(img);
-          } catch (e) {
-            showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
-          }
-        };
-        img.onerror = function() {
-          showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
-        };
-        img.src = dataUrl;
-      }
-
-      var fileInput = document.getElementById("landMapFile");
-      if (fileInput) {
-        fileInput.onchange = function() {
-          var f = fileInput.files && fileInput.files[0];
-          if (!f) return;
-          isScanning = false;
-          var reader = new FileReader();
-          reader.onload = function() { processDataUrl(reader.result); };
-          reader.onerror = function() {
-            showErrorToast("እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያስገቡ።");
-          };
-          reader.readAsDataURL(f);
-        };
-      }
-
-      var retryBtn = document.getElementById("landMapRetryBtn");
-      if (retryBtn) {
-        retryBtn.onclick = function() {
-          isScanning = false;
-          if (fileInput) {
-            try { fileInput.value = ""; } catch (e) {}
-            fileInput.click();
-          }
-        };
-      }
-
-      var resetBtn = document.getElementById("landMapResetBtn");
-      if (resetBtn) {
-        resetBtn.onclick = function() {
-          lastExtract = null;
-          pendingFinalUrl = "";
-          isScanning = false;
-          if (fileInput) try { fileInput.value = ""; } catch (e) {}
-          showPanel("landMapUploadPanel");
-        };
-      }
-
-      var toContract = document.getElementById("landMapToContractBtn");
-      if (toContract) {
-        toContract.onclick = function() {
-          saveForContract(lastExtract);
-          try { closeModal("landMapModal"); } catch (e) {}
-          if (typeof openToolModal === "function") openToolModal("contractModal");
-        };
-      }
-
-      var shareBtn = document.getElementById("landMapShareBtn");
-      if (shareBtn) {
-        shareBtn.onclick = function() {
-          var u = pendingFinalUrl || (lastExtract && lastExtract.url) || CADASTRE_VERIFY;
-          if (navigator.share) {
-            navigator.share({ title: "Adika Digital Verification", url: u }).catch(function(){});
-          } else {
-            openOfficialUrl(u);
-          }
-        };
-      }
-
-      // Wire view button if present at init
-      var viewBtn0 = document.getElementById("adikaViewResultBtn");
-      if (viewBtn0) {
-        viewBtn0.onclick = function() {
-          if (pendingFinalUrl) openOfficialUrl(pendingFinalUrl);
-        };
-      }
-    })();
-
-    // ========== Contract Wizard (4 types, continuous legal prose) ==========
-    (function initContractWizard() {
-      var step = 0;
-      var draftId = null;
-      var SUB_KEY = "adika_contract_draft_v2";
-
-      function val(id) {
-        var el = document.getElementById(id);
-        return el ? String(el.value || "").trim() : "";
-      }
-      function setVal(id, v) {
-        var el = document.getElementById(id);
-        if (el && v != null) el.value = v;
-      }
-      function parseMoney(s) {
-        return Number(String(s || "").replace(/[^0-9.]/g, "")) || 0;
-      }
-      function fmtMoney(n) {
-        return Math.max(0, Math.round(n)).toLocaleString() + " ብር";
-      }
-      function getContractType() {
-        var r = document.querySelector('input[name="cContractType"]:checked');
-        return r ? r.value : "vehicle_sale";
-      }
-      function updateBalance() {
-        var total = parseMoney(val("cTotalPrice"));
-        var adv = parseMoney(val("cAdvance"));
-        var el = document.getElementById("cBalance");
-        if (el) el.textContent = fmtMoney(Math.max(0, total - adv));
-      }
-      function syncTypeUI() {
-        var t = getContractType();
-        var isVehicle = t.indexOf("vehicle") === 0;
-        var isSale = t.indexOf("sale") >= 0;
-        var fv = document.getElementById("cFieldsVehicle");
-        var fh = document.getElementById("cFieldsHouse");
-        var fs = document.getElementById("cFinSale");
-        var fr = document.getElementById("cFinRental");
-        if (fv) fv.classList.toggle("hidden", !isVehicle);
-        if (fh) fh.classList.toggle("hidden", isVehicle);
-        if (fs) fs.classList.toggle("hidden", !isSale);
-        if (fr) fr.classList.toggle("hidden", isSale);
-        var a = document.getElementById("cPartyALabel");
-        var b = document.getElementById("cPartyBLabel");
-        if (a) a.textContent = isSale ? "ውል ሰጪ (ሻጭ)" : "አከራይ";
-        if (b) b.textContent = isSale ? "ውል ተቀባይ (ገዢ)" : "ተከራይ";
-        document.querySelectorAll(".c-type-opt").forEach(function(lab) {
-          var inp = lab.querySelector("input");
-          if (!inp) return;
-          if (inp.checked) {
-            lab.className = "c-type-opt flex items-center gap-2 p-3 rounded-xl border-2 border-[#16acbd] bg-[#16acbd]/5 cursor-pointer";
-          } else {
-            lab.className = "c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer";
-          }
-        });
-      }
-      function collectPayload(status) {
-        var userId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
-        var ctype = getContractType();
-        return {
-          contract_id: draftId,
-          user_id: userId,
-          contract_type: ctype,
-          contract_status: status || "Draft",
-          seller_info: {
-            name: val("cSellerName"),
-            nationality: val("cSellerNationality") || "ኢትዮጵያዊ",
-            phone: val("cSellerPhone"),
-            sub_city: val("cSellerSubCity"),
-            woreda: val("cSellerWoreda"),
-            house_no: val("cSellerHouseNo")
-          },
-          buyer_info: {
-            name: val("cBuyerName"),
-            nationality: val("cBuyerNationality") || "ኢትዮጵያዊ",
-            phone: val("cBuyerPhone"),
-            sub_city: val("cBuyerSubCity"),
-            woreda: val("cBuyerWoreda"),
-            house_no: val("cBuyerHouseNo")
-          },
-          vehicle_info: {
-            plate: val("cPlate"),
-            chassis: val("cChassis"),
-            engine: val("cEngine"),
-            model: val("cCarModel")
-          },
-          property_info: {
-            sub_city: val("cHouseSubCity"),
-            woreda: val("cHouseWoreda"),
-            house_no: val("cHouseNo"),
-            title_deed: val("cTitleDeed"),
-            area_sqm: val("cAreaSqm"),
-            use_type: val("cHouseUse")
-          },
-          financial_info: {
-            total_price: parseMoney(val("cTotalPrice")),
-            advance: parseMoney(val("cAdvance")),
-            balance: Math.max(0, parseMoney(val("cTotalPrice")) - parseMoney(val("cAdvance"))),
-            deadline: val("cDeadline"),
-            rent_rate: parseMoney(val("cRentRate")),
-            rent_period: val("cRentPeriod") || "በወር",
-            rent_start: val("cRentStart"),
-            rent_end: val("cRentEnd"),
-            rent_advance_months: val("cRentAdvanceMonths"),
-            rent_advance_total: parseMoney(val("cRentAdvanceTotal")),
-            penalty: parseMoney(val("cPenalty")),
-            contract_date: val("cContractDate")
-          },
-          witnesses: [
-            { name: val("cWit1Name"), nationality: val("cWit1Nat"), phone: val("cWit1Phone"), address: val("cWit1Addr") },
-            { name: val("cWit2Name"), nationality: val("cWit2Nat"), phone: val("cWit2Phone"), address: val("cWit2Addr") },
-            { name: val("cWit3Name"), nationality: val("cWit3Nat"), phone: val("cWit3Phone"), address: val("cWit3Addr") }
-          ]
-        };
-      }
-      function showStep(n) {
-        step = n;
-        [0,1,2,3].forEach(function(i) {
-          var panel = document.getElementById("contractStep" + i);
-          if (panel) panel.classList.toggle("hidden", i !== n);
-        });
-        document.querySelectorAll(".contract-step-tab").forEach(function(btn) {
-          var s = Number(btn.getAttribute("data-step"));
-          btn.className = s === n
-            ? "contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm"
-            : "contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500";
-        });
-        var prev = document.getElementById("cStepPrev");
-        var next = document.getElementById("cStepNext");
-        if (prev) prev.classList.toggle("hidden", n <= 0);
-        if (next) next.classList.toggle("hidden", n >= 3);
-        syncTypeUI();
-        try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
-      }
-      function restoreDraft() {
-        try {
-          var raw = localStorage.getItem(SUB_KEY);
-          if (!raw) return;
-          var d = JSON.parse(raw);
-          if (!d) return;
-          draftId = d.contract_id || null;
-          if (d.contract_type) {
-            var r = document.querySelector('input[name="cContractType"][value="' + d.contract_type + '"]');
-            if (r) r.checked = true;
-          }
-          var s = d.seller_info || {}, b = d.buyer_info || {}, v = d.vehicle_info || {}, p = d.property_info || {}, f = d.financial_info || {};
-          setVal("cSellerName", s.name); setVal("cSellerNationality", s.nationality); setVal("cSellerPhone", s.phone);
-          setVal("cSellerSubCity", s.sub_city); setVal("cSellerWoreda", s.woreda); setVal("cSellerHouseNo", s.house_no);
-          setVal("cBuyerName", b.name); setVal("cBuyerNationality", b.nationality); setVal("cBuyerPhone", b.phone);
-          setVal("cBuyerSubCity", b.sub_city); setVal("cBuyerWoreda", b.woreda); setVal("cBuyerHouseNo", b.house_no);
-          setVal("cPlate", v.plate); setVal("cChassis", v.chassis); setVal("cEngine", v.engine); setVal("cCarModel", v.model);
-          setVal("cHouseSubCity", p.sub_city); setVal("cHouseWoreda", p.woreda); setVal("cHouseNo", p.house_no);
-          setVal("cTitleDeed", p.title_deed); setVal("cAreaSqm", p.area_sqm); setVal("cHouseUse", p.use_type);
-          setVal("cTotalPrice", f.total_price); setVal("cAdvance", f.advance); setVal("cDeadline", f.deadline);
-          setVal("cRentRate", f.rent_rate); setVal("cRentPeriod", f.rent_period); setVal("cRentStart", f.rent_start);
-          setVal("cRentEnd", f.rent_end); setVal("cRentAdvanceMonths", f.rent_advance_months);
-          setVal("cRentAdvanceTotal", f.rent_advance_total); setVal("cPenalty", f.penalty); setVal("cContractDate", f.contract_date);
-          var w = d.witnesses || [];
-          for (var i = 0; i < 3; i++) {
-            var wi = w[i] || {};
-            setVal("cWit" + (i+1) + "Name", wi.name);
-            setVal("cWit" + (i+1) + "Nat", wi.nationality);
-            setVal("cWit" + (i+1) + "Phone", wi.phone);
-            setVal("cWit" + (i+1) + "Addr", wi.address);
-          }
-          updateBalance();
-          syncTypeUI();
-        } catch (e) {}
-      }
-
-      document.querySelectorAll(".contract-step-tab").forEach(function(btn) {
-        btn.onclick = function() { showStep(Number(btn.getAttribute("data-step")) || 0); };
-      });
-      document.querySelectorAll('input[name="cContractType"]').forEach(function(r) {
-        r.onchange = function() { syncTypeUI(); };
-      });
-      var prevBtn = document.getElementById("cStepPrev");
-      var nextBtn = document.getElementById("cStepNext");
-      if (prevBtn) prevBtn.onclick = function() { showStep(Math.max(0, step - 1)); };
-      if (nextBtn) nextBtn.onclick = function() { showStep(Math.min(3, step + 1)); };
-      ["cTotalPrice", "cAdvance"].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.addEventListener("input", updateBalance);
-      });
-
-      var libreFile = document.getElementById("cLibreFile");
-      if (libreFile) {
-        libreFile.onchange = function() {
-          var f = libreFile.files && libreFile.files[0];
-          if (!f) return;
-          var st = document.getElementById("cLibreStatus");
-          if (st) { st.classList.remove("hidden"); st.textContent = "⏳ ሊብሬ እየተነበበ ነው..."; }
-          var reader = new FileReader();
-          reader.onload = function() {
-            fetch("/api/contracts/scan-libre", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ image_data: reader.result })
-            }).then(function(r) { return r.json(); }).then(function(res) {
-              var d = (res && res.data) || {};
-              if (d.chassis) setVal("cChassis", d.chassis);
-              if (d.engine) setVal("cEngine", d.engine);
-              if (d.plate) setVal("cPlate", d.plate);
-              if (d.model) setVal("cCarModel", d.model);
-              if (st) st.textContent = res.success === false ? ("⚠️ " + (res.message || "OCR")) : "✅ ተሞልቷል — ያረጋግጡ";
-            }).catch(function() { if (st) st.textContent = "⚠️ OCR አልተሳካም"; });
-          };
-          reader.readAsDataURL(f);
-        };
-      }
-
-      function saveContract(status) {
-        return fetch("/api/contracts/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(collectPayload(status))
-        }).then(function(r) { return r.json(); });
-      }
-
-      var saveBtn = document.getElementById("cSaveDraftBtn");
-      if (saveBtn) {
-        saveBtn.onclick = function() {
-          saveBtn.disabled = true;
-          saveContract("Draft").then(function(res) {
-            if (res.contract_id) draftId = res.contract_id;
-            try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
-            if (tg && tg.showAlert) tg.showAlert(res.message || "ረቂቅ ተቀምጧል");
-            else alert(res.message || "ረቂቅ ተቀምጧል");
-          }).catch(function() { alert("ማስቀመጥ አልተቻለም"); })
-          .finally(function() { saveBtn.disabled = false; });
-        };
-      }
-
-      var finBtn = document.getElementById("cFinalizeBtn");
-      if (finBtn) {
-        finBtn.onclick = function() {
-          var p = collectPayload("Finalized");
-          if (!p.seller_info.name || !p.buyer_info.name) {
-            alert("እባክዎ የተዋዋዮች ስም ይሙሉ");
-            showStep(1);
-            return;
-          }
-          finBtn.disabled = true;
-          finBtn.textContent = "⏳...";
-          saveContract("Finalized").then(function(res) {
-            if (res.contract_id) draftId = res.contract_id;
-            var result = document.getElementById("contractResult");
-            if (result) {
-              result.classList.remove("hidden");
-              var cid = res.contract_id || draftId || "";
-              var pdfUrl = "/api/contracts/" + encodeURIComponent(cid) + "/export-pdf";
-              result.innerHTML =
-                '<div class="font-black text-slate-800 text-[11px]">✅ ውል ተጠናቋል</div>' +
-                '<div class="text-[10px] text-slate-600">#' + esc(String(cid)) + '</div>' +
-                '<div class="grid grid-cols-3 gap-1.5 pt-1">' +
-                  '<a href="' + pdfUrl + '" target="_blank" class="text-center py-2 rounded-xl bg-slate-900 text-white font-bold text-[10px]">📥 PDF አውርድ</a>' +
-                  '<button type="button" id="cPrintBtn" class="py-2 rounded-xl bg-[#16acbd] text-white font-bold text-[10px]">🖨️ ህትመት</button>' +
-                  '<button type="button" id="cShareBtn" class="py-2 rounded-xl bg-emerald-600 text-white font-bold text-[10px]">📤 ውል አጋራ</button>' +
-                '</div>' +
-                '<pre class="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap text-[10px] bg-white p-2 rounded-lg border leading-relaxed">' + esc(res.contract_text || "") + '</pre>';
-              var pb = document.getElementById("cPrintBtn");
-              if (pb) pb.onclick = function() {
-                window.open(pdfUrl + "?print=1", "_blank");
-              };
-              var sb = document.getElementById("cShareBtn");
-              if (sb) sb.onclick = function() {
-                var abs = (window.location.origin || "") + pdfUrl;
-                if (navigator.share) {
-                  navigator.share({ title: "Adika ውል #" + cid, text: "ህጋዊ ውል — Adika Marketplace", url: abs }).catch(function(){});
-                } else if (navigator.clipboard && navigator.clipboard.writeText) {
-                  navigator.clipboard.writeText(abs).then(function() {
-                    if (tg && tg.showAlert) tg.showAlert("ሊንኩ ተቀድቷል");
-                    else alert("ሊንኩ ተቀድቷል");
-                  });
-                } else {
-                  window.open(pdfUrl, "_blank");
-                }
-              };
-            }
-            showStep(3);
-          }).catch(function() { alert("ውል ማጠናቀቅ አልተቻለም"); })
-          .finally(function() { finBtn.disabled = false; finBtn.textContent = "📄 ውል አጠናቅቅ"; });
-        };
-      }
-
-      var origOpen = window.openToolModal;
-      window.openToolModal = function(id) {
-        if (typeof origOpen === "function") origOpen(id);
-        else {
-          var m = document.getElementById(id);
-          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
-        }
-        if (id === "contractModal") {
-          restoreDraft();
-          showStep(0);
-          updateBalance();
-          syncTypeUI();
-        }
-      };
-      restoreDraft();
-      showStep(0);
-      updateBalance();
-      syncTypeUI();
-    })();
-
-
-
-  <!-- Role selection (first launch) -->
-  <div id="roleSelectModal" class="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl">
-      <div class="font-black text-lg text-slate-900 mb-1">እንኳን ወደ Adika በደህና መጡ</div>
-      <div class="text-xs text-slate-500 mb-4">እባክዎ ሚናዎን ይምረጡ</div>
-      <button type="button" id="roleUserBtn" class="w-full py-3.5 mb-2 rounded-xl bg-[#16acbd] text-white font-bold text-sm">
-        👤 ተራ ተጠቃሚ / ፈላጊ / ሻጭ
-      </button>
-      <button type="button" id="roleBrokerBtn" class="w-full py-3.5 rounded-xl bg-slate-900 text-white font-bold text-sm">
-        🏢 ደላላ / ኤጀንት ነኝ
-      </button>
-    </div>
-  </div>
-
-  <!-- Broker registration -->
-  <div id="brokerRegModal" class="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-      <div class="flex justify-between items-center mb-3">
-        <div class="font-black text-base text-slate-900">ደላላ ምዝገባ</div>
-        <button type="button" onclick="closeModal('brokerRegModal')" class="w-8 h-8 rounded-full bg-slate-100 font-bold">✕</button>
-      </div>
-      <label class="text-xs font-bold text-slate-600">ሙሉ ስም</label>
-      <input id="brName" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="ስም" />
-      <label class="text-xs font-bold text-slate-600">ስልክ ቁጥር</label>
-      <input id="brPhone" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="09xxxxxxxx" />
-      <label class="text-xs font-bold text-slate-600">Telegram username</label>
-      <input id="brUser" class="w-full mb-2 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="@username" />
-      <div class="text-xs font-bold text-slate-600 mb-1">የሚሰሩበት ምድብ</div>
-      <div class="flex flex-wrap gap-2 mb-3">
-        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
-        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
-        <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
-      </div>
-      <button type="button" id="brSubmitBtn" class="w-full py-3 rounded-xl bg-[#16acbd] text-white font-bold text-sm">መመዝገብ</button>
-      <button type="button" id="openBrokerRegFromMenu" class="hidden">ደላላ ነዎት? ይመዝገቡ</button>
-    </div>
-  </div>
-
-
-    // ---- For You + Role / Broker ----
-    (function initParityFeatures() {
-      try {
-        state.userId = (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.id) || 0;
-      } catch (e) { state.userId = 0; }
-
-      function openM(id) {
-        var m = document.getElementById(id);
-        if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
-      }
-      function closeM(id) {
-        var m = document.getElementById(id);
-        if (m) { m.classList.add("hidden"); m.classList.remove("flex"); }
-      }
-
-      // Prefill category strip: For You first
-      function paintFeedModes() {
-        if (!catsEl) return;
-        var modes = [
-          { id: "foryou", label: "✨ ለእርስዎ" },
-          { id: "all", label: "🌐 ሁሉም" },
-          { id: "መኪና", label: "🚗 መኪና" },
-          { id: "ቤት", label: "🏠 ቤት" },
-          { id: "ንግድ", label: "🏢 ንግድ" }
-        ];
-        catsEl.innerHTML = "";
-        modes.forEach(function(m) {
-          var b = document.createElement("button");
-          b.type = "button";
-          b.setAttribute("data-id", m.id);
-          var on = (state.feedMode === "foryou" && m.id === "foryou")
-            || (state.feedMode === "all" && m.id === "all")
-            || (state.feedMode === "cat" && state.category === m.id);
-          b.className = on
-            ? "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm"
-            : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
-          b.textContent = m.label;
-          b.onclick = function() {
-            if (m.id === "foryou") { state.feedMode = "foryou"; state.category = ""; }
-            else if (m.id === "all") { state.feedMode = "all"; state.category = ""; }
-            else { state.feedMode = "cat"; state.category = m.id; }
-            paintFeedModes();
-            load(false);
-          };
-          catsEl.appendChild(b);
-        });
-      }
-      paintFeedModes();
-
-      // Role gate
-      var roleKey = "adika_role_v1";
-      var hasRole = false;
-      try { hasRole = !!localStorage.getItem(roleKey); } catch (e) {}
-      // Do not block the marketplace behind role modal — optional entry only
-      // if (!hasRole) openM("roleSelectModal");
-      try { if (!hasRole) localStorage.setItem(roleKey, "user"); } catch (e) {}
-
-      var roleUser = document.getElementById("roleUserBtn");
-      var roleBroker = document.getElementById("roleBrokerBtn");
-      if (roleUser) roleUser.onclick = function() {
-        try { localStorage.setItem(roleKey, "user"); } catch (e) {}
-        closeM("roleSelectModal");
-        state.feedMode = "all";
-        paintFeedModes();
-        load(false);
-      };
-      if (roleBroker) roleBroker.onclick = function() {
-        try { localStorage.setItem(roleKey, "broker"); } catch (e) {}
-        closeM("roleSelectModal");
-        openM("brokerRegModal");
-      };
-
-      var brSubmit = document.getElementById("brSubmitBtn");
-      if (brSubmit) brSubmit.onclick = function() {
-        var name = (document.getElementById("brName") || {}).value || "";
-        var phone = (document.getElementById("brPhone") || {}).value || "";
-        var user = (document.getElementById("brUser") || {}).value || "";
-        var cats = [];
-        document.querySelectorAll(".brCat:checked").forEach(function(c) { cats.push(c.value); });
-        var tid = state.userId || 0;
-        if (!name || !phone) { alert("ስም እና ስልክ ያስፈልጋሉ"); return; }
-        brSubmit.disabled = true;
-        fetch("/api/brokers/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            telegram_id: tid,
-            name: name,
-            phone: phone,
-            username: user,
-            categories: cats
-          })
-        }).then(function(r){ return r.json(); }).then(function(d){
-          if (d.success) {
-            alert("✅ እንደ ደላላ ተመዝግበዋል!");
-            closeM("brokerRegModal");
-          } else {
-            alert(d.message || "ምዝገባ አልተሳካም");
-          }
-        }).catch(function(){ alert("ኔትወርክ ስህተት"); })
-        .finally(function(){ brSubmit.disabled = false; });
-      };
-
-      // Floating entry for brokers
-      try {
-        var fabHelp = document.createElement("button");
-        fabHelp.type = "button";
-        fabHelp.textContent = "ደላላ ነዎት? ይመዝገቡ";
-        fabHelp.className = "fixed bottom-24 right-3 z-40 px-3 py-2 rounded-full bg-slate-900 text-white text-[10px] font-bold shadow-lg";
-        fabHelp.onclick = function() { openM("brokerRegModal"); };
-        document.body.appendChild(fabHelp);
-      } catch (e) {}
-    })();
-
     setTabs();
-    try { state.feedMode = "all"; state.category = ""; } catch (e) {}
-    try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e) {}
-
-    try {
-      state.loading = false;
-      load(false);
-    } catch (e) {
-      console.error("[Adika] initial load", e);
-      try { state.loading = false; } catch (e2) {}
-      try { renderFallbackCards(DEMO_LISTINGS); } catch (e3) {}
-    }
-
-    // If after 5s still only demos / empty, force explorer once more
-    setTimeout(function () {
-      try {
-        var onlyDemo = state.items && state.items.length && String(state.items[0].id || "").indexOf("demo") === 0;
-        var empty = !state.items || !state.items.length;
-        if (onlyDemo || empty) {
-          state.feedMode = "all";
-          state.loading = false;
-          load(false);
-        }
-      } catch (e) {}
-      try { if (statusEl) statusEl.style.display = "none"; } catch (e) {}
-    }, 5000);
+    load(false);
   })();
   </script>
 </body>
