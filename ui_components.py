@@ -931,6 +931,15 @@ EXPLORER_HTML = r"""
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
     /* Executive hero carousel — compact max 110px */
+    .smart-dot {
+      width: 6px; height: 6px; border-radius: 999px;
+      background: rgba(255,255,255,0.35); transition: all 0.25s ease;
+    }
+    .smart-dot.active {
+      width: 16px; background: #5eead4;
+    }
+    .smart-slide { display: none; }
+    .smart-slide.active { display: block; }
     .hero-carousel {
       display: flex; gap: 0.4rem; overflow-x: auto; scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch; padding-bottom: 0;
@@ -1104,6 +1113,10 @@ EXPLORER_HTML = r"""
       padding: 0.5rem 0.65rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
       box-shadow: 0 -4px 16px rgba(15,23,42,0.08);
     }
+    #analysisView .analysis-body {
+      flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding-bottom: 120px !important;
+    }
     #analysisView #advisorChatLog {
       padding-bottom: 5.5rem !important;
     }
@@ -1130,7 +1143,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 1. FIXED STICKY TEAL HEADER (Compact 3-Row Layout)                -->
   <!-- ================================================================= -->
-  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 4px 20px rgba(15,23,42,0.10);">
+  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.28); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
       <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
@@ -1199,52 +1212,37 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto pb-24 px-2.5" style="padding-top: 148px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5" style="padding-top: 148px; padding-bottom: 120px;">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <!-- HOME HERO: Ultra-compact horizontal carousel (max 110px) -->
-    <div id="homeHero" class="mb-1.5">
-      <div id="heroCarousel" class="hero-carousel">
-        <button id="heroAdvisorBtn" type="button" class="hero-slide text-left">
-          <div class="flex items-center justify-between gap-1.5">
-            <div class="min-w-0">
-              <div class="text-[7px] font-bold tracking-wide uppercase text-slate-500">Adika Intelligence</div>
-              <div class="hero-title">ዲጂታል የፋይናንስ አማካሪ</div>
-              <div class="hero-sub">በጀት · ብድር · የገበያ ዋጋ</div>
-            </div>
-            <span class="accent font-black shrink-0">AI</span>
-          </div>
-          <div class="hero-cta-line text-teal-300 inline-flex items-center gap-0.5">ትንተና ጀምር →</div>
-        </button>
-        <button id="heroPoaBtn" type="button" class="hero-slide text-left">
-          <div class="flex items-center justify-between gap-1.5">
-            <div class="min-w-0">
-              <div class="text-[7px] font-bold tracking-wide uppercase text-slate-500">Legal Desk</div>
-              <div class="hero-title">የሰነድ ማረጋገጫ</div>
-              <div class="hero-sub">ውክልና (POA) ዲጂታል ማጣሪያ</div>
-            </div>
-            <span class="accent font-black shrink-0">ID</span>
-          </div>
-          <div class="hero-cta-line text-amber-300 inline-flex items-center gap-0.5">አሁን ያረጋግጡ →</div>
-        </button>
-        <button id="heroToolsBtn" type="button" class="hero-slide text-left">
-          <div class="flex items-center justify-between gap-1.5">
-            <div class="min-w-0">
-              <div class="text-[7px] font-bold tracking-wide uppercase text-slate-500">Tools Suite</div>
-              <div class="hero-title">ፋይናንስና ህግ መሳሪያዎች</div>
-              <div class="hero-sub">ቀረጥ · ብድር · ውል · ንጽጽር</div>
-            </div>
-            <span class="accent font-black shrink-0">PRO</span>
-          </div>
-          <div class="hero-cta-line text-sky-300 inline-flex items-center gap-0.5">መሳሪያዎች ክፈት →</div>
-        </button>
+    <!-- SMART TOOLS BANNER: auto-rotate every 4s -->
+    <div id="homeHero" class="mb-2">
+      <div id="smartToolsBanner" class="relative overflow-hidden rounded-2xl border border-white/25 shadow-lg"
+           style="background: linear-gradient(135deg, rgba(15,23,42,0.92), rgba(0,131,143,0.85)); backdrop-filter: blur(12px); min-height: 88px;">
+        <div id="smartBannerTrack" class="relative">
+          <!-- slides injected / static for no-JS -->
+          <button type="button" class="smart-slide w-full text-left px-3.5 py-3" data-tool="chassis" data-idx="0">
+            <div class="text-[8px] font-bold uppercase tracking-wider text-teal-300/90">Smart Tools · 1/6</div>
+            <div class="text-[13px] font-black text-white mt-0.5">🔍 የሻሲ ማጣሪያ</div>
+            <div class="text-[10px] text-slate-300 mt-0.5">VIN Check / Chassis Verification</div>
+          </button>
+        </div>
+        <div id="smartBannerDots" class="flex justify-center gap-1.5 pb-2.5 pt-0">
+          <span class="smart-dot active"></span><span class="smart-dot"></span><span class="smart-dot"></span>
+          <span class="smart-dot"></span><span class="smart-dot"></span><span class="smart-dot"></span>
+        </div>
       </div>
-      <div class="hero-dots" id="heroDots">
-        <span class="hero-dot active"></span><span class="hero-dot"></span><span class="hero-dot"></span>
+      <!-- keep legacy ids for existing handlers -->
+      <div class="hidden">
+        <button id="heroAdvisorBtn" type="button"></button>
+        <button id="heroPoaBtn" type="button"></button>
+        <button id="heroToolsBtn" type="button"></button>
+        <div id="heroCarousel"></div>
+        <div id="heroDots"></div>
       </div>
     </div>
 
@@ -1309,7 +1307,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 3. FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+)         -->
   <!-- ================================================================= -->
-  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.55); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);">
+  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.18); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,0.35);">
     <!-- Left Section: Home & AI Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
       <button id="navHome" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
@@ -1544,7 +1542,7 @@ EXPLORER_HTML = r"""
         </div>
 
         <!-- Tools Grid -->
-        <div>
+        <div class="pb-28" style="padding-bottom: 120px;">
           <h4 class="text-xs font-extrabold text-slate-700 mb-2">
             <span class="lang-am">ተጨማሪ የፋይናንስና የህግ መሳሪያዎች</span>
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
@@ -5747,6 +5745,65 @@ EXPLORER_HTML = r"""
         fabHelp.onclick = function() { openM("brokerRegModal"); };
         document.body.appendChild(fabHelp);
       } catch (e) {}
+    })();
+
+
+    // ---- Smart Tools Banner (auto-rotate 4s) ----
+    (function initSmartToolsBanner() {
+      var slides = [
+        { tool: "chassis", icon: "🔍", title: "የሻሲ ማጣሪያ", sub: "VIN Check / Chassis Verification" },
+        { tool: "duty", icon: "🧮", title: "የቀረጥ ስሌት", sub: "Import Duty & Tax Calculator" },
+        { tool: "loan", icon: "🏦", title: "የባንክ ብድር", sub: "Mortgage & Auto Loan Estimator" },
+        { tool: "compare", icon: "⚖️", title: "የመኪና ንፅፅር", sub: "Vehicle Comparison Tool" },
+        { tool: "diag", icon: "📋", title: "የምርመራ ወረቀት", sub: "Garage Diagnostic Explainer" },
+        { tool: "contract", icon: "📄", title: "የሽያጭ ውል", sub: "Legal Sales Contract Drafter" }
+      ];
+      var track = document.getElementById("smartBannerTrack");
+      var dotsWrap = document.getElementById("smartBannerDots");
+      if (!track) return;
+      track.innerHTML = "";
+      if (dotsWrap) dotsWrap.innerHTML = "";
+      slides.forEach(function (s, i) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "smart-slide w-full text-left px-3.5 py-3" + (i === 0 ? " active" : "");
+        btn.setAttribute("data-tool", s.tool);
+        btn.setAttribute("data-idx", String(i));
+        btn.innerHTML =
+          '<div class="text-[8px] font-bold uppercase tracking-wider text-teal-300/90">Smart Tools · ' + (i + 1) + '/6</div>' +
+          '<div class="text-[13px] font-black text-white mt-0.5">' + s.icon + " " + s.title + "</div>" +
+          '<div class="text-[10px] text-slate-300 mt-0.5">' + s.sub + "</div>";
+        btn.onclick = function () {
+          try {
+            if (typeof openToolModal === "function") openToolModal(s.tool);
+            else if (typeof showAnalysisView === "function") {
+              showAnalysisView(true);
+              setTimeout(function () {
+                var map = { chassis: "toolChassisBtn", duty: "toolDutyBtn", loan: "toolLoanBtn", compare: "toolCompareBtn", diag: "toolDiagBtn", contract: "toolContractBtn" };
+                var el = document.getElementById(map[s.tool] || "");
+                if (el) el.click();
+              }, 200);
+            }
+          } catch (e) {}
+        };
+        track.appendChild(btn);
+        if (dotsWrap) {
+          var d = document.createElement("span");
+          d.className = "smart-dot" + (i === 0 ? " active" : "");
+          dotsWrap.appendChild(d);
+        }
+      });
+      var idx = 0;
+      setInterval(function () {
+        var nodes = track.querySelectorAll(".smart-slide");
+        var dots = dotsWrap ? dotsWrap.querySelectorAll(".smart-dot") : [];
+        if (!nodes.length) return;
+        nodes[idx].classList.remove("active");
+        if (dots[idx]) dots[idx].classList.remove("active");
+        idx = (idx + 1) % nodes.length;
+        nodes[idx].classList.add("active");
+        if (dots[idx]) dots[idx].classList.add("active");
+      }, 4000);
     })();
 
     setTabs();
