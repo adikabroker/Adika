@@ -2646,10 +2646,53 @@ function shareContract() {{
                 username=username,
             )
             if rid:
+                # Notify admin for approval (Telegram bot style)
+                try:
+                    from config import ADMIN_CHAT_ID_INT
+                    import os
+                    admin_id = ADMIN_CHAT_ID_INT
+                    id_photo = data.get("id_photo") or data.get("photo") or None
+                    uname = username
+                    if uname and not str(uname).startswith("@"):
+                        uname = "@" + str(uname)
+                    msg = (
+                        "🆕 <b>የደላላ ምዝገባ ጥያቄ</b>\n"
+                        "─────────────────\n"
+                        f"👤 ስም: <b>{name}</b>\n"
+                        f"📞 ስልክ: <code>{phone}</code>\n"
+                        f"📱 Telegram: {uname or '-'}\n"
+                        f"🆔 chat_id: <code>{tid}</code>\n"
+                        f"📦 ምድብ: {specialty}\n"
+                        f"📎 ID ፎቶ: {'አለ' if id_photo else 'የለም'}\n\n"
+                        "እባክዎ ያረጋግጡ / ይቀበሉ።"
+                    )
+                    token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("BOT_TOKEN") or ""
+                    if token and admin_id:
+                        import requests as _req
+                        _req.post(
+                            f"https://api.telegram.org/bot{token}/sendMessage",
+                            json={"chat_id": admin_id, "text": msg, "parse_mode": "HTML"},
+                            timeout=12,
+                        )
+                        if id_photo and isinstance(id_photo, str) and id_photo.startswith("data:image"):
+                            import base64
+                            import io
+                            b64 = id_photo.split(",", 1)[-1]
+                            raw = base64.b64decode(b64)
+                            _req.post(
+                                f"https://api.telegram.org/bot{token}/sendPhoto",
+                                data={"chat_id": str(admin_id), "caption": f"ደላላ ID — {name} ({phone})"},
+                                files={"photo": ("id.jpg", io.BytesIO(raw), "image/jpeg")},
+                                timeout=20,
+                            )
+                except Exception as ne:
+                    logger.warning("broker admin notify: %s", ne)
+
                 return jsonify({
                     "success": True,
-                    "message": "Registered successfully",
+                    "message": "Registered successfully — pending admin approval",
                     "broker_id": rid,
+                    "pending_approval": True,
                 }), 200
             return jsonify({
                 "success": False,
@@ -2658,6 +2701,7 @@ function shareContract() {{
         except Exception as e:
             logger.error("api_broker_register: %s", e, exc_info=True)
             return jsonify({"success": False, "message": str(e)}), 500
+
 
 
     @web_app.route('/api/otp/send', methods=['POST', 'OPTIONS'])
