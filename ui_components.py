@@ -3178,33 +3178,27 @@ EXPLORER_HTML = r"""
       }
     }
 
+
+    window.__adikaForceExplorer = function () {
+      try {
+        state.feedMode = "all";
+        state.category = "";
+        state.tab = "marketplace";
+        state.loading = false;
+        load(false);
+      } catch (e) { console.error(e); }
+    };
+
     function load(append) {
-      // Never freeze UI: allow re-entry after 3s, always clear spinner
-      var now = Date.now();
-      if (state.loading && state._loadStartedAt && (now - state._loadStartedAt) < 3000) {
-        return;
-      }
-      state.loading = true;
-      state._loadStartedAt = now;
+      // Simple, reliable loader — never discard successful API data
+      try { state.loading = true; } catch (e) {}
+      try { if (grid) grid.style.opacity = "0.7"; } catch (e) {}
 
-      if (!append) {
-        try {
-          if (statusEl) {
-            statusEl.style.display = "block";
-            statusEl.innerHTML =
-              '<div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div>' +
-              '<div><span class="lang-am">እየጫነ ነው…</span><span class="lang-en">Loading listings…</span></div>';
-          }
-        } catch (e) {}
-        try {
-          if (grid) { grid.style.opacity = "0.55"; }
-        } catch (e) {}
-      }
-
-      var page = append ? state.page + 1 : 1;
+      var page = append ? (state.page + 1) : 1;
       var isBuy = state.tab !== "marketplace";
+      // Prefer explorer (known-good) unless user explicitly chose For You
       var useForYou = (!isBuy && state.feedMode === "foryou" && !state.q);
-      var qs = "page=" + page + "&limit=12&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
+      var qs = "page=" + page + "&limit=24&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
       var cat = (state.category || "").trim();
       if (!useForYou && cat && !/^(all|ሁሉም|✨|foryou)/i.test(cat)) {
         qs += "&category=" + encodeURIComponent(cat);
@@ -3212,120 +3206,60 @@ EXPLORER_HTML = r"""
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
       if (state.chassisOnly) qs += "&chassis_only=1";
 
-      var explorerUrl = "/api/explorer/listings?" + qs;
-      var listingsUrl = "/api/listings?" + qs;
-      var feedUrl = useForYou
-        ? ("/api/feed/for-you?page=" + page + "&limit=12&user_id=" + encodeURIComponent(state.userId || "0"))
-        : explorerUrl;
+      var urls = [];
+      if (useForYou) {
+        urls.push("/api/feed/for-you?page=" + page + "&limit=24&user_id=" + encodeURIComponent(state.userId || "0"));
+      }
+      urls.push("/api/explorer/listings?" + qs);
+      urls.push("/api/listings?" + qs);
 
-      var settled = false;
-      function safeFinish(items, hasMore) {
-        if (settled) return;
-        settled = true;
-        state.loading = false;
-        try {
-          state.page = page;
-          state.hasMore = !!hasMore;
-          finishLoading(items || [], append, !!hasMore);
-        } catch (e) {
-          console.error("[Adika] finishLoading", e);
-          state.loading = false;
-          try {
-            if (grid) grid.innerHTML = "";
-            if (statusEl) {
-              statusEl.style.display = "block";
-              statusEl.innerHTML = '<span class="text-slate-600 text-xs font-bold">ዝርዝር ለጊዜው አልተገኘም</span>';
-            }
-          } catch (e2) {}
+      var done = false;
+      function applyItems(items, hasMore) {
+        if (done && !(items && items.length)) return;
+        done = true;
+        try { state.loading = false; } catch (e) {}
+        try { state.page = page; state.hasMore = !!hasMore; } catch (e) {}
+        try { finishLoading(items || [], append, !!hasMore); } catch (e) {
+          console.error("[Adika] applyItems", e);
+          try { if (items && items.length) renderFallbackCards(items); } catch (e2) {}
         }
       }
 
-      // Hard timeout 3s — dismiss spinner & keep UI interactive
-      var hardTimer = setTimeout(function () {
-        if (!settled) {
-          console.warn("[Adika] load timeout 3s — dismissing spinner");
-          safeFinish([], false);
-          // still try fallback in background
-          try {
-            fetch(explorerUrl, { method: "GET" })
-              .then(function (res) { return res.json(); })
-              .then(function (data) {
-                var items = (data && (data.items || data.listings)) || [];
-                if (items.length) {
-                  settled = false; // allow one more paint
-                  safeFinish(items, !!(data.has_more || data.hasMore));
-                }
-              })
-              .catch(function () {});
-          } catch (e) {}
+      function tryUrl(i) {
+        if (i >= urls.length) {
+          applyItems([], false);
+          return;
         }
-      }, 3000);
-
-      function fetchJson(url, ms) {
-        var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        var url = urls[i];
         var timer = setTimeout(function () {
-          try { if (ctrl) ctrl.abort(); } catch (e) {}
-        }, ms || 2800);
-        return fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
+          // soft timeout: try next URL, do NOT lock out later success
+          tryUrl(i + 1);
+        }, 8000);
+
+        fetch(url, { method: "GET", credentials: "same-origin" })
           .then(function (res) {
-            return res.json().then(function (j) {
-              return { ok: res.ok, data: j };
+            return res.json().then(function (data) {
+              return { ok: res.ok, data: data || {} };
             });
           })
-          .finally(function () { clearTimeout(timer); });
-      }
-
-      try {
-        fetchJson(feedUrl, 2800)
           .then(function (r) {
-            var items = (r.data && (r.data.items || r.data.listings)) || [];
-            if ((!r.ok || !items.length) && useForYou) {
-              return fetchJson(explorerUrl, 2500).then(function (r2) {
-                var items2 = (r2.data && (r2.data.items || r2.data.listings)) || [];
-                if (!items2.length) {
-                  return fetchJson(listingsUrl, 2000).then(function (r3) {
-                    var items3 = (r3.data && (r3.data.items || r3.data.listings)) || [];
-                    clearTimeout(hardTimer);
-                    safeFinish(items3, !!(r3.data && (r3.data.has_more || r3.data.hasMore)));
-                  });
-                }
-                clearTimeout(hardTimer);
-                safeFinish(items2, !!(r2.data && (r2.data.has_more || r2.data.hasMore)));
-              });
+            clearTimeout(timer);
+            var items = (r.data.items || r.data.listings || r.data.results || []);
+            if (!Array.isArray(items)) items = [];
+            if (items.length > 0) {
+              applyItems(items, !!(r.data.has_more || r.data.hasMore));
+            } else {
+              tryUrl(i + 1);
             }
-            if (!items.length && !useForYou) {
-              return fetchJson(listingsUrl, 2000).then(function (r3) {
-                var items3 = (r3.data && (r3.data.items || r3.data.listings)) || [];
-                clearTimeout(hardTimer);
-                safeFinish(items3.length ? items3 : items, !!(r3.data && (r3.data.has_more || r3.data.hasMore)));
-              });
-            }
-            clearTimeout(hardTimer);
-            safeFinish(items, !!(r.data && (r.data.has_more || r.data.hasMore)));
           })
           .catch(function (err) {
-            console.error("[Adika] listings fetch failed", err);
-            try {
-              fetchJson(explorerUrl, 2000)
-                .then(function (r2) {
-                  var items2 = (r2.data && (r2.data.items || r2.data.listings)) || [];
-                  clearTimeout(hardTimer);
-                  safeFinish(items2, !!(r2.data && (r2.data.has_more || r2.data.hasMore)));
-                })
-                .catch(function () {
-                  clearTimeout(hardTimer);
-                  safeFinish([], false);
-                });
-            } catch (e) {
-              clearTimeout(hardTimer);
-              safeFinish([], false);
-            }
+            clearTimeout(timer);
+            console.warn("[Adika] fetch fail", url, err);
+            tryUrl(i + 1);
           });
-      } catch (e) {
-        console.error("[Adika] load exception", e);
-        clearTimeout(hardTimer);
-        safeFinish([], false);
       }
+
+      tryUrl(0);
     }
 
     // Dynamic Central FAB
@@ -5769,37 +5703,31 @@ EXPLORER_HTML = r"""
     })();
 
     setTabs();
+    try { state.feedMode = "all"; state.category = ""; } catch (e) {}
+    try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e) {}
 
-    // Bind critical UI BEFORE network — never depend on fetch success
-    try {
-      document.addEventListener("click", function (ev) {
-        var t = ev.target;
-        if (!t) return;
-        var tabS = t.closest && t.closest("#tabSell");
-        var tabB = t.closest && t.closest("#tabBuy");
-        if (tabS) {
-          try { state.loading = false; state.tab = "marketplace"; setTabs(); load(false); } catch (e) {}
-        } else if (tabB) {
-          try { state.loading = false; state.tab = "requests"; setTabs(); load(false); } catch (e) {}
-        }
-      }, false);
-    } catch (e) {}
-
-    // Kick off feed — failures cannot freeze UI (load has 3s timeout + finally)
     try {
       state.loading = false;
       load(false);
     } catch (e) {
       console.error("[Adika] initial load", e);
       try { state.loading = false; } catch (e2) {}
-      try { if (statusEl) statusEl.style.display = "none"; } catch (e3) {}
+      try { renderFallbackCards(DEMO_LISTINGS); } catch (e3) {}
     }
 
-    // Absolute last-resort spinner kill
+    // If after 5s still only demos / empty, force explorer once more
     setTimeout(function () {
-      try { state.loading = false; } catch (e) {}
-      try { if (statusEl) { statusEl.style.display = "none"; } } catch (e) {}
-    }, 3500);
+      try {
+        var onlyDemo = state.items && state.items.length && String(state.items[0].id || "").indexOf("demo") === 0;
+        var empty = !state.items || !state.items.length;
+        if (onlyDemo || empty) {
+          state.feedMode = "all";
+          state.loading = false;
+          load(false);
+        }
+      } catch (e) {}
+      try { if (statusEl) statusEl.style.display = "none"; } catch (e) {}
+    }, 5000);
   })();
   </script>
 </body>
