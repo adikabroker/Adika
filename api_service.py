@@ -2750,34 +2750,29 @@ function shareContract() {{
 
     @web_app.route('/api/feed/for-you', methods=['GET', 'OPTIONS'])
     def api_feed_for_you():
+        """Personalized feed — NEVER 500. Always HTTP 200 + JSON list."""
         if request.method == 'OPTIONS':
             return ('', 204)
-        try:
-            uid = int(request.args.get('user_id') or 0)
-            page = max(1, int(request.args.get('page') or 1))
-            limit = min(50, max(1, int(request.args.get('limit') or 24)))
-            try:
-                import adika_features as af
-                data = af.fetch_for_you_feed(uid, limit=limit, page=page)
-                if data and (data.get('items') or data.get('listings')):
-                    return jsonify(data), 200
-            except Exception as fe:
-                logger.warning("for-you primary failed, fallback explorer: %s", fe)
+
+        def _safe_items(limit=12, page=1):
             items = []
-            # Safer fallback using explorer query
-            if not items:
+            try:
+                from models import get_db_connection, is_postgres
+                conn = get_db_connection()
+                cur = conn.cursor()
+                off = max(0, (page - 1) * limit)
                 try:
-                    from models import get_db_connection, is_postgres, get_placeholder
-                    conn = get_db_connection()
-                    cur = conn.cursor()
-                    p = get_placeholder()
-                    off = (page - 1) * limit
                     if is_postgres():
                         cur.execute(
-                            "SELECT * FROM listings WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) "
-                            "NOT IN ('deleted','sold','rented','expired')) "
-                            "AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '') "
-                            "ORDER BY id DESC LIMIT %s OFFSET %s",
+                            """
+                            SELECT * FROM listings
+                            WHERE (status IS NULL OR LOWER(CAST(status AS TEXT))
+                                   NOT IN ('deleted','sold','rented','expired'))
+                              AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT')
+                                   OR COALESCE(req_type,'') = '')
+                            ORDER BY id DESC
+                            LIMIT %s OFFSET %s
+                            """,
                             (limit, off),
                         )
                     else:
@@ -2786,34 +2781,84 @@ function shareContract() {{
                             (limit, off),
                         )
                     rows = cur.fetchall() or []
-                    items = [dict(r) for r in rows]
-                    for d in items:
-                        if d.get('created_at') and not isinstance(d['created_at'], str):
-                            try:
-                                d['created_at'] = d['created_at'].isoformat()
-                            except Exception:
-                                d['created_at'] = str(d['created_at'])
+                except Exception as qe:
+                    logger.warning("for-you query retry simple: %s", qe)
                     try:
-                        conn.close()
+                        cur.execute("SELECT * FROM listings ORDER BY id DESC LIMIT %s" % int(limit))
                     except Exception:
-                        pass
-                except Exception as e3:
-                    logger.error("for-you sql fallback: %s", e3)
-                    items = []
+                        cur.execute("SELECT * FROM listings ORDER BY id DESC LIMIT ?", (limit,))
+                    rows = cur.fetchall() or []
+                for r in rows:
+                    try:
+                        d = dict(r) if not isinstance(r, dict) else dict(r)
+                    except Exception:
+                        try:
+                            d = {k: r[k] for k in r.keys()}
+                        except Exception:
+                            continue
+                    # JSON-safe dates
+                    for k, v in list(d.items()):
+                        if v is None:
+                            continue
+                        if hasattr(v, 'isoformat'):
+                            try:
+                                d[k] = v.isoformat()
+                            except Exception:
+                                d[k] = str(v)
+                    items.append(d)
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            except Exception as e:
+                logger.error("for-you _safe_items: %s", e, exc_info=True)
+            return items
+
+        try:
+            try:
+                uid = int(request.args.get('user_id') or 0)
+            except Exception:
+                uid = 0
+            try:
+                page = max(1, int(request.args.get('page') or 1))
+            except Exception:
+                page = 1
+            try:
+                limit = min(50, max(1, int(request.args.get('limit') or 24)))
+            except Exception:
+                limit = 24
+
+            items = []
+            # Primary personalized (optional)
+            try:
+                import adika_features as af
+                data = af.fetch_for_you_feed(uid, limit=limit, page=page)
+                if isinstance(data, dict):
+                    items = data.get('items') or data.get('listings') or []
+            except Exception as fe:
+                logger.warning("for-you primary skipped: %s", fe)
+                items = []
+
+            if not items:
+                items = _safe_items(limit=limit, page=page)
+
             return jsonify({
                 "success": True,
                 "items": items,
                 "listings": items,
                 "page": page,
                 "has_more": len(items) >= limit,
-                "fallback": True,
             }), 200
         except Exception as e:
-            logger.error("for-you: %s", e, exc_info=True)
-            return jsonify({"success": True, "items": [], "listings": [], "message": str(e)}), 200
-
-
-
+            logger.error("for-you outer: %s", e, exc_info=True)
+            return jsonify({
+                "success": True,
+                "items": [],
+                "listings": [],
+                "page": 1,
+                "has_more": False,
+                "message": str(e),
+            }), 200
 
 
     @web_app.route('/api/auth/device', methods=['POST', 'OPTIONS'])
