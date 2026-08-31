@@ -682,6 +682,7 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
     return {
         "success": True,
         "items": items,
+        "listings": items,
         "page": page,
         "prefs": prefs,
         "has_more": len(items) >= limit,
