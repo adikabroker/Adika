@@ -1115,7 +1115,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 1. FIXED STICKY TEAL HEADER (Compact 3-Row Layout)                -->
   <!-- ================================================================= -->
-  <header class="fixed top-0 left-0 right-0 z-50 bg-[#16acbd] text-white shadow-md p-2 flex flex-col gap-1.5">
+  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 16px rgba(15,23,42,0.12);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
       <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
@@ -1184,7 +1184,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main class="w-full max-w-md mx-auto pt-32 pb-24 px-2.5">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto pb-24 px-2.5" style="padding-top: 180px;">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -1257,7 +1257,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 3. FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+)         -->
   <!-- ================================================================= -->
-  <nav class="fixed bottom-3 left-3 right-3 z-50 bg-white/95 backdrop-blur-xl rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] border border-white/60 px-4 py-2 flex items-center justify-between max-w-md mx-auto">
+  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] bg-white/95 backdrop-blur-xl rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.15)] border border-white/60 px-4 py-2 flex items-center justify-between max-w-md mx-auto">
     <!-- Left Section: Home & AI Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
       <button id="navHome" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
@@ -3051,30 +3051,38 @@ EXPLORER_HTML = r"""
     }
 
     function load(append) {
-      // Allow re-entry if previous request hung
-      if (state.loading && state._loadStartedAt && (Date.now() - state._loadStartedAt) < 12000) return;
+      // Never freeze UI: allow re-entry after 3s, always clear spinner
+      var now = Date.now();
+      if (state.loading && state._loadStartedAt && (now - state._loadStartedAt) < 3000) {
+        return;
+      }
       state.loading = true;
-      state._loadStartedAt = Date.now();
+      state._loadStartedAt = now;
+
       if (!append) {
-        try { statusEl.style.display = "none"; } catch (e) {}
-        var sk = "";
-        for (var si = 0; si < 6; si++) {
-          sk += '<div class="adika-card animate-pulse">' +
-            '<div class="w-full aspect-[4/3] bg-slate-200"></div>' +
-            '<div class="p-2 space-y-2">' +
-              '<div class="h-3 bg-slate-200 rounded w-4/5"></div>' +
-              '<div class="h-3 bg-slate-200 rounded w-2/5"></div>' +
-              '<div class="h-2 bg-slate-100 rounded w-3/5"></div>' +
-            '</div></div>';
-        }
-        grid.innerHTML = sk;
+        try {
+          if (statusEl) {
+            statusEl.style.display = "block";
+            statusEl.innerHTML =
+              '<div class="inline-block animate-spin w-5 h-5 border-2 border-[#16acbd] border-t-transparent rounded-full mb-1.5"></div>' +
+              '<div><span class="lang-am">እየጫነ ነው…</span><span class="lang-en">Loading listings…</span></div>';
+          }
+        } catch (e) {}
+        try {
+          if (grid) {
+            var sk = "";
+            for (var si = 0; si < 4; si++) {
+              sk += '<div class="adika-card animate-pulse"><div class="w-full aspect-[4/3] bg-slate-200"></div><div class="p-2 space-y-2"><div class="h-3 bg-slate-200 rounded w-4/5"></div><div class="h-3 bg-slate-200 rounded w-2/5"></div></div></div>';
+            }
+            grid.innerHTML = sk;
+          }
+        } catch (e) {}
       }
 
       var page = append ? state.page + 1 : 1;
       var isBuy = state.tab !== "marketplace";
       var useForYou = (!isBuy && state.feedMode === "foryou" && !state.q);
-      var qs = "page=" + page + "&limit=12&order=DESC&active_only=1&type=" +
-        (isBuy ? "BUY" : "SELL");
+      var qs = "page=" + page + "&limit=12&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
       var cat = (state.category || "").trim();
       if (!useForYou && cat && !/^(all|ሁሉም|✨|foryou)/i.test(cat)) {
         qs += "&category=" + encodeURIComponent(cat);
@@ -3083,58 +3091,119 @@ EXPLORER_HTML = r"""
       if (state.chassisOnly) qs += "&chassis_only=1";
 
       var explorerUrl = "/api/explorer/listings?" + qs;
+      var listingsUrl = "/api/listings?" + qs;
       var feedUrl = useForYou
         ? ("/api/feed/for-you?page=" + page + "&limit=12&user_id=" + encodeURIComponent(state.userId || "0"))
         : explorerUrl;
 
-      function applyData(data) {
-        var items = (data && (data.items || data.listings)) || [];
-        state.page = page;
-        state.hasMore = !!(data && (data.has_more || data.hasMore));
-        finishLoading(items, append, state.hasMore);
-      }
-
-      function fetchWithTimeout(url, ms) {
-        var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
-        var timer = setTimeout(function(){ try { if (ctrl) ctrl.abort(); } catch (e) {} }, ms || 10000);
-        return fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
-          .then(function(res){ return res.json().then(function(j){ return { ok: res.ok, data: j }; }); })
-          .finally(function(){ clearTimeout(timer); });
-      }
-
-      fetchWithTimeout(feedUrl, 10000)
-        .then(function(r){
-          var items = (r.data && (r.data.items || r.data.listings)) || [];
-          if ((!r.ok || !items.length) && useForYou) {
-            return fetchWithTimeout(explorerUrl, 10000).then(function(r2){ applyData(r2.data || {}); });
-          }
-          applyData(r.data || {});
-        })
-        .catch(function(err){
-          console.error("[Adika] listings fetch failed", err);
-          if (useForYou) {
-            return fetchWithTimeout(explorerUrl, 10000)
-              .then(function(r2){ applyData(r2.data || {}); })
-              .catch(function(err2){
-                state.loading = false;
-                finishLoading([], append, false);
-                try {
-                  if (statusEl) {
-                    statusEl.style.display = "block";
-                    statusEl.innerHTML = '<span class="text-red-600 text-xs font-bold">ዝርዝር መጫን አልተቻለም — ኔትወርክ/ሰርቨር ያረጋግጡ</span>';
-                  }
-                } catch (e) {}
-              });
-          }
+      var settled = false;
+      function safeFinish(items, hasMore) {
+        if (settled) return;
+        settled = true;
+        state.loading = false;
+        try {
+          state.page = page;
+          state.hasMore = !!hasMore;
+          finishLoading(items || [], append, !!hasMore);
+        } catch (e) {
+          console.error("[Adika] finishLoading", e);
           state.loading = false;
-          finishLoading([], append, false);
           try {
+            if (grid) grid.innerHTML = "";
             if (statusEl) {
               statusEl.style.display = "block";
-              statusEl.innerHTML = '<span class="text-red-600 text-xs font-bold">ዝርዝር መጫን አልተቻለም — ኔትወርክ/ሰርቨር ያረጋግጡ</span>';
+              statusEl.innerHTML = '<span class="text-slate-600 text-xs font-bold">ዝርዝር ለጊዜው አልተገኘም</span>';
             }
+          } catch (e2) {}
+        }
+      }
+
+      // Hard timeout 3s — dismiss spinner & keep UI interactive
+      var hardTimer = setTimeout(function () {
+        if (!settled) {
+          console.warn("[Adika] load timeout 3s — dismissing spinner");
+          safeFinish([], false);
+          // still try fallback in background
+          try {
+            fetch(explorerUrl, { method: "GET" })
+              .then(function (res) { return res.json(); })
+              .then(function (data) {
+                var items = (data && (data.items || data.listings)) || [];
+                if (items.length) {
+                  settled = false; // allow one more paint
+                  safeFinish(items, !!(data.has_more || data.hasMore));
+                }
+              })
+              .catch(function () {});
           } catch (e) {}
-        });
+        }
+      }, 3000);
+
+      function fetchJson(url, ms) {
+        var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        var timer = setTimeout(function () {
+          try { if (ctrl) ctrl.abort(); } catch (e) {}
+        }, ms || 2800);
+        return fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
+          .then(function (res) {
+            return res.json().then(function (j) {
+              return { ok: res.ok, data: j };
+            });
+          })
+          .finally(function () { clearTimeout(timer); });
+      }
+
+      try {
+        fetchJson(feedUrl, 2800)
+          .then(function (r) {
+            var items = (r.data && (r.data.items || r.data.listings)) || [];
+            if ((!r.ok || !items.length) && useForYou) {
+              return fetchJson(explorerUrl, 2500).then(function (r2) {
+                var items2 = (r2.data && (r2.data.items || r2.data.listings)) || [];
+                if (!items2.length) {
+                  return fetchJson(listingsUrl, 2000).then(function (r3) {
+                    var items3 = (r3.data && (r3.data.items || r3.data.listings)) || [];
+                    clearTimeout(hardTimer);
+                    safeFinish(items3, !!(r3.data && (r3.data.has_more || r3.data.hasMore)));
+                  });
+                }
+                clearTimeout(hardTimer);
+                safeFinish(items2, !!(r2.data && (r2.data.has_more || r2.data.hasMore)));
+              });
+            }
+            if (!items.length && !useForYou) {
+              return fetchJson(listingsUrl, 2000).then(function (r3) {
+                var items3 = (r3.data && (r3.data.items || r3.data.listings)) || [];
+                clearTimeout(hardTimer);
+                safeFinish(items3.length ? items3 : items, !!(r3.data && (r3.data.has_more || r3.data.hasMore)));
+              });
+            }
+            clearTimeout(hardTimer);
+            safeFinish(items, !!(r.data && (r.data.has_more || r.data.hasMore)));
+          })
+          .catch(function (err) {
+            console.error("[Adika] listings fetch failed", err);
+            try {
+              fetchJson(explorerUrl, 2000)
+                .then(function (r2) {
+                  var items2 = (r2.data && (r2.data.items || r2.data.listings)) || [];
+                  clearTimeout(hardTimer);
+                  safeFinish(items2, !!(r2.data && (r2.data.has_more || r2.data.hasMore)));
+                })
+                .catch(function () {
+                  clearTimeout(hardTimer);
+                  safeFinish([], false);
+                });
+            } catch (e) {
+              clearTimeout(hardTimer);
+              safeFinish([], false);
+            }
+          });
+      } catch (e) {
+        console.error("[Adika] load exception", e);
+        clearTimeout(hardTimer);
+        safeFinish([], false);
+      }
     }
 
     // Dynamic Central FAB
@@ -3169,6 +3238,9 @@ EXPLORER_HTML = r"""
     };
 
     function selectCategory(catId) {
+      // Always unlock UI when user taps a category
+      try { state.loading = false; } catch (e) {}
+
       catId = (catId || "").trim();
       if (catId === "foryou" || catId === "ለእርስዎ") {
         state.feedMode = "foryou";
