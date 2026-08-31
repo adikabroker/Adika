@@ -2750,7 +2750,7 @@ function shareContract() {{
 
     @web_app.route('/api/feed/for-you', methods=['GET', 'OPTIONS'])
     def api_feed_for_you():
-        """Personalized feed — NEVER 500. Always HTTP 200 + JSON list."""
+        """Personalized feed. Always HTTP 200 JSON — never 500."""
         if request.method == 'OPTIONS':
             return ('', 204)
 
@@ -2764,15 +2764,11 @@ function shareContract() {{
                 try:
                     if is_postgres():
                         cur.execute(
-                            """
-                            SELECT * FROM listings
-                            WHERE (status IS NULL OR LOWER(CAST(status AS TEXT))
-                                   NOT IN ('deleted','sold','rented','expired'))
-                              AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT')
-                                   OR COALESCE(req_type,'') = '')
-                            ORDER BY id DESC
-                            LIMIT %s OFFSET %s
-                            """,
+                            "SELECT * FROM listings WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) "
+                            "NOT IN ('deleted','sold','rented','expired')) "
+                            "AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') "
+                            "OR COALESCE(req_type,'') = '') "
+                            "ORDER BY id DESC LIMIT %s OFFSET %s",
                             (limit, off),
                         )
                     else:
@@ -2782,25 +2778,28 @@ function shareContract() {{
                         )
                     rows = cur.fetchall() or []
                 except Exception as qe:
-                    logger.warning("for-you query retry simple: %s", qe)
+                    logger.warning("for-you simple query: %s", qe)
                     try:
-                        cur.execute("SELECT * FROM listings ORDER BY id DESC LIMIT %s" % int(limit))
+                        cur.execute(
+                            "SELECT * FROM listings ORDER BY id DESC LIMIT %s OFFSET %s",
+                            (limit, off),
+                        )
                     except Exception:
-                        cur.execute("SELECT * FROM listings ORDER BY id DESC LIMIT ?", (limit,))
+                        cur.execute(
+                            "SELECT * FROM listings ORDER BY id DESC LIMIT ? OFFSET ?",
+                            (limit, off),
+                        )
                     rows = cur.fetchall() or []
                 for r in rows:
                     try:
-                        d = dict(r) if not isinstance(r, dict) else dict(r)
+                        d = dict(r)
                     except Exception:
                         try:
                             d = {k: r[k] for k in r.keys()}
                         except Exception:
                             continue
-                    # JSON-safe dates
                     for k, v in list(d.items()):
-                        if v is None:
-                            continue
-                        if hasattr(v, 'isoformat'):
+                        if v is not None and hasattr(v, "isoformat"):
                             try:
                                 d[k] = v.isoformat()
                             except Exception:
@@ -2816,25 +2815,24 @@ function shareContract() {{
 
         try:
             try:
-                uid = int(request.args.get('user_id') or 0)
+                uid = int(request.args.get("user_id") or 0)
             except Exception:
                 uid = 0
             try:
-                page = max(1, int(request.args.get('page') or 1))
+                page = max(1, int(request.args.get("page") or 1))
             except Exception:
                 page = 1
             try:
-                limit = min(50, max(1, int(request.args.get('limit') or 24)))
+                limit = min(50, max(1, int(request.args.get("limit") or 24)))
             except Exception:
                 limit = 24
 
             items = []
-            # Primary personalized (optional)
             try:
                 import adika_features as af
                 data = af.fetch_for_you_feed(uid, limit=limit, page=page)
                 if isinstance(data, dict):
-                    items = data.get('items') or data.get('listings') or []
+                    items = data.get("items") or data.get("listings") or []
             except Exception as fe:
                 logger.warning("for-you primary skipped: %s", fe)
                 items = []
