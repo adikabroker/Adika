@@ -933,13 +933,18 @@ EXPLORER_HTML = r"""
     /* Executive hero carousel — compact max 110px */
     .smart-dot {
       width: 6px; height: 6px; border-radius: 999px;
-      background: rgba(255,255,255,0.35); transition: all 0.25s ease;
+      background: rgba(255,255,255,0.25); transition: all 0.3s ease;
+      border: none; padding: 0; cursor: pointer;
     }
     .smart-dot.active {
-      width: 16px; background: #5eead4;
+      width: 18px; background: #22d3ee;
     }
     .smart-slide { display: none; }
-    .smart-slide.active { display: block; }
+    .smart-slide.active { display: block; animation: smartFade 0.45s ease; }
+    @keyframes smartFade {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .hero-carousel {
       display: flex; gap: 0.4rem; overflow-x: auto; scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch; padding-bottom: 0;
@@ -1143,7 +1148,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 1. FIXED STICKY TEAL HEADER (Compact 3-Row Layout)                -->
   <!-- ================================================================= -->
-  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.28); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
+  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.22); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
       <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
@@ -1219,24 +1224,25 @@ EXPLORER_HTML = r"""
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <!-- SMART TOOLS BANNER: auto-rotate every 4s -->
-    <div id="homeHero" class="mb-2">
-      <div id="smartToolsBanner" class="relative overflow-hidden rounded-2xl border border-white/25 shadow-lg"
-           style="background: linear-gradient(135deg, rgba(15,23,42,0.92), rgba(0,131,143,0.85)); backdrop-filter: blur(12px); min-height: 88px;">
-        <div id="smartBannerTrack" class="relative">
-          <!-- slides injected / static for no-JS -->
-          <button type="button" class="smart-slide w-full text-left px-3.5 py-3" data-tool="chassis" data-idx="0">
-            <div class="text-[8px] font-bold uppercase tracking-wider text-teal-300/90">Smart Tools · 1/6</div>
-            <div class="text-[13px] font-black text-white mt-0.5">🔍 የሻሲ ማጣሪያ</div>
-            <div class="text-[10px] text-slate-300 mt-0.5">VIN Check / Chassis Verification</div>
-          </button>
-        </div>
-        <div id="smartBannerDots" class="flex justify-center gap-1.5 pb-2.5 pt-0">
-          <span class="smart-dot active"></span><span class="smart-dot"></span><span class="smart-dot"></span>
-          <span class="smart-dot"></span><span class="smart-dot"></span><span class="smart-dot"></span>
-        </div>
+    <!-- PROFESSIONAL AI TOOLS BANNER (auto-rotate 5s) + Broker CTA -->
+    <div id="homeHero" class="mb-2.5">
+      <div id="smartToolsBanner" class="relative overflow-hidden rounded-3xl border border-white/25 shadow-2xl"
+           style="background: linear-gradient(135deg, #0b1220 0%, #003b46 55%, #0f172a 100%); min-height: 132px;">
+        <div class="absolute -right-10 -bottom-10 w-40 h-40 rounded-full blur-3xl pointer-events-none" style="background: rgba(34,211,238,0.14);"></div>
+        <div id="smartBannerTrack" class="relative px-4 pt-3.5 pb-1"></div>
+        <div id="smartBannerDots" class="relative flex justify-center gap-1.5 pb-3"></div>
       </div>
-      <!-- keep legacy ids for existing handlers -->
+      <button type="button" id="brokerCtaHome" class="mt-2.5 w-full flex items-center justify-between gap-2 px-3.5 py-3 rounded-2xl border border-white/45 shadow-lg active:scale-[0.99]"
+              style="background: rgba(15,23,42,0.10); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-lg bg-cyan-600/20 px-2 py-1.5 rounded-xl">🤝</span>
+          <div class="text-left min-w-0">
+            <p class="text-[12px] font-extrabold text-slate-900 truncate">ደላላ ኖት? አሁኑኑ ይመዝገቡ!</p>
+            <p class="text-[10px] text-slate-600 truncate">የገዢ ጥያቄ በቴሌግራም ወዲያውኑ ይድረስዎ</p>
+          </div>
+        </div>
+        <span class="shrink-0 text-[11px] font-black bg-cyan-600 text-white px-3 py-1.5 rounded-xl shadow-md">ይመዝገቡ →</span>
+      </button>
       <div class="hidden">
         <button id="heroAdvisorBtn" type="button"></button>
         <button id="heroPoaBtn" type="button"></button>
@@ -1307,7 +1313,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 3. FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+)         -->
   <!-- ================================================================= -->
-  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.18); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,0.35);">
+  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.30); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,0.35);">
     <!-- Left Section: Home & AI Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
       <button id="navHome" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
@@ -1368,7 +1374,7 @@ EXPLORER_HTML = r"""
 
 
   <!-- DEDICATED LIVE ADVISOR CHAT (full-screen view state) -->
-  <div id="analysisView" class="fixed inset-0 z-[60] bg-[#b5eff3] hidden flex-col max-w-md mx-auto w-full">
+  <div id="analysisView" class="fixed inset-0 z-[180] bg-[#b5eff3] hidden flex-col max-w-md mx-auto w-full">
     <div class="shrink-0 px-3 py-2 bg-[#16acbd] text-white flex items-center justify-between shadow-md">
       <div class="flex items-center gap-2 min-w-0">
         <button id="analysisBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-bold">← ተመለስ</button>
@@ -2376,7 +2382,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   
 <!-- Role selection (first launch) -->
-  <div id="roleSelectModal" class="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="roleSelectModal" class="fixed inset-0 z-[180] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl">
       <div class="font-black text-lg text-slate-900 mb-1">እንኳን ወደ Adika በደህና መጡ</div>
       <div class="text-xs text-slate-500 mb-4">እባክዎ ሚናዎን ይምረጡ</div>
@@ -5748,63 +5754,135 @@ EXPLORER_HTML = r"""
     })();
 
 
-    // ---- Smart Tools Banner (auto-rotate 4s) ----
+    // ---- Professional Smart Tools Banner (auto-rotate 5s) ----
     (function initSmartToolsBanner() {
       var slides = [
-        { tool: "chassis", icon: "🔍", title: "የሻሲ ማጣሪያ", sub: "VIN Check / Chassis Verification" },
-        { tool: "duty", icon: "🧮", title: "የቀረጥ ስሌት", sub: "Import Duty & Tax Calculator" },
-        { tool: "loan", icon: "🏦", title: "የባንክ ብድር", sub: "Mortgage & Auto Loan Estimator" },
-        { tool: "compare", icon: "⚖️", title: "የመኪና ንፅፅር", sub: "Vehicle Comparison Tool" },
-        { tool: "diag", icon: "📋", title: "የምርመራ ወረቀት", sub: "Garage Diagnostic Explainer" },
-        { tool: "contract", icon: "📄", title: "የሽያጭ ውል", sub: "Legal Sales Contract Drafter" }
+        {
+          tool: "chassis",
+          tag: "ADIKA VIN INTELLIGENCE",
+          accent: "#22d3ee",
+          title: "🔍 የሻሲ ማጣሪያ (Chassis Verification)",
+          headline: "የመኪናዎን እውነተኛ ታሪክ፣ ሞዴል እና የማኑፋክቸሪንግ አመት በአዲካ ዲጂታል ሲስተም በሰከንዶች ውስጥ ያጣሩ!",
+          cta: "አሁን የሻሲ ቁጥር ያጣሩ →"
+        },
+        {
+          tool: "duty",
+          tag: "SMART CUSTOMS DESK",
+          accent: "#60a5fa",
+          title: "🧮 የቀረጥ ስሌት (Duty & Tax)",
+          headline: "ለደረቅና ኤሌክትሪክ መኪና የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ የገበያ ስሌት ወዲያውኑ ያግኙ።",
+          cta: "የቀረጥ ስሌት አስላ →"
+        },
+        {
+          tool: "loan",
+          tag: "FINANCIAL MORTGAGE DESK",
+          accent: "#818cf8",
+          title: "🏦 የባንክ ብድር (Mortgage & Auto Loan)",
+          headline: "ከአዲካ አጋር ባንኮች ጋር የመኪናና የቤት ብድር አማራጮችን እና ወርሃዊ ክፍያን በትክክል ያሰሉ!",
+          cta: "የብድር አማራጭ አስላ →"
+        },
+        {
+          tool: "compare",
+          tag: "AUTO COMPARISON ENGINE",
+          accent: "#34d399",
+          title: "⚖️ የመኪና ንፅፅር (Vehicle Comparison)",
+          headline: "ሁለት ወይም ከዛ በላይ መኪናዎችን ቴክኒካል ብቃት፣ ነዳጅ ፍጆታ እና የገበያ ዋጋ ጎን ለጎን ያወዳድሩ።",
+          cta: "መኪናዎችን አወዳድር →"
+        },
+        {
+          tool: "diag",
+          tag: "AI GARAGE DIAGNOSTIC",
+          accent: "#c084fc",
+          title: "📋 የምርመራ ወረቀት ማብራሪያ",
+          headline: "የጋራዥ ምርመራ ወረቀትዎን ስካን በማድረግ የመኪናውን ትክክለኛ የብልሽት ደረጃ በግልጽ ይረዱ።",
+          cta: "ወረቀት ስካን ያድርጉ →"
+        },
+        {
+          tool: "contract",
+          tag: "LEGAL DRAFTING DESK",
+          accent: "#fbbf24",
+          title: "📜 የውክልና እና የሽያጭ ውል",
+          headline: "ህጋዊ የሽያጭ ውል እና የውክልና ሰነዶችን በጥቂት ጠቅታዎች ያዘጋጁ!",
+          cta: "ወደ ውል ማዘጋጀት ሂድ →"
+        }
       ];
+
       var track = document.getElementById("smartBannerTrack");
       var dotsWrap = document.getElementById("smartBannerDots");
+      var banner = document.getElementById("smartToolsBanner");
       if (!track) return;
-      track.innerHTML = "";
-      if (dotsWrap) dotsWrap.innerHTML = "";
-      slides.forEach(function (s, i) {
-        var btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "smart-slide w-full text-left px-3.5 py-3" + (i === 0 ? " active" : "");
-        btn.setAttribute("data-tool", s.tool);
-        btn.setAttribute("data-idx", String(i));
-        btn.innerHTML =
-          '<div class="text-[8px] font-bold uppercase tracking-wider text-teal-300/90">Smart Tools · ' + (i + 1) + '/6</div>' +
-          '<div class="text-[13px] font-black text-white mt-0.5">' + s.icon + " " + s.title + "</div>" +
-          '<div class="text-[10px] text-slate-300 mt-0.5">' + s.sub + "</div>";
-        btn.onclick = function () {
+
+      function openTool(tool) {
+        try {
+          if (typeof showAnalysisView === "function") showAnalysisView(true);
+          setTimeout(function () {
+            var map = {
+              chassis: "toolChassisBtn",
+              duty: "toolDutyBtn",
+              loan: "toolLoanBtn",
+              compare: "toolCompareBtn",
+              diag: "toolDiagBtn",
+              contract: "toolContractBtn",
+              poa: "toolPoaBtn"
+            };
+            var el = document.getElementById(map[tool] || "");
+            if (el) el.click();
+            else if (typeof openToolModal === "function") openToolModal(tool);
+          }, 180);
+        } catch (e) {}
+      }
+
+      function render(idx) {
+        var s = slides[idx];
+        track.innerHTML =
+          '<button type="button" class="smart-slide active w-full text-left relative z-10" data-tool="' + s.tool + '">' +
+          '<div class="flex justify-between items-center mb-1.5">' +
+          '<span class="text-[9px] font-black tracking-widest uppercase px-2.5 py-0.5 rounded-full border border-white/15 bg-white/10" style="color:' + s.accent + '">' + s.tag + "</span>" +
+          '<span class="text-[10px] text-slate-400 font-mono">' + (idx + 1) + " of " + slides.length + "</span>" +
+          "</div>" +
+          '<div class="text-[14px] font-black text-white leading-snug">' + s.title + "</div>" +
+          '<p class="text-[11px] text-slate-300 leading-relaxed mt-1">' + s.headline + "</p>" +
+          '<div class="mt-2.5 pt-2 border-t border-white/10 flex justify-between items-center">' +
+          '<span class="text-[11px] font-black" style="color:' + s.accent + '">' + s.cta + "</span>" +
+          "</div></button>";
+        track.querySelector("button").onclick = function () { openTool(s.tool); };
+        if (dotsWrap) {
+          dotsWrap.innerHTML = "";
+          slides.forEach(function (_, i) {
+            var d = document.createElement("button");
+            d.type = "button";
+            d.className = "smart-dot" + (i === idx ? " active" : "");
+            d.onclick = function (e) {
+              e.stopPropagation();
+              cur = i;
+              render(cur);
+            };
+            dotsWrap.appendChild(d);
+          });
+        }
+      }
+
+      var cur = 0;
+      render(0);
+      setInterval(function () {
+        cur = (cur + 1) % slides.length;
+        render(cur);
+      }, 5000);
+
+      var brCta = document.getElementById("brokerCtaHome");
+      if (brCta) {
+        brCta.onclick = function () {
           try {
-            if (typeof openToolModal === "function") openToolModal(s.tool);
-            else if (typeof showAnalysisView === "function") {
-              showAnalysisView(true);
-              setTimeout(function () {
-                var map = { chassis: "toolChassisBtn", duty: "toolDutyBtn", loan: "toolLoanBtn", compare: "toolCompareBtn", diag: "toolDiagBtn", contract: "toolContractBtn" };
-                var el = document.getElementById(map[s.tool] || "");
-                if (el) el.click();
-              }, 200);
+            if (typeof openM === "function") openM("brokerRegModal");
+            else {
+              var m = document.getElementById("brokerRegModal");
+              if (m) { m.classList.remove("hidden"); m.style.display = "flex"; }
             }
           } catch (e) {}
         };
-        track.appendChild(btn);
-        if (dotsWrap) {
-          var d = document.createElement("span");
-          d.className = "smart-dot" + (i === 0 ? " active" : "");
-          dotsWrap.appendChild(d);
-        }
-      });
-      var idx = 0;
-      setInterval(function () {
-        var nodes = track.querySelectorAll(".smart-slide");
-        var dots = dotsWrap ? dotsWrap.querySelectorAll(".smart-dot") : [];
-        if (!nodes.length) return;
-        nodes[idx].classList.remove("active");
-        if (dots[idx]) dots[idx].classList.remove("active");
-        idx = (idx + 1) % nodes.length;
-        nodes[idx].classList.add("active");
-        if (dots[idx]) dots[idx].classList.add("active");
-      }, 4000);
+      }
     })();
+
 
     setTabs();
     try { state.feedMode = "all"; state.category = ""; } catch (e) {}
