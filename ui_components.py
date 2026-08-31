@@ -966,7 +966,7 @@ EXPLORER_HTML = r"""
       from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    #smartToolsBanner { max-height: 88px; }
+    #smartToolsBanner { max-height: 78px; }
     .line-clamp-1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .hero-carousel {
       display: flex; gap: 0.4rem; overflow-x: auto; scroll-snap-type: x mandatory;
@@ -1171,7 +1171,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 1. FIXED STICKY TEAL HEADER (Compact 3-Row Layout)                -->
   <!-- ================================================================= -->
-  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.22); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
+  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.12); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
       <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
@@ -1325,16 +1325,16 @@ EXPLORER_HTML = r"""
   <!-- 3. FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+)         -->
   <!-- ================================================================= -->
   
-  <!-- 4. Glassmorphic floating broker card (bottom-right only) -->
-  <div id="brokerFloatCard" class="fixed bottom-20 right-3 z-[90]">
-    <button type="button" id="brokerCtaHome" class="backdrop-blur-2xl px-3.5 py-2 rounded-2xl shadow-xl flex items-center gap-2 active:scale-95 transition-all"
-            style="background: rgba(15,23,42,0.10); border: 1px solid rgba(255,255,255,0.50);">
-      <span class="text-base">🤝</span>
-      <span class="text-[11px] font-black tracking-wide text-[#004d40]">ደላላ ኖት? ይመዝገቡ →</span>
+  <!-- Ultra-glass compact broker badge -->
+  <div id="brokerFloatCard" class="fixed bottom-16 right-3 z-[90]">
+    <button type="button" id="brokerCtaHome" class="backdrop-blur-3xl px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-1.5 active:scale-95 transition-all"
+            style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.40);">
+      <span class="text-xs">🤝</span>
+      <span class="text-[10px] font-black tracking-tight text-[#004d40]">ደላላ ኖት? ይመዝገቡ →</span>
     </button>
   </div>
 
-  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.30); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,0.35);">
+  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.22); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,0.35);">
     <!-- Left Section: Home & AI Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
       <button id="navHome" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
@@ -1355,8 +1355,8 @@ EXPLORER_HTML = r"""
           <span class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
         </div>
         <span class="text-[9px] font-semibold mt-0.5 text-[#0e7490]">
-          <span class="lang-am">ዲጂታል</span>
-          <span class="lang-en">ዲጂታል</span>
+          <span class="lang-am">አማካሪ</span>
+          <span class="lang-en">Advisor</span>
         </span>
       </button>
     </div>
@@ -5778,34 +5778,91 @@ EXPLORER_HTML = r"""
     })();
 
 
-    // ---- Compact Digital Tools Banner → Advisor Chat (4.5s) ----
+    // ---- Digital Tools Banner: form tools → form, advisor → chat ----
     (function initSmartToolsBanner() {
       var slides = [
-        { tool: "chassis", tag: "አዲካ ዲጂታል ሲስተም", title: "🔍 የሻሲ ማጣሪያ (VIN Check)", desc: "የመኪናዎን እውነተኛ ታሪክ እና ሞዴል በአዲካ ዲጂታል ሲስተም ያጣሩ" },
-        { tool: "duty", tag: "አዲካ ዲጂታል ሲስተም", title: "🧮 የቀረጥ ስሌት (Customs Duty)", desc: "የመኪና ማስገቢያ ቀረጥ እና ታክስ ትክክለኛ የገበያ ስሌት" },
-        { tool: "loan", tag: "አዲካ ዲጂታል ሲስተም", title: "🏦 የባንክ ብድር (Mortgage & Auto)", desc: "የቤትና የመኪና ብድር አማራጮችን በአዲካ ዲጂታል ሲስተም ያሰሉ" },
-        { tool: "compare", tag: "አዲካ ዲጂታል ሲስተም", title: "⚖️ የመኪና ንፅፅር (Car Match)", desc: "የሁለት መኪናዎችን ቴክኒካል ብቃት እና ዋጋ ጎን ለጎን ያወዳድሩ" },
-        { tool: "diag", tag: "አዲካ ዲጂታል ሲስተም", title: "📋 የምርመራ ወረቀት ማብራሪያ", desc: "የጋራዥ የቁጥጥር ወረቀትዎን በአዲካ ዲጂታል ሲስተም ይተርጉሙ" },
-        { tool: "contract", tag: "አዲካ ዲጂታል ሲስተም", title: "📜 የውክልና እና የሽያጭ ውል", desc: "ህጋዊ የሽያጭ ውል እና የውክልና ሰነዶችን በዲጂታል ሲስተም ያዘጋጁ" }
+        {
+          id: "poa_verify",
+          tag: "የህግ ረቂቅ ወኪል",
+          title: "📜 የውክልና ማጣሪያ እና ማረጋገጫ",
+          desc: "የውክልና ሰነዶችን ህጋዊነት በስካን ማረጋገጫ ፎርም ወዲያውኑ ያረጋግጡ",
+          cta: "ወደ ፎርም ሂድ →",
+          type: "form",
+          tool: "poa"
+        },
+        {
+          id: "sales_contract",
+          tag: "ህጋዊ ውል አዘጋጅ",
+          title: "📝 የሽያጭ ውል ማዘጋጃ ፎርም",
+          desc: "በህግ ባለሙያዎች የተረጋገጠ የመኪና እና የቤት የሽያጭ ውል ረቂቅ ያዘጋጁ",
+          cta: "ውል አዘጋጅ →",
+          type: "form",
+          tool: "contract"
+        },
+        {
+          id: "financial_advisor",
+          tag: "የፋይናንስ አማካሪ",
+          title: "🏦 የባንክ ብድር እና የፋይናንስ አማካሪ",
+          desc: "የቤትና የመኪና ብድር አማራጮችን ከአዲካ የፋይናንስ አማካሪ ጋር ይወያዩ",
+          cta: "አማካሪ አውራ →",
+          type: "chat",
+          tool: "loan"
+        },
+        {
+          id: "chassis_check",
+          tag: "የተሽከርካሪ ኦዲት",
+          title: "🔍 የሻሲ እና የታሪክ ማጣሪያ",
+          desc: "የመኪናውን ትክክለኛ ሞዴል፣ የአደጋ ታሪክ እና ዝርዝር መረጃ በ VIN ያግኙ",
+          cta: "ወደ ማጣሪያ ፎርም →",
+          type: "form",
+          tool: "chassis"
+        },
+        {
+          id: "customs_duty",
+          tag: "የታክስ ስሌት",
+          title: "🧮 የጉምሩክ ቀረጥ እና ታክስ አስሊ",
+          desc: "ለማንኛውም አይነት ተሽከርካሪ የጉምሩክ ቀረጥ መጠን ትክክለኛ ስሌት",
+          cta: "ቀረጥ አስላ →",
+          type: "form",
+          tool: "duty"
+        }
       ];
+
       var track = document.getElementById("smartBannerTrack");
       var dotsWrap = document.getElementById("smartBannerDots");
       if (!track) return;
 
-      window.__adikaOpenToolChat = function(toolKey) {
+      var btnMap = {
+        poa: "toolPoaBtn",
+        contract: "toolContractBtn",
+        chassis: "toolChassisBtn",
+        duty: "toolDutyBtn",
+        loan: "toolLoanBtn",
+        compare: "toolCompareBtn",
+        diag: "toolDiagBtn"
+      };
+
+      function openFormTool(toolKey) {
+        try {
+          if (typeof showAnalysisView === "function") showAnalysisView(true);
+          setTimeout(function () {
+            var id = btnMap[toolKey];
+            var el = id ? document.getElementById(id) : null;
+            if (el) el.click();
+            else if (typeof openToolModal === "function") openToolModal(toolKey);
+          }, 160);
+        } catch (e) {}
+      }
+
+      window.__adikaOpenToolChat = function (toolKey) {
         try {
           if (typeof showAnalysisView === "function") showAnalysisView(true);
           var greetings = {
-            chassis: "ሰላም! በአዲካ ዲጂታል ሲስተም እንኳን ደህና መጡ። የሻሲ/VIN ማጣሪያ ለመጠቀም ዝግጁ ነኝ — የሻሲ ቁጥርዎን ይላኩ።",
-            duty: "ሰላም! በአዲካ ዲጂታል ሲስተም የቀረጥ ስሌት ዝግጁ ነኝ። ሞዴል፣ ዓመት እና CIF ዋጋ ይጻፉ።",
-            loan: "ሰላም! የባንክ ብድር ስሌት በአዲካ ዲጂታል ሲስተም። ጠቅላላ ዋጋ እና ቅድመ ክፍያ ይንገሩኝ።",
-            compare: "ሰላም! የመኪና ንፅፅር በአዲካ ዲጂታል ሲስተም። ሁለት ሞዴሎችን (ከዓመት ጋር) ይጻፉ።",
-            diag: "ሰላም! የምርመራ ወረቀት ማብራሪያ በአዲካ ዲጂታል ሲስተም። ፎቶ ይስቀሉ ወይም ጽሁፍ ይላኩ።",
-            contract: "ሰላም! የሽያጭ/ውክልና ውል በአዲካ ዲጂታል ሲስተም። የውል ዓይነት ይምረጡ (መኪና ሽያጭ፣ ኪራይ፣ ቤት)።",
+            loan: "ሰላም! የባንክ ብድር እና የፋይናንስ አማካሪ — ጠቅላላ ዋጋ ወይም ወርሃዊ ገቢዎን ይንገሩኝ።",
             general_assistant: "ሰላም! በአዲካ ዲጂታል ሲስተም እንኳን ደህና መጡ። እንዴት ልረዳዎ?"
           };
           var msg = greetings[toolKey] || greetings.general_assistant;
-          setTimeout(function() {
+          setTimeout(function () {
             try {
               var log = document.getElementById("advisorChatLog");
               if (log) {
@@ -5821,6 +5878,14 @@ EXPLORER_HTML = r"""
         } catch (e) {}
       };
 
+      function handleSlide(s) {
+        if (s.type === "chat") {
+          window.__adikaOpenToolChat(s.tool);
+        } else {
+          openFormTool(s.tool);
+        }
+      }
+
       function render(idx) {
         var s = slides[idx];
         track.innerHTML =
@@ -5832,35 +5897,42 @@ EXPLORER_HTML = r"""
           '<div class="min-w-0">' +
           '<div class="text-[12px] font-extrabold text-white leading-tight truncate">' + s.title + "</div>" +
           '<p class="text-[10px] text-slate-300 leading-tight mt-0.5 line-clamp-1">' + s.desc + "</p></div>" +
-          '<span class="shrink-0 text-[10px] font-bold text-cyan-400">አስጀምር →</span></div></button>';
+          '<span class="shrink-0 text-[10px] font-bold text-cyan-400">' + s.cta + "</span></div></button>";
         var btn = track.querySelector("button");
-        if (btn) btn.onclick = function () { window.__adikaOpenToolChat(s.tool); };
+        if (btn) btn.onclick = function () { handleSlide(s); };
         if (dotsWrap) {
           dotsWrap.innerHTML = "";
-          slides.forEach(function (_, i) {
+          slides.forEach(function (_, i2) {
             var d = document.createElement("button");
             d.type = "button";
-            d.className = "smart-dot" + (i === idx ? " active" : "");
-            d.onclick = function (e) { e.stopPropagation(); cur = i; render(cur); };
+            d.className = "smart-dot" + (i2 === idx ? " active" : "");
+            d.onclick = function (e) { e.stopPropagation(); cur = i2; render(cur); };
             dotsWrap.appendChild(d);
           });
         }
       }
+
       var cur = 0;
       render(0);
-      setInterval(function () { cur = (cur + 1) % slides.length; render(cur); }, 4500);
+      setInterval(function () {
+        cur = (cur + 1) % slides.length;
+        render(cur);
+      }, 4500);
 
       var br = document.getElementById("brokerCtaHome");
-      if (br) br.onclick = function () {
-        try {
-          if (typeof openM === "function") openM("brokerRegModal");
-          else {
-            var m = document.getElementById("brokerRegModal");
-            if (m) { m.classList.remove("hidden"); m.style.display = "flex"; }
-          }
-        } catch (e) {}
-      };
+      if (br) {
+        br.onclick = function () {
+          try {
+            if (typeof openM === "function") openM("brokerRegModal");
+            else {
+              var m = document.getElementById("brokerRegModal");
+              if (m) { m.classList.remove("hidden"); m.style.display = "flex"; }
+            }
+          } catch (e) {}
+        };
+      }
     })();
+
 
 
 
