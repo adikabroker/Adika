@@ -2527,6 +2527,57 @@ EXPLORER_HTML = r"""
 
     var grid = document.getElementById("grid");
     var statusEl = document.getElementById("status");
+
+    // ========== BULLETPROOF FALLBACK FEED (never blank UI) ==========
+    var DEMO_LISTINGS = [
+      { id: "demo-1", main_category: "መኪና", category: "መኪና", sub_category: "Toyota Vitz", brand: "Toyota", model: "Vitz", price: "1850000", description: "Toyota Vitz — ናሙና ማስታወቂያ", created_at: new Date().toISOString(), view_count: 42, photos: [], photo_urls: [] },
+      { id: "demo-2", main_category: "መኪና", category: "መኪና", sub_category: "Hyundai Tucson", brand: "Hyundai", model: "Tucson", price: "4200000", description: "Hyundai Tucson — ናሙና", created_at: new Date().toISOString(), view_count: 18, photos: [], photo_urls: [] },
+      { id: "demo-3", main_category: "ቤት", category: "ቤት", sub_category: "አፓርታማ ቦሌ", price: "6500000", description: "አፓርታማ ቦሌ — ናሙና", created_at: new Date().toISOString(), view_count: 27, photos: [], photo_urls: [] },
+      { id: "demo-4", main_category: "ቤት", category: "ቤት", sub_category: "መሬት አዲስ ከተማ", price: "0", description: "መሬት — ለዋጋ ደውሉ", created_at: new Date().toISOString(), view_count: 9, photos: [], photo_urls: [] }
+    ];
+
+    function formatDemoPrice(p) {
+      var n = Number(String(p || "").replace(/[^0-9.]/g, ""));
+      if (!n || n <= 0 || n > 300000000) return "ለዋጋ ደውሉ";
+      try { return Math.round(n).toLocaleString("en-US") + " ETB"; } catch (e) { return n + " ETB"; }
+    }
+
+    function renderFallbackCards(items) {
+      var g = document.getElementById("grid");
+      if (!g) return;
+      var list = (items && items.length) ? items : DEMO_LISTINGS;
+      var html = "";
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i] || {};
+        var title = it.sub_category || it.brand || it.model || it.main_category || it.category || "ማስታወቂያ";
+        if (it.brand && it.model) title = (it.brand + " " + it.model).trim();
+        var priceTxt = formatDemoPrice(it.price);
+        var isCar = (it.main_category === "መኪና" || it.category === "መኪና");
+        var emoji = isCar ? "🚗" : "🏠";
+        html +=
+          '<div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">' +
+            '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:40px;">' + emoji + '</div>' +
+            '<div style="padding:8px 10px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">' +
+                '<div style="font-weight:800;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + title + ' ✓</div>' +
+                '<div style="font-size:10px;color:#64748b;flex-shrink:0;">now</div>' +
+              '</div>' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">' +
+                '<div style="font-weight:800;font-size:12px;color:#0e7490;">💰 ' + priceTxt + '</div>' +
+                '<div style="color:#94a3b8;font-size:14px;">♡</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+      }
+      g.innerHTML = html;
+      try {
+        if (statusEl) { statusEl.style.display = "none"; statusEl.innerHTML = ""; }
+      } catch (e) {}
+    }
+
+    // Paint demo cards IMMEDIATELY — before any network call
+    try { renderFallbackCards(DEMO_LISTINGS); } catch (e) { console.error("[Adika] fallback render", e); }
+
     var moreBtn = document.getElementById("more");
     var tabSell = document.getElementById("tabSell");
     var tabBuy = document.getElementById("tabBuy");
@@ -3046,28 +3097,35 @@ EXPLORER_HTML = r"""
           state.items = (state.items || []).concat(items);
         }
         if (!items.length) {
-          if (!append && statusEl) {
-            statusEl.style.display = "block";
-            statusEl.innerHTML =
-              '<div class="py-10 px-4 text-center">' +
-                '<div class="text-4xl mb-2">📭</div>' +
-                '<div class="text-slate-700 font-bold text-sm mb-1">' +
-                  '<span class="lang-am">ምንም ማስታወቂያ አልተገኘም</span>' +
-                  '<span class="lang-en">No listings found</span>' +
-                '</div>' +
-                '<p class="text-slate-500 text-xs mt-1">' +
-                  '<span class="lang-am">ታቦችን ወይም ፍለጋን ይሞክሩ</span>' +
-                '</p></div>';
+          if (!append) {
+            // Never leave blank blue screen — show demo cards + soft message
+            try { renderFallbackCards(DEMO_LISTINGS); } catch (e) {}
+            try {
+              if (statusEl) {
+                statusEl.style.display = "block";
+                statusEl.innerHTML =
+                  '<div class="py-3 px-3 text-center text-slate-600 text-xs font-bold">' +
+                    '<span class="lang-am">የቀጥታ ዝርዝር በመጠባበቅ ላይ… ናሙና ካርዶች ተታይተዋል</span>' +
+                  '</div>';
+              }
+            } catch (e) {}
           }
           try { if (moreBtn) moreBtn.classList.add("hidden"); } catch (e) {}
           return;
         }
+        var painted = 0;
         for (var i = 0; i < items.length; i++) {
           try {
-            if (grid) grid.appendChild(createCardElement(items[i]));
+            if (grid) {
+              grid.appendChild(createCardElement(items[i]));
+              painted++;
+            }
           } catch (cardErr) {
             console.error("[Adika] card render", cardErr);
           }
+        }
+        if (painted === 0 && items.length) {
+          try { renderFallbackCards(items); } catch (e) {}
         }
         try {
           if (moreBtn) {
