@@ -157,77 +157,6 @@ SELLER_FORM_HTML = r"""
 </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen text-slate-800">
-<script>
-window.openAiChat = window.openAiChat || function(prefillText){
-  try {
-    var tools = ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal","aiSearchView"];
-    for (var i=0;i<tools.length;i++){
-      var el = document.getElementById(tools[i]);
-      if (!el) continue;
-      el.classList.add("hidden");
-      el.classList.remove("flex");
-      el.style.setProperty("display","none","important");
-    }
-    var v = document.getElementById("analysisView");
-    if (v){
-      v.classList.remove("hidden");
-      v.classList.add("flex");
-      v.style.setProperty("display","flex","important");
-      v.style.setProperty("z-index","260","important");
-    }
-    document.body.style.overflow = "hidden";
-    var log = document.getElementById("advisorChatLog");
-    if (log && !log.dataset.seeded){
-      log.innerHTML = "";
-      window.advisorChatHistory = [];
-      var hello = "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። እንዴት ልረዳዎት?";
-      if (typeof appendAdvisorChat === "function") appendAdvisorChat("advisor", hello);
-      log.dataset.seeded = "1";
-    }
-    var input = document.getElementById("advisorChatInput");
-    if (prefillText && input){
-      input.value = prefillText;
-      setTimeout(function(){
-        var sendBtn = document.getElementById("advisorChatSend");
-        if (sendBtn) sendBtn.click();
-      }, 30);
-    }
-  } catch (err) { console.error("openAiChat", err); }
-};
-window.handleStartAiChat = window.handleStartAiChat || function(opts){
-  opts = opts || {};
-  var budgetEl = document.getElementById("advisorBudget");
-  var incomeEl = document.getElementById("advisorMonthlyIncome");
-  var budget = Number(opts.budget || (budgetEl && budgetEl.value) || 0);
-  var income = Number(opts.income || (incomeEl && incomeEl.value) || 0);
-  var kind = opts.optionType || opts.context || "general";
-  var b = (budget||0).toLocaleString();
-  var inc = (income||0).toLocaleString();
-  var title = kind;
-  if (kind==="auto" || kind==="Automotive") title = "ተሽከርካሪ";
-  else if (kind==="property" || kind==="Real Estate") title = "ሪል እስቴት";
-  else if (kind==="roi" || kind==="Business") title = "ንግድ";
-  else title = "ፋይናንስ";
-  var prompt = "በ " + b + " ETB በጀት እና በ " + inc + " ETB ወርሃዊ ገቢ የተመረጡትን የ" + title + " የፋይናንስ አማራጮች ማብራሪያ እፈልጋለሁ።";
-  window.openAiChat(prompt);
-};
-
-document.addEventListener("click", function(ev){
-  var t = ev.target;
-  if (!t || !t.closest) return;
-  if (t.closest("#hubFinanceAdvisorBanner")) {
-    ev.preventDefault(); ev.stopPropagation();
-    if (window.handleStartAiChat) window.handleStartAiChat({optionType:"general"});
-    return;
-  }
-  var cta = t.closest(".opp-chat-cta");
-  if (cta) {
-    ev.preventDefault(); ev.stopPropagation();
-    if (window.handleStartAiChat) window.handleStartAiChat({context: cta.getAttribute("data-context")||"auto"});
-  }
-}, true);
-</script>
-
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useRef, useEffect } = React;
@@ -1839,19 +1768,19 @@ EXPLORER_HTML = r"""
               <div class="opp-label text-amber-400">A · Automotive</div>
               <div class="opp-title">ተሽከርካሪ + የባንክ ብድር</div>
               <div id="oppAutoBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="auto" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'auto',optionType:'Automotive'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="auto">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="property">
               <div class="opp-label text-sky-400">B · Real Estate</div>
               <div class="opp-title">ሪል እስቴት · ቅድመ ክፍያ</div>
               <div id="oppPropBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="property" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'property',optionType:'Real Estate'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="property">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="roi">
               <div class="opp-label text-emerald-400">C · Business ROI</div>
               <div class="opp-title">ንግድ / Startup · ዓመታዊ ROI</div>
               <div id="oppRoiBody" class="opp-body">ከበጀት ቀመር እየተሰላ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="roi" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'roi',optionType:'Business'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="roi">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
           </div>
 
@@ -1941,8 +1870,7 @@ EXPLORER_HTML = r"""
               <span class="tool-sub">Cadastral Map Verification</span>
             </button>
           </div>
-          <button type="button" id="hubFinanceAdvisorBanner" style="pointer-events:auto;position:relative;z-index:40"
-            onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({optionType:'general'});else if(window.openAiChat)openAiChat();"
+          <button type="button" id="hubFinanceAdvisorBanner"
             class="w-full bg-gradient-to-r from-cyan-500/20 via-slate-900/60 to-indigo-500/20 backdrop-blur-2xl border border-cyan-400/50 rounded-2xl p-3 mt-2 flex items-center justify-between shadow-lg shadow-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer relative z-10 shrink-0">
             <div class="min-w-0 text-left pr-2">
               <div class="text-white font-extrabold text-[12px] leading-tight drop-shadow-md">💡 ዲጂታል የፋይናንስ አማካሪ</div>
@@ -1954,8 +1882,8 @@ EXPLORER_HTML = r"""
       </div>
 
       <!-- Smart Search glass overlay (sits on Tools Hub; Back/X only close this panel) -->
-      <div id="aiSearchView" class="absolute inset-0 z-30 items-end sm:items-center justify-center p-0 sm:p-4"
-           style="display:none;pointer-events:none;background:rgba(2,6,23,0.50);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);">
+      <div id="aiSearchView" class="hidden absolute inset-0 z-30 flex items-end sm:items-center justify-center p-0 sm:p-4"
+           style="background:rgba(2,6,23,0.50);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);">
         <div class="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 transition-all shadow-[0_10px_40px_rgba(6,182,212,0.2)] border border-white/30"
              style="background:rgba(255,255,255,0.15);backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);">
           <div class="flex items-center justify-between gap-2 mb-4">
@@ -3794,9 +3722,7 @@ EXPLORER_HTML = r"""
     function closeSmartSearchPanel() {
       if (aiSearchView) {
         aiSearchView.classList.add("hidden");
-        aiSearchView.classList.remove("flex");
-        aiSearchView.style.setProperty("display","none","important");
-        aiSearchView.style.setProperty("pointer-events","none","important");
+        aiSearchView.style.display = "none";
       }
       if (aiToolsView) aiToolsView.classList.remove("hidden");
       if (aiTabTools) aiTabTools.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
@@ -3812,9 +3738,7 @@ EXPLORER_HTML = r"""
       if (aiToolsView) aiToolsView.classList.remove("hidden");
       if (aiSearchView) {
         aiSearchView.classList.remove("hidden");
-        aiSearchView.classList.add("flex");
-        aiSearchView.style.setProperty("display","flex","important");
-        aiSearchView.style.setProperty("pointer-events","auto","important");
+        aiSearchView.style.display = "flex";
       }
       if (aiTabSearch) aiTabSearch.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
       if (aiTabTools) aiTabTools.className = "py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center";
@@ -4349,20 +4273,19 @@ EXPLORER_HTML = r"""
     }
     window.openAiChat = function(prefillText) {
       try {
-        ["aiModal","dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal"].forEach(function(id){
-          var m = document.getElementById(id);
-          if (!m) return;
-          m.classList.add("hidden");
-          m.classList.remove("flex");
-          m.style.setProperty("display","none","important");
-        });
+        var aiModal = document.getElementById("aiModal");
+        if (aiModal) {
+          aiModal.classList.add("hidden");
+          aiModal.classList.remove("flex");
+          aiModal.style.display = "none";
+        }
       } catch (e0) {}
       var v = document.getElementById("analysisView");
       if (v) {
         v.classList.remove("hidden");
         v.classList.add("flex");
-        v.style.setProperty("display","flex","important");
-        v.style.setProperty("z-index","260","important");
+        v.style.display = "flex";
+        v.style.zIndex = "240";
       }
       try { document.body.style.overflow = "hidden"; } catch (e1) {}
       var log = document.getElementById("advisorChatLog");
