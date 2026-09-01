@@ -327,6 +327,105 @@
   </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
+<script>
+/* Runs FIRST: buttons work even if the big script later crashes */
+(function () {
+  window.appState = window.appState || {};
+  function hide(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add("hidden");
+    el.classList.remove("flex");
+    try { el.style.display = "none"; } catch (e) {}
+  }
+  function showFlex(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove("hidden");
+    el.classList.add("flex");
+    try { el.style.display = "flex"; el.style.zIndex = "280"; } catch (e) {}
+  }
+  window.setActiveTab = window.setActiveTab || function (tab) {
+    tab = String(tab || "home");
+    if (tab === "chat" || tab === "inbox" || tab === "messages") {
+      hide("aiModal");
+      showFlex("analysisView");
+      document.body.style.overflow = "hidden";
+      return;
+    }
+    if (tab === "tools" || tab === "advisor" || tab === "ai") {
+      hide("analysisView");
+      showFlex("aiModal");
+      document.body.style.overflow = "hidden";
+      return;
+    }
+    if (tab === "post" || tab === "sell") { location.href = "/seller-form"; return; }
+    if (tab === "buy") { location.href = "/buyer-form"; return; }
+    hide("analysisView"); hide("aiModal");
+    document.body.style.overflow = "";
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) {}
+  };
+  document.addEventListener("click", function (ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return;
+    var id = (t.closest("button, a, [id], .adika-card") || {}).id || "";
+    var node = t.closest("button, a, .adika-card, .cat-pill, [data-id]");
+    if (!node) return;
+    id = node.id || id;
+    if (id === "navHome" || id === "analysisBackBtn") {
+      ev.preventDefault(); window.setActiveTab("home"); return;
+    }
+    if (id === "navAi") {
+      ev.preventDefault(); window.setActiveTab("tools"); return;
+    }
+    if (id === "navMessages") {
+      ev.preventDefault(); window.setActiveTab("chat"); return;
+    }
+    if (id === "navHelp") {
+      ev.preventDefault();
+      alert("Adika Marketplace • እርዳታ\\n@AdikaMarketplaceBot");
+      return;
+    }
+    if (id === "fabBtn") {
+      ev.preventDefault();
+      location.href = "/seller-form";
+      return;
+    }
+    if (id === "tabSell") {
+      ev.preventDefault();
+      if (window.__adikaForceExplorer) window.__adikaForceExplorer();
+      else if (typeof load === "function") { try { state.tab = "marketplace"; load(false); } catch (e) {} }
+      return;
+    }
+    if (id === "tabBuy") {
+      ev.preventDefault();
+      try { if (typeof state !== "undefined") state.tab = "requests"; if (typeof load === "function") load(false); } catch (e) {}
+      return;
+    }
+    if (id === "brokerCtaHome") {
+      ev.preventDefault();
+      showFlex("brokerRegModal");
+      return;
+    }
+    if (node.classList && node.classList.contains("adika-card")) {
+      var lid = node.getAttribute("data-listing-id");
+      if (lid && typeof openDetailModal === "function" && window.__adikaState) {
+        var arr = window.__adikaState.items || [];
+        for (var i = 0; i < arr.length; i++) {
+          if (String(arr[i].id) === String(lid)) { openDetailModal(arr[i]); return; }
+        }
+      }
+      /* demo cards still open a simple alert so tap is not dead */
+      if (lid && String(lid).indexOf("demo") === 0) {
+        ev.preventDefault();
+        var title = (node.innerText || "").split("\\n")[0];
+        alert(title || "ማስታወቂያ");
+      }
+    }
+  }, true);
+})();
+</script>
+
   <!-- EMERGENCY: never leave infinite loading spinner -->
   <script>
   (function(){
@@ -1935,7 +2034,7 @@
         var isCar = (it.main_category === "መኪና" || it.category === "መኪና");
         var emoji = isCar ? "🚗" : "🏠";
         html +=
-          '<div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">' +
+          '<div class="adika-card cursor-pointer" data-listing-id="' + String(it.id || ("demo-" + i)) + '" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">' +
             '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:40px;">' + emoji + '</div>' +
             '<div style="padding:8px 10px;">' +
               '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">' +
@@ -1950,6 +2049,8 @@
           '</div>';
       }
       g.innerHTML = html;
+      try { if (window.__adikaState) window.__adikaState.items = list; } catch (e) {}
+      try { if (typeof state !== "undefined") state.items = list; } catch (e) {}
       try {
         if (statusEl) { statusEl.style.display = "none"; statusEl.innerHTML = ""; }
       } catch (e) {}
@@ -4209,12 +4310,9 @@
     document.getElementById("navHome").onclick = function () {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-    document.getElementById("navMessages").onclick = function () {
-      if (tg && tg.openTelegramLink) {
-        tg.openTelegramLink("https://t.me/AdikaMarketplaceBot");
-      } else {
-        window.open("https://t.me/AdikaMarketplaceBot", "_blank");
-      }
+    document.getElementById("navMessages").onclick = function (ev) {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {}
+      window.setActiveTab("chat");
     };
     document.getElementById("navHelp").onclick = function () {
       var msg = "Adika Marketplace • Help Center\nContact @AdikaMarketplaceBot or call 0911000000.";
