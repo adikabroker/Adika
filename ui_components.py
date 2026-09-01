@@ -24,61 +24,93 @@ SELLER_FORM_HTML = r"""
     .chip-idle { background:#ffffff; color:#334155; border:1px solid #cbd5e1; font-weight: 600; }
     input, textarea, select { font-size: 15px !important; }
   
+    
+      100% { transform: translateX(120%); }
+    }
+    
+      50% { filter: drop-shadow(0 0 10px rgba(99,102,241,0.55)); }
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
     @keyframes adikaShimmer {
       0% { transform: translateX(-120%); }
       100% { transform: translateX(120%); }
     }
     @keyframes adikaNeonPulse {
-      0%, 100% { filter: drop-shadow(0 0 4px rgba(34,211,238,0.45)); }
-      50% { filter: drop-shadow(0 0 10px rgba(99,102,241,0.55)); }
+      0%, 100% { box-shadow: 0 0 10px rgba(236,72,153,0.35), 0 0 18px rgba(34,211,238,0.2), inset 0 1px 0 rgba(255,255,255,0.1); }
+      50% { box-shadow: 0 0 16px rgba(168,85,247,0.5), 0 0 24px rgba(34,211,238,0.3), inset 0 1px 0 rgba(255,255,255,0.12); }
+    }
+    @keyframes adikaGlowOrb {
+      0%, 100% { transform: scale(1); opacity: 0.55; }
+      50% { transform: scale(1.15); opacity: 0.85; }
     }
     #adikaPromoBanner {
-      animation: adikaNeonPulse 2.4s ease-in-out infinite;
+      animation: adikaNeonPulse 2.2s ease-in-out infinite;
     }
     .promo-slide {
-      transition: opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1),
-                  transform 0.42s cubic-bezier(0.16, 1, 0.3, 1) !important;
       will-change: opacity, transform;
     }
+    .promo-slide .promo-orb {
+      transition: opacity 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms,
+                  transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms;
+    }
     .promo-slide .promo-icon {
-      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0ms,
-                  opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0ms;
+      transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 80ms,
+                  transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 80ms;
     }
-    .promo-slide .promo-title {
-      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) 80ms,
-                  opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1) 80ms;
-    }
+    .promo-slide .promo-title,
     .promo-slide .promo-sub {
-      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) 120ms,
-                  opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1) 120ms;
+      transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms,
+                  transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms;
     }
     .promo-slide .promo-cta {
-      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) 100ms,
-                  opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1) 100ms;
+      transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 240ms,
+                  transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 240ms;
     }
+    .promo-slide:not(.is-active) .promo-orb,
     .promo-slide:not(.is-active) .promo-icon,
     .promo-slide:not(.is-active) .promo-title,
     .promo-slide:not(.is-active) .promo-sub,
     .promo-slide:not(.is-active) .promo-cta {
       opacity: 0;
-      transform: scale(1.12) translateX(10px);
+      transform: scale(0.85) translateY(12px);
     }
-    .promo-slide.is-active .promo-icon,
+    .promo-slide.is-active .promo-orb {
+      opacity: 1;
+      transform: scale(1);
+      animation: adikaGlowOrb 2s ease-in-out infinite;
+    }
+    .promo-slide.is-active .promo-icon {
+      opacity: 1;
+      transform: scale(1) rotateY(0deg);
+    }
     .promo-slide.is-active .promo-title,
-    .promo-slide.is-active .promo-sub,
+    .promo-slide.is-active .promo-sub {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
     .promo-slide.is-active .promo-cta {
       opacity: 1;
-      transform: scale(1) translateX(0);
+      transform: translateY(0) scale(1);
     }
     .promo-slide.is-active {
       opacity: 1 !important;
-      transform: scale(1) translateX(0) !important;
+      transform: scale(1) translateY(0) !important;
       pointer-events: auto !important;
       z-index: 2;
     }
     .promo-slide.is-exit {
       opacity: 0 !important;
-      transform: scale(0.95) translateX(-18px) !important;
+      transform: scale(0.92) translateY(-22px) !important;
       pointer-events: none !important;
       z-index: 1;
     }
@@ -1313,58 +1345,61 @@ EXPLORER_HTML = r"""
     </div>
 
     <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
-    <div id="homeHero" class="mt-0 pt-0 mb-2 px-0">
+    <div id="homeHero" class="mt-0 pt-0 mb-2 px-0" style="margin-top:0">
       <div id="adikaPromoBanner" class="relative w-full h-14 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
-           style="margin-top:0; background: rgba(15,23,42,0.80); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+           style="margin-top:2px; background: rgba(15,23,42,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                   border: 1.5px solid transparent;
-                  background-image: linear-gradient(rgba(15,23,42,0.85), rgba(15,23,42,0.85)), linear-gradient(90deg, #22d3ee, #6366f1, #2dd4bf, #22d3ee);
+                  background-image: linear-gradient(rgba(15,23,42,0.88), rgba(15,23,42,0.88)), linear-gradient(90deg, #ec4899, #a855f7, #22d3ee, #ec4899);
                   background-size: 100% 100%, 200% 100%;
-                  background-origin: border-box; background-clip: padding-box, border-box;
-                  box-shadow: 0 0 16px rgba(34,211,238,0.32), inset 0 1px 0 rgba(255,255,255,0.1);
-                  animation: adikaNeonPulse 2.4s ease-in-out infinite;">
-        <div class="absolute inset-0 pointer-events-none opacity-50 overflow-hidden">
-          <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(34,211,238,0.2),transparent);animation:adikaShimmer 2.2s linear infinite;"></div>
+                  background-origin: border-box; background-clip: padding-box, border-box;">
+        <div class="absolute inset-0 pointer-events-none opacity-40 overflow-hidden">
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(236,72,153,0.18),rgba(34,211,238,0.15),transparent);animation:adikaShimmer 2.2s linear infinite;"></div>
         </div>
         <div id="promoSlides" class="relative h-full w-full">
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 is-active" data-tool="poa" data-idx="0">
-            <span class="promo-icon text-lg shrink-0">📜</span>
-            <div class="flex-1 min-w-0">
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5 is-active" data-tool="poa" data-idx="0">
+            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(236,72,153,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-lg shrink-0 z-[1]">📜</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
               <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የውክልና ማጣሪያ</p>
-              <p class="promo-sub text-[9px] text-cyan-200/90 font-medium truncate">የውክልና ሰነዶችን ህጋዊነት በስካን ያረጋገጡ</p>
+              <p class="promo-sub text-[9px] text-pink-100/85 font-medium truncate">የውክልና ሰነዶችን ህጋዊነት በስካን ያረጋገጡ</p>
             </div>
-            <span class="promo-cta text-[10px] font-bold text-cyan-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
+            <span class="promo-cta relative z-[1] text-[9px] font-black text-white shrink-0 px-2.5 py-1 rounded-full" style="background:linear-gradient(90deg,#ec4899,#a855f7);box-shadow:0 2px 8px rgba(236,72,153,0.4);">አስጀምር ➔</span>
           </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3" data-tool="chassis" data-idx="1" style="opacity:0;pointer-events:none">
-            <span class="promo-icon text-lg shrink-0">🔍</span>
-            <div class="flex-1 min-w-0">
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5" data-tool="chassis" data-idx="1" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-lg shrink-0 z-[1]">🔍</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
               <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የሻንሲ ማጣሪያ</p>
-              <p class="promo-sub text-[9px] text-teal-200/90 font-medium truncate">የመኪናውን እውነተኛ ታሪክ እና VIN ይመርምሩ</p>
+              <p class="promo-sub text-[9px] text-cyan-100/85 font-medium truncate">የመኪናውን እውነተኛ ታሪክ እና VIN ይመርምሩ</p>
             </div>
-            <span class="promo-cta text-[10px] font-bold text-teal-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
+            <span class="promo-cta relative z-[1] text-[9px] font-black text-white shrink-0 px-2.5 py-1 rounded-full" style="background:linear-gradient(90deg,#22d3ee,#6366f1);box-shadow:0 2px 8px rgba(34,211,238,0.4);">አስጀምር ➔</span>
           </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3" data-tool="duty" data-idx="2" style="opacity:0;pointer-events:none">
-            <span class="promo-icon text-lg shrink-0">🧮</span>
-            <div class="flex-1 min-w-0">
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5" data-tool="duty" data-idx="2" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(168,85,247,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-lg shrink-0 z-[1]">🧮</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
               <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የቀረጥ ስሌት</p>
-              <p class="promo-sub text-[9px] text-indigo-200/90 font-medium truncate">የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ ስሌት</p>
+              <p class="promo-sub text-[9px] text-violet-100/85 font-medium truncate">የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ ስሌት</p>
             </div>
-            <span class="promo-cta text-[10px] font-bold text-indigo-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
+            <span class="promo-cta relative z-[1] text-[9px] font-black text-white shrink-0 px-2.5 py-1 rounded-full" style="background:linear-gradient(90deg,#a855f7,#6366f1);box-shadow:0 2px 8px rgba(168,85,247,0.4);">አስጀምር ➔</span>
           </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3" data-tool="loan" data-idx="3" style="opacity:0;pointer-events:none">
-            <span class="promo-icon text-lg shrink-0">🏦</span>
-            <div class="flex-1 min-w-0">
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5" data-tool="loan" data-idx="3" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(99,102,241,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-lg shrink-0 z-[1]">🏦</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
               <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የባንክ ብድር</p>
-              <p class="promo-sub text-[9px] text-purple-200/90 font-medium truncate">የቤት እና የመኪና ብድር ወርሃዊ ስሌት</p>
+              <p class="promo-sub text-[9px] text-indigo-100/85 font-medium truncate">የቤት እና የመኪና ብድር ወርሃዊ ስሌት</p>
             </div>
-            <span class="promo-cta text-[10px] font-bold text-purple-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
+            <span class="promo-cta relative z-[1] text-[9px] font-black text-white shrink-0 px-2.5 py-1 rounded-full" style="background:linear-gradient(90deg,#6366f1,#ec4899);box-shadow:0 2px 8px rgba(99,102,241,0.4);">አስጀምር ➔</span>
           </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3" data-tool="compare" data-idx="4" style="opacity:0;pointer-events:none">
-            <span class="promo-icon text-lg shrink-0">⚖️</span>
-            <div class="flex-1 min-w-0">
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5" data-tool="compare" data-idx="4" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(245,158,11,0.4),transparent 70%);"></span>
+            <span class="promo-icon relative text-lg shrink-0 z-[1]">⚖️</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
               <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የመኪና ንፅፅር</p>
-              <p class="promo-sub text-[9px] text-amber-200/90 font-medium truncate">የሁለት መኪናዎችን ብቃት ጎን ለጎን ያወዳድሩ</p>
+              <p class="promo-sub text-[9px] text-amber-100/85 font-medium truncate">የሁለት መኪናዎችን ብቃት ጎን ለጎን ያወዳድሩ</p>
             </div>
-            <span class="promo-cta text-[10px] font-bold text-amber-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
+            <span class="promo-cta relative z-[1] text-[9px] font-black text-white shrink-0 px-2.5 py-1 rounded-full" style="background:linear-gradient(90deg,#f59e0b,#ec4899);box-shadow:0 2px 8px rgba(245,158,11,0.35);">አስጀምር ➔</span>
           </div>
         </div>
 
@@ -5931,27 +5966,27 @@ EXPLORER_HTML = r"""
         slides.forEach(function (el, i) {
           el.classList.remove("is-active", "is-exit", "is-enter");
           if (i === idx) {
-            // ENTER: scale 1.15 → 1.0 + slide in (cubic-bezier spring)
+            // ENTER from below + bounce ease cubic-bezier(0.34, 1.56, 0.64, 1)
             el.style.transition = "none";
             el.style.opacity = "0";
-            el.style.transform = "scale(1.15) translateX(20px)";
+            el.style.transform = "scale(0.88) translateY(18px)";
             el.style.pointerEvents = "none";
             void el.offsetWidth;
-            el.style.transition = "opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1), transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)";
+            el.style.transition = "opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
             el.classList.add("is-active");
             el.style.opacity = "1";
-            el.style.transform = "scale(1) translateX(0)";
+            el.style.transform = "scale(1) translateY(0)";
             el.style.pointerEvents = "auto";
           } else if (i === prev) {
-            // EXIT: fast wipe + scale 0.95
+            // EXIT: scale down + push UP rapidly
             el.classList.add("is-exit");
-            el.style.transition = "opacity 0.32s cubic-bezier(0.4, 0, 1, 1), transform 0.32s cubic-bezier(0.4, 0, 1, 1)";
+            el.style.transition = "opacity 0.28s cubic-bezier(0.4, 0, 1, 1), transform 0.28s cubic-bezier(0.4, 0, 1, 1)";
             el.style.opacity = "0";
-            el.style.transform = "scale(0.95) translateX(-18px)";
+            el.style.transform = "scale(0.92) translateY(-22px)";
             el.style.pointerEvents = "none";
           } else {
             el.style.opacity = "0";
-            el.style.transform = "scale(1.1) translateX(24px)";
+            el.style.transform = "scale(0.9) translateY(16px)";
             el.style.pointerEvents = "none";
           }
         });
