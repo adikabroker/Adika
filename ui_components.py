@@ -1873,51 +1873,71 @@ EXPLORER_HTML = r"""
         </div>
       </div>
 
-      <!-- Tab 2: AI Smart Search View -->
-      <div id="aiSearchView" class="hidden overflow-y-auto flex-1 p-4 space-y-4">
-        <div>
-          <label class="text-xs font-bold text-slate-700 mb-1 block">
-            <span class="lang-am">ምን አይነት ንብረት ይፈልጋሉ?</span>
-            <span class="lang-en">What are you looking for?</span>
-          </label>
-          <textarea id="aiPrompt" rows="2"
-            placeholder="Toyota Vitz, Automatic, under 2M ETB..."
-            class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none"></textarea>
-        </div>
-
-        <div>
-          <label class="text-xs font-bold text-slate-700 mb-1.5 block">
-            <span class="lang-am">ፈጣን አማራጮች</span>
-            <span class="lang-en">Quick Tags</span>
-          </label>
-          <div class="flex flex-wrap gap-1.5">
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10" data-q="መኪና">🚗 Cars / መኪኖች</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10" data-q="ቤት">🏠 House / ቤቶች</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10" data-q="ኦቶማቲክ">⚙️ Automatic</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10" data-q="አዲስ">✨ Brand New</button>
-            <button type="button" class="ai-chip px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-medium hover:bg-[#16acbd]/10" data-q="ቪላ">🏡 Villa</button>
+      <!-- Smart Search glass overlay (sits on Tools Hub; Back/X only close this panel) -->
+      <div id="aiSearchView" class="hidden absolute inset-0 z-30 flex items-end sm:items-center justify-center p-0 sm:p-4"
+           style="background:rgba(2,6,23,0.50);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);">
+        <div class="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 transition-all shadow-[0_10px_40px_rgba(6,182,212,0.2)] border border-white/30"
+             style="background:rgba(255,255,255,0.15);backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);">
+          <div class="flex items-center justify-between gap-2 mb-4">
+            <button type="button" id="aiSearchBackBtn"
+              class="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white border border-white/30 px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 active:scale-95">
+              ← <span class="lang-am">መመለስ</span><span class="lang-en">Back</span>
+            </button>
+            <h3 class="text-cyan-300 font-bold text-sm drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] text-center flex-1">
+              🔍 AI Smart Search
+            </h3>
+            <button type="button" id="aiSearchCloseBtn"
+              class="bg-white/20 hover:bg-white/30 text-white rounded-full p-1.5 border border-white/30 w-8 h-8 flex items-center justify-center active:scale-95">
+              ✕
+            </button>
           </div>
-        </div>
 
-        <div>
-          <label class="text-xs font-bold text-slate-700 mb-1.5 block">
-            <span class="lang-am">የበጀት መጠን</span>
-            <span class="lang-en">Budget Range</span>
-          </label>
-          <div class="grid grid-cols-3 gap-1.5 text-xs">
-            <button type="button" class="price-chip py-1.5 px-2 rounded-lg border border-slate-200 text-slate-700 font-semibold text-center hover:border-[#16acbd]" data-price="< 1M">&lt; 1M ETB</button>
-            <button type="button" class="price-chip py-1.5 px-2 rounded-lg border border-slate-200 text-slate-700 font-semibold text-center hover:border-[#16acbd]" data-price="1M - 3M">1M - 3M ETB</button>
-            <button type="button" class="price-chip py-1.5 px-2 rounded-lg border border-slate-200 text-slate-700 font-semibold text-center hover:border-[#16acbd]" data-price="> 3M">&gt; 3M ETB</button>
+          <div class="space-y-4">
+            <div>
+              <label class="text-cyan-300 font-semibold text-xs drop-shadow-md mb-1.5 block">
+                <span class="lang-am">ምን አይነት ንብረት ይፈልጋሉ?</span>
+                <span class="lang-en">What are you looking for?</span>
+              </label>
+              <textarea id="aiPrompt" rows="2"
+                placeholder="Toyota Vitz, Automatic, under 2M ETB..."
+                class="w-full bg-white/20 backdrop-blur-md border border-white/40 rounded-2xl px-4 py-3.5 text-white placeholder-slate-300 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/50 shadow-inner text-xs resize-none"></textarea>
+            </div>
+
+            <div>
+              <label class="text-cyan-300 font-semibold text-xs drop-shadow-md mb-1.5 block">
+                <span class="lang-am">ፈጣን አማራጮች</span>
+                <span class="lang-en">Quick Tags</span>
+              </label>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="መኪና">🚗 Cars / መኪኖች</button>
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="ቤት">🏠 House / ቤቶች</button>
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="ኦቶማቲክ">⚙️ Automatic</button>
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="አዲስ">✨ Brand New</button>
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="ቪላ">🏡 Villa</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-cyan-300 font-semibold text-xs drop-shadow-md mb-1.5 block">
+                <span class="lang-am">የበጀት መጠን</span>
+                <span class="lang-en">Budget Range</span>
+              </label>
+              <div class="grid grid-cols-3 gap-1.5 text-xs">
+                <button type="button" class="price-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95 text-center" data-price="< 1M">&lt; 1M ETB</button>
+                <button type="button" class="price-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95 text-center" data-price="1M - 3M">1M - 3M ETB</button>
+                <button type="button" class="price-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95 text-center" data-price="> 3M">&gt; 3M ETB</button>
+              </div>
+            </div>
+
+            <div class="pt-1 flex gap-2">
+              <button id="aiResetBtn" type="button" class="w-1/3 py-2.5 rounded-xl bg-white/15 border border-white/30 text-white font-bold text-xs backdrop-blur-md active:scale-95">
+                <span class="lang-am">አጽዳ</span><span class="lang-en">Reset</span>
+              </button>
+              <button id="aiApplyBtn" type="button" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs shadow-md active:scale-95 flex items-center justify-center gap-1.5">
+                <span>✨ <span class="lang-am">አጣራ</span><span class="lang-en">Apply</span></span>
+              </button>
+            </div>
           </div>
-        </div>
-
-        <div class="pt-2 flex gap-2">
-          <button id="aiResetBtn" type="button" class="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">
-            <span class="lang-am">አጽዳ</span><span class="lang-en">Reset</span>
-          </button>
-          <button id="aiApplyBtn" type="button" class="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 flex items-center justify-center gap-1.5">
-            <span>✨ <span class="lang-am">አጣራ</span><span class="lang-en">Apply</span></span>
-          </button>
         </div>
       </div>
     </div>
@@ -3707,19 +3727,35 @@ EXPLORER_HTML = r"""
     var aiTabTools = document.getElementById("aiTabTools");
     var aiTabSearch = document.getElementById("aiTabSearch");
 
+    function closeSmartSearchPanel() {
+      if (aiSearchView) {
+        aiSearchView.classList.add("hidden");
+        aiSearchView.style.display = "none";
+      }
+      if (aiToolsView) aiToolsView.classList.remove("hidden");
+      if (aiTabTools) aiTabTools.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
+      if (aiTabSearch) aiTabSearch.className = "py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center";
+    }
+    window.closeSmartSearchPanel = closeSmartSearchPanel;
+
     aiTabTools.onclick = function() {
-      aiToolsView.classList.remove("hidden");
-      aiSearchView.classList.add("hidden");
-      aiTabTools.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
-      aiTabSearch.className = "py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center";
+      closeSmartSearchPanel();
     };
 
     aiTabSearch.onclick = function() {
-      aiSearchView.classList.remove("hidden");
-      aiToolsView.classList.add("hidden");
-      aiTabSearch.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
-      aiTabTools.className = "py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center";
+      if (aiToolsView) aiToolsView.classList.remove("hidden");
+      if (aiSearchView) {
+        aiSearchView.classList.remove("hidden");
+        aiSearchView.style.display = "flex";
+      }
+      if (aiTabSearch) aiTabSearch.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
+      if (aiTabTools) aiTabTools.className = "py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center";
     };
+
+    var aiSearchBackBtn = document.getElementById("aiSearchBackBtn");
+    var aiSearchCloseBtn = document.getElementById("aiSearchCloseBtn");
+    if (aiSearchBackBtn) aiSearchBackBtn.onclick = closeSmartSearchPanel;
+    if (aiSearchCloseBtn) aiSearchCloseBtn.onclick = closeSmartSearchPanel;
 
 
     function adikaAdvisorCtaHtml(carModel, summary) {
