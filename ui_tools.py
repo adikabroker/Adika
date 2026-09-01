@@ -95,7 +95,7 @@ TOOLS_HUB_HTML = r"""
       </div>
 
       <!-- Tab 1: AI Tools Hub -->
-      <div id="aiToolsView" class="flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-3 space-y-3 tools-ambient-wrap" style="background:transparent;">
+      <div id="aiToolsView" class="flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar p-3 space-y-4 tools-ambient-wrap" style="background:transparent;">
         <div class="tools-ambient-blob cyan"></div>
         <div class="tools-ambient-blob indigo"></div>
         <!-- Smart Budget & Purchase Advisor -->
@@ -146,19 +146,19 @@ TOOLS_HUB_HTML = r"""
               <div class="opp-label text-amber-400">A · Automotive</div>
               <div class="opp-title">ተሽከርካሪ + የባንክ ብድር</div>
               <div id="oppAutoBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20" data-context="auto" onclick="if(window.openAiChat){event.stopPropagation();window.handleStartAiChat({optionType:'መኪና'});}">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20" data-context="auto" onclick="event.stopPropagation();if(window.setActiveTab){window.setActiveTab('chat');}if(window.handleStartAiChat){window.handleStartAiChat({optionType:'መኪና'});}">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="property">
               <div class="opp-label text-sky-400">B · Real Estate</div>
               <div class="opp-title">ሪል እስቴት · ቅድመ ክፍያ</div>
               <div id="oppPropBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20" data-context="property" onclick="if(window.openAiChat){event.stopPropagation();window.handleStartAiChat({optionType:'ቤት'});}">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20" data-context="property" onclick="event.stopPropagation();if(window.setActiveTab){window.setActiveTab('chat');}if(window.handleStartAiChat){window.handleStartAiChat({optionType:'ቤት'});}">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="roi">
               <div class="opp-label text-emerald-400">C · Business ROI</div>
               <div class="opp-title">ንግድ / Startup · ዓመታዊ ROI</div>
               <div id="oppRoiBody" class="opp-body">ከበጀት ቀመር እየተሰላ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20" data-context="roi" onclick="if(window.openAiChat){event.stopPropagation();window.handleStartAiChat({optionType:'ንግድ'});}">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20" data-context="roi" onclick="event.stopPropagation();if(window.setActiveTab){window.setActiveTab('chat');}if(window.handleStartAiChat){window.handleStartAiChat({optionType:'ንግድ'});}">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
           </div>
 
@@ -200,8 +200,8 @@ TOOLS_HUB_HTML = r"""
           </div>
         </div>
 
-        <!-- Tools Grid + Finance Banner (no extra bottom pad — banner must stay on-screen) -->
-        <div class="flex-1 flex flex-col min-h-0 justify-between">
+        <!-- Tools Grid + Finance Banner — stacked flow, no overlap -->
+        <div class="flex flex-col space-y-4 relative z-10 shrink-0">
           <h4 class="text-[10px] font-extrabold text-white drop-shadow-md mb-1.5 shrink-0">
             <span class="lang-am">ተጨማሪ የፋይናንስና የህግ መሳሪያዎች</span>
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
@@ -248,7 +248,7 @@ TOOLS_HUB_HTML = r"""
               <span class="tool-sub">Cadastral Map Verification</span>
             </button>
           </div>
-          <button type="button" id="hubFinanceAdvisorBanner" onclick="event.stopPropagation(); if(window.openAiChat){window.openAiChat('ስለ በጀት፣ ብድር እና የገበያ ዋጋ ጥልቅ የፋይናንስ ምክር እፈልጋለሁ።');}"
+          <button type="button" id="hubFinanceAdvisorBanner" onclick="event.preventDefault();event.stopPropagation();if(window.setActiveTab){window.setActiveTab('chat');}if(window.openAiChat){window.openAiChat('ስለ በጀት፣ ብድር እና የገበያ ዋጋ ጥልቅ የፋይናንስ ምክር እፈልጋለሁ።');}"
             class="w-full bg-gradient-to-r from-cyan-500/20 via-slate-900/60 to-indigo-500/20 backdrop-blur-2xl border border-cyan-400/50 rounded-2xl p-3 mt-2 flex items-center justify-between shadow-lg shadow-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer relative z-10 shrink-0">
             <div class="min-w-0 text-left pr-2">
               <div class="text-white font-extrabold text-[12px] leading-tight drop-shadow-md">💡 ዲጂታል የፋይናንስ አማካሪ</div>
