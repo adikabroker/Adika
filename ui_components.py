@@ -1377,15 +1377,15 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5 pb-32" style="padding-top: 136px; padding-bottom: 140px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5 pb-32" style="padding-top: 118px; padding-bottom: 140px;">
     <!-- Active Filter Banner -->
-    <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
+    <div id="filterBanner" class="hidden mb-1 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
     <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
-    <div id="homeHero" class="mt-0 pt-0 mb-1.5 px-0">
+    <div id="homeHero" class="-mt-2 pt-0 mb-1 px-0">
       <div id="adikaPromoBanner" class="relative w-full h-11 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
            style="margin-top:0; background: rgba(15,23,42,0.90); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                   border: 1.5px solid transparent;
