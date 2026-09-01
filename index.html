@@ -7,42 +7,80 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    html, body { margin:0; padding:0; background:#b5eff3; font-family:system-ui,-apple-system,sans-serif; -webkit-tap-highlight-color:transparent; }
-    #grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .card { background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 6px 16px rgba(15,23,42,.08); }
-    .card img, .card .ph { width:100%; aspect-ratio:4/3; object-fit:cover; background:linear-gradient(135deg,#e0f7fa,#b2ebf2); display:flex; align-items:center; justify-content:center; font-size:42px; }
-    .sheet { display:none; }
-    .sheet.open { display:flex !important; }
+    html, body {
+      margin: 0; padding: 0; background: #b5eff3;
+      font-family: system-ui, -apple-system, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 18px rgba(15,23,42,.08);
+      border: 1px solid rgba(226,232,240,.9);
+      text-align: left;
+    }
+    .thumb {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: linear-gradient(145deg, #d7f6f8, #c5eef2);
+      overflow: hidden;
+    }
+    .thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: center;
+      display: block;
+    }
+    .thumb img.broken { display: none; }
+    .thumb .ph {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px; color: #0e7490;
+    }
+    .sheet { display: none; }
+    .sheet.open { display: flex !important; }
+    .pill-on { background: #fff; color: #0e7490; }
+    .pill-off { background: rgba(255,255,255,.22); color: #fff; }
   </style>
 </head>
-<body class="min-h-screen">
-  <header class="fixed top-0 left-0 right-0 z-40 p-2 text-white" style="background:rgba(0,131,143,.88);backdrop-filter:blur(16px);">
+<body>
+  <header class="fixed top-0 left-0 right-0 z-40 p-2 text-white" style="background:rgba(0,131,143,.9);backdrop-filter:blur(16px);">
     <div class="max-w-md mx-auto space-y-1.5">
       <div class="flex gap-2">
         <div class="flex-1 grid grid-cols-2 gap-1 p-0.5 bg-black/15 rounded-xl">
-          <button type="button" id="tabSell" class="py-1 rounded-lg text-xs font-bold bg-white text-[#16acbd]">ገበያ</button>
-          <button type="button" id="tabBuy" class="py-1 rounded-lg text-xs font-bold text-white/90">ፈላጊዎች</button>
+          <button type="button" id="tabSell" class="py-1.5 rounded-lg text-xs font-bold bg-white text-[#16acbd]">ገበያ</button>
+          <button type="button" id="tabBuy" class="py-1.5 rounded-lg text-xs font-bold text-white/90">ፈላጊዎች</button>
         </div>
-        <button type="button" id="btnBroker" class="px-2 py-1 rounded-xl bg-white/20 text-[10px] font-bold">ደላላ?</button>
+        <button type="button" id="btnBroker" class="px-2 rounded-xl bg-white/20 text-[10px] font-bold">ደላላ?</button>
       </div>
-      <input id="search" class="w-full rounded-xl px-3 py-1.5 text-xs text-slate-800" placeholder="ፈልግ..." />
-      <div id="cats" class="flex gap-1.5 overflow-x-auto"></div>
+      <input id="search" class="w-full rounded-xl px-3 py-2 text-xs text-slate-800" placeholder="ፈልግ... ሞዴል፣ ቦታ፣ ዋጋ" />
+      <div id="cats" class="flex gap-1.5 overflow-x-auto pb-0.5"></div>
     </div>
   </header>
-  <main class="max-w-md mx-auto px-2.5" style="padding-top:140px;padding-bottom:96px;">
+
+  <main class="max-w-md mx-auto px-2.5" style="padding-top:150px;padding-bottom:120px;">
     <div id="status" class="text-center text-xs text-slate-600 py-2"></div>
     <div id="grid"></div>
   </main>
-  <nav class="fixed bottom-3 left-3 right-3 z-40 max-w-md mx-auto rounded-full px-3 py-2 flex items-center justify-between shadow-xl" style="background:rgba(255,255,255,.9);">
-    <button type="button" id="navHome" class="w-14 text-[10px] font-bold text-[#0e7490]">መነሻ</button>
-    <button type="button" id="navAi" class="w-14 text-[10px] font-bold text-slate-500">አማካሪ</button>
-    <button type="button" id="fabBtn" class="w-12 h-12 -mt-7 rounded-full bg-[#16acbd] text-white text-2xl font-black">+</button>
-    <button type="button" id="navChat" class="w-14 text-[10px] font-bold text-slate-500">መልእክት</button>
-    <button type="button" id="navHelp" class="w-14 text-[10px] font-bold text-slate-500">እርዳታ</button>
+
+  <nav class="fixed bottom-3 left-3 right-3 z-40 max-w-md mx-auto rounded-full px-2 py-2 flex items-center justify-between shadow-xl"
+       style="background:rgba(255,255,255,.94);">
+    <button type="button" id="navHome" class="flex-1 text-[10px] font-bold text-[#0e7490]">መነሻ</button>
+    <button type="button" id="navAi" class="flex-1 text-[10px] font-bold text-slate-500">አማካሪ</button>
+    <button type="button" id="fabBtn" class="w-12 h-12 -mt-6 rounded-full bg-[#16acbd] text-white text-2xl font-black shadow-lg shrink-0">+</button>
+    <button type="button" id="navChat" class="flex-1 text-[10px] font-bold text-slate-500">መልእክት</button>
+    <button type="button" id="navHelp" class="flex-1 text-[10px] font-bold text-slate-500">እርዳታ</button>
   </nav>
+
   <div id="chatSheet" class="sheet fixed inset-0 z-50 bg-[#b5eff3] flex-col max-w-md mx-auto">
     <div class="p-3 bg-[#16acbd] text-white flex justify-between items-center">
-      <button type="button" class="js-close px-3 py-1 rounded-lg bg-white/20 text-xs">ተመለስ</button>
+      <button type="button" class="js-close px-3 py-1 rounded-lg bg-white/20 text-xs">← ተመለስ</button>
       <b>Adika Advisor</b>
       <button type="button" class="js-close">✕</button>
     </div>
@@ -52,147 +90,224 @@
       <button type="button" id="chatSend" class="px-4 rounded-full bg-[#16acbd] text-white text-xs font-bold">ላክ</button>
     </div>
   </div>
+
   <div id="toolsSheet" class="sheet fixed inset-0 z-50 bg-slate-950 text-white flex-col max-w-md mx-auto">
     <div class="p-3 flex justify-between items-center border-b border-white/10">
-      <button type="button" class="js-close px-3 py-1 rounded-xl bg-white/10 text-xs">ዋና ገፅ</button>
+      <button type="button" class="js-close px-3 py-1 rounded-xl bg-white/10 text-xs">← ዋና ገፅ</button>
       <b>Digital Hub</b>
       <button type="button" class="js-close">✕</button>
     </div>
     <div class="p-3 grid grid-cols-2 gap-2 text-xs">
-      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10" data-tool="ውክልና">የውክልና ማጣሪያ</button>
-      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10" data-tool="ሻሲ">የሻንሲ ማጣሪያ</button>
-      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10" data-tool="ቀረጥ">የቀረጥ ስሌት</button>
-      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10" data-tool="ብድር">የባንክ ብድር</button>
-      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10" data-tool="ንፅፅር">ንፅፅር</button>
-      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10" data-tool="ውል">የሽያጭ ውል</button>
+      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left" data-tool="ውክልና">📜 የውክልና ማጣሪያ</button>
+      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left" data-tool="ሻሲ">🔍 የሻንሲ ማጣሪያ</button>
+      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left" data-tool="ቀረጥ">🧮 የቀረጥ ስሌት</button>
+      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left" data-tool="ብድር">🏦 የባንክ ብድር</button>
+      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left" data-tool="ንፅፅር">⚖️ ንፅፅር</button>
+      <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left" data-tool="ውል">📄 የሽያጭ ውል</button>
     </div>
     <button type="button" id="openChatFromTools" class="m-3 p-3 rounded-2xl bg-cyan-400 text-slate-950 font-bold">አሁኑኑ አማክር</button>
   </div>
+
   <div id="detailSheet" class="sheet fixed inset-0 z-50 bg-white flex-col max-w-md mx-auto">
-    <div class="p-3 bg-[#16acbd] text-white flex justify-between">
-      <button type="button" class="js-close px-3 py-1 rounded-lg bg-white/20 text-xs">ተመለስ</button>
+    <div class="p-3 bg-[#16acbd] text-white flex justify-between items-center">
+      <button type="button" class="js-close px-3 py-1 rounded-lg bg-white/20 text-xs">← ተመለስ</button>
       <b id="detailTitle" class="truncate px-2">ዝርዝር</b>
       <button type="button" class="js-close">✕</button>
     </div>
+    <div id="detailMedia" class="w-full aspect-[16/9] bg-slate-200 overflow-hidden"></div>
     <div id="detailBody" class="flex-1 overflow-y-auto p-3 text-sm"></div>
-    <div class="p-3 grid grid-cols-2 gap-2">
-      <a id="detailCall" class="text-center py-3 rounded-xl bg-emerald-600 text-white font-bold" href="tel:">ደውል</a>
-      <button type="button" id="detailChat" class="py-3 rounded-xl bg-[#16acbd] text-white font-bold">አማክር</button>
+    <div class="p-3 grid grid-cols-2 gap-2" style="padding-bottom:calc(12px + env(safe-area-inset-bottom));">
+      <a id="detailCall" class="text-center py-3 rounded-xl bg-emerald-600 text-white font-bold" href="tel:">📞 ደውል</a>
+      <button type="button" id="detailChat" class="py-3 rounded-xl bg-[#16acbd] text-white font-bold">💬 አማክር</button>
     </div>
   </div>
+
   <div id="brokerSheet" class="sheet fixed inset-0 z-50 items-end justify-center bg-black/40">
     <div class="w-full max-w-md rounded-t-3xl bg-slate-900 text-white p-4">
       <div class="flex justify-between mb-3"><b>ደላላ ምዝገባ</b><button type="button" class="js-close">✕</button></div>
-      <input id="brName" class="w-full mb-2 px-3 py-2 rounded-xl bg-white/10" placeholder="ስም" />
+      <input id="brName" class="w-full mb-2 px-3 py-2 rounded-xl bg-white/10" placeholder="ሙሉ ስም" />
       <input id="brPhone" class="w-full mb-2 px-3 py-2 rounded-xl bg-white/10" placeholder="ስልክ" />
       <button type="button" id="brSubmit" class="w-full py-3 rounded-xl bg-cyan-400 text-slate-950 font-bold">መመዝገብ</button>
     </div>
   </div>
+
 <script>
-(function(){
+(function () {
   var tg = window.Telegram && Telegram.WebApp;
-  try { if (tg) { tg.ready(); tg.expand(); } } catch(e) {}
-  var state = { tab:"SELL", cat:"", q:"", items:[] };
-  var CATS = [{id:"",label:"ሁሉም"},{id:"መኪና",label:"መኪና"},{id:"ቤት",label:"ቤት"},{id:"ንግድ",label:"ንግድ"}];
-  function $(id){ return document.getElementById(id); }
-  function openSheet(id){
-    ["chatSheet","toolsSheet","detailSheet","brokerSheet"].forEach(function(x){ $(x).classList.remove("open"); });
+  try { if (tg) { tg.ready(); tg.expand(); } } catch (e) {}
+
+  var state = { tab: "SELL", cat: "", q: "", items: [] };
+  var CATS = [
+    { id: "", label: "ሁሉም" },
+    { id: "መኪና", label: "መኪና" },
+    { id: "ቤት", label: "ቤት" },
+    { id: "ንግድ", label: "ንግድ" }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  function openSheet(id) {
+    ["chatSheet", "toolsSheet", "detailSheet", "brokerSheet"].forEach(function (x) { $(x).classList.remove("open"); });
     if (id) $(id).classList.add("open");
   }
-  function money(v){
-    var n = Number(String(v||"").replace(/[^\d.]/g,""));
-    if (!n || n<=0 || n>300000000) return "ለዋጋ ደውሉ";
-    return Math.round(n).toLocaleString("en-US")+" ETB";
+  function money(v) {
+    var n = Number(String(v || "").replace(/[^\d.]/g, ""));
+    if (!n || n <= 0 || n > 300000000) return "ለዋጋ ደውሉ";
+    return Math.round(n).toLocaleString("en-US") + " ETB";
   }
-  function titleOf(it){
-    if (it.brand || it.model) return [it.brand,it.model].filter(Boolean).join(" ");
+  function isHouse(it) {
+    var c = String(it.main_category || it.category || "");
+    return c.indexOf("ቤት") >= 0 || /house|property|real/i.test(c);
+  }
+  function titleOf(it) {
+    var t = [it.brand, it.model].filter(Boolean).join(" ").trim();
+    if (t) return t;
     return it.sub_category || it.title || it.category || it.main_category || "ማስታወቂያ";
   }
-  function photoOf(it){
-    var p = it.photo_urls || it.photos || it.listing_photos || it.image_url || "";
-    if (Array.isArray(p)) return p[0]||"";
-    if (typeof p==="string" && p.charAt(0)==="["){ try { return JSON.parse(p)[0]||""; } catch(e){ return p; } }
-    return typeof p==="string" ? p : "";
+  function photoOf(it) {
+    var p = it.photo_urls || it.photos || it.listing_photos || it.image_url || it.image || "";
+    if (Array.isArray(p)) p = p[0] || "";
+    if (typeof p === "string" && p.charAt(0) === "[") {
+      try { p = JSON.parse(p)[0] || ""; } catch (e) {}
+    }
+    p = String(p || "").trim();
+    if (!p || p === "null" || p === "undefined") return "";
+    if (p.indexOf("/static") === 0 || p.indexOf("/uploads") === 0) return p;
+    return p;
   }
-  function paintCats(){
-    $("cats").innerHTML = CATS.map(function(c){
-      var on = state.cat===c.id;
-      return '<button type="button" data-cat="'+c.id+'" class="shrink-0 px-3 py-1 rounded-full text-xs font-bold '+(on?"bg-white text-[#0e7490]":"bg-white/20 text-white")+'">'+c.label+"</button>";
+
+  function paintCats() {
+    $("cats").innerHTML = CATS.map(function (c) {
+      var on = state.cat === c.id;
+      return '<button type="button" data-cat="' + c.id + '" class="shrink-0 px-3 py-1 rounded-full text-xs font-bold ' + (on ? "pill-on" : "pill-off") + '">' + c.label + "</button>";
     }).join("");
   }
-  function paintGrid(items){
-    state.items = items||[];
-    if (!state.items.length){
-      $("grid").innerHTML = '<p class="col-span-2 text-center text-sm py-8">ምንም አልተገኘም</p>';
+
+  function paintGrid(items) {
+    state.items = items || [];
+    if (!state.items.length) {
+      $("grid").innerHTML = '<p class="col-span-2 text-center text-sm py-10 text-slate-600">ምንም አልተገኘም</p>';
       return;
     }
-    $("grid").innerHTML = state.items.map(function(it,i){
+    $("grid").innerHTML = state.items.map(function (it, i) {
       var src = photoOf(it);
-      var icon = (it.main_category==="ቤት"||it.category==="ቤት") ? "ቤት" : "መኪና";
-      var media = src ? '<img src="'+String(src).replace(/"/g,"")+'" alt="" />' : '<div class="ph">'+icon+"</div>";
-      return '<button type="button" class="card text-left" data-i="'+i+'">'+media+'<div class="p-2"><b class="text-[11px]">'+titleOf(it)+'</b><div class="text-[11px] font-black text-[#0e7490] mt-1">'+money(it.price)+"</div></div></button>";
+      var icon = isHouse(it) ? "🏠" : "🚗";
+      var img = src
+        ? '<img src="' + src.replace(/"/g, "") + '" alt="" onerror="this.classList.add(\'broken\')" />'
+        : "";
+      return '<button type="button" class="card" data-i="' + i + '">' +
+        '<div class="thumb"><div class="ph">' + icon + "</div>" + img + "</div>" +
+        '<div class="px-2 py-2">' +
+          '<div class="text-[12px] font-extrabold text-slate-800 truncate">' + titleOf(it) + " ✓</div>" +
+          '<div class="text-[12px] font-black text-[#0e7490] mt-1">💰 ' + money(it.price) + "</div>" +
+        "</div></button>";
     }).join("");
   }
-  function load(){
+
+  function load() {
     $("status").textContent = "እየጫነ ነው...";
-    var qs = "page=1&limit=40&order=DESC&active_only=1&type="+state.tab;
-    if (state.cat) qs += "&category="+encodeURIComponent(state.cat);
-    if (state.q) qs += "&q="+encodeURIComponent(state.q);
-    var urls = ["/api/listings?"+qs, "/api/explorer/listings?"+qs];
-    function next(i){
-      if (i>=urls.length){
+    var qs = "page=1&limit=40&order=DESC&active_only=1&type=" + state.tab;
+    if (state.cat) qs += "&category=" + encodeURIComponent(state.cat);
+    if (state.q) qs += "&q=" + encodeURIComponent(state.q);
+    var urls = ["/api/listings?" + qs, "/api/explorer/listings?" + qs];
+    function next(i) {
+      if (i >= urls.length) {
         $("status").textContent = "ዝርዝር አልተገኘም";
         paintGrid([]);
         return;
       }
-      fetch(urls[i], {credentials:"same-origin"}).then(function(r){ return r.json(); }).then(function(d){
-        var items = (d && (d.items||d.listings||d.results||d.data)) || [];
-        if (!Array.isArray(items)) items = [];
-        if (!items.length) return next(i+1);
-        $("status").textContent = "";
-        paintGrid(items);
-      }).catch(function(){ next(i+1); });
+      fetch(urls[i], { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var items = (d && (d.items || d.listings || d.results || d.data)) || [];
+          if (!Array.isArray(items)) items = [];
+          if (!items.length) return next(i + 1);
+          $("status").textContent = "";
+          paintGrid(items);
+        })
+        .catch(function () { next(i + 1); });
     }
     next(0);
   }
-  $("tabSell").onclick = function(){ state.tab="SELL"; load(); };
-  $("tabBuy").onclick = function(){ state.tab="BUY"; load(); };
-  $("search").onkeydown = function(e){ if(e.key==="Enter"){ state.q=this.value.trim(); load(); } };
-  $("cats").onclick = function(e){ var b=e.target.closest("[data-cat]"); if(!b) return; state.cat=b.getAttribute("data-cat")||""; paintCats(); load(); };
-  $("grid").onclick = function(e){
-    var b=e.target.closest("[data-i]"); if(!b) return;
-    var it=state.items[Number(b.getAttribute("data-i"))]; if(!it) return;
+
+  $("tabSell").onclick = function () {
+    state.tab = "SELL";
+    this.className = "py-1.5 rounded-lg text-xs font-bold bg-white text-[#16acbd]";
+    $("tabBuy").className = "py-1.5 rounded-lg text-xs font-bold text-white/90";
+    load();
+  };
+  $("tabBuy").onclick = function () {
+    state.tab = "BUY";
+    this.className = "py-1.5 rounded-lg text-xs font-bold bg-white text-[#16acbd]";
+    $("tabSell").className = "py-1.5 rounded-lg text-xs font-bold text-white/90";
+    load();
+  };
+  $("search").onkeydown = function (e) {
+    if (e.key === "Enter") { state.q = this.value.trim(); load(); }
+  };
+  $("cats").onclick = function (e) {
+    var b = e.target.closest("[data-cat]");
+    if (!b) return;
+    state.cat = b.getAttribute("data-cat") || "";
+    paintCats();
+    load();
+  };
+  $("grid").onclick = function (e) {
+    var b = e.target.closest("[data-i]");
+    if (!b) return;
+    var it = state.items[Number(b.getAttribute("data-i"))];
+    if (!it) return;
     $("detailTitle").textContent = titleOf(it);
-    $("detailBody").innerHTML = "<p class='font-black text-lg text-[#0e7490]'>"+money(it.price)+"</p><p class='whitespace-pre-wrap'>"+(it.description||"")+"</p>";
-    $("detailCall").href = "tel:"+(it.phone||it.phone_number||"");
+    var src = photoOf(it);
+    $("detailMedia").innerHTML = src
+      ? '<img src="' + src.replace(/"/g, "") + '" style="width:100%;height:100%;object-fit:cover" />'
+      : '<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:48px">' + (isHouse(it) ? "🏠" : "🚗") + "</div>";
+    $("detailBody").innerHTML =
+      '<p class="font-black text-lg text-[#0e7490] mb-2">' + money(it.price) + "</p>" +
+      '<p class="whitespace-pre-wrap text-slate-700">' + (it.description || "") + "</p>";
+    $("detailCall").href = "tel:" + (it.phone || it.phone_number || "");
     openSheet("detailSheet");
   };
-  $("navHome").onclick = function(){ openSheet(null); };
-  $("navAi").onclick = function(){ openSheet("toolsSheet"); };
-  $("navChat").onclick = function(){ openSheet("chatSheet"); };
-  $("navHelp").onclick = function(){ alert("Adika • @AdikaMarketplaceBot"); };
-  $("fabBtn").onclick = function(){ location.href = state.tab==="BUY" ? "/buyer-form" : "/seller-form"; };
-  $("btnBroker").onclick = function(){ openSheet("brokerSheet"); };
-  $("openChatFromTools").onclick = function(){ openSheet("chatSheet"); };
-  $("detailChat").onclick = function(){ openSheet("chatSheet"); };
-  document.querySelectorAll(".js-close").forEach(function(b){ b.onclick=function(){ openSheet(null); }; });
-  document.querySelectorAll(".js-tool").forEach(function(b){ b.onclick=function(){ openSheet("chatSheet"); $("chatInput").value="የ"+b.getAttribute("data-tool")+" አገልግሎት እፈልጋለሁ"; }; });
-  $("brSubmit").onclick = function(){
-    var name=$("brName").value.trim(), phone=$("brPhone").value.trim();
-    if(!name||!phone){ alert("ስም እና ስልክ"); return; }
-    fetch("/api/brokers/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:name,phone:phone})})
-      .then(function(r){return r.json();}).then(function(d){ alert(d.success?"ተመዝግቧል":(d.message||"አልተሳካም")); if(d.success) openSheet(null); })
-      .catch(function(){ alert("ኔትወርክ"); });
+  $("navHome").onclick = function () { openSheet(null); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  $("navAi").onclick = function () { openSheet("toolsSheet"); };
+  $("navChat").onclick = function () { openSheet("chatSheet"); };
+  $("navHelp").onclick = function () { alert("Adika Marketplace\\n@AdikaMarketplaceBot"); };
+  $("fabBtn").onclick = function () { location.href = state.tab === "BUY" ? "/buyer-form" : "/seller-form"; };
+  $("btnBroker").onclick = function () { openSheet("brokerSheet"); };
+  $("openChatFromTools").onclick = function () { openSheet("chatSheet"); };
+  $("detailChat").onclick = function () { openSheet("chatSheet"); };
+  document.querySelectorAll(".js-close").forEach(function (b) { b.onclick = function () { openSheet(null); }; });
+  document.querySelectorAll(".js-tool").forEach(function (b) {
+    b.onclick = function () {
+      openSheet("chatSheet");
+      $("chatInput").value = "የ" + b.getAttribute("data-tool") + " አገልግሎት እፈልጋለሁ";
+    };
+  });
+  $("brSubmit").onclick = function () {
+    var name = $("brName").value.trim(), phone = $("brPhone").value.trim();
+    if (!name || !phone) { alert("ስም እና ስልክ ያስፈልጋሉ"); return; }
+    fetch("/api/brokers/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name, phone: phone })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      alert(d.success ? "ተመዝግቧል" : (d.message || "አልተሳካም"));
+      if (d.success) openSheet(null);
+    }).catch(function () { alert("ኔትወርክ ስህተት"); });
   };
-  $("chatSend").onclick = function(){
-    var msg=$("chatInput").value.trim(); if(!msg) return;
-    $("chatLog").innerHTML += '<div class="text-right mb-2"><span class="inline-block bg-teal-600 text-white p-2 rounded-2xl">'+msg+"</span></div>";
-    $("chatInput").value="";
-    fetch("/api/advisor/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})})
-      .then(function(r){return r.json();}).then(function(d){
-        $("chatLog").innerHTML += '<div class="mb-2 bg-white p-2 rounded-2xl">'+(d.reply||d.message||d.text||"ተቀብያለሁ")+"</div>";
-      }).catch(function(){ $("chatLog").innerHTML += '<div class="mb-2">አልተሳካም</div>'; });
+  $("chatSend").onclick = function () {
+    var msg = $("chatInput").value.trim();
+    if (!msg) return;
+    $("chatLog").innerHTML += '<div class="text-right mb-2"><span class="inline-block bg-teal-600 text-white p-2 rounded-2xl">' + msg + "</span></div>";
+    $("chatInput").value = "";
+    fetch("/api/advisor/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      $("chatLog").innerHTML += '<div class="mb-2 bg-white p-2 rounded-2xl">' + (d.reply || d.message || d.text || "ተቀብያለሁ") + "</div>";
+    }).catch(function () { $("chatLog").innerHTML += '<div class="mb-2">አልተሳካም</div>'; });
   };
+
   paintCats();
   load();
 })();
