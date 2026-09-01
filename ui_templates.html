@@ -2,57 +2,21 @@
 <html lang="en">
 <head>
   <script>
-  /* Safe storage: Telegram Mini App iframe may sandbox localStorage */
-  (function () {
-    var memL = {};
-    var memS = {};
-    function makeMem(bag) {
-      return {
-        getItem: function (k) {
-          k = String(k);
-          return Object.prototype.hasOwnProperty.call(bag, k) ? bag[k] : null;
-        },
-        setItem: function (k, v) { bag[String(k)] = String(v); },
-        removeItem: function (k) { delete bag[String(k)]; },
-        clear: function () { for (var k in bag) if (Object.prototype.hasOwnProperty.call(bag, k)) delete bag[k]; },
-        key: function (i) { return Object.keys(bag)[i] || null; },
-        get length() { return Object.keys(bag).length; }
-      };
-    }
-    function install(name, bag) {
-      var impl = makeMem(bag);
-      try {
-        var native = window[name];
-        var probe = "__adika_store_probe__";
-        native.setItem(probe, "1");
-        native.removeItem(probe);
-        impl = native;
-      } catch (e) {}
-      try {
-        Object.defineProperty(window, name, {
-          configurable: true,
-          enumerable: true,
-          value: impl
-        });
-      } catch (e2) {
-        try { window[name] = impl; } catch (e3) {}
-      }
-      window["__adika_" + name] = impl;
-    }
-    install("localStorage", memL);
-    install("sessionStorage", memS);
-    window.adikaSafeStore = {
-      get: function (k) {
-        try { return window.localStorage.getItem(k); } catch (e) { return memL[k] || null; }
-      },
-      set: function (k, v) {
-        try { window.localStorage.setItem(k, v); } catch (e) { memL[k] = String(v); }
-      },
-      remove: function (k) {
-        try { window.localStorage.removeItem(k); } catch (e) { delete memL[k]; }
-      }
-    };
-  })();
+  window.appState = window.appState || {};
+  window.appGet = function (k, fallback) {
+    try {
+      if (Object.prototype.hasOwnProperty.call(window.appState, k)) return window.appState[k];
+    } catch (e) {}
+    return fallback == null ? null : fallback;
+  };
+  window.appSet = function (k, v) {
+    try { window.appState[k] = v; } catch (e) {}
+    return v;
+  };
+  window.appRemove = function (k) {
+    try { delete window.appState[k]; } catch (e) {}
+  };
+  /* Intentionally do NOT touch localStorage / sessionStorage */
   </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
@@ -1771,14 +1735,14 @@
 
     var favorites = {};
     try {
-      favorites = JSON.parse(localStorage.getItem('adika_favs') || '{}');
+      favorites = JSON.parse(appGet('adika_favs', '{}'));
     } catch(e) {}
 
     function toggleFav(id) {
       var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
-      try { localStorage.setItem('adika_favs', JSON.stringify(favorites)); } catch(e){}
+      try { appSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
       renderFavoritesUI();
       // Persist bookmark for price-drop alerts (Telegram chat_id)
       try {
@@ -1833,26 +1797,26 @@
           brand: bm.brand || ""
         };
         var hist = [];
-        try { hist = JSON.parse(localStorage.getItem("viewHistory") || "[]"); } catch (e) { hist = []; }
+        try { hist = JSON.parse(appGet("viewHistory", "[]")); } catch (e) { hist = []; }
         if (!Array.isArray(hist)) hist = [];
         hist = hist.filter(function(h) { return String(h.id) !== String(entry.id); });
         hist.unshift(entry);
         hist = hist.slice(0, 3);
-        localStorage.setItem("viewHistory", JSON.stringify(hist));
+        appSet("viewHistory", JSON.stringify(hist));
         // Zero-cost intent key (last 3 categories + prices)
         try {
           var intent = hist.map(function(h) {
             return { category: h.category || "", price: h.price || 0, model: h.model || "", brand: h.brand || "" };
           });
-          localStorage.setItem("adik_user_intent", JSON.stringify(intent));
+          appSet("adik_user_intent", JSON.stringify(intent));
         } catch (e2) {}
       } catch (e) {}
     }
     function getViewHistory() {
       try {
-        var hist = JSON.parse(localStorage.getItem("viewHistory") || "[]");
+        var hist = JSON.parse(appGet("viewHistory", "[]"));
         if (!Array.isArray(hist) || !hist.length) {
-          hist = JSON.parse(localStorage.getItem("adik_user_intent") || "[]");
+          hist = JSON.parse(appGet("adik_user_intent", "[]"));
         }
         return Array.isArray(hist) ? hist : [];
       } catch (e) { return []; }
@@ -2040,7 +2004,7 @@
     // BULLETPROOF CSS DUAL-CLASS LANGUAGE SWITCHER
     // =================================================================
     function setLanguage(lang) {
-      localStorage.setItem('adika_lang', lang);
+      appSet('adika_lang', lang);
       if (lang === 'en') {
         document.body.classList.add('lang-en-active');
         langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
@@ -2057,7 +2021,7 @@
     langAmBtn.onclick = function() { setLanguage('am'); };
     langEnBtn.onclick = function() { setLanguage('en'); };
 
-    var initialLang = localStorage.getItem('adika_lang') || 'am';
+    var initialLang = appGet('adika_lang', 'am');
     setLanguage(initialLang);
 
     function esc(s) {
@@ -4389,9 +4353,9 @@
         lastExtract = extract || lastExtract;
         if (!lastExtract) return;
         try {
-          localStorage.setItem("adika_land_map_last", JSON.stringify(lastExtract));
+          appSet("adika_land_map_last", JSON.stringify(lastExtract));
           var draft = {};
-          try { draft = JSON.parse(localStorage.getItem("adika_contract_draft_v2") || "{}") || {}; } catch (e) {}
+          try { draft = JSON.parse(appGet("adika_contract_draft_v2", "{}")) || {}; } catch (e) {}
           draft.contract_type = (draft.contract_type && String(draft.contract_type).indexOf("house") >= 0)
             ? draft.contract_type : "house_sale";
           draft.property_info = draft.property_info || {};
@@ -4403,7 +4367,7 @@
             draft.seller_info = draft.seller_info || {};
             draft.seller_info.name = lastExtract.name;
           }
-          localStorage.setItem("adika_contract_draft_v2", JSON.stringify(draft));
+          appSet("adika_contract_draft_v2", JSON.stringify(draft));
         } catch (e) {}
       }
 
@@ -5028,11 +4992,11 @@
         if (prev) prev.classList.toggle("hidden", n <= 0);
         if (next) next.classList.toggle("hidden", n >= 3);
         syncTypeUI();
-        try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
+        try { appSet(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
       }
       function restoreDraft() {
         try {
-          var raw = localStorage.getItem(SUB_KEY);
+          var raw = appGet(SUB_KEY);
           if (!raw) return;
           var d = JSON.parse(raw);
           if (!d) return;
@@ -5121,7 +5085,7 @@
           saveBtn.disabled = true;
           saveContract("Draft").then(function(res) {
             if (res.contract_id) draftId = res.contract_id;
-            try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
+            try { appSet(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
             if (tg && tg.showAlert) tg.showAlert(res.message || "ረቂቅ ተቀምጧል");
             else alert(res.message || "ረቂቅ ተቀምጧል");
           }).catch(function() { alert("ማስቀመጥ አልተቻለም"); })
@@ -5255,22 +5219,22 @@
       // Role gate
       var roleKey = "adika_role_v1";
       var hasRole = false;
-      try { hasRole = !!localStorage.getItem(roleKey); } catch (e) {}
+      try { hasRole = !!appGet(roleKey); } catch (e) {}
       // Do not block the marketplace behind role modal — optional entry only
       // if (!hasRole) openM("roleSelectModal");
-      try { if (!hasRole) localStorage.setItem(roleKey, "user"); } catch (e) {}
+      try { if (!hasRole) appSet(roleKey, "user"); } catch (e) {}
 
       var roleUser = document.getElementById("roleUserBtn");
       var roleBroker = document.getElementById("roleBrokerBtn");
       if (roleUser) roleUser.onclick = function() {
-        try { localStorage.setItem(roleKey, "user"); } catch (e) {}
+        try { appSet(roleKey, "user"); } catch (e) {}
         closeM("roleSelectModal");
         state.feedMode = "all";
         paintFeedModes();
         load(false);
       };
       if (roleBroker) roleBroker.onclick = function() {
-        try { localStorage.setItem(roleKey, "broker"); } catch (e) {}
+        try { appSet(roleKey, "broker"); } catch (e) {}
         closeM("roleSelectModal");
         openM("brokerRegModal");
       };
