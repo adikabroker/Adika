@@ -2009,7 +2009,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
 
   <!-- Modal: Customs Duty Calculator -->
-  <div id="dutyModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="dutyModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🧮 የኢትዮጵያ ጉምሩክ የቀረጥ ስሌት (Duty Calculator)</h3>
@@ -2048,7 +2048,7 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Modal: Bank Loan & Mortgage -->
-  <div id="loanModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="loanModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🏦 የባንክ ብድርና ወርሃዊ ክፍያ (Bank Loan)</h3>
@@ -2083,7 +2083,7 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Modal: Executive Institutional Comparison Dashboard -->
-  <div id="compareModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="compareModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-slate-950 rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-800">
       <div class="px-3 py-2.5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
         <div class="min-w-0">
@@ -2190,7 +2190,7 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Modal: Legal Contract Generator -->
-  <div id="contractModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="contractModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ ውል ማዘጋጃ (Contract Wizard)</h3>
@@ -2426,7 +2426,7 @@ EXPLORER_HTML = r"""
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
-  <div id="poaModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="poaModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3.5 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0 shadow-sm">
         <div class="flex items-center gap-2 min-w-0">
@@ -2478,7 +2478,7 @@ EXPLORER_HTML = r"""
   <!-- Modal: Diagnostic Sheet Analyzer -->
 
   <!-- Modal: Digital Cadastral Map Verifier (Adika Digital System) -->
-  <div id="landMapModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="landMapModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="min-w-0">
@@ -2552,7 +2552,7 @@ EXPLORER_HTML = r"""
     </div>
   </div>
 
-  <div id="diagModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="diagModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🛠️ የምርመራ ወረቀት ተንታኝ (Diagnostic Analyzer)</h3>
@@ -2583,7 +2583,7 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Modal: Chassis & VIN Verification Tool -->
-  <div id="chassisModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="chassisModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="flex items-center gap-1.5">
@@ -3766,6 +3766,18 @@ EXPLORER_HTML = r"""
       openAdviserChat(btn.getAttribute("data-car") || "", btn.getAttribute("data-summary") || "");
     });
 
+    
+    window.__adikaOpenToolFromHub = function(modalId) {
+      var ai = document.getElementById("aiModal");
+      if (ai) {
+        ai.classList.add("hidden");
+        ai.classList.remove("flex");
+        try { ai.style.display = "none"; } catch (e) {}
+      }
+      /* keep chrome hidden — openToolModal will hide nav again */
+      openToolModal(modalId);
+    };
+
     window.openToolModal = function(id) {
       var m = document.getElementById(id);
       if (m) {
@@ -3829,16 +3841,16 @@ EXPLORER_HTML = r"""
     });
 
     // Tool Launchers
-    document.getElementById("toolDutyBtn").onclick = function() { aiModalClose.onclick(); openToolModal("dutyModal"); };
-    document.getElementById("toolLoanBtn").onclick = function() { aiModalClose.onclick(); openToolModal("loanModal"); };
-    document.getElementById("toolCompareBtn").onclick = function() { aiModalClose.onclick(); openToolModal("compareModal"); };
-    document.getElementById("toolContractBtn").onclick = function() { aiModalClose.onclick(); openToolModal("contractModal"); };
-    document.getElementById("toolPoaBtn").onclick = function() { aiModalClose.onclick(); openToolModal("poaModal"); };
-    document.getElementById("toolDiagBtn").onclick = function() { aiModalClose.onclick(); openToolModal("diagModal"); };
+    document.getElementById("toolDutyBtn").onclick = function() { __adikaOpenToolFromHub("dutyModal"); };
+    document.getElementById("toolLoanBtn").onclick = function() { __adikaOpenToolFromHub("loanModal"); };
+    document.getElementById("toolCompareBtn").onclick = function() { __adikaOpenToolFromHub("compareModal"); };
+    document.getElementById("toolContractBtn").onclick = function() { __adikaOpenToolFromHub("contractModal"); };
+    document.getElementById("toolPoaBtn").onclick = function() { __adikaOpenToolFromHub("poaModal"); };
+    document.getElementById("toolDiagBtn").onclick = function() { __adikaOpenToolFromHub("diagModal"); };
     if (document.getElementById("toolChassisBtn")) {
-      document.getElementById("toolChassisBtn").onclick = function() { aiModalClose.onclick(); openToolModal("chassisModal"); };
+      document.getElementById("toolChassisBtn").onclick = function() { __adikaOpenToolFromHub("chassisModal"); };
       var _lmBtn = document.getElementById("toolLandMapBtn");
-      if (_lmBtn) _lmBtn.onclick = function() { try { aiModalClose.onclick(); } catch(e){} openToolModal("landMapModal"); };
+      if (_lmBtn) _lmBtn.onclick = function() { __adikaOpenToolFromHub("landMapModal"); };
     }
 
     // AI Smart Financial Advisor Interactive Controls
@@ -6179,22 +6191,28 @@ EXPLORER_HTML = r"""
       }
 
       function openCurrentTool() {
-        if (!slides[idx]) return;
-        var tool = slides[idx].getAttribute("data-tool") || "";
-        if (tool === "loan") {
-          window.__adikaOpenToolChat && window.__adikaOpenToolChat("loan");
-          return;
-        }
+        /* Banner → Tools Hub (aiModal), NEVER direct AI chat */
         try {
+          if (typeof openToolModal === "function") openToolModal("aiModal");
+          else {
+            var m = document.getElementById("aiModal");
+            if (m) {
+              m.classList.remove("hidden");
+              m.classList.add("flex");
+              m.style.display = "flex";
+            }
+          }
           setHomeChrome(false);
-          if (typeof showAnalysisView === "function") showAnalysisView(true);
-          setTimeout(function () {
-            var id = btnMap[tool];
-            var el = id ? document.getElementById(id) : null;
-            if (el) el.click();
-            else if (typeof openToolModal === "function") openToolModal(tool);
-          }, 100);
-        } catch (e) {}
+          var tool = slides[idx] ? (slides[idx].getAttribute("data-tool") || "") : "";
+          /* After hub opens, optionally deep-link into specific tool form */
+          if (tool && tool !== "loan") {
+            setTimeout(function () {
+              var id = btnMap[tool];
+              var el = id ? document.getElementById(id) : null;
+              if (el) el.click();
+            }, 180);
+          }
+        } catch (e) { console.error("openCurrentTool", e); }
       }
 
       window.__adikaOpenToolChat = function (toolKey) {
