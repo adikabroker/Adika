@@ -1377,7 +1377,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5 pb-32" style="padding-top: 142px; padding-bottom: 140px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5 pb-32" style="padding-top: 136px; padding-bottom: 140px;">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -1385,9 +1385,9 @@ EXPLORER_HTML = r"""
     </div>
 
     <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
-    <div id="homeHero" class="mt-0.5 pt-0 mb-2 px-0">
-      <div id="adikaPromoBanner" class="relative w-full h-14 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
-           style="margin-top:2px; background: rgba(15,23,42,0.90); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    <div id="homeHero" class="mt-0 pt-0 mb-1.5 px-0">
+      <div id="adikaPromoBanner" class="relative w-full h-11 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+           style="margin-top:0; background: rgba(15,23,42,0.90); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                   border: 1.5px solid transparent;
                   background-image: linear-gradient(rgba(15,23,42,0.90), rgba(15,23,42,0.90)), linear-gradient(90deg, #22d3ee, #7dd3fc, #2dd4bf, #22d3ee);
                   background-size: 100% 100%, 200% 100%;
@@ -1396,50 +1396,50 @@ EXPLORER_HTML = r"""
           <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(34,211,238,0.2),rgba(125,211,252,0.15),transparent);animation:adikaShimmer 2.2s linear infinite;"></div>
         </div>
         <div id="promoSlides" class="relative h-full w-full">
-          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5 is-active" data-tool="poa" data-idx="0">
-            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-lg shrink-0 z-[1]">📜</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3 is-active" data-tool="poa" data-idx="0">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">📜</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[11px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ው</span><span class="promo-letter" style="animation-delay:60ms">ክ</span><span class="promo-letter" style="animation-delay:90ms">ል</span><span class="promo-letter" style="animation-delay:120ms">ና</span> <span class="promo-letter" style="animation-delay:180ms">ማ</span><span class="promo-letter" style="animation-delay:210ms">ጣ</span><span class="promo-letter" style="animation-delay:240ms">ሪ</span><span class="promo-letter" style="animation-delay:270ms">ያ</span></p>
-              <p class="promo-sub text-[9px] text-sky-100/85 font-medium truncate">የውክልና ሰነዶችን ህጋዊነት በስካን ያረጋገጡ</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ው</span><span class="promo-letter" style="animation-delay:60ms">ክ</span><span class="promo-letter" style="animation-delay:90ms">ል</span><span class="promo-letter" style="animation-delay:120ms">ና</span> <span class="promo-letter" style="animation-delay:180ms">ማ</span><span class="promo-letter" style="animation-delay:210ms">ጣ</span><span class="promo-letter" style="animation-delay:240ms">ሪ</span><span class="promo-letter" style="animation-delay:270ms">ያ</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የውክልና ሰነዶችን ህጋዊነት በስካን ያረጋገጡ</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[9px] font-black text-slate-950 shrink-0 px-2.5 py-1 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5" data-tool="chassis" data-idx="1" style="opacity:0;pointer-events:none">
-            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(56,189,248,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-lg shrink-0 z-[1]">🔍</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="chassis" data-idx="1" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(56,189,248,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🔍</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[11px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ሻ</span><span class="promo-letter" style="animation-delay:60ms">ን</span><span class="promo-letter" style="animation-delay:90ms">ሲ</span> <span class="promo-letter" style="animation-delay:150ms">ማ</span><span class="promo-letter" style="animation-delay:180ms">ጣ</span><span class="promo-letter" style="animation-delay:210ms">ሪ</span><span class="promo-letter" style="animation-delay:240ms">ያ</span></p>
-              <p class="promo-sub text-[9px] text-sky-100/85 font-medium truncate">የመኪናውን እውነተኛ ታሪክ እና VIN ይመርምሩ</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ሻ</span><span class="promo-letter" style="animation-delay:60ms">ን</span><span class="promo-letter" style="animation-delay:90ms">ሲ</span> <span class="promo-letter" style="animation-delay:150ms">ማ</span><span class="promo-letter" style="animation-delay:180ms">ጣ</span><span class="promo-letter" style="animation-delay:210ms">ሪ</span><span class="promo-letter" style="animation-delay:240ms">ያ</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የመኪናውን እውነተኛ ታሪክ እና VIN ይመርምሩ</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[9px] font-black text-slate-950 shrink-0 px-2.5 py-1 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5" data-tool="duty" data-idx="2" style="opacity:0;pointer-events:none">
-            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(45,212,191,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-lg shrink-0 z-[1]">🧮</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="duty" data-idx="2" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(45,212,191,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🧮</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[11px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ቀ</span><span class="promo-letter" style="animation-delay:60ms">ረ</span><span class="promo-letter" style="animation-delay:90ms">ጥ</span> <span class="promo-letter" style="animation-delay:150ms">ስ</span><span class="promo-letter" style="animation-delay:180ms">ሌ</span><span class="promo-letter" style="animation-delay:210ms">ት</span></p>
-              <p class="promo-sub text-[9px] text-sky-100/85 font-medium truncate">የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ ስሌት</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ቀ</span><span class="promo-letter" style="animation-delay:60ms">ረ</span><span class="promo-letter" style="animation-delay:90ms">ጥ</span> <span class="promo-letter" style="animation-delay:150ms">ስ</span><span class="promo-letter" style="animation-delay:180ms">ሌ</span><span class="promo-letter" style="animation-delay:210ms">ት</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ ስሌት</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[9px] font-black text-slate-950 shrink-0 px-2.5 py-1 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5" data-tool="loan" data-idx="3" style="opacity:0;pointer-events:none">
-            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(14,165,233,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-lg shrink-0 z-[1]">🏦</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="loan" data-idx="3" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(14,165,233,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🏦</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[11px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ባ</span><span class="promo-letter" style="animation-delay:60ms">ን</span><span class="promo-letter" style="animation-delay:90ms">ክ</span> <span class="promo-letter" style="animation-delay:150ms">ብ</span><span class="promo-letter" style="animation-delay:180ms">ድ</span><span class="promo-letter" style="animation-delay:210ms">ር</span></p>
-              <p class="promo-sub text-[9px] text-sky-100/85 font-medium truncate">የቤት እና የመኪና ብድር ወርሃዊ ስሌት</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ባ</span><span class="promo-letter" style="animation-delay:60ms">ን</span><span class="promo-letter" style="animation-delay:90ms">ክ</span> <span class="promo-letter" style="animation-delay:150ms">ብ</span><span class="promo-letter" style="animation-delay:180ms">ድ</span><span class="promo-letter" style="animation-delay:210ms">ር</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የቤት እና የመኪና ብድር ወርሃዊ ስሌት</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[9px] font-black text-slate-950 shrink-0 px-2.5 py-1 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2 px-2.5" data-tool="compare" data-idx="4" style="opacity:0;pointer-events:none">
-            <span class="promo-orb absolute left-1 w-10 h-10 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.4),transparent 70%);"></span>
-            <span class="promo-icon relative text-lg shrink-0 z-[1]">⚖️</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="compare" data-idx="4" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.4),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">⚖️</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[11px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">መ</span><span class="promo-letter" style="animation-delay:60ms">ኪ</span><span class="promo-letter" style="animation-delay:90ms">ና</span> <span class="promo-letter" style="animation-delay:150ms">ን</span><span class="promo-letter" style="animation-delay:180ms">ፅ</span><span class="promo-letter" style="animation-delay:210ms">ፅ</span><span class="promo-letter" style="animation-delay:240ms">ር</span></p>
-              <p class="promo-sub text-[9px] text-sky-100/85 font-medium truncate">የሁለት መኪናዎችን ብቃት ጎን ለጎን ያወዳድሩ</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">መ</span><span class="promo-letter" style="animation-delay:60ms">ኪ</span><span class="promo-letter" style="animation-delay:90ms">ና</span> <span class="promo-letter" style="animation-delay:150ms">ን</span><span class="promo-letter" style="animation-delay:180ms">ፅ</span><span class="promo-letter" style="animation-delay:210ms">ፅ</span><span class="promo-letter" style="animation-delay:240ms">ር</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የሁለት መኪናዎችን ብቃት ጎን ለጎን ያወዳድሩ</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[9px] font-black text-slate-950 shrink-0 px-2.5 py-1 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
         </div>
 
