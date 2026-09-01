@@ -23,7 +23,66 @@ SELLER_FORM_HTML = r"""
     .chip-active { background:#16acbd; color:#fff; font-weight:700; box-shadow:0 2px 6px rgba(22,172,189,.35); border: 1px solid #16acbd; }
     .chip-idle { background:#ffffff; color:#334155; border:1px solid #cbd5e1; font-weight: 600; }
     input, textarea, select { font-size: 15px !important; }
-  </style>
+  
+    @keyframes adikaShimmer {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(120%); }
+    }
+    @keyframes adikaNeonPulse {
+      0%, 100% { filter: drop-shadow(0 0 4px rgba(34,211,238,0.45)); }
+      50% { filter: drop-shadow(0 0 10px rgba(99,102,241,0.55)); }
+    }
+    #adikaPromoBanner {
+      animation: adikaNeonPulse 2.4s ease-in-out infinite;
+    }
+    .promo-slide {
+      transition: opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.42s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      will-change: opacity, transform;
+    }
+    .promo-slide .promo-icon {
+      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0ms,
+                  opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0ms;
+    }
+    .promo-slide .promo-title {
+      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) 80ms,
+                  opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1) 80ms;
+    }
+    .promo-slide .promo-sub {
+      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) 120ms,
+                  opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1) 120ms;
+    }
+    .promo-slide .promo-cta {
+      transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1) 100ms,
+                  opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1) 100ms;
+    }
+    .promo-slide:not(.is-active) .promo-icon,
+    .promo-slide:not(.is-active) .promo-title,
+    .promo-slide:not(.is-active) .promo-sub,
+    .promo-slide:not(.is-active) .promo-cta {
+      opacity: 0;
+      transform: scale(1.12) translateX(10px);
+    }
+    .promo-slide.is-active .promo-icon,
+    .promo-slide.is-active .promo-title,
+    .promo-slide.is-active .promo-sub,
+    .promo-slide.is-active .promo-cta {
+      opacity: 1;
+      transform: scale(1) translateX(0);
+    }
+    .promo-slide.is-active {
+      opacity: 1 !important;
+      transform: scale(1) translateX(0) !important;
+      pointer-events: auto !important;
+      z-index: 2;
+    }
+    .promo-slide.is-exit {
+      opacity: 0 !important;
+      transform: scale(0.95) translateX(-18px) !important;
+      pointer-events: none !important;
+      z-index: 1;
+    }
+</style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen text-slate-800">
   <div id="root"></div>
@@ -1246,7 +1305,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5 pb-32" style="padding-top: 148px; padding-bottom: 140px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5 pb-32" style="padding-top: 142px; padding-bottom: 140px;">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -1254,67 +1313,62 @@ EXPLORER_HTML = r"""
     </div>
 
     <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
-    <div id="homeHero" class="mt-0.5 pt-0 mb-1.5 px-0">
+    <div id="homeHero" class="mt-0 pt-0 mb-2 px-0">
       <div id="adikaPromoBanner" class="relative w-full h-14 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
-           style="background: rgba(15,23,42,0.78); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+           style="margin-top:0; background: rgba(15,23,42,0.80); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                   border: 1.5px solid transparent;
-                  background-image: linear-gradient(rgba(15,23,42,0.82), rgba(15,23,42,0.82)), linear-gradient(90deg, #22d3ee, #2dd4bf, #6366f1, #22d3ee);
+                  background-image: linear-gradient(rgba(15,23,42,0.85), rgba(15,23,42,0.85)), linear-gradient(90deg, #22d3ee, #6366f1, #2dd4bf, #22d3ee);
+                  background-size: 100% 100%, 200% 100%;
                   background-origin: border-box; background-clip: padding-box, border-box;
-                  box-shadow: 0 0 14px rgba(34,211,238,0.28), inset 0 1px 0 rgba(255,255,255,0.08);">
-        <!-- Animated neon edge shimmer -->
-        <div class="absolute inset-0 pointer-events-none opacity-40" style="background: linear-gradient(90deg, transparent, rgba(34,211,238,0.15), transparent); animation: adikaShimmer 2.8s linear infinite;"></div>
-
-        <!-- Slides container -->
+                  box-shadow: 0 0 16px rgba(34,211,238,0.32), inset 0 1px 0 rgba(255,255,255,0.1);
+                  animation: adikaNeonPulse 2.4s ease-in-out infinite;">
+        <div class="absolute inset-0 pointer-events-none opacity-50 overflow-hidden">
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(34,211,238,0.2),transparent);animation:adikaShimmer 2.2s linear infinite;"></div>
+        </div>
         <div id="promoSlides" class="relative h-full w-full">
-          <!-- Slide 0: POA -->
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-100 scale-100 translate-x-0" data-tool="poa" data-idx="0">
-            <span class="text-lg shrink-0">📜</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 is-active" data-tool="poa" data-idx="0">
+            <span class="promo-icon text-lg shrink-0">📜</span>
             <div class="flex-1 min-w-0">
-              <p class="text-[11px] font-black text-white leading-tight truncate">የውክልና ማጣሪያ</p>
-              <p class="text-[9px] text-cyan-200/90 font-medium truncate">የውክልና ሰነዶችን ህጋዊነት በስካን ያረጋገጡ</p>
+              <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የውክልና ማጣሪያ</p>
+              <p class="promo-sub text-[9px] text-cyan-200/90 font-medium truncate">የውክልና ሰነዶችን ህጋዊነት በስካን ያረጋገጡ</p>
             </div>
-            <span class="text-[10px] font-bold text-cyan-300 shrink-0">ክፈት →</span>
+            <span class="promo-cta text-[10px] font-bold text-cyan-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
           </div>
-          <!-- Slide 1: Chassis -->
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-0 scale-95 translate-x-4 pointer-events-none" data-tool="chassis" data-idx="1">
-            <span class="text-lg shrink-0">🔍</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3" data-tool="chassis" data-idx="1" style="opacity:0;pointer-events:none">
+            <span class="promo-icon text-lg shrink-0">🔍</span>
             <div class="flex-1 min-w-0">
-              <p class="text-[11px] font-black text-white leading-tight truncate">የሻንሲ ማጣሪያ</p>
-              <p class="text-[9px] text-teal-200/90 font-medium truncate">የመኪናውን እውነተኛ ታሪክ እና VIN ይመርምሩ</p>
+              <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የሻንሲ ማጣሪያ</p>
+              <p class="promo-sub text-[9px] text-teal-200/90 font-medium truncate">የመኪናውን እውነተኛ ታሪክ እና VIN ይመርምሩ</p>
             </div>
-            <span class="text-[10px] font-bold text-teal-300 shrink-0">ክፈት →</span>
+            <span class="promo-cta text-[10px] font-bold text-teal-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
           </div>
-          <!-- Slide 2: Duty -->
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-0 scale-95 translate-x-4 pointer-events-none" data-tool="duty" data-idx="2">
-            <span class="text-lg shrink-0">🧮</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3" data-tool="duty" data-idx="2" style="opacity:0;pointer-events:none">
+            <span class="promo-icon text-lg shrink-0">🧮</span>
             <div class="flex-1 min-w-0">
-              <p class="text-[11px] font-black text-white leading-tight truncate">የቀረጥ ስሌት</p>
-              <p class="text-[9px] text-indigo-200/90 font-medium truncate">የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ ስሌት</p>
+              <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የቀረጥ ስሌት</p>
+              <p class="promo-sub text-[9px] text-indigo-200/90 font-medium truncate">የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ ስሌት</p>
             </div>
-            <span class="text-[10px] font-bold text-indigo-300 shrink-0">ክፈት →</span>
+            <span class="promo-cta text-[10px] font-bold text-indigo-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
           </div>
-          <!-- Slide 3: Loan -->
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-0 scale-95 translate-x-4 pointer-events-none" data-tool="loan" data-idx="3">
-            <span class="text-lg shrink-0">🏦</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3" data-tool="loan" data-idx="3" style="opacity:0;pointer-events:none">
+            <span class="promo-icon text-lg shrink-0">🏦</span>
             <div class="flex-1 min-w-0">
-              <p class="text-[11px] font-black text-white leading-tight truncate">የባንክ ብድር</p>
-              <p class="text-[9px] text-purple-200/90 font-medium truncate">የቤት እና የመኪና ብድር ወርሃዊ ስሌት</p>
+              <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የባንክ ብድር</p>
+              <p class="promo-sub text-[9px] text-purple-200/90 font-medium truncate">የቤት እና የመኪና ብድር ወርሃዊ ስሌት</p>
             </div>
-            <span class="text-[10px] font-bold text-purple-300 shrink-0">ክፈት →</span>
+            <span class="promo-cta text-[10px] font-bold text-purple-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
           </div>
-          <!-- Slide 4: Compare -->
-          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-0 scale-95 translate-x-4 pointer-events-none" data-tool="compare" data-idx="4">
-            <span class="text-lg shrink-0">⚖️</span>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3" data-tool="compare" data-idx="4" style="opacity:0;pointer-events:none">
+            <span class="promo-icon text-lg shrink-0">⚖️</span>
             <div class="flex-1 min-w-0">
-              <p class="text-[11px] font-black text-white leading-tight truncate">የመኪና ንፅፅር</p>
-              <p class="text-[9px] text-amber-200/90 font-medium truncate">የሁለት መኪናዎችን ብቃት ጎን ለጎን ያወዳድሩ</p>
+              <p class="promo-title text-[11px] font-black text-white leading-tight truncate">የመኪና ንፅፅር</p>
+              <p class="promo-sub text-[9px] text-amber-200/90 font-medium truncate">የሁለት መኪናዎችን ብቃት ጎን ለጎን ያወዳድሩ</p>
             </div>
-            <span class="text-[10px] font-bold text-amber-300 shrink-0">ክፈት →</span>
+            <span class="promo-cta text-[10px] font-bold text-amber-300 shrink-0 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">ክፈት →</span>
           </div>
         </div>
 
-        <!-- Dot indicators -->
-        <div id="promoDots" class="absolute bottom-1 right-2 flex gap-1 z-10">
+        id="promoDots" class="absolute bottom-1 right-2 flex gap-1 z-10">
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/90 transition-all" data-i="0"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="1"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="2"></span>
@@ -5842,7 +5896,7 @@ EXPLORER_HTML = r"""
 
     // ---- Adika Digital System Promo Banner: auto-play infinite loop (3.5s) ----
     (function initPromoBanner() {
-      var INTERVAL_MS = 3500;
+      var INTERVAL_MS = 3000;
       var slides = [];
       var dots = [];
       var idx = 0;
@@ -5877,22 +5931,27 @@ EXPLORER_HTML = r"""
         slides.forEach(function (el, i) {
           el.classList.remove("is-active", "is-exit", "is-enter");
           if (i === idx) {
-            el.classList.add("is-enter");
-            // force reflow then active (kinetic zoom-in + slide)
+            // ENTER: scale 1.15 → 1.0 + slide in (cubic-bezier spring)
+            el.style.transition = "none";
+            el.style.opacity = "0";
+            el.style.transform = "scale(1.15) translateX(20px)";
+            el.style.pointerEvents = "none";
             void el.offsetWidth;
-            el.classList.remove("is-enter");
+            el.style.transition = "opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1), transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)";
             el.classList.add("is-active");
             el.style.opacity = "1";
             el.style.transform = "scale(1) translateX(0)";
             el.style.pointerEvents = "auto";
           } else if (i === prev) {
+            // EXIT: fast wipe + scale 0.95
             el.classList.add("is-exit");
+            el.style.transition = "opacity 0.32s cubic-bezier(0.4, 0, 1, 1), transform 0.32s cubic-bezier(0.4, 0, 1, 1)";
             el.style.opacity = "0";
-            el.style.transform = "scale(0.92) translateX(-12px)";
+            el.style.transform = "scale(0.95) translateX(-18px)";
             el.style.pointerEvents = "none";
           } else {
             el.style.opacity = "0";
-            el.style.transform = "scale(0.95) translateX(16px)";
+            el.style.transform = "scale(1.1) translateX(24px)";
             el.style.pointerEvents = "none";
           }
         });
