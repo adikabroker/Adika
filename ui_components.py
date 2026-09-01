@@ -1222,8 +1222,8 @@ EXPLORER_HTML = r"""
       box-shadow: 0 12px 35px rgba(6, 182, 212, 0.28);
     }
     .tool-card-pro:active { transform: scale(0.97); }
-    .tool-card-pro .tool-title { font-weight: 800; font-size: 11px; color: #ffffff; line-height: 1.3; text-shadow: 0 1px 2px rgba(0,0,0,0.35); }
-    .tool-card-pro .tool-sub { font-size: 8px; color: rgba(207, 250, 254, 0.9); line-height: 1.25; text-shadow: 0 1px 1px rgba(0,0,0,0.25); }
+    .tool-card-pro .tool-title { font-weight: 800; font-size: 11px; color: #ffffff; line-height: 1.3; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
+    .tool-card-pro .tool-sub { font-size: 8.5px; color: rgba(255, 255, 255, 0.88); line-height: 1.25; text-shadow: 0 1px 2px rgba(0,0,0,0.45); }
     .tool-icon-wrap {
       width: 28px; height: 28px; border-radius: 0.7rem;
       display: flex; align-items: center; justify-content: center;
@@ -1673,9 +1673,9 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 4. DEDICATED AI HUB & SMART FILTER MODAL                          -->
   <!-- ================================================================= -->
-  <div id="aiModal" class="fixed inset-0 z-50 hidden items-end justify-center" style="background:rgba(2,6,23,0.45);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
-    <div class="w-full max-w-md rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative border border-white/25"
-         style="background:rgba(15,23,42,0.72);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);">
+  <div id="aiModal" class="fixed inset-0 z-[220] hidden items-stretch justify-center" style="background:rgba(2,6,23,0.55);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);">
+    <div class="w-full max-w-md h-full max-h-full flex flex-col shadow-2xl overflow-hidden relative border-0 sm:border border-white/20"
+         style="background:rgba(15,23,42,0.88);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);">
       <!-- Dedicated Tools Hub Header (no Marketplace chrome) -->
       <div class="px-3 py-3 text-white flex flex-col gap-2.5 shrink-0 border-b border-white/20"
            style="background:rgba(255,255,255,0.06);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
@@ -3771,6 +3771,20 @@ EXPLORER_HTML = r"""
       if (m) {
         m.classList.remove("hidden");
         m.classList.add("flex");
+        try { m.style.display = "flex"; } catch (e) {}
+      }
+      if (id === "aiModal") {
+        try {
+          var nav = document.getElementById("adikaBottomNav");
+          var fab = document.getElementById("fabBtn");
+          var hdr = document.getElementById("adikaFixedHeader");
+          var hero = document.getElementById("homeHero");
+          if (nav) nav.style.display = "none";
+          if (fab) fab.style.display = "none";
+          if (hdr) hdr.style.display = "none";
+          if (hero) hero.style.display = "none";
+          document.body.style.overflow = "hidden";
+        } catch (e2) {}
       }
     };
 
@@ -4922,7 +4936,7 @@ EXPLORER_HTML = r"""
 
     // AI Smart Filter modal handlers
     document.getElementById("navAi").onclick = function() {
-      /* Open Tools Hub (aiModal) with Budget Advisor + tool cards — NOT direct chat */
+      /* Open Tools Hub (aiModal) full-screen — hide marketplace chrome */
       try {
         var m = document.getElementById("aiModal");
         if (m) {
@@ -4933,8 +4947,13 @@ EXPLORER_HTML = r"""
         try {
           var nav = document.getElementById("adikaBottomNav");
           var fab = document.getElementById("fabBtn");
+          var hdr = document.getElementById("adikaFixedHeader");
+          var hero = document.getElementById("homeHero");
           if (nav) nav.style.display = "none";
           if (fab) fab.style.display = "none";
+          if (hdr) hdr.style.display = "none";
+          if (hero) hero.style.display = "none";
+          document.body.style.overflow = "hidden";
         } catch (e3) {}
         // ensure Tools tab is active
         try {
@@ -4958,8 +4977,13 @@ EXPLORER_HTML = r"""
       try {
         var nav = document.getElementById("adikaBottomNav");
         var fab = document.getElementById("fabBtn");
+        var hdr = document.getElementById("adikaFixedHeader");
+        var hero = document.getElementById("homeHero");
         if (nav) nav.style.display = "";
         if (fab) fab.style.display = "";
+        if (hdr) hdr.style.display = "";
+        if (hero) hero.style.display = "";
+        document.body.style.overflow = "";
       } catch (e2) {}
     };
     aiModal.onclick = function(e) {
