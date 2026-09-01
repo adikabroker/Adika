@@ -1205,25 +1205,67 @@ EXPLORER_HTML = r"""
 
     /* Corporate tool cards */
     .tool-card-pro {
-      padding: 0.5rem 0.55rem; border-radius: 0.7rem; text-align: left;
-      background: rgba(15, 23, 42, 0.6); border: 1px solid rgb(30 41 59);
-      color: #e2e8f0; transition: background 0.15s ease, transform 0.1s ease;
-      display: flex; flex-direction: column; gap: 0.2rem;
-      box-shadow: 0 3px 10px rgba(2, 6, 23, 0.15);
-      min-height: 0;
+      padding: 0.65rem 0.7rem; border-radius: 1.1rem; text-align: left;
+      background: rgba(255, 255, 255, 0.10);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #e2e8f0;
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease, background 0.2s ease, border-color 0.2s ease;
+      display: flex; flex-direction: column; gap: 0.28rem;
+      box-shadow: 0 8px 24px rgba(2, 6, 23, 0.18);
+      min-height: 0; position: relative; overflow: hidden;
     }
-    .tool-card-pro:hover, .tool-card-pro:active {
-      background: rgba(30, 41, 59, 0.85); transform: scale(0.98);
+    .tool-card-pro:hover {
+      transform: translateY(-6px) scale(1.02);
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(34, 211, 238, 0.35);
+      box-shadow: 0 12px 35px rgba(6, 182, 212, 0.28);
     }
-    .tool-card-pro .tool-title { font-weight: 800; font-size: 10px; color: #f1f5f9; line-height: 1.2; }
-    .tool-card-pro .tool-sub { font-size: 8px; color: #94a3b8; line-height: 1.2; }
+    .tool-card-pro:active { transform: scale(0.97); }
+    .tool-card-pro .tool-title { font-weight: 800; font-size: 10px; color: #f8fafc; line-height: 1.25; }
+    .tool-card-pro .tool-sub { font-size: 8px; color: rgba(165, 243, 252, 0.75); line-height: 1.2; }
     .tool-icon-wrap {
-      width: 22px; height: 22px; border-radius: 0.4rem;
+      width: 28px; height: 28px; border-radius: 0.7rem;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(251, 191, 36, 0.12); border: 1px solid rgba(251, 191, 36, 0.25);
-      color: #fbbf24;
+      background: rgba(34, 211, 238, 0.18);
+      border: 1px solid rgba(34, 211, 238, 0.32);
+      color: #67e8f9;
+      backdrop-filter: blur(8px);
     }
-    .tool-icon-wrap svg { width: 12px; height: 12px; }
+    .tool-icon-wrap svg { width: 14px; height: 14px; }
+    #aiToolsView { position: relative; z-index: 1; }
+    .tools-ambient-wrap { position: relative; overflow: hidden; }
+    .tools-ambient-blob {
+      position: absolute; width: 11rem; height: 11rem; border-radius: 9999px;
+      filter: blur(48px); pointer-events: none; z-index: 0;
+    }
+    .tools-ambient-blob.cyan { top: 1.5rem; left: -1rem; background: rgba(6, 182, 212, 0.32); }
+    .tools-ambient-blob.indigo { bottom: 2rem; right: -1rem; background: rgba(99, 102, 241, 0.28); }
+    .budget-glass-card {
+      position: relative; z-index: 1;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .budget-glass-card input {
+      background: rgba(255,255,255,0.18) !important;
+      border: 1px solid rgba(255,255,255,0.28) !important;
+      color: #fff !important;
+      backdrop-filter: blur(8px);
+    }
+    .budget-glass-card label, .budget-glass-card .text-slate-700 { color: rgba(255,255,255,0.9) !important; }
+    .advisor-preset-chip {
+      background: rgba(255,255,255,0.14) !important;
+      border: 1px solid rgba(255,255,255,0.25) !important;
+      color: #e0f2fe !important;
+    }
+    @keyframes toolCardIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .tool-card-pro.stagger-in { animation: toolCardIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
     .adika-success-pulse {
       animation: adikaPulse 1.2s ease-in-out infinite;
@@ -1631,10 +1673,12 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 4. DEDICATED AI HUB & SMART FILTER MODAL                          -->
   <!-- ================================================================= -->
-  <div id="aiModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+  <div id="aiModal" class="fixed inset-0 z-50 hidden items-end justify-center" style="background:rgba(2,6,23,0.45);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
+    <div class="w-full max-w-md rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden relative border border-white/25"
+         style="background:rgba(15,23,42,0.72);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);">
       <!-- Header with Tabs -->
-      <div class="px-4 py-2.5 bg-[#16acbd] text-white flex flex-col gap-2 shrink-0">
+      <div class="px-4 py-2.5 text-white flex flex-col gap-2 shrink-0 border-b border-white/15"
+           style="background:rgba(255,255,255,0.08);backdrop-filter:blur(12px);">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <span class="text-lg">✨</span>
@@ -1664,9 +1708,11 @@ EXPLORER_HTML = r"""
       </div>
 
       <!-- Tab 1: AI Tools Hub -->
-      <div id="aiToolsView" class="overflow-y-auto flex-1 p-4 space-y-4">
+      <div id="aiToolsView" class="overflow-y-auto flex-1 p-4 space-y-4 tools-ambient-wrap" style="background:transparent;">
+        <div class="tools-ambient-blob cyan"></div>
+        <div class="tools-ambient-blob indigo"></div>
         <!-- Smart Budget & Purchase Advisor -->
-        <div class="bg-gradient-to-br from-[#16acbd]/10 to-[#b5eff3]/40 p-3.5 rounded-2xl border border-[#16acbd]/30 space-y-2.5">
+        <div class="budget-glass-card p-3.5 space-y-2.5 relative z-10">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5 text-[#0e7490] font-extrabold text-xs">
               <span>💡</span>
@@ -1702,7 +1748,7 @@ EXPLORER_HTML = r"""
           </div>
 
           <!-- Generate opportunity cards (does NOT jump to chat) -->
-          <button id="advisorBtn" type="button" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-slate-700">
+          <button id="advisorBtn" type="button" class="w-full py-2.5 rounded-xl bg-cyan-400/25 hover:bg-cyan-400/35 text-cyan-100 font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-cyan-400/40 backdrop-blur-md">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
             <span>የኢንቨስትመንት አማራጮች አሳይ</span>
           </button>
@@ -1774,37 +1820,37 @@ EXPLORER_HTML = r"""
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
           </h4>
           <div class="tools-grid-compact text-xs">
-            <button id="toolDutyBtn" type="button" class="tool-card-pro">
+            <button id="toolDutyBtn" type="button" class="tool-card-pro stagger-in" style="animation-delay:0.0s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
               <span class="tool-title">የቀረጥ ስሌት</span>
               <span class="tool-sub">Customs Duty & Taxes</span>
             </button>
-            <button id="toolLoanBtn" type="button" class="tool-card-pro">
+            <button id="toolLoanBtn" type="button" class="tool-card-pro stagger-in" style="animation-delay:0.08s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h18M5 10V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2M5 10v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/><circle cx="12" cy="14" r="1.5"/></svg></span>
               <span class="tool-title">የባንክ ብድር</span>
               <span class="tool-sub">Mortgage & Auto Loan</span>
             </button>
-            <button id="toolCompareBtn" type="button" class="tool-card-pro">
+            <button id="toolCompareBtn" type="button" class="tool-card-pro stagger-in" style="animation-delay:0.16s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h8M8 12h8M8 17h5"/><path d="M4 4v16M20 4v16"/></svg></span>
               <span class="tool-title">የመኪና ንጽጽር</span>
               <span class="tool-sub">Vehicle Comparison</span>
             </button>
-            <button id="toolContractBtn" type="button" class="tool-card-pro">
+            <button id="toolContractBtn" type="button" class="tool-card-pro stagger-in" style="animation-delay:0.24s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg></span>
               <span class="tool-title">የሽያጭ ውል</span>
               <span class="tool-sub">Legal Sales Contract</span>
             </button>
-            <button id="toolPoaBtn" type="button" class="tool-card-pro">
+            <button id="toolPoaBtn" type="button" class="tool-card-pro stagger-in" style="animation-delay:0.32s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
               <span class="tool-title">ውክልና ማረጋገጫ</span>
               <span class="tool-sub">Verify Power of Attorney</span>
             </button>
-            <button id="toolDiagBtn" type="button" class="tool-card-pro">
+            <button id="toolDiagBtn" type="button" class="tool-card-pro stagger-in" style="animation-delay:0.4s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
               <span class="tool-title">የምርመራ ወረቀት</span>
               <span class="tool-sub">Garage Diagnostic Sheet</span>
             </button>
-            <button id="toolChassisBtn" type="button" class="tool-card-pro">
+            <button id="toolChassisBtn" type="button" class="tool-card-pro stagger-in" style="animation-delay:0.48s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/><path d="M12 14v3"/></svg></span>
               <span class="tool-title">የሻሲ ማረጋገጫ</span>
               <span class="tool-sub">Chassis / VIN Specs</span>
@@ -4878,20 +4924,31 @@ EXPLORER_HTML = r"""
 
     // AI Smart Filter modal handlers
     document.getElementById("navAi").onclick = function() {
-      /* Tools Hub / Purchase & Budget Advisor — NOT direct chat */
+      /* Open Tools Hub (aiModal) with Budget Advisor + tool cards — NOT direct chat */
       try {
-        if (typeof showAnalysisView === "function") {
-          showAnalysisView(true);
-        } else {
-          var av = document.getElementById("analysisView");
-          if (av) { av.classList.remove("hidden"); av.style.display = "block"; }
-          try {
-            var nav = document.getElementById("adikaBottomNav");
-            var fab = document.getElementById("fabBtn");
-            if (nav) nav.style.display = "none";
-            if (fab) fab.style.display = "none";
-          } catch (e3) {}
+        var m = document.getElementById("aiModal");
+        if (m) {
+          m.classList.remove("hidden");
+          m.classList.add("flex");
+          m.style.display = "flex";
         }
+        try {
+          var nav = document.getElementById("adikaBottomNav");
+          var fab = document.getElementById("fabBtn");
+          if (nav) nav.style.display = "none";
+          if (fab) fab.style.display = "none";
+        } catch (e3) {}
+        // ensure Tools tab is active
+        try {
+          var tabT = document.getElementById("aiTabTools");
+          var tabS = document.getElementById("aiTabSearch");
+          var vT = document.getElementById("aiToolsView");
+          var vS = document.getElementById("aiSearchView");
+          if (tabT) { tabT.className = "py-1 rounded-lg bg-white text-[#16acbd] shadow-sm transition-all text-center"; }
+          if (tabS) { tabS.className = "py-1 rounded-lg text-white/80 hover:text-white transition-all text-center"; }
+          if (vT) { vT.classList.remove("hidden"); }
+          if (vS) { vS.classList.add("hidden"); }
+        } catch (e4) {}
       } catch (e) {
         console.error("navAi", e);
       }
@@ -4899,6 +4956,13 @@ EXPLORER_HTML = r"""
     aiModalClose.onclick = function() {
       aiModal.classList.add("hidden");
       aiModal.classList.remove("flex");
+      try { aiModal.style.display = "none"; } catch (e) {}
+      try {
+        var nav = document.getElementById("adikaBottomNav");
+        var fab = document.getElementById("fabBtn");
+        if (nav) nav.style.display = "";
+        if (fab) fab.style.display = "";
+      } catch (e2) {}
     };
     aiModal.onclick = function(e) {
       if (e.target === aiModal) aiModalClose.onclick();
