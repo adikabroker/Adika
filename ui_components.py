@@ -1,6 +1,5 @@
 import os
 
-# Set absolute path to ensure Render/Flask finds the HTML file safely
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HTML_FILE_PATH = os.path.join(BASE_DIR, "ui_templates.html")
 
@@ -13,3 +12,7 @@ def load_ui_template():
 
 # Main HTML string consumed by webapp.py
 EXPLORER_HTML = load_ui_template()
+
+# Fallback/Aliases for secondary HTML imports expected by webapp.py
+SELLER_FORM_HTML = EXPLORER_HTML
+MAIN_LAYOUT_HTML = EXPLORER_HTML
