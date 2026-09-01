@@ -1,6 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+  /* Safe storage: Telegram Mini App iframe may sandbox localStorage */
+  (function () {
+    var memL = {};
+    var memS = {};
+    function makeMem(bag) {
+      return {
+        getItem: function (k) {
+          k = String(k);
+          return Object.prototype.hasOwnProperty.call(bag, k) ? bag[k] : null;
+        },
+        setItem: function (k, v) { bag[String(k)] = String(v); },
+        removeItem: function (k) { delete bag[String(k)]; },
+        clear: function () { for (var k in bag) if (Object.prototype.hasOwnProperty.call(bag, k)) delete bag[k]; },
+        key: function (i) { return Object.keys(bag)[i] || null; },
+        get length() { return Object.keys(bag).length; }
+      };
+    }
+    function install(name, bag) {
+      var impl = makeMem(bag);
+      try {
+        var native = window[name];
+        var probe = "__adika_store_probe__";
+        native.setItem(probe, "1");
+        native.removeItem(probe);
+        impl = native;
+      } catch (e) {}
+      try {
+        Object.defineProperty(window, name, {
+          configurable: true,
+          enumerable: true,
+          value: impl
+        });
+      } catch (e2) {
+        try { window[name] = impl; } catch (e3) {}
+      }
+      window["__adika_" + name] = impl;
+    }
+    install("localStorage", memL);
+    install("sessionStorage", memS);
+    window.adikaSafeStore = {
+      get: function (k) {
+        try { return window.localStorage.getItem(k); } catch (e) { return memL[k] || null; }
+      },
+      set: function (k, v) {
+        try { window.localStorage.setItem(k, v); } catch (e) { memL[k] = String(v); }
+      },
+      remove: function (k) {
+        try { window.localStorage.removeItem(k); } catch (e) { delete memL[k]; }
+      }
+    };
+  })();
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Adika Marketplace</title>
@@ -2197,6 +2250,7 @@
 
       var card = document.createElement("div");
       card.className = "adika-card cursor-pointer";
+      try { card.setAttribute("data-listing-id", String(item.id || "")); } catch (e) {}
       card.innerHTML =
         '<div class="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">' +
           '<div class="absolute top-2 left-2 z-10 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>' +
@@ -2542,8 +2596,9 @@
       if (useForYou) {
         urls.push("/api/feed/for-you?page=" + page + "&limit=24&user_id=" + encodeURIComponent(state.userId || "0"));
       }
-      urls.push("/api/explorer/listings?" + qs);
       urls.push("/api/listings?" + qs);
+      urls.push("/api/explorer/listings?" + qs);
+      urls.push("/api/explorer/listings?page=" + page + "&limit=24&order=DESC&active_only=1");
 
       var done = false;
       function applyItems(items, hasMore) {
@@ -2576,10 +2631,12 @@
           })
           .then(function (r) {
             clearTimeout(timer);
-            var items = (r.data.items || r.data.listings || r.data.results || []);
+            var payload = r.data || {};
+            var items = payload.items || payload.listings || payload.results || payload.data || [];
+            if (items && !Array.isArray(items) && Array.isArray(items.items)) items = items.items;
             if (!Array.isArray(items)) items = [];
             if (items.length > 0) {
-              applyItems(items, !!(r.data.has_more || r.data.hasMore));
+              applyItems(items, !!(payload.has_more || payload.hasMore || payload.next));
             } else {
               tryUrl(i + 1);
             }
@@ -4198,18 +4255,103 @@
     document.getElementById("navHome").onclick = function () {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-    document.getElementById("navMessages").onclick = function () {
-      if (tg && tg.openTelegramLink) {
-        tg.openTelegramLink("https://t.me/AdikaMarketplaceBot");
-      } else {
-        window.open("https://t.me/AdikaMarketplaceBot", "_blank");
+    window.setActiveTab = function (tab) {
+      tab = String(tab || "home");
+      try { window.__adikaActiveTab = tab; } catch (e) {}
+      if (tab === "chat" || tab === "inbox" || tab === "messages") {
+        if (typeof window.openAiChat === "function") window.openAiChat("");
+        else if (typeof showAnalysisView === "function") showAnalysisView(true);
+        return;
       }
+      if (tab === "tools" || tab === "advisor" || tab === "ai") {
+        try {
+          if (typeof openToolModal === "function") openToolModal("aiModal");
+          else {
+            var hub = document.getElementById("aiModal");
+            if (hub) { hub.classList.remove("hidden"); hub.classList.add("flex"); hub.style.display = "flex"; }
+          }
+        } catch (e) { console.error(e); }
+        return;
+      }
+      if (tab === "post" || tab === "sell") {
+        window.location.href = "/seller-form";
+        return;
+      }
+      if (tab === "buy" || tab === "request") {
+        window.location.href = "/buyer-form";
+        return;
+      }
+      try {
+        var av = document.getElementById("analysisView");
+        if (av) { av.classList.add("hidden"); av.classList.remove("flex"); av.style.display = "none"; }
+        var hub2 = document.getElementById("aiModal");
+        if (hub2) { hub2.classList.add("hidden"); hub2.classList.remove("flex"); hub2.style.display = "none"; }
+        document.body.style.overflow = "";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (e) {}
+    };
+
+    document.getElementById("navMessages").onclick = function (ev) {
+      try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e) {}
+      window.setActiveTab("chat");
     };
     document.getElementById("navHelp").onclick = function () {
       var msg = "Adika Marketplace • Help Center\nContact @AdikaMarketplaceBot or call 0911000000.";
       if (tg && tg.showAlert) tg.showAlert(msg);
       else alert(msg);
     };
+
+    /* Photo / document upload listeners */
+    (function bindUploads() {
+      var inputs = document.querySelectorAll('input[type="file"]');
+      inputs.forEach(function (inp) {
+        if (inp.dataset.boundUpload === "1") return;
+        inp.dataset.boundUpload = "1";
+        inp.addEventListener("change", function () {
+          try {
+            var files = inp.files || [];
+            if (!files.length) return;
+            var ev = new CustomEvent("adika-file-selected", { detail: { input: inp, files: files } });
+            document.dispatchEvent(ev);
+            var preview = document.getElementById((inp.id || "") + "Preview") || inp.parentElement && inp.parentElement.querySelector("img");
+            if (preview && files[0] && files[0].type && files[0].type.indexOf("image") === 0) {
+              var reader = new FileReader();
+              reader.onload = function (e) { preview.src = e.target.result; preview.classList.remove("hidden"); };
+              reader.readAsDataURL(files[0]);
+            }
+          } catch (err) { console.error("upload", err); }
+        });
+      });
+      document.addEventListener("click", function (ev) {
+        var t = ev.target && ev.target.closest && ev.target.closest("[data-upload-trigger]");
+        if (!t) return;
+        var sid = t.getAttribute("data-upload-trigger");
+        var el = sid ? document.getElementById(sid) : t.querySelector('input[type="file"]');
+        if (el && el.click) el.click();
+      }, true);
+    })();
+
+    /* Card click fallback if individual handlers fail */
+    (function bindGridClicks() {
+      var g = document.getElementById("grid");
+      if (!g || g.dataset.boundCards === "1") return;
+      g.dataset.boundCards = "1";
+      g.addEventListener("click", function (ev) {
+        var card = ev.target && ev.target.closest && ev.target.closest(".adika-card");
+        if (!card) return;
+        if (ev.target.closest && ev.target.closest(".card-fav-btn")) return;
+        var id = card.getAttribute("data-listing-id");
+        var item = null;
+        try {
+          var arr = (window.state && window.state.items) || (typeof state !== "undefined" ? state.items : []) || [];
+          for (var i = 0; i < arr.length; i++) {
+            if (String(arr[i].id) === String(id)) { item = arr[i]; break; }
+          }
+        } catch (e) {}
+        if (item && typeof openDetailModal === "function") openDetailModal(item);
+      }, true);
+    })();
+
 
 
 
