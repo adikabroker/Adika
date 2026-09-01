@@ -2616,15 +2616,16 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Broker registration -->
-  <div id="brokerRegModal" class="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-xl hidden items-end justify-center">
-    <div class="w-full max-w-md rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden border border-white/30 shadow-2xl shadow-cyan-950/30"
-         style="background: rgba(15,23,42,0.72); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);">
-      <div class="flex justify-between items-center px-4 pt-3 pb-2 border-b border-white/15 shrink-0 gap-2">
-        <button type="button" onclick="closeModal('brokerRegModal')" class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition-all shrink-0">
+  <div id="brokerRegModal" class="fixed inset-0 z-[200] hidden items-end justify-center" style="background:rgba(15,23,42,0.35);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);">
+    <div class="relative w-full max-w-lg rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden bg-slate-900/60 backdrop-blur-2xl border border-white/20 shadow-2xl">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-white/15 shrink-0 gap-2">
+        <button type="button" onclick="(function(){var m=document.getElementById('brokerRegModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}document.body.style.overflow='';})()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white text-sm font-medium transition-all active:scale-95 shrink-0">
           ← Back
         </button>
-        <div class="font-black text-sm text-white truncate text-center flex-1">ደላላ ምዝገባ</div>
-        <button type="button" onclick="closeModal('brokerRegModal')" class="w-8 h-8 rounded-full bg-slate-200/50 hover:bg-slate-300/80 text-slate-900 font-bold flex items-center justify-center transition-all shrink-0">✕</button>
+        <h2 class="text-white font-bold text-base truncate text-center flex-1">ደላላ ምዝገባ</h2>
+        <button type="button" onclick="(function(){var m=document.getElementById('brokerRegModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}document.body.style.overflow='';})()" class="p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white transition-all active:scale-95 shrink-0 leading-none">
+          ✕
+        </button>
       </div>
       <div class="px-5 py-3 overflow-y-auto flex-1" style="padding-bottom: 8px;">
         <label class="text-xs font-bold text-cyan-100/90">ሙሉ ስም</label>
@@ -2635,9 +2636,9 @@ EXPLORER_HTML = r"""
         <input id="brUser" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/12 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="@username" />
         <div class="text-xs font-bold text-cyan-100/90 mb-1">የሚሰሩበት ምድብ</div>
         <div class="flex flex-wrap gap-2 mb-3">
-          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
-          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
-          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
+          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat accent-cyan-400" value="መኪና" checked /> 🚗 መኪና</label>
+          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat accent-cyan-400" value="ቤት" /> 🏠 ቤት</label>
+          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat accent-cyan-400" value="ንግድ" /> 🏢 ንግድ</label>
         </div>
         <label class="text-xs font-bold text-cyan-100/90">የመታወቂያ ፎቶ (አማራጭ)</label>
         <div class="mt-1 mb-2 flex gap-2 items-center">
@@ -3727,6 +3728,7 @@ EXPLORER_HTML = r"""
       if (m) {
         m.classList.add("hidden");
         m.classList.remove("flex");
+        try { m.style.display = "none"; } catch (e) {}
       }
       // restore main feed scroll when no tool modal is open
       var anyOpen = false;
@@ -5855,11 +5857,11 @@ EXPLORER_HTML = r"""
 
       function openM(id) {
         var m = document.getElementById(id);
-        if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
+        if (m) { m.classList.remove("hidden"); m.classList.add("flex"); m.style.display = "flex"; }
       }
       function closeM(id) {
         var m = document.getElementById(id);
-        if (m) { m.classList.add("hidden"); m.classList.remove("flex"); }
+        if (m) { m.classList.add("hidden"); m.classList.remove("flex"); m.style.display = "none"; }
       }
 
       // Prefill category strip: For You first
