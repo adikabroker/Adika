@@ -157,6 +157,62 @@ SELLER_FORM_HTML = r"""
 </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen text-slate-800">
+<script>
+window.openAiChat = window.openAiChat || function(prefillText){
+  try {
+    var tools = ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal"];
+    for (var i=0;i<tools.length;i++){
+      var el = document.getElementById(tools[i]);
+      if (!el) continue;
+      el.classList.add("hidden");
+      el.classList.remove("flex");
+      el.style.setProperty("display","none","important");
+    }
+    var v = document.getElementById("analysisView");
+    if (v){
+      v.classList.remove("hidden");
+      v.classList.add("flex");
+      v.style.setProperty("display","flex","important");
+      v.style.setProperty("z-index","260","important");
+    }
+    document.body.style.overflow = "hidden";
+    var log = document.getElementById("advisorChatLog");
+    if (log && !log.dataset.seeded){
+      log.innerHTML = "";
+      window.advisorChatHistory = [];
+      var hello = "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። እንዴት ልረዳዎት?";
+      if (typeof appendAdvisorChat === "function") appendAdvisorChat("advisor", hello);
+      log.dataset.seeded = "1";
+    }
+    var input = document.getElementById("advisorChatInput");
+    if (prefillText && input){
+      input.value = prefillText;
+      setTimeout(function(){
+        var sendBtn = document.getElementById("advisorChatSend");
+        if (sendBtn) sendBtn.click();
+      }, 30);
+    }
+  } catch (err) { console.error("openAiChat", err); }
+};
+window.handleStartAiChat = window.handleStartAiChat || function(opts){
+  opts = opts || {};
+  var budgetEl = document.getElementById("advisorBudget");
+  var incomeEl = document.getElementById("advisorMonthlyIncome");
+  var budget = Number(opts.budget || (budgetEl && budgetEl.value) || 0);
+  var income = Number(opts.income || (incomeEl && incomeEl.value) || 0);
+  var kind = opts.optionType || opts.context || "general";
+  var b = (budget||0).toLocaleString();
+  var inc = (income||0).toLocaleString();
+  var title = kind;
+  if (kind==="auto" || kind==="Automotive") title = "ተሽከርካሪ";
+  else if (kind==="property" || kind==="Real Estate") title = "ሪል እስቴት";
+  else if (kind==="roi" || kind==="Business") title = "ንግድ";
+  else title = "ፋይናንስ";
+  var prompt = "በ " + b + " ETB በጀት እና በ " + inc + " ETB ወርሃዊ ገቢ የተመረጡትን የ" + title + " የፋይናንስ አማራጮች ማብራሪያ እፈልጋለሁ።";
+  window.openAiChat(prompt);
+};
+</script>
+
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useRef, useEffect } = React;
@@ -1647,7 +1703,7 @@ EXPLORER_HTML = r"""
 
 
   <!-- DEDICATED LIVE ADVISOR CHAT (full-screen view state) -->
-  <div id="analysisView" class="fixed inset-0 z-[180] bg-[#b5eff3] hidden flex-col max-w-md mx-auto w-full">
+  <div id="analysisView" class="fixed inset-0 z-[240] bg-[#b5eff3] hidden flex-col max-w-md mx-auto w-full">
     <div class="shrink-0 px-3 py-2 bg-[#16acbd] text-white flex items-center justify-between shadow-md">
       <div class="flex items-center gap-2 min-w-0">
         <button id="analysisBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-bold">← ተመለስ</button>
@@ -1768,19 +1824,19 @@ EXPLORER_HTML = r"""
               <div class="opp-label text-amber-400">A · Automotive</div>
               <div class="opp-title">ተሽከርካሪ + የባንክ ብድር</div>
               <div id="oppAutoBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta" data-context="auto">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="auto" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'auto',optionType:'Automotive'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="property">
               <div class="opp-label text-sky-400">B · Real Estate</div>
               <div class="opp-title">ሪል እስቴት · ቅድመ ክፍያ</div>
               <div id="oppPropBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta" data-context="property">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="property" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'property',optionType:'Real Estate'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="roi">
               <div class="opp-label text-emerald-400">C · Business ROI</div>
               <div class="opp-title">ንግድ / Startup · ዓመታዊ ROI</div>
               <div id="oppRoiBody" class="opp-body">ከበጀት ቀመር እየተሰላ…</div>
-              <button type="button" class="opp-cta opp-chat-cta" data-context="roi">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="roi" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'roi',optionType:'Business'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
           </div>
 
@@ -1871,6 +1927,7 @@ EXPLORER_HTML = r"""
             </button>
           </div>
           <button type="button" id="hubFinanceAdvisorBanner"
+            onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({optionType:'general'});else if(window.openAiChat)openAiChat();"
             class="w-full bg-gradient-to-r from-cyan-500/20 via-slate-900/60 to-indigo-500/20 backdrop-blur-2xl border border-cyan-400/50 rounded-2xl p-3 mt-2 flex items-center justify-between shadow-lg shadow-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer relative z-10 shrink-0">
             <div class="min-w-0 text-left pr-2">
               <div class="text-white font-extrabold text-[12px] leading-tight drop-shadow-md">💡 ዲጂታል የፋይናንስ አማካሪ</div>
@@ -4271,37 +4328,76 @@ EXPLORER_HTML = r"""
         renderOpportunityCards();
       };
     }
+    window.openAiChat = function(prefillText) {
+      try {
+        ["aiModal","dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal"].forEach(function(id){
+          var m = document.getElementById(id);
+          if (!m) return;
+          m.classList.add("hidden");
+          m.classList.remove("flex");
+          m.style.setProperty("display","none","important");
+        });
+      } catch (e0) {}
+      var v = document.getElementById("analysisView");
+      if (v) {
+        v.classList.remove("hidden");
+        v.classList.add("flex");
+        v.style.setProperty("display","flex","important");
+        v.style.setProperty("z-index","260","important");
+      }
+      try { document.body.style.overflow = "hidden"; } catch (e1) {}
+      var log = document.getElementById("advisorChatLog");
+      if (log && !log.dataset.seeded) {
+        log.innerHTML = "";
+        try { advisorChatHistory = []; } catch (e2) {}
+        var initMsg = "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። ስለ መኪና ወይም የቤት ግዢ፣ የቀረጥ ስሌት፣ የባንክ ብድር ወይም ማንኛውም የፋይናንስ ምክር ምን ማወቅ ይፈልጋሉ?";
+        if (typeof appendAdvisorChat === "function") appendAdvisorChat("advisor", initMsg);
+        try { advisorChatHistory.push({ role: "advisor", content: initMsg }); } catch (e3) {}
+        log.dataset.seeded = "1";
+      }
+      var input = document.getElementById("advisorChatInput");
+      if (prefillText && input) {
+        input.value = prefillText;
+        try { input.focus(); } catch (e4) {}
+        setTimeout(function() {
+          var sendBtn = document.getElementById("advisorChatSend");
+          if (sendBtn) sendBtn.click();
+        }, 40);
+      }
+    };
+    window.handleStartAiChat = function(opts) {
+      opts = opts || {};
+      var budget = Number(opts.budget);
+      if (!budget) budget = Number((document.getElementById("advisorBudget") || {}).value) || 0;
+      var income = Number(opts.income);
+      if (!income) income = Number((document.getElementById("advisorMonthlyIncome") || {}).value) || 0;
+      var kind = opts.optionType || opts.context || "general";
+      var b = (budget || 0).toLocaleString();
+      var inc = (income || 0).toLocaleString();
+      var prompt = "በ " + b + " ETB በጀት የተመረጡትን የፋይናንስ አማራጮች ማብራሪያ እፈልጋለሁ።";
+      if (kind === "auto" || kind === "Automotive") {
+        prompt = "በጀቴ " + b + " ብር ነው፣ ወርሃዊ ገቢዬ " + inc + " ብር ነው። በዚህ በጀት የትኛውን ተሽከርካሪ መምረጥ እችላለሁ? የባንክ ብድር አማራጭም አብረው ያብራሩልኝ።";
+      } else if (kind === "property" || kind === "Real Estate") {
+        prompt = "በጀቴ " + b + " ብር ነው፣ ወርሃዊ ገቢዬ " + inc + " ብር ነው። ለቤት/መሬት የመግቢያ ቅድመ ክፍያ እና የብድር አሰራር ያብራሩልኝ።";
+      } else if (kind === "roi" || kind === "Business") {
+        prompt = "በጀቴ " + b + " ብር ነው። የንግድ/ሪል እስቴት ኢንቨስትመንት ዓመታዊ ROI እና የኪራይ ገቢ ግምት ያሳዩኝ።";
+      }
+      openAiChat(prompt);
+    };
     var hubFinBanner = document.getElementById("hubFinanceAdvisorBanner");
     if (hubFinBanner) {
-      hubFinBanner.onclick = function() {
-        try { showAnalysisView(true); } catch (e) {}
+      hubFinBanner.onclick = function(ev) {
+        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+        handleStartAiChat({ optionType: "general" });
       };
     }
-    // Opportunity CTA → open live chat with context prefilled
-    document.querySelectorAll(".opp-chat-cta").forEach(function(btn) {
-      btn.onclick = function() {
-        var ctx = btn.getAttribute("data-context") || "auto";
-        var budget = Number((document.getElementById("advisorBudget") || {}).value) || 0;
-        var income = Number((document.getElementById("advisorMonthlyIncome") || {}).value) || 0;
-        var prompts = {
-          auto: "በጀቴ " + budget.toLocaleString() + " ብር ነው፣ ወርሃዊ ገቢዬ " + income.toLocaleString() + " ብር ነው። በዚህ በጀት የትኛውን ተሽከርካሪ መምረጥ እችላለሁ? የባንክ ብድር አማራጭም አብረው ያብራሩልኝ።",
-          property: "በጀቴ " + budget.toLocaleString() + " ብር ነው፣ ወርሃዊ ገቢዬ " + income.toLocaleString() + " ብር ነው። ለቤት/መሬት የመግቢያ ቅድመ ክፍያ እና የብድር አሰራር ያብራሩልኝ።",
-          roi: "በጀቴ " + budget.toLocaleString() + " ብር ነው። የሪል እስቴት ወይም የንግድ ኢንቨስትመንት ዓመታዊ ROI እና የኪራይ ገቢ ግምት ያሳዩኝ።"
-        };
-        try {
-          var aiModal = document.getElementById("aiModal");
-          if (aiModal) { aiModal.classList.add("hidden"); aiModal.classList.remove("flex"); }
-        } catch (e) {}
-        showAnalysisView(true);
-        var log = document.getElementById("advisorChatLog");
-        if (log && !log.dataset.seeded) {
-          log.innerHTML = "";
-          advisorChatHistory = [];
-          var initMsg = "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። ስለ መኪና ወይም የቤት ግዢ፣ የቀረጥ ስሌት፣ የባንክ ብድር ወይም ማንኛውም የፋይናንስ ምክር ምን ማወቅ ይፈልጋሉ?";
-          appendAdvisorChat("advisor", initMsg);
-          advisorChatHistory.push({ role: "advisor", content: initMsg });
-          log.dataset.seeded = "1";
-        }
+    document.addEventListener("click", function(ev) {
+      var btn = ev.target && ev.target.closest ? ev.target.closest(".opp-chat-cta") : null;
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      handleStartAiChat({ context: btn.getAttribute("data-context") || "auto" });
+    }, true);
         var input = document.getElementById("advisorChatInput");
         if (input) {
           input.value = prompts[ctx] || prompts.auto;
