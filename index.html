@@ -5485,7 +5485,7 @@
   function show(id){
     var n = el(id); if(!n) return;
     n.classList.remove("hidden");
-    if(n.className.indexOf("items-")>=0 || id==="analysisView" || id==="aiModal") n.classList.add("flex");
+    n.classList.add("flex");
   }
   function hide(id){
     var n = el(id); if(!n) return;
@@ -5498,34 +5498,92 @@
   function openChat(){ hide("aiModal"); show("analysisView"); }
   function openTools(){ hide("analysisView"); show("aiModal"); }
   function openHome(){ closeAll(); try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){ window.scrollTo(0,0);} }
+  function setLang(en){
+    document.body.classList.toggle("lang-en-active", !!en);
+    document.documentElement.lang = en ? "en" : "am";
+    var am = el("langAmBtn"), enBtn = el("langEnBtn");
+    if(am) am.className = en ? "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80" : "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
+    if(enBtn) enBtn.className = en ? "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm" : "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80";
+  }
+  function paintLive(items){
+    if(window.__adikaPaintListings) window.__adikaPaintListings(items);
+    window.__adikaLiveItems = items || [];
+  }
+  function loadType(type){
+    var qs = "page=1&limit=40&order=DESC&active_only=1&type=" + type;
+    fetch("/api/listings?"+qs,{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
+      var items = (d && (d.items||d.listings||d.results||d.data)) || [];
+      if(!Array.isArray(items) && items && items.items) items = items.items;
+      if(Array.isArray(items)) paintLive(items);
+    }).catch(function(){});
+  }
+  function markTabs(buy){
+    var s = el("tabSell"), b = el("tabBuy");
+    if(s) s.className = buy ? "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1" : "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+    if(b) b.className = buy ? "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1" : "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+    window.__adikaIsBuy = !!buy;
+  }
+  function openToolModal(id, prefill){
+    show(id);
+    if(prefill && el("advisorChatInput")) el("advisorChatInput").value = prefill;
+  }
+  function genBudget(){
+    var budget = Number((el("advisorBudget")||{}).value || 0);
+    var income = Number((el("advisorMonthlyIncome")||{}).value || 0);
+    var box = el("advisorResult");
+    if(!box) return;
+    box.classList.remove("hidden");
+    var down = Math.round(budget*0.3);
+    box.innerHTML = '<div class="space-y-2 text-xs text-white">'+
+      '<div class="rounded-xl p-3 bg-slate-950/50 border border-white/10"><b>A · AUTOMOTIVE</b><p>ቅድመ 30% '+down.toLocaleString()+' · ብድር 18%/5ዓመት</p><button type="button" id="liveFromA" class="mt-2 w-full py-2 rounded-xl bg-[#12808c] font-bold">Live Chat ያድርጉ →</button></div>'+
+      '<div class="rounded-xl p-3 bg-slate-950/50 border border-white/10"><b>B · REAL ESTATE</b><p>ቅድመ ክፍያ '+down.toLocaleString()+' ETB</p><button type="button" id="liveFromB" class="mt-2 w-full py-2 rounded-xl bg-[#12808c] font-bold">Live Chat ያድርጉ →</button></div>'+
+      '<div class="rounded-xl p-3 bg-slate-950/50 border border-white/10"><b>C · BUSINESS ROI</b><p>15–35% ዓመታዊ · ገቢ '+income.toLocaleString()+'</p><button type="button" id="liveFromC" class="mt-2 w-full py-2 rounded-xl bg-[#12808c] font-bold">Live Chat ያድርጉ →</button></div></div>';
+    if(el("advisorChatInput")) el("advisorChatInput").value = "በ "+budget+" ETB በጀት የፋይናንስ አማራጭ እፈልጋለሁ።";
+  }
 
   document.addEventListener("click", function(e){
-    var t = e.target.closest("button, a, [data-live], .adika-card");
+    var t = e.target.closest("button, a, [data-live], .adika-card, #adikaPromoBanner, #hubFinanceAdvisorBanner");
     if(!t) return;
     var id = t.id || "";
 
-    if(id==="navHome" || id==="aiHubBackBtn" || id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
-    if(id==="navAi" || id==="adikaPromoBanner" || (t.closest && t.closest("#adikaPromoBanner") && t.tagName==="BUTTON")){ e.preventDefault(); e.stopPropagation(); openTools(); return; }
-    if(id==="navMessages" || id==="openChatFromTools"){ e.preventDefault(); e.stopPropagation(); openChat(); return; }
-    if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
-    if(id==="fabBtn"){
-      e.preventDefault(); e.stopPropagation();
-      var buy = false;
-      try { buy = !!(window.state && window.state.tab && window.state.tab !== "marketplace"); } catch(err){}
-      location.href = buy ? "/buyer-form" : "/seller-form";
-      return;
+    if(id==="tabBuy"){ e.preventDefault(); e.stopPropagation(); markTabs(true); loadType("BUY"); return; }
+    if(id==="tabSell"){ e.preventDefault(); e.stopPropagation(); markTabs(false); loadType("SELL"); return; }
+    if(id==="langAmBtn"){ e.preventDefault(); e.stopPropagation(); setLang(false); return; }
+    if(id==="langEnBtn"){ e.preventDefault(); e.stopPropagation(); setLang(true); return; }
+
+    if(id==="adikaPromoBanner" || id==="heroToolsBtn" || id==="heroAdvisorBtn" || t.closest("#adikaPromoBanner")){
+      e.preventDefault(); e.stopPropagation(); openTools(); return;
     }
+    if(id==="navHome" || id==="aiHubBackBtn" || id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
+    if(id==="navAi"){ e.preventDefault(); e.stopPropagation(); openTools(); return; }
+    if(id==="navMessages"){ e.preventDefault(); e.stopPropagation(); openChat(); return; }
+    if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\\n@AdikaMarketplaceBot"); return; }
+    if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
     if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
-    if(id==="tabSell"){ e.stopPropagation(); }
-    if(id==="tabBuy"){ e.stopPropagation(); }
-    if(id==="langAmBtn" || id==="langEnBtn"){ e.stopPropagation(); }
+
+    if(id==="aiTabTools"){ e.preventDefault(); e.stopPropagation(); if(el("aiToolsView")) el("aiToolsView").classList.remove("hidden"); if(el("aiSearchView")) el("aiSearchView").classList.add("hidden"); return; }
+    if(id==="aiTabSearch"){ e.preventDefault(); e.stopPropagation(); if(el("aiSearchView")) el("aiSearchView").classList.remove("hidden"); if(el("aiToolsView")) el("aiToolsView").classList.add("hidden"); return; }
+
+    if(id==="advisorBtn"){ e.preventDefault(); e.stopPropagation(); genBudget(); return; }
+    if(id==="hubFinanceAdvisorBanner" || id==="liveFromA" || id==="liveFromB" || id==="liveFromC"){ e.preventDefault(); e.stopPropagation(); openChat(); return; }
+
+    if(id==="toolDutyBtn"){ e.preventDefault(); e.stopPropagation(); show("dutyModal"); return; }
+    if(id==="toolLoanBtn"){ e.preventDefault(); e.stopPropagation(); show("loanModal"); return; }
+    if(id==="toolCompareBtn"){ e.preventDefault(); e.stopPropagation(); show("compareModal"); return; }
+    if(id==="toolContractBtn"){ e.preventDefault(); e.stopPropagation(); show("contractModal"); return; }
+    if(id==="toolPoaBtn"){ e.preventDefault(); e.stopPropagation(); show("poaModal"); return; }
+    if(id==="toolDiagBtn"){ e.preventDefault(); e.stopPropagation(); show("diagModal"); return; }
+    if(id==="toolChassisBtn"){ e.preventDefault(); e.stopPropagation(); show("chassisModal"); return; }
+    if(id==="toolLandMapBtn"){ e.preventDefault(); e.stopPropagation(); show("landMapModal"); return; }
+
+    if(id==="modalClose" || id==="modalBackBtn" || id==="aiSearchBackBtn" || id==="aiSearchCloseBtn"){ e.preventDefault(); e.stopPropagation(); closeAll(); return; }
+    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); openChat(); return; }
 
     if(t.getAttribute("data-live")==="1" || t.classList.contains("adika-card")){
       var card = t.closest(".adika-card") || t;
-      var items = window.__adikaLiveItems || (window.state && window.state.items) || [];
+      var items = window.__adikaLiveItems || [];
       var cards = Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card"));
-      var idx = cards.indexOf(card);
-      var it = items[idx];
+      var it = items[cards.indexOf(card)];
       if(!it) return;
       e.preventDefault(); e.stopPropagation();
       if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
@@ -5534,22 +5592,8 @@
         el("modalPrice").textContent = (!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB");
       }
       if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
-      var media = el("modalMediaContainer");
-      if(media){
-        var p=it.photo_urls||it.photos||it.image_url||"";
-        if(Array.isArray(p)) p=p[0]||"";
-        if(typeof p==="string" && p.charAt(0)==="["){ try{p=JSON.parse(p)[0];}catch(ex){} }
-        media.innerHTML = p ? '<img src="'+String(p).replace(/"/g,'')+'" style="width:100%;height:100%;object-fit:cover;">' : "";
-      }
-      if(el("modalCallBtn")) el("modalCallBtn").href = "tel:"+(it.phone||it.phone_number||"");
       show("modalOverlay");
-      return;
     }
-
-    if(id==="modalClose" || id==="modalBackBtn" || t.classList.contains("js-close")){
-      e.preventDefault(); e.stopPropagation(); closeAll(); return;
-    }
-    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); openChat(); return; }
   }, true);
 
   var send = el("advisorChatSend");
@@ -5561,13 +5605,14 @@
       var msg = inp ? String(inp.value||"").trim() : "";
       if(!msg) return;
       if(log) log.innerHTML += '<div class="text-right"><span class="inline-block bg-teal-600 text-white p-2 rounded-2xl">'+msg+"</span></div>";
-      if(inp) inp.value = "";
+      if(inp) inp.value="";
       fetch("/api/advisor/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})})
         .then(function(r){return r.json();})
         .then(function(d){ if(log) log.innerHTML += '<div class="bg-white p-2 rounded-2xl">'+(d.reply||d.message||d.text||"ተቀብያለሁ")+"</div>"; })
-        .catch(function(){ if(log) log.innerHTML += "<div>አልተሳካም</div>"; });
+        .catch(function(){});
     });
   }
 })();
 </script>
 </body>
+</html>
