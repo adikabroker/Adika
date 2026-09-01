@@ -1205,35 +1205,45 @@ EXPLORER_HTML = r"""
 
     /* Corporate tool cards */
     .tool-card-pro {
-      padding: 0.85rem 0.8rem; border-radius: 1.25rem; text-align: left;
-      background: rgba(15, 23, 42, 0.40);
-      border: 1px solid rgba(34, 211, 238, 0.30);
+      padding: 0.4rem 0.45rem; border-radius: 0.8rem; text-align: left;
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(34, 211, 238, 0.28);
       color: #e2e8f0;
-      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-      transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease, background 0.2s ease, border-color 0.2s ease;
-      display: flex; flex-direction: column; gap: 0.28rem;
-      box-shadow: 0 8px 24px rgba(2, 6, 23, 0.18);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      display: flex; flex-direction: column; gap: 0.15rem;
+      box-shadow: 0 4px 14px rgba(2, 6, 23, 0.15);
       min-height: 0; position: relative; overflow: hidden;
     }
     .tool-card-pro:hover {
-      transform: translateY(-6px) scale(1.02);
-      background: rgba(255, 255, 255, 0.16);
-      border-color: rgba(34, 211, 238, 0.35);
-      box-shadow: 0 12px 35px rgba(6, 182, 212, 0.28);
+      transform: translateY(-3px) scale(1.015);
+      background: rgba(34, 211, 238, 0.12);
+      border-color: rgba(34, 211, 238, 0.4);
+      box-shadow: 0 8px 22px rgba(6, 182, 212, 0.22);
     }
     .tool-card-pro:active { transform: scale(0.97); }
-    .tool-card-pro .tool-title { font-weight: 800; font-size: 11px; color: #ffffff; line-height: 1.3; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
-    .tool-card-pro .tool-sub { font-size: 8.5px; color: rgba(255, 255, 255, 0.88); line-height: 1.25; text-shadow: 0 1px 2px rgba(0,0,0,0.45); }
-    .tool-icon-wrap {
-      width: 28px; height: 28px; border-radius: 0.7rem;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(34, 211, 238, 0.18);
-      border: 1px solid rgba(34, 211, 238, 0.32);
-      color: #67e8f9;
-      backdrop-filter: blur(8px);
+    .tool-card-pro .tool-title {
+      font-weight: 800; font-size: 9px; color: #ffffff; line-height: 1.15;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.55);
     }
-    .tool-icon-wrap svg { width: 14px; height: 14px; }
-    #aiToolsView { position: relative; z-index: 1; }
+    .tool-card-pro .tool-sub {
+      font-size: 7px; font-weight: 600; line-height: 1.15;
+      color: #22d3ee; opacity: 0.92;
+      filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.35));
+    }
+    .tool-icon-wrap {
+      width: 20px; height: 20px; border-radius: 0.45rem;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(34, 211, 238, 0.12);
+      border: 1px solid rgba(34, 211, 238, 0.30);
+      color: #67e8f9;
+    }
+    .tool-icon-wrap svg { width: 11px; height: 11px; }
+    #aiToolsView {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column;
+      overflow: hidden !important;
+    }
     .tools-ambient-wrap { position: relative; overflow: hidden; }
     .tools-ambient-blob {
       position: absolute; width: 11rem; height: 11rem; border-radius: 9999px;
@@ -1285,7 +1295,8 @@ EXPLORER_HTML = r"""
     }
 
     .tools-grid-compact {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.35rem;
+      flex: 1 1 auto; align-content: start;
     }
     @media (max-width: 340px) {
       .tools-grid-compact { grid-template-columns: repeat(2, 1fr); }
@@ -1674,10 +1685,10 @@ EXPLORER_HTML = r"""
   <!-- 4. DEDICATED AI HUB & SMART FILTER MODAL                          -->
   <!-- ================================================================= -->
   <div id="aiModal" class="fixed inset-0 z-[220] hidden items-stretch justify-center" style="background:rgba(2,6,23,0.55);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);">
-    <div class="w-full max-w-md h-full max-h-full flex flex-col shadow-2xl overflow-hidden relative border-0 sm:border border-white/20"
-         style="background:rgba(15,23,42,0.88);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);">
+    <div class="w-full max-w-md h-full max-h-screen flex flex-col shadow-2xl overflow-hidden relative border-0 sm:border border-white/20"
+         style="background:rgba(15,23,42,0.92);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);">
       <!-- Dedicated Tools Hub Header (no Marketplace chrome) -->
-      <div class="px-3 py-3 text-white flex flex-col gap-2.5 shrink-0 border-b border-white/20"
+      <div class="px-2.5 py-1.5 text-white flex flex-col gap-1 shrink-0 border-b border-white/20"
            style="background:rgba(255,255,255,0.06);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
         <div class="flex items-center justify-between gap-2">
           <button type="button" id="aiHubBackBtn" onclick="(function(){try{document.getElementById('aiModalClose').onclick();}catch(e){var m=document.getElementById('aiModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}var n=document.getElementById('adikaBottomNav');var f=document.getElementById('fabBtn');if(n)n.style.display='';if(f)f.style.display='';}})()"
@@ -1706,11 +1717,11 @@ EXPLORER_HTML = r"""
       </div>
 
       <!-- Tab 1: AI Tools Hub -->
-      <div id="aiToolsView" class="overflow-y-auto flex-1 p-4 pb-8 space-y-5 tools-ambient-wrap" style="background:transparent;">
+      <div id="aiToolsView" class="flex-1 flex flex-col justify-between p-2.5 pb-3 space-y-1.5 tools-ambient-wrap overflow-hidden" style="background:transparent;">
         <div class="tools-ambient-blob cyan"></div>
         <div class="tools-ambient-blob indigo"></div>
         <!-- Smart Budget & Purchase Advisor -->
-        <div class="budget-glass-card p-4 space-y-3 relative z-10">
+        <div class="budget-glass-card py-2 px-2.5 space-y-1 relative z-10 shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5 text-white font-extrabold text-xs drop-shadow-md">
               <span>💡</span>
@@ -1726,14 +1737,14 @@ EXPLORER_HTML = r"""
               <div class="flex items-center justify-between mb-1">
                 <label class="text-[10px] font-bold text-white drop-shadow-md">ጠቅላላ በጀት (ETB)</label>
               </div>
-              <input id="advisorBudget" type="number" value="2000000" placeholder="2,000,000" class="w-full px-2.5 py-2 rounded-xl bg-white/15 border border-white/25 text-[11px] font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
+              <input id="advisorBudget" type="number" value="2000000" placeholder="2,000,000" class="w-full px-2 py-1.5 rounded-lg bg-white/15 border border-white/25 text-[11px] font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
               <div id="advisorBudgetFormatted" class="text-[9px] font-medium text-slate-400/70 mt-0.5">2,000,000 ETB</div>
             </div>
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="text-[10px] font-bold text-white drop-shadow-md">ወርሃዊ ገቢ (ETB)</label>
               </div>
-              <input id="advisorMonthlyIncome" type="number" value="25000" placeholder="25,000" class="w-full px-2.5 py-2 rounded-xl bg-white/15 border border-white/25 text-[11px] font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
+              <input id="advisorMonthlyIncome" type="number" value="25000" placeholder="25,000" class="w-full px-2 py-1.5 rounded-lg bg-white/15 border border-white/25 text-[11px] font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
               <div id="advisorIncomeFormatted" class="text-[9px] font-medium text-slate-400/70 mt-0.5">25,000 / ወር</div>
             </div>
           </div>
@@ -1746,7 +1757,7 @@ EXPLORER_HTML = r"""
           </div>
 
           <!-- Generate opportunity cards (does NOT jump to chat) -->
-          <button id="advisorBtn" type="button" class="w-full py-2.5 rounded-xl bg-cyan-400/25 hover:bg-cyan-400/35 text-cyan-100 font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-cyan-400/40 backdrop-blur-md">
+          <button id="advisorBtn" type="button" class="w-full py-1.5 rounded-xl bg-cyan-400/25 hover:bg-cyan-400/35 text-cyan-100 font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-cyan-400/40 backdrop-blur-md">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
             <span>የኢንቨስትመንት አማራጮች አሳይ</span>
           </button>
