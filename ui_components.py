@@ -361,7 +361,7 @@ SELLER_FORM_HTML = r"""
             try { localStorage.removeItem('adika_draft_seller'); } catch (e) {}
             setTimeout(() => {
               if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                try { window.Telegram.WebApp.close(); } catch(e) {}
+                try { window.location.href='/'; } catch(e) {}
               } else {
                 window.location.href = "/";
               }
@@ -415,7 +415,7 @@ SELLER_FORM_HTML = r"""
         <div className="min-h-screen bg-[#b5eff3] pb-24">
           <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
             <div className="flex items-center justify-between max-w-md mx-auto mb-1.5 gap-2">
-              <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close(); else window.history.back(); } catch(e) { window.history.back(); } }}
+              <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.location.href='/'; else window.location.href='/'; } catch(e) { window.location.href='/'; } }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
                 ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
               </button>
@@ -679,7 +679,7 @@ SELLER_FORM_HTML = r"""
                   try { resetForm(); } catch (e) {}
                   try {
                     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                      window.Telegram.WebApp.close();
+                      window.location.href='/';
                     } else {
                       window.location.href = '/explorer';
                     }
@@ -835,7 +835,7 @@ BUYER_FORM_HTML = r"""
             try { localStorage.removeItem('adika_draft_buyer'); } catch (e) {}
             setTimeout(() => {
               if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                try { window.Telegram.WebApp.close(); } catch(e) {}
+                try { window.location.href='/'; } catch(e) {}
               }
             }, 3000);
           } else {
@@ -881,7 +881,7 @@ BUYER_FORM_HTML = r"""
       return (
         <div className="min-h-screen bg-[#b5eff3] pb-24">
           <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white flex items-center justify-between gap-2 border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
-            <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close(); else window.history.back(); } catch(e) { window.history.back(); } }}
+            <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.location.href='/'; else window.location.href='/'; } catch(e) { window.location.href='/'; } }}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
               ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
             </button>
@@ -992,7 +992,7 @@ BUYER_FORM_HTML = r"""
             <button type="button" onClick={() => {
                   try { if (typeof resetForm === 'function') resetForm(); } catch(e) {}
                   try {
-                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) window.Telegram.WebApp.close();
+                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) window.location.href='/';
                     else window.location.href = '/explorer';
                   } catch (e) { window.location.href = '/explorer'; }
                 }}
@@ -2616,37 +2616,41 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Broker registration -->
-  <div id="brokerRegModal" class="fixed inset-0 z-[200] bg-black/55 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
-      <div class="flex justify-between items-center px-5 pt-4 pb-2 border-b border-slate-100 shrink-0">
-        <div class="font-black text-base text-slate-900">ደላላ ምዝገባ</div>
-        <button type="button" onclick="closeModal('brokerRegModal')" class="w-8 h-8 rounded-full bg-slate-100 font-bold">✕</button>
+  <div id="brokerRegModal" class="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-md hidden items-end justify-center">
+    <div class="w-full max-w-md rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden border border-white/20 shadow-2xl shadow-cyan-950/20"
+         style="background: rgba(15,23,42,0.90); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);">
+      <div class="flex justify-between items-center px-4 pt-3 pb-2 border-b border-white/15 shrink-0 gap-2">
+        <button type="button" onclick="closeModal('brokerRegModal')" class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition-all shrink-0">
+          ← Back
+        </button>
+        <div class="font-black text-sm text-white truncate text-center flex-1">ደላላ ምዝገባ</div>
+        <button type="button" onclick="closeModal('brokerRegModal')" class="w-8 h-8 rounded-full bg-slate-200/50 hover:bg-slate-300/80 text-slate-900 font-bold flex items-center justify-center transition-all shrink-0">✕</button>
       </div>
       <div class="px-5 py-3 overflow-y-auto flex-1" style="padding-bottom: 8px;">
-        <label class="text-xs font-bold text-slate-600">ሙሉ ስም</label>
-        <input id="brName" class="w-full mb-2.5 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="ስም" />
-        <label class="text-xs font-bold text-slate-600">ስልክ ቁጥር</label>
-        <input id="brPhone" class="w-full mb-2.5 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="09xxxxxxxx" />
-        <label class="text-xs font-bold text-slate-600">Telegram username</label>
-        <input id="brUser" class="w-full mb-2.5 px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-bold" placeholder="@username" />
-        <div class="text-xs font-bold text-slate-600 mb-1">የሚሰሩበት ምድብ</div>
+        <label class="text-xs font-bold text-cyan-100/90">ሙሉ ስም</label>
+        <input id="brName" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/15 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="ስም" />
+        <label class="text-xs font-bold text-cyan-100/90">ስልክ ቁጥር</label>
+        <input id="brPhone" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/15 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="09xxxxxxxx" />
+        <label class="text-xs font-bold text-cyan-100/90">Telegram username</label>
+        <input id="brUser" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/15 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="@username" />
+        <div class="text-xs font-bold text-cyan-100/90 mb-1">የሚሰሩበት ምድብ</div>
         <div class="flex flex-wrap gap-2 mb-3">
-          <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
-          <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
-          <label class="px-3 py-1.5 rounded-full bg-slate-100 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
+          <label class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
+          <label class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
+          <label class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
         </div>
-        <label class="text-xs font-bold text-slate-600">የመታወቂያ ፎቶ (አማራጭ)</label>
+        <label class="text-xs font-bold text-cyan-100/90">የመታወቂያ ፎቶ (አማራጭ)</label>
         <div class="mt-1 mb-2 flex gap-2 items-center">
-          <label class="flex-1 py-3 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-600 cursor-pointer active:bg-slate-100">
+          <label class="flex-1 py-3 rounded-xl border-2 border-dashed border-white/25 bg-white/10 text-center text-xs font-bold text-cyan-100/90 cursor-pointer active:bg-white/15">
             📷 ፎቶ አንሳ / ምረጥ
             <input id="brIdPhoto" type="file" accept="image/*" capture="environment" class="hidden" />
           </label>
-          <img id="brIdPreview" alt="" class="hidden w-14 h-14 rounded-xl object-cover border border-slate-200" />
+          <img id="brIdPreview" alt="" class="hidden w-14 h-14 rounded-xl object-cover border border-white/25" />
         </div>
-        <p class="text-[10px] text-slate-400 mb-2">ምዝገባው ለአድሚን ይላካል — ከተረጋገጠ በኋላ ደላላ ይሆናሉ።</p>
+        <p class="text-[10px] text-slate-300/80 mb-2">ምዝገባው ለአድሚን ይላካል — ከተረጋገጠ በኋላ ደላላ ይሆናሉ።</p>
       </div>
-      <div class="px-5 pt-2 pb-5 border-t border-slate-100 shrink-0 bg-white" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
-        <button type="button" id="brSubmitBtn" class="w-full py-3.5 rounded-xl bg-[#16acbd] text-white font-black text-sm shadow-lg active:scale-[0.98]">
+      <div class="px-5 pt-2 pb-5 border-t border-white/15 shrink-0" style="background:rgba(15,23,42,0.92)" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
+        <button type="button" id="brSubmitBtn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-black hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-cyan-500/25">
           ✅ መመዝገብ / Submit
         </button>
       </div>
