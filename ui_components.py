@@ -2,7 +2,6 @@
 """Adika Mini App HTML templates (Telegram WebApp)."""
 
 SELLER_FORM_HTML = r"""
-
 <!DOCTYPE html>
 <html lang="am">
 <head>
@@ -24,7 +23,138 @@ SELLER_FORM_HTML = r"""
     .chip-active { background:#16acbd; color:#fff; font-weight:700; box-shadow:0 2px 6px rgba(22,172,189,.35); border: 1px solid #16acbd; }
     .chip-idle { background:#ffffff; color:#334155; border:1px solid #cbd5e1; font-weight: 600; }
     input, textarea, select { font-size: 15px !important; }
-  </style>
+  
+    
+      100% { transform: translateX(120%); }
+    }
+    
+      50% { filter: drop-shadow(0 0 10px rgba(99,102,241,0.55)); }
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+      100% { transform: translateX(120%); }
+    }
+    
+    
+      50% { transform: scale(1.15); opacity: 0.85; }
+    }
+    
+    .promo-slide {
+      will-change: opacity, transform;
+    }
+    .promo-slide .promo-orb {
+      transition: opacity 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms,
+                  transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms;
+    }
+    .promo-slide .promo-icon {
+      transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 80ms,
+                  transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 80ms;
+    }
+    .promo-slide .promo-title,
+    .promo-slide .promo-sub {
+      transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms,
+                  transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms;
+    }
+    .promo-slide .promo-cta {
+      transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 240ms,
+                  transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 240ms;
+    }
+    .promo-slide:not(.is-active) .promo-orb,
+    .promo-slide:not(.is-active) .promo-icon,
+    .promo-slide:not(.is-active) .promo-title,
+    .promo-slide:not(.is-active) .promo-sub,
+    .promo-slide:not(.is-active) .promo-cta {
+      opacity: 0;
+      transform: scale(0.85) translateY(12px);
+    }
+    .promo-slide.is-active .promo-orb {
+      opacity: 1;
+      transform: scale(1);
+      animation: adikaGlowOrb 2s ease-in-out infinite;
+    }
+    .promo-slide.is-active .promo-icon {
+      opacity: 1;
+      transform: scale(1) rotateY(0deg);
+    }
+    .promo-slide.is-active .promo-title,
+    .promo-slide.is-active .promo-sub {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .promo-slide.is-active .promo-cta {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .promo-slide.is-active {
+      opacity: 1 !important;
+      transform: scale(1) translateY(0) !important;
+      pointer-events: auto !important;
+      z-index: 2;
+    }
+    .promo-slide.is-exit {
+      opacity: 0 !important;
+      transform: scale(0.92) translateY(-22px) !important;
+      pointer-events: none !important;
+      z-index: 1;
+    }
+
+    @keyframes adikaShimmer {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(120%); }
+    }
+    @keyframes adikaNeonPulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(34,211,238,0.35), 0 0 18px rgba(56,189,248,0.2), inset 0 1px 0 rgba(255,255,255,0.1); }
+      50% { box-shadow: 0 0 16px rgba(45,212,191,0.45), 0 0 24px rgba(34,211,238,0.28), inset 0 1px 0 rgba(255,255,255,0.12); }
+    }
+    @keyframes adikaGlowOrb {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.18); opacity: 0.85; }
+    }
+    @keyframes adikaHeartbeat {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+    @keyframes adikaLetterIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #adikaPromoBanner {
+      animation: adikaNeonPulse 2.2s ease-in-out infinite;
+    }
+    .promo-slide { will-change: opacity, transform; }
+    .promo-slide.is-active { opacity: 1 !important; transform: scale(1) translateY(0) !important; pointer-events: auto !important; z-index: 2; }
+    .promo-slide.is-exit { opacity: 0 !important; transform: scale(0.92) translateY(-22px) !important; pointer-events: none !important; z-index: 1; }
+    .promo-slide.is-active .promo-orb { opacity: 1; animation: adikaGlowOrb 2s ease-in-out infinite; }
+    .promo-slide.is-active .promo-icon {
+      animation: none;
+      opacity: 1;
+      transform: scale(1);
+    }
+    .promo-slide.is-active .promo-cta {
+      animation: adikaHeartbeat 1.6s ease-in-out infinite;
+      animation-delay: 0.4s;
+    }
+    .promo-slide:not(.is-active) .promo-orb,
+    .promo-slide:not(.is-active) .promo-icon,
+    .promo-slide:not(.is-active) .promo-title,
+    .promo-slide:not(.is-active) .promo-sub,
+    .promo-slide:not(.is-active) .promo-cta {
+      opacity: 0;
+    }
+    .promo-slide.is-active .promo-letter {
+      animation: adikaLetterIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+</style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen text-slate-800">
   <div id="root"></div>
@@ -231,7 +361,7 @@ SELLER_FORM_HTML = r"""
             try { localStorage.removeItem('adika_draft_seller'); } catch (e) {}
             setTimeout(() => {
               if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                try { window.location.href='/'; } catch(e) {}
+                try { window.Telegram.WebApp.close(); } catch(e) {}
               } else {
                 window.location.href = "/";
               }
@@ -266,7 +396,7 @@ SELLER_FORM_HTML = r"""
               </p>
               <div className="flex flex-col gap-2 pt-2">
                 <a href="/explorer"
-                  className="w-full py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md text-center block">
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:brightness-110 active:scale-95 text-xs shadow-md text-center block">
                   <span className="lang-am">ወደ ገበያ ሂድ</span>
                   <span className="lang-en">View Marketplace</span>
                 </a>
@@ -285,7 +415,7 @@ SELLER_FORM_HTML = r"""
         <div className="min-h-screen bg-[#b5eff3] pb-24">
           <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
             <div className="flex items-center justify-between max-w-md mx-auto mb-1.5 gap-2">
-              <button type="button" onClick={() => { window.location.href='/'; }}
+              <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close(); else window.history.back(); } catch(e) { window.history.back(); } }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
                 ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
               </button>
@@ -322,7 +452,7 @@ SELLER_FORM_HTML = r"""
           </div>
 
           <div className="pt-20 px-3.5">
-            <div className="bg-white rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-slate-200/80 space-y-4">
+            <div className="bg-white rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/40 bg-white/40 backdrop-blur-md/80 space-y-4">
               {step === 1 && (
                 <div className="space-y-3.5">
                   <div>
@@ -345,7 +475,7 @@ SELLER_FORM_HTML = r"""
                         </label>
                         <input type="text" value={carModel} onChange={e => setCarModel(e.target.value)}
                           placeholder="Toyota Vitz 2020 / Hyundai Tucson"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-slate-700 mb-1 block">
@@ -398,7 +528,7 @@ SELLER_FORM_HTML = r"""
                         </label>
                         <input type="number" value={mileage} onChange={e => setMileage(e.target.value)}
                           placeholder="45000"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs" />
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
@@ -413,7 +543,7 @@ SELLER_FORM_HTML = r"""
                         </label>
                         <input type="text" value={chassisNumber} onChange={e => setChassisNumber(e.target.value.toUpperCase())}
                           placeholder="ለምሳሌ፡ JTDKN36U48... (17 Digits)"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-mono uppercase font-bold text-slate-800" />
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-mono uppercase font-bold text-slate-800" />
                       </div>
                     </>
                   ) : (
@@ -436,7 +566,7 @@ SELLER_FORM_HTML = r"""
                         </label>
                         <input type="text" value={locationArea} onChange={e => setLocationArea(e.target.value)}
                           placeholder="Bole, CMC, Kazanchis, 150m²"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-slate-700 mb-1 block">
@@ -460,7 +590,7 @@ SELLER_FORM_HTML = r"""
                     </label>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
                       placeholder="ስለ ንብረቱ ተጨማሪ መረጃ ይግለጹ / Add specifications..."
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
                   </div>
                 </div>
               )}
@@ -476,7 +606,7 @@ SELLER_FORM_HTML = r"""
                       <input type="text" inputMode="numeric" value={price}
                         onChange={e => setPrice(formatPrice(e.target.value))}
                         placeholder="2,500,000"
-                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold text-slate-900" />
+                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold text-slate-900" />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#16acbd]">ETB</span>
                     </div>
                   </div>
@@ -501,7 +631,7 @@ SELLER_FORM_HTML = r"""
                     {photos.length > 0 && (
                       <div className="grid grid-cols-3 gap-2 mt-2.5">
                         {photos.map((src, i) => (
-                          <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                          <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-white/40 bg-white/40 backdrop-blur-md shadow-sm">
                             <img src={src} className="w-full h-full object-cover" alt="" />
                             <button type="button" onClick={() => removePhoto(i)}
                               className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center font-bold">×</button>
@@ -522,7 +652,7 @@ SELLER_FORM_HTML = r"""
                     </label>
                     <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                       placeholder="0911223344"
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-700 mb-1 block">
@@ -531,7 +661,7 @@ SELLER_FORM_HTML = r"""
                     </label>
                     <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
                       placeholder="@username"
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                   </div>
                 </div>
               )}
@@ -549,7 +679,7 @@ SELLER_FORM_HTML = r"""
                   try { resetForm(); } catch (e) {}
                   try {
                     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                      window.location.href='/';
+                      window.Telegram.WebApp.close();
                     } else {
                       window.location.href = '/explorer';
                     }
@@ -562,12 +692,12 @@ SELLER_FORM_HTML = r"""
             {step < 3 ? (
               <button type="button" onClick={() => { if (step===1 && !canNext1) return; setStep(s => s+1); }}
                 disabled={step===1 ? !canNext1 : photoBusy}
-                className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40">
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:brightness-110 active:scale-95 text-xs shadow-md active:scale-95 disabled:opacity-40">
                 <span className="lang-am">ቀጣይ →</span><span className="lang-en">Next →</span>
               </button>
             ) : (
               <button id="submitBtn" type="button" onClick={(e) => submitListing(e)} disabled={!canSubmit || submitting}
-                className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:brightness-110 active:scale-95 text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
                 {submitting ? (
                   <span className="flex items-center gap-1.5 font-bold">
                     <span className="lang-am">እየተመዘገበ ነው... ⏳</span>
@@ -590,11 +720,9 @@ SELLER_FORM_HTML = r"""
   </script>
 </body>
 </html>
-
 """
 
 BUYER_FORM_HTML = r"""
-
 <!DOCTYPE html>
 <html lang="am">
 <head>
@@ -707,7 +835,7 @@ BUYER_FORM_HTML = r"""
             try { localStorage.removeItem('adika_draft_buyer'); } catch (e) {}
             setTimeout(() => {
               if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                try { window.location.href='/'; } catch(e) {}
+                try { window.Telegram.WebApp.close(); } catch(e) {}
               }
             }, 3000);
           } else {
@@ -735,7 +863,7 @@ BUYER_FORM_HTML = r"""
               </p>
               <div className="flex flex-col gap-2 pt-2">
                 <a href="/explorer"
-                  className="w-full py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md text-center block">
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs shadow-md text-center block">
                   <span className="lang-am">ወደ ገበያ ሂድ</span>
                   <span className="lang-en">View Marketplace</span>
                 </a>
@@ -753,7 +881,7 @@ BUYER_FORM_HTML = r"""
       return (
         <div className="min-h-screen bg-[#b5eff3] pb-24">
           <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white flex items-center justify-between gap-2 border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
-            <button type="button" onClick={() => { window.location.href='/'; }}
+            <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close(); else window.history.back(); } catch(e) { window.history.back(); } }}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
               ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
             </button>
@@ -774,7 +902,7 @@ BUYER_FORM_HTML = r"""
           </div>
 
           <div className="pt-14 px-3.5">
-            <div className="bg-white rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-slate-200/80 space-y-3.5">
+            <div className="rounded-2xl p-4 bg-white/70 backdrop-blur-2xl border border-white/30 shadow-2xl shadow-cyan-950/20 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/40 bg-white/40 backdrop-blur-md/80 space-y-3.5">
               <div>
                 <label className="text-xs font-bold text-slate-700 mb-1 block">
                   <span className="lang-am">📦 ምድብ</span>
@@ -797,7 +925,7 @@ BUYER_FORM_HTML = r"""
                     <input type="text" inputMode="numeric" value={budgetMin}
                       onChange={e => setBudgetMin(formatPrice(e.target.value))}
                       placeholder="1,000,000"
-                      className="w-full pl-9 pr-2 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
+                      className="w-full pl-9 pr-2 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
                   </div>
                   <span className="text-slate-400 font-bold">—</span>
                   <div className="flex-1 relative">
@@ -805,7 +933,7 @@ BUYER_FORM_HTML = r"""
                     <input type="text" inputMode="numeric" value={budgetMax}
                       onChange={e => setBudgetMax(formatPrice(e.target.value))}
                       placeholder="2,500,000"
-                      className="w-full pl-10 pr-2 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
+                      className="w-full pl-10 pr-2 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
                   </div>
                 </div>
               </div>
@@ -836,7 +964,7 @@ BUYER_FORM_HTML = r"""
                 </label>
                 <textarea value={details} onChange={e => setDetails(e.target.value)} rows={3}
                   placeholder="Toyota Vitz 2020, white, automatic, clean condition..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -846,7 +974,7 @@ BUYER_FORM_HTML = r"""
                   </label>
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                     placeholder="0911223344"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 mb-1 block">
@@ -854,7 +982,7 @@ BUYER_FORM_HTML = r"""
                   </label>
                   <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
                     placeholder="@username"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                 </div>
               </div>
             </div>
@@ -864,7 +992,7 @@ BUYER_FORM_HTML = r"""
             <button type="button" onClick={() => {
                   try { if (typeof resetForm === 'function') resetForm(); } catch(e) {}
                   try {
-                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) window.location.href='/';
+                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) window.Telegram.WebApp.close();
                     else window.location.href = '/explorer';
                   } catch (e) { window.location.href = '/explorer'; }
                 }}
@@ -872,7 +1000,7 @@ BUYER_FORM_HTML = r"""
               <span className="lang-am">ሰርዝ</span><span className="lang-en">Cancel</span>
             </button>
             <button type="button" onClick={submit} disabled={!details || submitting}
-              className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
+              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
               {submitting ? (
                 <span className="flex items-center gap-1.5 font-bold">
                   <span className="lang-am">እየተመዘገበ ነው... ⏳</span>
@@ -894,11 +1022,9 @@ BUYER_FORM_HTML = r"""
   </script>
 </body>
 </html>
-
 """
 
 EXPLORER_HTML = r"""
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -944,6 +1070,27 @@ EXPLORER_HTML = r"""
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
     /* Executive hero carousel — compact max 110px */
+    
+    /* vibrant-cat-tabs */
+    #feedModes button, .feed-mode-btn, [data-feed-mode], #catsRow button, .cat-pill {
+      font-weight: 800 !important;
+      box-shadow: 0 2px 8px rgba(0, 96, 100, 0.25) !important;
+    }
+    #feedModes button.active, .feed-mode-btn.active, [data-feed-mode].active,
+    #catsRow button.active, .cat-pill.active {
+      background: #006064 !important;
+      color: #fff !important;
+      box-shadow: 0 3px 12px rgba(0, 96, 100, 0.45) !important;
+      ring: 2px solid rgba(255,255,255,0.8);
+      transform: scale(1.04);
+    }
+    #feedModes button:not(.active), .feed-mode-btn:not(.active),
+    #catsRow button:not(.active), .cat-pill:not(.active) {
+      background: rgba(255,255,255,0.92) !important;
+      color: #006064 !important;
+      border: 1px solid rgba(255,255,255,0.7) !important;
+    }
+
     .smart-dot {
       width: 6px; height: 6px; border-radius: 999px;
       background: rgba(255,255,255,0.25); transition: all 0.3s ease;
@@ -953,11 +1100,13 @@ EXPLORER_HTML = r"""
       width: 18px; background: #22d3ee;
     }
     .smart-slide { display: none; }
-    .smart-slide.active { display: block; animation: smartFade 0.45s ease; }
+    .smart-slide.active { display: block; animation: smartFade 0.4s ease; }
     @keyframes smartFade {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    #smartToolsBanner { max-height: 78px; }
+    .line-clamp-1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .hero-carousel {
       display: flex; gap: 0.4rem; overflow-x: auto; scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch; padding-bottom: 0;
@@ -1161,7 +1310,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 1. FIXED STICKY TEAL HEADER (Compact 3-Row Layout)                -->
   <!-- ================================================================= -->
-  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.22); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
+  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.12); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
       <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
@@ -1191,11 +1340,17 @@ EXPLORER_HTML = r"""
         </div>
       </div>
 
-      <!-- Second Row: Sleek Quick Search Input Bar -->
-      <div class="relative">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
-        <input id="q" type="search" placeholder="ንብረት ይፈልጉ... / Search listings..." autocomplete="off"
-          class="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
+      <!-- Search + Broker glass badge -->
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1 min-w-0">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
+          <input id="q" type="search" placeholder="ንብረት ይፈልጉ... / Search..." autocomplete="off"
+            class="w-full pl-8 pr-3 py-1.5 rounded-full bg-white/90 text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
+        </div>
+        <button type="button" id="brokerCtaHome" class="shrink-0 backdrop-blur-3xl px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap active:scale-95 transition-all shadow-sm flex items-center gap-1"
+                style="background: rgba(255,255,255,0.10); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.30); color: #004d40;">
+          <span>🤝</span><span>ደላላ ኖት?</span>
+        </button>
       </div>
 
       <!-- Third Row: Category Pills (Horizontal Scroll) -->
@@ -1230,38 +1385,90 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5" style="padding-top: 148px; padding-bottom: 120px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5 pb-32" style="padding-top: 118px; padding-bottom: 140px;">
     <!-- Active Filter Banner -->
-    <div id="filterBanner" class="hidden mb-2 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
+    <div id="filterBanner" class="hidden mb-1 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <!-- PROFESSIONAL AI TOOLS BANNER (auto-rotate 5s) + Broker CTA -->
-    <div id="homeHero" class="mb-2.5">
-      <div id="smartToolsBanner" class="relative overflow-hidden rounded-3xl border border-white/25 shadow-2xl"
-           style="background: linear-gradient(135deg, #0b1220 0%, #003b46 55%, #0f172a 100%); min-height: 132px;">
-        <div class="absolute -right-10 -bottom-10 w-40 h-40 rounded-full blur-3xl pointer-events-none" style="background: rgba(34,211,238,0.14);"></div>
-        <div id="smartBannerTrack" class="relative px-4 pt-3.5 pb-1"></div>
-        <div id="smartBannerDots" class="relative flex justify-center gap-1.5 pb-3"></div>
-      </div>
-      <button type="button" id="brokerCtaHome" class="mt-2.5 w-full flex items-center justify-between gap-2 px-3.5 py-3 rounded-2xl border border-white/45 shadow-lg active:scale-[0.99]"
-              style="background: rgba(15,23,42,0.10); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);">
-        <div class="flex items-center gap-2.5 min-w-0">
-          <span class="text-lg bg-cyan-600/20 px-2 py-1.5 rounded-xl">🤝</span>
-          <div class="text-left min-w-0">
-            <p class="text-[12px] font-extrabold text-slate-900 truncate">ደላላ ኖት? አሁኑኑ ይመዝገቡ!</p>
-            <p class="text-[10px] text-slate-600 truncate">የገዢ ጥያቄ በቴሌግራም ወዲያውኑ ይድረስዎ</p>
+    <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
+    <div id="homeHero" class="-mt-2 pt-0 mb-1 px-0">
+      <div id="adikaPromoBanner" class="relative w-full h-11 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+           style="margin-top:0; background: rgba(15,23,42,0.90); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+                  border: 1.5px solid transparent;
+                  background-image: linear-gradient(rgba(15,23,42,0.90), rgba(15,23,42,0.90)), linear-gradient(90deg, #22d3ee, #7dd3fc, #2dd4bf, #22d3ee);
+                  background-size: 100% 100%, 200% 100%;
+                  background-origin: border-box; background-clip: padding-box, border-box;">
+        <div class="absolute inset-0 pointer-events-none opacity-40 overflow-hidden">
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(34,211,238,0.2),rgba(125,211,252,0.15),transparent);animation:adikaShimmer 2.2s linear infinite;"></div>
+        </div>
+        <div id="promoSlides" class="relative h-full w-full">
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3 is-active" data-tool="poa" data-idx="0">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">📜</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ው</span><span class="promo-letter" style="animation-delay:60ms">ክ</span><span class="promo-letter" style="animation-delay:90ms">ል</span><span class="promo-letter" style="animation-delay:120ms">ና</span> <span class="promo-letter" style="animation-delay:180ms">ማ</span><span class="promo-letter" style="animation-delay:210ms">ጣ</span><span class="promo-letter" style="animation-delay:240ms">ሪ</span><span class="promo-letter" style="animation-delay:270ms">ያ</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የውክልና ሰነዶችን ህጋዊነት በስካን ያረጋገጡ</p>
+            </div>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
+          </div>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="chassis" data-idx="1" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(56,189,248,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🔍</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ሻ</span><span class="promo-letter" style="animation-delay:60ms">ን</span><span class="promo-letter" style="animation-delay:90ms">ሲ</span> <span class="promo-letter" style="animation-delay:150ms">ማ</span><span class="promo-letter" style="animation-delay:180ms">ጣ</span><span class="promo-letter" style="animation-delay:210ms">ሪ</span><span class="promo-letter" style="animation-delay:240ms">ያ</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የመኪናውን እውነተኛ ታሪክ እና VIN ይመርምሩ</p>
+            </div>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
+          </div>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="duty" data-idx="2" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(45,212,191,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🧮</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ቀ</span><span class="promo-letter" style="animation-delay:60ms">ረ</span><span class="promo-letter" style="animation-delay:90ms">ጥ</span> <span class="promo-letter" style="animation-delay:150ms">ስ</span><span class="promo-letter" style="animation-delay:180ms">ሌ</span><span class="promo-letter" style="animation-delay:210ms">ት</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ ስሌት</p>
+            </div>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
+          </div>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="loan" data-idx="3" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(14,165,233,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🏦</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ባ</span><span class="promo-letter" style="animation-delay:60ms">ን</span><span class="promo-letter" style="animation-delay:90ms">ክ</span> <span class="promo-letter" style="animation-delay:150ms">ብ</span><span class="promo-letter" style="animation-delay:180ms">ድ</span><span class="promo-letter" style="animation-delay:210ms">ር</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የቤት እና የመኪና ብድር ወርሃዊ ስሌት</p>
+            </div>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
+          </div>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="compare" data-idx="4" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.4),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">⚖️</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">መ</span><span class="promo-letter" style="animation-delay:60ms">ኪ</span><span class="promo-letter" style="animation-delay:90ms">ና</span> <span class="promo-letter" style="animation-delay:150ms">ን</span><span class="promo-letter" style="animation-delay:180ms">ፅ</span><span class="promo-letter" style="animation-delay:210ms">ፅ</span><span class="promo-letter" style="animation-delay:240ms">ር</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የሁለት መኪናዎችን ብቃት ጎን ለጎን ያወዳድሩ</p>
+            </div>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
         </div>
-        <span class="shrink-0 text-[11px] font-black bg-cyan-600 text-white px-3 py-1.5 rounded-xl shadow-md">ይመዝገቡ →</span>
-      </button>
+
+        id="promoDots" class="absolute bottom-1 right-2 flex gap-1 z-10">
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/90 transition-all" data-i="0"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="1"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="2"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="3"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="4"></span>
+        </div>
+      </div>
       <div class="hidden">
         <button id="heroAdvisorBtn" type="button"></button>
         <button id="heroPoaBtn" type="button"></button>
         <button id="heroToolsBtn" type="button"></button>
         <div id="heroCarousel"></div>
         <div id="heroDots"></div>
+        <div id="smartBannerTrack"></div>
+        <div id="smartBannerDots"></div>
+        <div id="smartToolsBanner"></div>
+        <div id="toolsReel"></div>
       </div>
     </div>
 
@@ -1326,7 +1533,7 @@ EXPLORER_HTML = r"""
   <!-- ================================================================= -->
   <!-- 3. FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+)         -->
   <!-- ================================================================= -->
-  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.30); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,0.35);">
+  <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.22); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,0.35);">
     <!-- Left Section: Home & AI Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
       <button id="navHome" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full bg-[#16acbd]/15 text-[#16acbd] transition-all">
@@ -1347,8 +1554,8 @@ EXPLORER_HTML = r"""
           <span class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
         </div>
         <span class="text-[9px] font-semibold mt-0.5 text-[#0e7490]">
-          <span class="lang-am">AI ✨</span>
-          <span class="lang-en">AI ✨</span>
+          <span class="lang-am">አማካሪ</span>
+          <span class="lang-en">Advisor</span>
         </span>
       </button>
     </div>
@@ -1433,7 +1640,7 @@ EXPLORER_HTML = r"""
             <span class="text-lg">✨</span>
             <h3 class="font-extrabold text-xs tracking-wide">
               <span class="lang-am">አዲካ ዲጂታል አማካሪ & መሳሪያዎች</span>
-              <span class="lang-en">Adika Digital Advisor & Tools Hub</span>
+              <span class="lang-en">Adika ዲጂታል አማካሪ & Tools Hub</span>
             </h3>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
@@ -1506,19 +1713,19 @@ EXPLORER_HTML = r"""
               <div class="opp-label text-amber-400">A · Automotive</div>
               <div class="opp-title">ተሽከርካሪ + የባንክ ብድር</div>
               <div id="oppAutoBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta" data-context="auto">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="auto">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="property">
               <div class="opp-label text-sky-400">B · Real Estate</div>
               <div class="opp-title">ሪል እስቴት · ቅድመ ክፍያ</div>
               <div id="oppPropBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta" data-context="property">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="property">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="roi">
               <div class="opp-label text-emerald-400">C · Business ROI</div>
               <div class="opp-title">ንግድ / Startup · ዓመታዊ ROI</div>
               <div id="oppRoiBody" class="opp-body">ከበጀት ቀመር እየተሰላ…</div>
-              <button type="button" class="opp-cta opp-chat-cta" data-context="roi">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta" data-context="roi">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
           </div>
 
@@ -1561,7 +1768,7 @@ EXPLORER_HTML = r"""
         </div>
 
         <!-- Tools Grid -->
-        <div class="pb-28" style="padding-bottom: 120px;">
+        <div class="pb-32" style="padding-bottom: 140px;">
           <h4 class="text-xs font-extrabold text-slate-700 mb-2">
             <span class="lang-am">ተጨማሪ የፋይናንስና የህግ መሳሪያዎች</span>
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
@@ -1698,8 +1905,8 @@ EXPLORER_HTML = r"""
         <div id="modalDynamicActions" class="p-2.5 bg-[#b5eff3]/30 rounded-2xl border border-[#16acbd]/30 space-y-1.5">
           <div class="text-[10px] font-extrabold text-[#0e7490] uppercase tracking-wider flex items-center gap-1">
             <span>✨</span>
-            <span class="lang-am">ተዛማጅ የAI እና የፋይናንስ አገልግሎቶች</span>
-            <span class="lang-en">Smart AI & Financial Utilities</span>
+            <span class="lang-am">ተዛማጅ የአዲካ ዲጂታል እና የፋይናንስ አገልግሎቶች</span>
+            <span class="lang-en">Adika Digital & Financial Utilities</span>
           </div>
           <div id="modalActionButtonsRow" class="flex gap-1.5 overflow-x-auto no-scrollbar"></div>
         </div>
@@ -1881,7 +2088,7 @@ EXPLORER_HTML = r"""
             <option value="Toyota Hiace"><option value="BYD Seagull"><option value="BYD Dolphin"><option value="BYD Song Plus">
             <option value="Suzuki Dzire"><option value="Suzuki Swift"><option value="Hyundai Accent"><option value="Hyundai Tucson">
           </datalist>
-          <p class="text-[9px] text-slate-500">በvehicles_db ከሌለ AI የጉምሩክ/ነዳጅ/ዋጋ ግምት ያሰላል (እንደ estimate ምልክት ይደረጋል)።</p>
+          <p class="text-[9px] text-slate-500">በvehicles_db ከሌለ በአዲካ ዲጂታል ሲስተም የጉምሩክ/ነዳጅ/ዋጋ ግምት ያሰላል።</p>
         </div>
 
         <!-- PROPERTY: asset class selectors -->
@@ -2409,13 +2616,11 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Broker registration -->
-  <div id="brokerRegModal" class="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-md hidden items-end justify-center">
-    <div class="w-full max-w-md rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden border border-white/20 shadow-2xl shadow-cyan-950/20"
-         style="background: rgba(15,23,42,0.90); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);">
-      <div class="flex justify-between items-center px-4 pt-3 pb-2 border-b border-white/15 shrink-0">
-        <button type="button" onclick="closeModal('brokerRegModal')" class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-white bg-white/10 hover:bg-white/20 border border-white/20">← Back</button>
-        <div class="font-black text-sm text-white">ደላላ ምዝገባ</div>
-        <button type="button" onclick="closeModal('brokerRegModal')" class="w-8 h-8 rounded-full bg-slate-200/50 font-bold text-slate-900">✕</button>
+  <div id="brokerRegModal" class="fixed inset-0 z-[200] bg-black/55 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center px-5 pt-4 pb-2 border-b border-slate-100 shrink-0">
+        <div class="font-black text-base text-slate-900">ደላላ ምዝገባ</div>
+        <button type="button" onclick="closeModal('brokerRegModal')" class="w-8 h-8 rounded-full bg-slate-100 font-bold">✕</button>
       </div>
       <div class="px-5 py-3 overflow-y-auto flex-1" style="padding-bottom: 8px;">
         <label class="text-xs font-bold text-slate-600">ሙሉ ስም</label>
@@ -4189,7 +4394,7 @@ EXPLORER_HTML = r"""
       var safeName = winnerName || "ንብረት";
       return (
         '<button type="button" id="compareLiveChatCta" class="w-full mt-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 px-4 rounded-2xl shadow-xl transition-all flex items-center justify-between gap-2 text-[11px] leading-snug">' +
-          '<span class="text-left">💬 ስለ ተመራጩ <b>' + safeName + '</b> ከ Adika Digital Advisor ጋር Live Chat ያድርጉ →</span>' +
+          '<span class="text-left">💬 ስለ ተመራጩ <b>' + safeName + '</b> ከ Adika ዲጂታል አማካሪ ጋር Live Chat ያድርጉ →</span>' +
         '</button>'
       );
     }
@@ -4241,7 +4446,7 @@ EXPLORER_HTML = r"""
       var msgs = [
         "🔍 የAdika ገበያ መረጃዎችን ከመረጃ ቋት በማውጣት ላይ...",
         "⛽ የ 5 ዓመት የTCO/የወጪ ስሌቶችን በማስላት ላይ...",
-        "💡 የAI የፋይናንስ ማጠቃለያ በማዘጋጀት ላይ..."
+        "💡 የፋይናንስ ማጠቃለያ በማዘጋጀት ላይ..."
       ];
       var i = 0;
       return setInterval(function() {
@@ -4660,8 +4865,18 @@ EXPLORER_HTML = r"""
 
     // AI Smart Filter modal handlers
     document.getElementById("navAi").onclick = function() {
-      aiModal.classList.remove("hidden");
-      aiModal.classList.add("flex");
+      try {
+        if (typeof window.__adikaOpenToolChat === "function") {
+          window.__adikaOpenToolChat("general_assistant");
+        } else if (typeof showAnalysisView === "function") {
+          showAnalysisView(true);
+        } else {
+          aiModal.classList.remove("hidden");
+          aiModal.classList.add("flex");
+        }
+      } catch (e) {
+        try { showAnalysisView(true); } catch (e2) {}
+      }
     };
     aiModalClose.onclick = function() {
       aiModal.classList.add("hidden");
@@ -4717,7 +4932,7 @@ EXPLORER_HTML = r"""
           if (parsed.max_price) {
             tagParts.push("< " + Number(parsed.max_price).toLocaleString() + " ETB");
           }
-          bannerText = tagParts.length ? tagParts.join(" • ") : ("AI Filter: " + query);
+          bannerText = tagParts.length ? tagParts.join(" • ") : ("ዲጂታል ፍልተር: " + query);
         }
         filterText.textContent = bannerText;
         filterBanner.classList.remove("hidden");
@@ -5758,135 +5973,206 @@ EXPLORER_HTML = r"""
       };
 
       // Floating entry for brokers
-      try {
-        var fabHelp = document.createElement("button");
-        fabHelp.type = "button";
-        fabHelp.textContent = "ደላላ ነዎት? ይመዝገቡ";
-        fabHelp.className = "fixed bottom-24 right-3 z-40 px-3 py-2 rounded-full bg-slate-900 text-white text-[10px] font-bold shadow-lg";
-        fabHelp.onclick = function() { openM("brokerRegModal"); };
-        document.body.appendChild(fabHelp);
-      } catch (e) {}
+      try { /* broker float card handles entry */ } catch (e) {}
     })();
 
 
-    // ---- Professional Smart Tools Banner (auto-rotate 5s) ----
-    (function initSmartToolsBanner() {
-      var slides = [
-        {
-          tool: "chassis",
-          tag: "ADIKA VIN INTELLIGENCE",
-          accent: "#22d3ee",
-          title: "🔍 የሻሲ ማጣሪያ (Chassis Verification)",
-          headline: "የመኪናዎን እውነተኛ ታሪክ፣ ሞዴል እና የማኑፋክቸሪንግ አመት በአዲካ ዲጂታል ሲስተም በሰከንዶች ውስጥ ያጣሩ!",
-          cta: "አሁን የሻሲ ቁጥር ያጣሩ →"
-        },
-        {
-          tool: "duty",
-          tag: "SMART CUSTOMS DESK",
-          accent: "#60a5fa",
-          title: "🧮 የቀረጥ ስሌት (Duty & Tax)",
-          headline: "ለደረቅና ኤሌክትሪክ መኪና የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ የገበያ ስሌት ወዲያውኑ ያግኙ።",
-          cta: "የቀረጥ ስሌት አስላ →"
-        },
-        {
-          tool: "loan",
-          tag: "FINANCIAL MORTGAGE DESK",
-          accent: "#818cf8",
-          title: "🏦 የባንክ ብድር (Mortgage & Auto Loan)",
-          headline: "ከአዲካ አጋር ባንኮች ጋር የመኪናና የቤት ብድር አማራጮችን እና ወርሃዊ ክፍያን በትክክል ያሰሉ!",
-          cta: "የብድር አማራጭ አስላ →"
-        },
-        {
-          tool: "compare",
-          tag: "AUTO COMPARISON ENGINE",
-          accent: "#34d399",
-          title: "⚖️ የመኪና ንፅፅር (Vehicle Comparison)",
-          headline: "ሁለት ወይም ከዛ በላይ መኪናዎችን ቴክኒካል ብቃት፣ ነዳጅ ፍጆታ እና የገበያ ዋጋ ጎን ለጎን ያወዳድሩ።",
-          cta: "መኪናዎችን አወዳድር →"
-        },
-        {
-          tool: "diag",
-          tag: "AI GARAGE DIAGNOSTIC",
-          accent: "#c084fc",
-          title: "📋 የምርመራ ወረቀት ማብራሪያ",
-          headline: "የጋራዥ ምርመራ ወረቀትዎን ስካን በማድረግ የመኪናውን ትክክለኛ የብልሽት ደረጃ በግልጽ ይረዱ።",
-          cta: "ወረቀት ስካን ያድርጉ →"
-        },
-        {
-          tool: "contract",
-          tag: "LEGAL DRAFTING DESK",
-          accent: "#fbbf24",
-          title: "📜 የውክልና እና የሽያጭ ውል",
-          headline: "ህጋዊ የሽያጭ ውል እና የውክልና ሰነዶችን በጥቂት ጠቅታዎች ያዘጋጁ!",
-          cta: "ወደ ውል ማዘጋጀት ሂድ →"
-        }
-      ];
+    // ---- Adika Digital System Promo Banner: auto-play infinite loop (3.5s) ----
+    (function initPromoBanner() {
+      var INTERVAL_MS = 3000;
+      var slides = [];
+      var dots = [];
+      var idx = 0;
+      var timer = null;
+      var banner = null;
 
-      var track = document.getElementById("smartBannerTrack");
-      var dotsWrap = document.getElementById("smartBannerDots");
-      var banner = document.getElementById("smartToolsBanner");
-      if (!track) return;
+      var btnMap = {
+        poa: "toolPoaBtn",
+        chassis: "toolChassisBtn",
+        duty: "toolDutyBtn",
+        loan: "toolLoanBtn",
+        compare: "toolCompareBtn",
+        contract: "toolContractBtn",
+        diag: "toolDiagBtn"
+      };
 
-      function openTool(tool) {
+      function setHomeChrome(visible) {
         try {
-          if (typeof showAnalysisView === "function") showAnalysisView(true);
-          setTimeout(function () {
-            var map = {
-              chassis: "toolChassisBtn",
-              duty: "toolDutyBtn",
-              loan: "toolLoanBtn",
-              compare: "toolCompareBtn",
-              diag: "toolDiagBtn",
-              contract: "toolContractBtn",
-              poa: "toolPoaBtn"
-            };
-            var el = document.getElementById(map[tool] || "");
-            if (el) el.click();
-            else if (typeof openToolModal === "function") openToolModal(tool);
-          }, 180);
+          var nav = document.getElementById("adikaBottomNav");
+          var fab = document.getElementById("fabBtn");
+          var hero = document.getElementById("homeHero");
+          if (nav) nav.style.display = visible ? "" : "none";
+          if (fab) fab.style.display = visible ? "" : "none";
+          if (hero) hero.style.display = visible ? "" : "none";
         } catch (e) {}
       }
 
-      function render(idx) {
-        var s = slides[idx];
-        track.innerHTML =
-          '<button type="button" class="smart-slide active w-full text-left relative z-10" data-tool="' + s.tool + '">' +
-          '<div class="flex justify-between items-center mb-1.5">' +
-          '<span class="text-[9px] font-black tracking-widest uppercase px-2.5 py-0.5 rounded-full border border-white/15 bg-white/10" style="color:' + s.accent + '">' + s.tag + "</span>" +
-          '<span class="text-[10px] text-slate-400 font-mono">' + (idx + 1) + " of " + slides.length + "</span>" +
-          "</div>" +
-          '<div class="text-[14px] font-black text-white leading-snug">' + s.title + "</div>" +
-          '<p class="text-[11px] text-slate-300 leading-relaxed mt-1">' + s.headline + "</p>" +
-          '<div class="mt-2.5 pt-2 border-t border-white/10 flex justify-between items-center">' +
-          '<span class="text-[11px] font-black" style="color:' + s.accent + '">' + s.cta + "</span>" +
-          "</div></button>";
-        track.querySelector("button").onclick = function () { openTool(s.tool); };
-        if (dotsWrap) {
-          dotsWrap.innerHTML = "";
-          slides.forEach(function (_, i) {
-            var d = document.createElement("button");
-            d.type = "button";
-            d.className = "smart-dot" + (i === idx ? " active" : "");
-            d.onclick = function (e) {
-              e.stopPropagation();
-              cur = i;
-              render(cur);
-            };
-            dotsWrap.appendChild(d);
-          });
-        }
+      function showSlide(next) {
+        if (!slides.length) return;
+        var prev = idx;
+        idx = ((next % slides.length) + slides.length) % slides.length;
+        slides.forEach(function (el, i) {
+          el.classList.remove("is-active", "is-exit", "is-enter");
+          if (i === idx) {
+            // ENTER from below + bounce ease cubic-bezier(0.34, 1.56, 0.64, 1)
+            el.style.transition = "none";
+            el.style.opacity = "0";
+            el.style.transform = "scale(0.88) translateY(18px)";
+            el.style.pointerEvents = "none";
+            void el.offsetWidth;
+            el.style.transition = "opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)";
+            el.classList.add("is-active");
+            el.style.opacity = "1";
+            el.style.transform = "scale(1) translateY(0)";
+            el.style.pointerEvents = "auto";
+            // re-trigger letter kinetic + icon spring
+            try {
+              var letters = el.querySelectorAll(".promo-letter");
+              letters.forEach(function(L, li) {
+                L.style.animation = "none";
+                void L.offsetWidth;
+                L.style.animation = "adikaLetterIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both";
+                L.style.animationDelay = (li * 30) + "ms";
+              });
+              var ic = el.querySelector(".promo-icon");
+              if (ic) {
+                ic.style.transition = "none";
+                ic.style.transform = "scale(0)";
+                void ic.offsetWidth;
+                ic.style.transition = "transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)";
+                ic.style.transform = "scale(1.1)";
+                setTimeout(function(){ ic.style.transform = "scale(1)"; }, 180);
+              }
+              var sub = el.querySelector(".promo-sub");
+              if (sub) {
+                sub.style.transition = "none";
+                sub.style.opacity = "0";
+                sub.style.transform = "translateX(-20px)";
+                void sub.offsetWidth;
+                sub.style.transition = "opacity 0.35s ease 0.12s, transform 0.35s cubic-bezier(0.16,1,0.3,1) 0.12s";
+                sub.style.opacity = "1";
+                sub.style.transform = "translateX(0)";
+              }
+            } catch (e) {}
+          } else if (i === prev) {
+            // EXIT: scale down + push UP rapidly
+            el.classList.add("is-exit");
+            el.style.transition = "opacity 0.28s cubic-bezier(0.4, 0, 1, 1), transform 0.28s cubic-bezier(0.4, 0, 1, 1)";
+            el.style.opacity = "0";
+            el.style.transform = "scale(0.92) translateY(-22px)";
+            el.style.pointerEvents = "none";
+          } else {
+            el.style.opacity = "0";
+            el.style.transform = "scale(0.9) translateY(16px)";
+            el.style.pointerEvents = "none";
+          }
+        });
+        dots.forEach(function (d, i) {
+          d.style.background = i === idx ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.28)";
+          d.style.width = i === idx ? "10px" : "6px";
+          d.style.borderRadius = i === idx ? "4px" : "999px";
+        });
       }
 
-      var cur = 0;
-      render(0);
-      setInterval(function () {
-        cur = (cur + 1) % slides.length;
-        render(cur);
-      }, 5000);
+      function openCurrentTool() {
+        if (!slides[idx]) return;
+        var tool = slides[idx].getAttribute("data-tool") || "";
+        if (tool === "loan") {
+          window.__adikaOpenToolChat && window.__adikaOpenToolChat("loan");
+          return;
+        }
+        try {
+          setHomeChrome(false);
+          if (typeof showAnalysisView === "function") showAnalysisView(true);
+          setTimeout(function () {
+            var id = btnMap[tool];
+            var el = id ? document.getElementById(id) : null;
+            if (el) el.click();
+            else if (typeof openToolModal === "function") openToolModal(tool);
+          }, 100);
+        } catch (e) {}
+      }
 
-      var brCta = document.getElementById("brokerCtaHome");
-      if (brCta) {
-        brCta.onclick = function () {
+      window.__adikaOpenToolChat = function (toolKey) {
+        try {
+          setHomeChrome(false);
+          if (typeof showAnalysisView === "function") showAnalysisView(true);
+          var msg = toolKey === "loan"
+            ? "ሰላም! የባንክ ብድር እና የፋይናንስ አማካሪ — ጠቅላላ ዋጋ ወይም ወርሃዊ ገቢዎን ይንገሩኝ።"
+            : "ሰላም! በአዲካ ዲጂታል ሲስተም እንኳን ደህና መጡ። እንዴት ልረዳዎ?";
+          setTimeout(function () {
+            try {
+              var log = document.getElementById("advisorChatLog");
+              if (log) {
+                var div = document.createElement("div");
+                div.className = "mb-2 max-w-[90%]";
+                div.innerHTML = '<div class="bg-cyan-50 border border-cyan-100 text-cyan-900 text-xs font-medium p-3 rounded-2xl">' + msg + "</div>";
+                log.appendChild(div);
+                log.scrollTop = log.scrollHeight;
+              }
+            } catch (e) {}
+          }, 180);
+        } catch (e) {}
+      };
+
+      try {
+        if (typeof showAnalysisView === "function" && !window.__adikaNavWrapped) {
+          window.__adikaNavWrapped = true;
+          var _origShow = showAnalysisView;
+          window.showAnalysisView = function (on) {
+            try { _origShow(on); } catch (e) {}
+            setHomeChrome(!on);
+            if (on && timer) { clearInterval(timer); timer = null; }
+            if (!on) startAuto();
+          };
+        }
+      } catch (e) {}
+
+      function startAuto() {
+        if (timer) clearInterval(timer);
+        timer = setInterval(function () {
+          showSlide(idx + 1);
+        }, INTERVAL_MS);
+      }
+
+      function boot() {
+        banner = document.getElementById("adikaPromoBanner");
+        slides = Array.prototype.slice.call(document.querySelectorAll(".promo-slide"));
+        dots = Array.prototype.slice.call(document.querySelectorAll(".promo-dot"));
+        if (!slides.length) return;
+        showSlide(0);
+        startAuto();
+        if (banner) {
+          banner.onclick = function () {
+            openCurrentTool();
+          };
+          // pause briefly on touch then resume
+          banner.addEventListener("touchstart", function () {
+            if (timer) { clearInterval(timer); timer = null; }
+          }, { passive: true });
+          banner.addEventListener("touchend", function () {
+            setTimeout(startAuto, 2500);
+          }, { passive: true });
+        }
+        dots.forEach(function (d) {
+          d.onclick = function (ev) {
+            ev.stopPropagation();
+            var i = parseInt(d.getAttribute("data-i") || "0", 10);
+            showSlide(i);
+            startAuto();
+          };
+        });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", boot);
+      } else {
+        boot();
+      }
+
+      var br = document.getElementById("brokerCtaHome");
+      if (br) {
+        br.onclick = function () {
           try {
             if (typeof openM === "function") openM("brokerRegModal");
             else {
@@ -5897,6 +6183,11 @@ EXPLORER_HTML = r"""
         };
       }
     })();
+
+
+
+
+
 
 
     setTabs();
@@ -5929,5 +6220,5 @@ EXPLORER_HTML = r"""
   </script>
 </body>
 </html>
-
 """
+
