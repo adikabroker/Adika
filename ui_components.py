@@ -1205,7 +1205,7 @@ EXPLORER_HTML = r"""
 
     /* Corporate tool cards */
     .tool-card-pro {
-      padding: 0.7rem 0.65rem; border-radius: 0.95rem; text-align: left;
+      padding: 0.45rem 0.5rem; border-radius: 0.8rem; text-align: left;
       background: rgba(6, 182, 212, 0.08);
       border: 1px solid rgba(34, 211, 238, 0.28);
       color: #e2e8f0;
@@ -1213,7 +1213,7 @@ EXPLORER_HTML = r"""
       transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
       display: flex; flex-direction: column; justify-content: space-between; gap: 0.28rem;
       box-shadow: 0 4px 14px rgba(2, 6, 23, 0.15);
-      min-height: 110px; height: 100%; position: relative; overflow: hidden;
+      min-height: 72px; height: auto; position: relative; overflow: hidden;
     }
     .tool-card-pro:hover {
       transform: translateY(-3px) scale(1.015);
@@ -1829,37 +1829,37 @@ EXPLORER_HTML = r"""
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
           </h4>
           <div class="tools-grid-compact text-xs flex-1 h-full">
-            <button id="toolDutyBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-3.5 min-h-[110px]" style="animation-delay:0.0s">
+            <button id="toolDutyBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.0s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
               <span class="tool-title">የቀረጥ ስሌት</span>
               <span class="tool-sub">Customs Duty & Taxes</span>
             </button>
-            <button id="toolLoanBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-3.5 min-h-[110px]" style="animation-delay:0.08s">
+            <button id="toolLoanBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.08s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h18M5 10V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2M5 10v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/><circle cx="12" cy="14" r="1.5"/></svg></span>
               <span class="tool-title">የባንክ ብድር</span>
               <span class="tool-sub">Mortgage & Auto Loan</span>
             </button>
-            <button id="toolCompareBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-3.5 min-h-[110px]" style="animation-delay:0.16s">
+            <button id="toolCompareBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.16s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h8M8 12h8M8 17h5"/><path d="M4 4v16M20 4v16"/></svg></span>
               <span class="tool-title">የመኪና ንጽጽር</span>
               <span class="tool-sub">Vehicle Comparison</span>
             </button>
-            <button id="toolContractBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-3.5 min-h-[110px]" style="animation-delay:0.24s">
+            <button id="toolContractBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.24s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg></span>
               <span class="tool-title">የሽያጭ ውል</span>
               <span class="tool-sub">Legal Sales Contract</span>
             </button>
-            <button id="toolPoaBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-3.5 min-h-[110px]" style="animation-delay:0.32s">
+            <button id="toolPoaBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.32s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
               <span class="tool-title">ውክልና ማረጋገጫ</span>
               <span class="tool-sub">Verify Power of Attorney</span>
             </button>
-            <button id="toolDiagBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-3.5 min-h-[110px]" style="animation-delay:0.4s">
+            <button id="toolDiagBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.4s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
               <span class="tool-title">የምርመራ ወረቀት</span>
               <span class="tool-sub">Garage Diagnostic Sheet</span>
             </button>
-            <button id="toolChassisBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-3.5 min-h-[110px]" style="animation-delay:0.48s">
+            <button id="toolChassisBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.48s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/><path d="M12 14v3"/></svg></span>
               <span class="tool-title">የሻሲ ማረጋገጫ</span>
               <span class="tool-sub">Chassis / VIN Specs</span>
@@ -1870,6 +1870,14 @@ EXPLORER_HTML = r"""
               <span class="tool-sub">Cadastral Map Verification</span>
             </button>
           </div>
+          <button type="button" id="hubFinanceAdvisorBanner"
+            class="w-full mt-2 bg-gradient-to-r from-cyan-500/20 via-slate-900/50 to-indigo-500/20 backdrop-blur-2xl border border-cyan-400/40 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-cyan-500/10 hover:border-cyan-400 transition-all cursor-pointer relative z-10 shrink-0">
+            <div class="min-w-0 text-left pr-2">
+              <div class="text-white font-extrabold text-[12px] leading-tight drop-shadow-md">💡 ዲጂታል የፋይናንስ አማካሪ</div>
+              <div class="text-cyan-300 text-[10px] font-semibold drop-shadow-[0_0_8px_rgba(34,211,238,0.45)] mt-0.5">Adika AI Financial Advisor</div>
+            </div>
+            <span class="bg-cyan-400 text-slate-950 px-3 py-1.5 rounded-xl font-bold text-xs shrink-0 shadow-md shadow-cyan-400/30">አሁኑኑ አማክር →</span>
+          </button>
         </div>
       </div>
 
@@ -2044,13 +2052,10 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🧮 የኢትዮጵያ ጉምሩክ የቀረጥ ስሌት (Duty Calculator)</h3>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('dutyModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('dutyModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
+<div class="flex items-center gap-1 shrink-0">
+          <button type="button" onclick="navigateBack('dutyModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('dutyModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('dutyModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
@@ -2083,13 +2088,10 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🏦 የባንክ ብድርና ወርሃዊ ክፍያ (Bank Loan)</h3>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('loanModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('loanModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
+<div class="flex items-center gap-1 shrink-0">
+          <button type="button" onclick="navigateBack('loanModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('loanModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('loanModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
@@ -2121,13 +2123,10 @@ EXPLORER_HTML = r"""
           <div class="text-[9px] font-bold tracking-wide uppercase text-amber-400/90">Adika Institutional Analytics</div>
           <h3 class="font-black text-xs tracking-wide truncate">Comparison Engine</h3>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('compareModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('compareModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
+<div class="flex items-center gap-1 shrink-0">
+          <button type="button" onclick="navigateBack('compareModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('compareModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('compareModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
@@ -2225,8 +2224,9 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ ውል ማዘጋጃ (Contract Wizard)</h3>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('contractModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">← ተመለስ</button>
+<div class="flex items-center gap-1 shrink-0">
+          <button type="button" onclick="navigateBack('contractModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('contractModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
           <button type="button" onclick="closeModal('contractModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
@@ -2470,13 +2470,10 @@ EXPLORER_HTML = r"""
             <div class="text-[10px] text-[#b5eff3] font-medium truncate">በአዲካ ዲጂታል ሲስተም የቀረበ የውክልና ሰነድ ማጣሪያ</div>
           </div>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('poaModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('poaModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
+<div class="flex items-center gap-1 shrink-0">
+          <button type="button" onclick="navigateBack('poaModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('poaModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('poaModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
@@ -2516,9 +2513,10 @@ EXPLORER_HTML = r"""
           <div class="font-black text-xs tracking-tight">🛡️ የዲጂታል ካርታ ማጣሪያ</div>
           <div class="text-[10px] text-cyan-100/90 font-medium">Adika Digital System - Cadastral Verification</div>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('landMapModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">← ተመለስ</button>
-          <button type="button" onclick="closeModal('landMapModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm">✕</button>
+<div class="flex items-center gap-1 shrink-0">
+          <button type="button" onclick="navigateBack('landMapModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('landMapModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('landMapModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
@@ -2587,13 +2585,10 @@ EXPLORER_HTML = r"""
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🛠️ የምርመራ ወረቀት ተንታኝ (Diagnostic Analyzer)</h3>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('diagModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('diagModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
+<div class="flex items-center gap-1 shrink-0">
+          <button type="button" onclick="navigateBack('diagModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('diagModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('diagModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
@@ -2624,13 +2619,10 @@ EXPLORER_HTML = r"""
             <span class="lang-en">Chassis & VIN Verification</span>
           </h3>
         </div>
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button type="button" onclick="navigateBack('chassisModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg text-[11px] font-bold">
-            ← ተመለስ
-          </button>
-          <button type="button" onclick="closeModal('chassisModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">
-            ✕
-          </button>
+<div class="flex items-center gap-1 shrink-0">
+          <button type="button" onclick="navigateBack('chassisModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('chassisModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('chassisModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
       <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs">
@@ -3864,19 +3856,63 @@ EXPLORER_HTML = r"""
       if (av && !av.classList.contains("hidden")) anyOpen = true;
       if (!anyOpen) document.body.style.overflow = "";
     };
+    window.returnToToolsHub = function() {
+      var ai = document.getElementById("aiModal");
+      if (ai) {
+        ai.classList.remove("hidden");
+        ai.classList.add("flex");
+        try { ai.style.display = "flex"; } catch (e) {}
+      }
+      try {
+        var nav = document.getElementById("adikaBottomNav");
+        var fab = document.getElementById("fabBtn");
+        var hdr = document.getElementById("adikaFixedHeader");
+        var hero = document.getElementById("homeHero");
+        if (nav) nav.style.display = "none";
+        if (fab) fab.style.display = "none";
+        if (hdr) hdr.style.display = "none";
+        if (hero) hero.style.display = "none";
+        document.body.style.overflow = "hidden";
+      } catch (e2) {}
+    };
+    window.goHomeFromTool = function(id) {
+      if (id) closeToolModal(id);
+      var ai = document.getElementById("aiModal");
+      if (ai) {
+        ai.classList.add("hidden");
+        ai.classList.remove("flex");
+        try { ai.style.display = "none"; } catch (e) {}
+      }
+      try { if (typeof showAnalysisView === "function") showAnalysisView(false); } catch (e3) {}
+      try {
+        var nav = document.getElementById("adikaBottomNav");
+        var fab = document.getElementById("fabBtn");
+        var hdr = document.getElementById("adikaFixedHeader");
+        var hero = document.getElementById("homeHero");
+        if (nav) nav.style.display = "";
+        if (fab) fab.style.display = "";
+        if (hdr) hdr.style.display = "";
+        if (hero) hero.style.display = "";
+        document.body.style.overflow = "";
+      } catch (e4) {}
+    };
     window.closeModal = function(id) {
+      var tools = ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal"];
+      if (id && tools.indexOf(id) !== -1) {
+        closeToolModal(id);
+        returnToToolsHub();
+        return;
+      }
       if (id) closeToolModal(id);
       else {
-        ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal"].forEach(function(mid) {
-          closeToolModal(mid);
-        });
+        tools.concat(["aiModal"]).forEach(function(mid) { closeToolModal(mid); });
         showAnalysisView(false);
       }
     };
     window.navigateBack = function(id) {
-      // Same as close — returns user to main listing feed
-      if (id === "analysisView") showAnalysisView(false);
-      else closeModal(id);
+      if (id === "analysisView") { showAnalysisView(false); returnToToolsHub(); return; }
+      if (id) { closeModal(id); return; }
+      goHomeFromTool(null);
     };
     // Overlay click closes tool modals (no page refresh)
     ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal"].forEach(function(mid) {
@@ -4233,6 +4269,12 @@ EXPLORER_HTML = r"""
     if (advBtnEl) {
       advBtnEl.onclick = function() {
         renderOpportunityCards();
+      };
+    }
+    var hubFinBanner = document.getElementById("hubFinanceAdvisorBanner");
+    if (hubFinBanner) {
+      hubFinBanner.onclick = function() {
+        try { showAnalysisView(true); } catch (e) {}
       };
     }
     // Opportunity CTA → open live chat with context prefilled
