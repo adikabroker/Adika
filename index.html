@@ -71,21 +71,56 @@
   </div>
 </div>
 
-<div id="toolsSheet" class="sheet fixed inset-0 z-50 flex-col max-w-md mx-auto text-white" style="background:#020617;">
-  <div class="p-3 flex justify-between items-center">
-    <button type="button" class="js-close px-3 py-1.5 rounded-xl bg-white/10 text-xs">← ዋና ገፅ</button>
-    <b>Adika Digital Hub</b>
-    <button type="button" class="js-close">✕</button>
+<div id="toolsSheet" class="sheet fixed inset-0 z-50 flex-col max-w-md mx-auto text-white overflow-y-auto" style="background:#07111f;">
+  <div class="p-3 flex items-center justify-between">
+    <button type="button" class="js-close px-3 py-1.5 rounded-full bg-white/10 text-xs font-semibold">← Home</button>
+    <b class="text-sm">Adika Digital Hub 🛠️</b>
+    <button type="button" class="js-close w-8 h-8 rounded-full bg-white/10">✕</button>
   </div>
-  <div class="px-3 grid grid-cols-2 gap-2 text-xs">
-    <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left border border-white/10" data-tool="ውክልና">📜 የውክልና ማጣሪያ</button>
-    <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left border border-white/10" data-tool="ሻሲ">🔍 የሻንሲ ማጣሪያ</button>
-    <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left border border-white/10" data-tool="ቀረጥ">🧮 የቀረጥ ስሌት</button>
-    <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left border border-white/10" data-tool="ብድር">🏦 የባንክ ብድር</button>
-    <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left border border-white/10" data-tool="ንፅፅር">⚖️ የመኪና ንፅፅር</button>
-    <button type="button" class="js-tool p-3 rounded-2xl bg-white/10 text-left border border-white/10" data-tool="ውል">📄 የሽያጭ ውል</button>
+  <div class="mx-3 mb-3 grid grid-cols-2 p-1 rounded-full bg-white/10">
+    <button type="button" id="hubTabTools" class="py-1.5 rounded-full text-[11px] font-bold bg-white text-slate-900">🛠️ Tools Hub</button>
+    <button type="button" id="hubTabSearch" class="py-1.5 rounded-full text-[11px] font-bold text-white/80">🔍 Smart Search</button>
   </div>
-  <button type="button" id="openChatFromTools" class="m-3 mt-auto p-3 rounded-2xl font-black text-slate-950" style="background:#22d3ee;">አሁኑኑ አማክር →</button>
+  <div id="hubToolsPane" class="px-3 pb-4 space-y-3">
+    <div class="rounded-2xl p-3 border border-cyan-400/30" style="background:rgba(15,23,42,.55);">
+      <div class="flex justify-between items-center mb-2">
+        <b class="text-sm">💡 Purchase & Budget Advisor</b>
+        <span class="text-[9px] px-2 py-0.5 rounded-full bg-cyan-400 text-slate-950 font-black">ADIKA ADVISOR</span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 text-[10px]">
+        <label>ጠቅላላ በጀት (ETB)<input id="advBudget" value="2000000" class="mt-1 w-full rounded-xl px-2 py-2 bg-white/10 outline-none text-white placeholder-slate-500" /></label>
+        <label>ወርሃዊ ገቢ (ETB)<input id="advIncome" value="25000" class="mt-1 w-full rounded-xl px-2 py-2 bg-white/10 outline-none text-white placeholder-slate-500" /></label>
+      </div>
+      <div class="flex gap-1.5 mt-2 flex-wrap" id="budgetPills">
+        <button type="button" data-b="70000" class="px-2 py-1 rounded-lg bg-white/10 text-[10px]">70k</button>
+        <button type="button" data-b="500000" class="px-2 py-1 rounded-lg bg-white/10 text-[10px]">500k</button>
+        <button type="button" data-b="1500000" class="px-2 py-1 rounded-lg bg-white/10 text-[10px]">1.5M</button>
+        <button type="button" data-b="3000000" class="px-2 py-1 rounded-lg bg-white/10 text-[10px]">3M</button>
+        <button type="button" data-b="6000000" class="px-2 py-1 rounded-lg bg-white/10 text-[10px]">6M</button>
+      </div>
+      <button type="button" id="advGen" class="mt-2 w-full py-2 rounded-xl text-xs font-bold" style="background:#12808c;">የኢንቨስትመንት አማራጮች አሳይ</button>
+      <div id="advResults" class="mt-2 space-y-2 text-xs"></div>
+    </div>
+    <div class="text-xs font-semibold text-white/80">Financial, Legal & Diagnostic Tools</div>
+    <div class="grid grid-cols-3 gap-2">
+      <button type="button" class="js-tool rounded-2xl p-2.5 text-left border border-cyan-400/20 bg-white/5 min-h-[92px]" data-tool="ቀረጥ"><div class="text-lg">📄</div><div class="text-[11px] font-bold mt-1">የቀረጥ ስሌት</div><div class="text-[9px] text-cyan-300">Customs Duty & Taxes</div></button>
+      <button type="button" class="js-tool rounded-2xl p-2.5 text-left border border-cyan-400/20 bg-white/5 min-h-[92px]" data-tool="ብድር"><div class="text-lg">🏦</div><div class="text-[11px] font-bold mt-1">የባንክ ብድር</div><div class="text-[9px] text-cyan-300">Mortgage & Auto Loan</div></button>
+      <button type="button" class="js-tool rounded-2xl p-2.5 text-left border border-cyan-400/20 bg-white/5 min-h-[92px]" data-tool="ንፅፅር"><div class="text-lg">⚖️</div><div class="text-[11px] font-bold mt-1">የመኪና ንፅፅር</div><div class="text-[9px] text-cyan-300">Vehicle Comparison</div></button>
+      <button type="button" class="js-tool rounded-2xl p-2.5 text-left border border-cyan-400/20 bg-white/5 min-h-[92px]" data-tool="ውል"><div class="text-lg">📝</div><div class="text-[11px] font-bold mt-1">የሽያጭ ውል</div><div class="text-[9px] text-cyan-300">Legal Sales Contract</div></button>
+      <button type="button" class="js-tool rounded-2xl p-2.5 text-left border border-cyan-400/20 bg-white/5 min-h-[92px]" data-tool="ውክልና"><div class="text-lg">🛡️</div><div class="text-[11px] font-bold mt-1">ውክልና ማረጋገጫ</div><div class="text-[9px] text-cyan-300">Verify Power of Attorney</div></button>
+      <button type="button" class="js-tool rounded-2xl p-2.5 text-left border border-cyan-400/20 bg-white/5 min-h-[92px]" data-tool="ምርመራ"><div class="text-lg">⚙️</div><div class="text-[11px] font-bold mt-1">የምርመራ ወረቀት</div><div class="text-[9px] text-cyan-300">Garage Diagnostic Sheet</div></button>
+      <button type="button" class="js-tool rounded-2xl p-2.5 text-left border border-cyan-400/20 bg-white/5 min-h-[92px]" data-tool="ሻሲ"><div class="text-lg">🔍</div><div class="text-[11px] font-bold mt-1">የሻሲ ማረጋገጫ</div><div class="text-[9px] text-cyan-300">Chassis / VIN Specs</div></button>
+      <button type="button" class="js-tool rounded-2xl p-2.5 text-left border border-cyan-400/20 bg-white/5 min-h-[92px]" data-tool="ካርታ"><div class="text-lg">🗺️</div><div class="text-[11px] font-bold mt-1">የዲጂታል ካርታ ማጣሪያ</div><div class="text-[9px] text-cyan-300">Cadastral Map Verification</div></button>
+    </div>
+    <button type="button" id="openChatFromTools" class="w-full rounded-2xl p-3 flex items-center justify-between border border-cyan-400/40" style="background:linear-gradient(90deg,rgba(34,211,238,.18),rgba(15,23,42,.6));">
+      <span class="text-left"><b class="block text-sm">💡 ዲጂታል የፋይናንስ አማካሪ</b><span class="text-[10px] text-cyan-300">Adika Digital Financial Advisor</span></span>
+      <span class="text-[11px] font-black bg-cyan-400 text-slate-950 px-3 py-1.5 rounded-xl">አሁኑኑ አማክር →</span>
+    </button>
+  </div>
+  <div id="hubSearchPane" class="px-3 pb-4 hidden">
+    <input id="smartQ" class="w-full rounded-2xl px-3 py-3 bg-white/10 outline-none text-sm" placeholder="ምን እየፈለጉ ነው?" />
+    <button type="button" id="smartGo" class="mt-3 w-full py-3 rounded-2xl bg-cyan-400 text-slate-950 font-black">ፈልግ</button>
+  </div>
 </div>
 
 <div id="detailSheet" class="sheet fixed inset-0 z-50 bg-white flex-col max-w-md mx-auto">
@@ -245,6 +280,42 @@
   $("btnBroker").onclick = function () { openSheet("brokerSheet"); };
   $("promoGo").onclick = function () { openSheet("toolsSheet"); };
   $("openChatFromTools").onclick = function () { openSheet("chatSheet"); };
+  $("hubTabTools").onclick = function () {
+    $("hubToolsPane").classList.remove("hidden");
+    $("hubSearchPane").classList.add("hidden");
+    this.className = "py-1.5 rounded-full text-[11px] font-bold bg-white text-slate-900";
+    $("hubTabSearch").className = "py-1.5 rounded-full text-[11px] font-bold text-white/80";
+  };
+  $("hubTabSearch").onclick = function () {
+    $("hubSearchPane").classList.remove("hidden");
+    $("hubToolsPane").classList.add("hidden");
+    this.className = "py-1.5 rounded-full text-[11px] font-bold bg-white text-slate-900";
+    $("hubTabTools").className = "py-1.5 rounded-full text-[11px] font-bold text-white/80";
+  };
+  $("budgetPills").onclick = function (e) {
+    var b = e.target.closest("[data-b]"); if (!b) return;
+    $("advBudget").value = b.getAttribute("data-b");
+  };
+  $("advGen").onclick = function () {
+    var budget = Number($("advBudget").value || 0);
+    var income = Number($("advIncome").value || 0);
+    var down = Math.round(budget * 0.3);
+    var loan = Math.max(budget - down, 0);
+    var monthly = income ? Math.round(loan * 0.018 / 12 + loan / 60) : 0;
+    $("advResults").innerHTML =
+      '<div class="rounded-xl p-2 bg-white/10"><b>🚗 Automotive</b><p>በጀት ' + money(budget) + ' · ቅድመ ' + money(down) + '</p><button type="button" class="js-live mt-1 text-cyan-300">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button></div>' +
+      '<div class="rounded-xl p-2 bg-white/10"><b>🏠 Real Estate</b><p>ቅድመ ክፍያ አማራጭ ' + money(down) + '</p><button type="button" class="js-live mt-1 text-cyan-300">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button></div>' +
+      '<div class="rounded-xl p-2 bg-white/10"><b>💼 Business ROI</b><p>ዓመታዊ ግምት 15%–35% በገበያ መስፈርት</p><button type="button" class="js-live mt-1 text-cyan-300">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button></div>';
+    $("chatInput").value = "በ " + budget + " ETB በጀት እና በ " + income + " ETB ወርሃዊ ገቢ የፋይናንስ አማራጭ እፈልጋለሁ።";
+  };
+  $("advResults").onclick = function (e) {
+    if (e.target.closest(".js-live")) openSheet("chatSheet");
+  };
+  $("smartGo").onclick = function () {
+    state.q = $("smartQ").value.trim();
+    openSheet(null);
+    load();
+  };
   $("detailChat").onclick = function () { openSheet("chatSheet"); };
   document.querySelectorAll(".js-close").forEach(function (b) { b.onclick = function () { openSheet(null); }; });
   document.querySelectorAll(".js-tool").forEach(function (b) {
