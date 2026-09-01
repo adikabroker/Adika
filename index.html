@@ -296,16 +296,61 @@
     var b = e.target.closest("[data-b]"); if (!b) return;
     $("advBudget").value = b.getAttribute("data-b");
   };
+  function pmt(principal, annualRate, months) {
+    var r = annualRate / 12;
+    if (!principal || !months) return 0;
+    if (!r) return Math.round(principal / months);
+    return Math.round(principal * r * Math.pow(1 + r, months) / (Math.pow(1 + r, months) - 1));
+  }
+  function liveBtn() {
+    return '<button type="button" class="js-live w-full mt-2 py-2 rounded-xl text-[11px] font-bold text-white" style="background:#12808c;">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>';
+  }
   $("advGen").onclick = function () {
-    var budget = Number($("advBudget").value || 0);
-    var income = Number($("advIncome").value || 0);
+    var budget = Number(String($("advBudget").value || "0").replace(/[^\d.]/g, "")) || 0;
+    var income = Number(String($("advIncome").value || "0").replace(/[^\d.]/g, "")) || 0;
     var down = Math.round(budget * 0.3);
     var loan = Math.max(budget - down, 0);
-    var monthly = income ? Math.round(loan * 0.018 / 12 + loan / 60) : 0;
+    var autoMo = pmt(loan, 0.18, 60);
+    var houseMo = pmt(loan, 0.18, 180);
+    var cars = (state.items || []).filter(function (it) {
+      var n = Number(it.price || 0);
+      return n > 0 && n <= budget && !isHouse(it);
+    }).slice(0, 3);
+    var houses = (state.items || []).filter(function (it) {
+      var n = Number(it.price || 0);
+      return isHouse(it) && n > 0 && (n <= budget || n * 0.3 <= budget);
+    }).slice(0, 2);
+    var carLines = cars.length
+      ? cars.map(function (it) { return "• " + titleOf(it) + " — " + money(it.price); }).join("<br>")
+      : "በዚህ በጀት ውስጥ የተዘረዘረ መኪና አሁን በገበያው አልተገኘም።";
+    var houseLine = houses.length
+      ? houses.map(function (it) { return "• " + titleOf(it) + " — " + money(it.price); }).join("<br>")
+      : "በ " + money(budget) + " (ወይም 30% ቅድመ ክፍያ) የሚገኝ ቤት/መሬት በአሁኑ ገበያ አልተገኘም።";
     $("advResults").innerHTML =
-      '<div class="rounded-xl p-2 bg-white/10"><b>🚗 Automotive</b><p>በጀት ' + money(budget) + ' · ቅድመ ' + money(down) + '</p><button type="button" class="js-live mt-1 text-cyan-300">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button></div>' +
-      '<div class="rounded-xl p-2 bg-white/10"><b>🏠 Real Estate</b><p>ቅድመ ክፍያ አማራጭ ' + money(down) + '</p><button type="button" class="js-live mt-1 text-cyan-300">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button></div>' +
-      '<div class="rounded-xl p-2 bg-white/10"><b>💼 Business ROI</b><p>ዓመታዊ ግምት 15%–35% በገበያ መስፈርት</p><button type="button" class="js-live mt-1 text-cyan-300">ጥልቅ የፋይናንስ ትንተና ከ Adika Digital Advisor Live Chat ያድርጉ →</button></div>';
+      '<div class="rounded-2xl p-3 border border-white/10 bg-slate-950/50">' +
+        '<div class="text-[10px] text-cyan-300 font-black">A · AUTOMOTIVE</div>' +
+        '<div class="font-black text-sm mt-0.5">ተሽከርካሪ + የባንክ ብድር</div>' +
+        '<p class="text-[11px] text-white/80 mt-1">ከዚህ በታች (ዋጋ ≤ በጀት):<br>' + carLines + '</p>' +
+        '<p class="text-[11px] mt-1">ቅድመ 30%: ' + money(down) + ' · ብድር: ' + money(loan) + ' · ወርሃዊ (18%/60ወር): ' + money(autoMo) + '</p>' +
+        liveBtn() +
+      '</div>' +
+      '<div class="rounded-2xl p-3 border border-white/10 bg-slate-950/50">' +
+        '<div class="text-[10px] text-cyan-300 font-black">B · REAL ESTATE</div>' +
+        '<div class="font-black text-sm mt-0.5">ሪል እስቴት · ቅድመ ክፍያ</div>' +
+        '<p class="text-[11px] text-white/80 mt-1">' + houseLine + '</p>' +
+        '<p class="text-[11px] mt-1">ቅድመ 30%: ' + money(down) + ' · ወርሃዊ ብድር (18%/15ዓመት): ' + money(houseMo) + '</p>' +
+        liveBtn() +
+      '</div>' +
+      '<div class="rounded-2xl p-3 border border-white/10 bg-slate-950/50">' +
+        '<div class="text-[10px] text-cyan-300 font-black">C · BUSINESS ROI</div>' +
+        '<div class="font-black text-sm mt-0.5">ንግድ / Startup · ዓመታዊ ROI</div>' +
+        '<p class="text-[11px] text-white/80 mt-1">በጀት ' + money(budget) + ' — የኢትዮጵያ ገበያ ባንድ (15–35% ዓመታዊ):<br>' +
+        '• ባለስት መኖሪያ የሽያጭ መሸጋገሪያ · ROI ~15% → ' + money(Math.round(budget * 0.15)) + '/ዓመት<br>' +
+        '• ትንሽ የማስመጣት/ሽያጭ ኪዮስክ · ROI ~22% → ' + money(Math.round(budget * 0.22)) + '/ዓመት<br>' +
+        '• የሪል እስቴት ኪራይ ግርጌፕሎት · ROI ~28% → ' + money(Math.round(budget * 0.28)) + '/ዓመት</p>' +
+        '<p class="text-[11px] mt-1">የእርስዎ ወርሃዊ ገቢ: ' + money(income) + ' (DTI ≤35% ለብድር)</p>' +
+        liveBtn() +
+      '</div>';
     $("chatInput").value = "በ " + budget + " ETB በጀት እና በ " + income + " ETB ወርሃዊ ገቢ የፋይናንስ አማራጭ እፈልጋለሁ።";
   };
   $("advResults").onclick = function (e) {
