@@ -1209,7 +1209,7 @@ EXPLORER_HTML = r"""
             class="w-full pl-8 pr-3 py-1.5 rounded-full bg-white/90 text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
         </div>
         <button type="button" id="brokerCtaHome" class="shrink-0 backdrop-blur-3xl px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap active:scale-95 transition-all shadow-sm flex items-center gap-1"
-                style="background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.40); color: #004d40;">
+                style="background: rgba(255,255,255,0.10); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.30); color: #004d40;">
           <span>🤝</span><span>ደላላ ኖት?</span>
         </button>
       </div>
@@ -1253,48 +1253,62 @@ EXPLORER_HTML = r"""
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <!-- Horizontal Stories/Reels style Digital Tools -->
-    <div id="homeHero" class="mb-2 -mx-1">
-      <div id="toolsReel" class="flex gap-2.5 overflow-x-auto no-scrollbar py-1 px-1 snap-x snap-mandatory">
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98] transition-transform"
-                data-tool="poa" style="background: linear-gradient(90deg,#0f172a,#0284c7,#0f172a);">
+    <!-- Ultra-slim Horizontal Digital Tools Reel (h-16) -->
+    <div id="homeHero" class="mt-0.5 mb-1.5 -mx-1 pt-0.5">
+      <div class="px-1 mb-1 flex items-center gap-1.5">
+        <span class="text-[9px] font-black tracking-wide text-slate-600/80 uppercase">አዲካ ዲጂታል ሲስተም</span>
+        <span class="flex-1 h-px bg-slate-300/40"></span>
+      </div>
+      <div id="toolsReel" class="flex gap-2 overflow-x-auto no-scrollbar py-0.5 px-1 snap-x snap-mandatory">
+        <!-- 1 POA -->
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
+                data-tool="poa"
+                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #22d3ee, #6366f1, #22d3ee); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(34,211,238,0.25);">
           <div class="flex justify-between items-center">
-            <span class="text-[8px] font-black tracking-widest text-cyan-300 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">ዲጂታል ህግ</span>
-            <span class="text-[10px] font-bold text-cyan-300">ክፈት →</span>
+            <span class="text-[7px] font-black tracking-widest text-cyan-300/90">ዲጂታል ህግ</span>
+            <span class="text-[9px] font-bold text-cyan-300">→</span>
           </div>
-          <p class="text-xs font-black text-white mt-2 tracking-tight">📜 የውክልና ማጣሪያ</p>
+          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">📜 የውክልና ማጣሪያ</p>
         </button>
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98]"
-                data-tool="chassis" style="background: linear-gradient(90deg,#0f172a,#0d9488,#0f172a);">
+        <!-- 2 Chassis -->
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
+                data-tool="chassis"
+                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #14b8a6, #22d3ee, #14b8a6); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(20,184,166,0.25);">
           <div class="flex justify-between items-center">
-            <span class="text-[8px] font-black tracking-widest text-teal-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">VIN AUDIT</span>
-            <span class="text-[10px] font-bold text-teal-200">ክፈት →</span>
+            <span class="text-[7px] font-black tracking-widest text-teal-200/90">VIN AUDIT</span>
+            <span class="text-[9px] font-bold text-teal-200">→</span>
           </div>
-          <p class="text-xs font-black text-white mt-2 tracking-tight">🔍 የሻሲ ማጣሪያ</p>
+          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">🔍 የሻንሲ ማጣሪያ</p>
         </button>
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98]"
-                data-tool="duty" style="background: linear-gradient(90deg,#0f172a,#4f46e5,#0f172a);">
+        <!-- 3 Duty -->
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
+                data-tool="duty"
+                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #6366f1, #a855f7, #6366f1); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(99,102,241,0.25);">
           <div class="flex justify-between items-center">
-            <span class="text-[8px] font-black tracking-widest text-indigo-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">CUSTOMS</span>
-            <span class="text-[10px] font-bold text-indigo-200">ክፈት →</span>
+            <span class="text-[7px] font-black tracking-widest text-indigo-200/90">CUSTOMS</span>
+            <span class="text-[9px] font-bold text-indigo-200">→</span>
           </div>
-          <p class="text-xs font-black text-white mt-2 tracking-tight">🧮 የቀረጥ ስሌት</p>
+          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">🧮 የቀረጥ ስሌት</p>
         </button>
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98]"
-                data-tool="loan" style="background: linear-gradient(90deg,#0f172a,#9333ea,#0f172a);">
+        <!-- 4 Bank Loan -->
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
+                data-tool="loan"
+                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #a855f7, #ec4899, #a855f7); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(168,85,247,0.25);">
           <div class="flex justify-between items-center">
-            <span class="text-[8px] font-black tracking-widest text-purple-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">MORTGAGE</span>
-            <span class="text-[10px] font-bold text-purple-200">ክፈት →</span>
+            <span class="text-[7px] font-black tracking-widest text-purple-200/90">MORTGAGE</span>
+            <span class="text-[9px] font-bold text-purple-200">→</span>
           </div>
-          <p class="text-xs font-black text-white mt-2 tracking-tight">🏦 የባንክ ብድር</p>
+          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">🏦 የባንክ ብድር</p>
         </button>
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-60 h-20 rounded-2xl p-2.5 text-left border border-white/30 shadow-lg active:scale-[0.98]"
-                data-tool="contract" style="background: linear-gradient(90deg,#0f172a,#b45309,#0f172a);">
+        <!-- 5 Car Compare -->
+        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
+                data-tool="compare"
+                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(245,158,11,0.25);">
           <div class="flex justify-between items-center">
-            <span class="text-[8px] font-black tracking-widest text-amber-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">ውል</span>
-            <span class="text-[10px] font-bold text-amber-200">ክፈት →</span>
+            <span class="text-[7px] font-black tracking-widest text-amber-200/90">COMPARE</span>
+            <span class="text-[9px] font-bold text-amber-200">→</span>
           </div>
-          <p class="text-xs font-black text-white mt-2 tracking-tight">📝 የሽያጭ ውል</p>
+          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">⚖️ የመኪና ንፅፅር</p>
         </button>
       </div>
       <div class="hidden">
@@ -5814,46 +5828,46 @@ EXPLORER_HTML = r"""
     })();
 
 
-    // ---- Horizontal Tools Reel → form / chat ----
+    // ---- Ultra-slim Tools Reel → direct form routes; bottom nav home-only ----
     (function initToolsReel() {
       var btnMap = {
         poa: "toolPoaBtn",
-        contract: "toolContractBtn",
         chassis: "toolChassisBtn",
         duty: "toolDutyBtn",
         loan: "toolLoanBtn",
         compare: "toolCompareBtn",
+        contract: "toolContractBtn",
         diag: "toolDiagBtn"
       };
 
+      function setHomeChrome(visible) {
+        try {
+          var nav = document.getElementById("adikaBottomNav");
+          var fab = document.getElementById("fabBtn");
+          var hero = document.getElementById("homeHero");
+          if (nav) nav.style.display = visible ? "" : "none";
+          if (fab) fab.style.display = visible ? "" : "none";
+          if (hero) hero.style.display = visible ? "" : "none";
+        } catch (e) {}
+      }
+
       function openFormTool(toolKey) {
         try {
+          setHomeChrome(false);
           if (typeof showAnalysisView === "function") showAnalysisView(true);
-          // hide bottom nav while in tool view
-          try {
-            var nav = document.getElementById("adikaBottomNav");
-            var fab = document.getElementById("fabBtn");
-            if (nav) nav.style.display = "none";
-            if (fab) fab.style.display = "none";
-          } catch (e) {}
           setTimeout(function () {
             var id = btnMap[toolKey];
             var el = id ? document.getElementById(id) : null;
             if (el) el.click();
             else if (typeof openToolModal === "function") openToolModal(toolKey);
-          }, 120);
+          }, 100);
         } catch (e) {}
       }
 
       window.__adikaOpenToolChat = function (toolKey) {
         try {
+          setHomeChrome(false);
           if (typeof showAnalysisView === "function") showAnalysisView(true);
-          try {
-            var nav = document.getElementById("adikaBottomNav");
-            var fab = document.getElementById("fabBtn");
-            if (nav) nav.style.display = "none";
-            if (fab) fab.style.display = "none";
-          } catch (e) {}
           var msg = toolKey === "loan"
             ? "ሰላም! የባንክ ብድር እና የፋይናንስ አማካሪ — ጠቅላላ ዋጋ ወይም ወርሃዊ ገቢዎን ይንገሩኝ።"
             : "ሰላም! በአዲካ ዲጂታል ሲስተም እንኳን ደህና መጡ። እንዴት ልረዳዎ?";
@@ -5868,23 +5882,21 @@ EXPLORER_HTML = r"""
                 log.scrollTop = log.scrollHeight;
               }
             } catch (e) {}
-          }, 200);
+          }, 180);
         } catch (e) {}
       };
 
-      // restore nav when closing analysis
-      var _origShow = window.showAnalysisView;
-      if (typeof showAnalysisView === "function") {
-        window.showAnalysisView = function (on) {
-          try { _origShow(on); } catch (e) {}
-          try {
-            var nav = document.getElementById("adikaBottomNav");
-            var fab = document.getElementById("fabBtn");
-            if (nav) nav.style.display = on ? "none" : "";
-            if (fab) fab.style.display = on ? "none" : "";
-          } catch (e) {}
-        };
-      }
+      // Wrap showAnalysisView so back restores home chrome
+      try {
+        if (typeof showAnalysisView === "function" && !window.__adikaNavWrapped) {
+          window.__adikaNavWrapped = true;
+          var _origShow = showAnalysisView;
+          window.showAnalysisView = function (on) {
+            try { _origShow(on); } catch (e) {}
+            setHomeChrome(!on);
+          };
+        }
+      } catch (e) {}
 
       document.querySelectorAll(".tool-reel-card").forEach(function (card) {
         card.onclick = function () {
@@ -5907,6 +5919,7 @@ EXPLORER_HTML = r"""
         };
       }
     })();
+
 
 
 
