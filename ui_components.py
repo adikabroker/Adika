@@ -396,7 +396,7 @@ SELLER_FORM_HTML = r"""
               </p>
               <div className="flex flex-col gap-2 pt-2">
                 <a href="/explorer"
-                  className="w-full py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md text-center block">
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:brightness-110 active:scale-95 text-xs shadow-md text-center block">
                   <span className="lang-am">ወደ ገበያ ሂድ</span>
                   <span className="lang-en">View Marketplace</span>
                 </a>
@@ -413,9 +413,13 @@ SELLER_FORM_HTML = r"""
 
       return (
         <div className="min-h-screen bg-[#b5eff3] pb-24">
-          <div className="fixed top-0 left-0 right-0 z-40 bg-[#16acbd] shadow-md px-4 py-2.5 text-white">
-            <div className="flex items-center justify-between max-w-xs mx-auto mb-1.5">
-              <div className="font-extrabold text-xs tracking-wide">
+          <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
+            <div className="flex items-center justify-between max-w-md mx-auto mb-1.5 gap-2">
+              <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close(); else window.history.back(); } catch(e) { window.history.back(); } }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
+                ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
+              </button>
+              <div className="font-extrabold text-xs tracking-wide truncate text-center flex-1">
                 <span className="lang-am">ማስታወቂያ ልቀቅ</span>
                 <span className="lang-en">Post Listing</span>
               </div>
@@ -448,7 +452,7 @@ SELLER_FORM_HTML = r"""
           </div>
 
           <div className="pt-20 px-3.5">
-            <div className="bg-white rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-slate-200/80 space-y-4">
+            <div className="bg-white rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/40 bg-white/40 backdrop-blur-md/80 space-y-4">
               {step === 1 && (
                 <div className="space-y-3.5">
                   <div>
@@ -471,7 +475,7 @@ SELLER_FORM_HTML = r"""
                         </label>
                         <input type="text" value={carModel} onChange={e => setCarModel(e.target.value)}
                           placeholder="Toyota Vitz 2020 / Hyundai Tucson"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-slate-700 mb-1 block">
@@ -524,7 +528,7 @@ SELLER_FORM_HTML = r"""
                         </label>
                         <input type="number" value={mileage} onChange={e => setMileage(e.target.value)}
                           placeholder="45000"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs" />
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
@@ -539,7 +543,7 @@ SELLER_FORM_HTML = r"""
                         </label>
                         <input type="text" value={chassisNumber} onChange={e => setChassisNumber(e.target.value.toUpperCase())}
                           placeholder="ለምሳሌ፡ JTDKN36U48... (17 Digits)"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-mono uppercase font-bold text-slate-800" />
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-mono uppercase font-bold text-slate-800" />
                       </div>
                     </>
                   ) : (
@@ -562,7 +566,7 @@ SELLER_FORM_HTML = r"""
                         </label>
                         <input type="text" value={locationArea} onChange={e => setLocationArea(e.target.value)}
                           placeholder="Bole, CMC, Kazanchis, 150m²"
-                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-slate-700 mb-1 block">
@@ -586,7 +590,7 @@ SELLER_FORM_HTML = r"""
                     </label>
                     <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
                       placeholder="ስለ ንብረቱ ተጨማሪ መረጃ ይግለጹ / Add specifications..."
-                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
                   </div>
                 </div>
               )}
@@ -602,7 +606,7 @@ SELLER_FORM_HTML = r"""
                       <input type="text" inputMode="numeric" value={price}
                         onChange={e => setPrice(formatPrice(e.target.value))}
                         placeholder="2,500,000"
-                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold text-slate-900" />
+                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold text-slate-900" />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#16acbd]">ETB</span>
                     </div>
                   </div>
@@ -627,7 +631,7 @@ SELLER_FORM_HTML = r"""
                     {photos.length > 0 && (
                       <div className="grid grid-cols-3 gap-2 mt-2.5">
                         {photos.map((src, i) => (
-                          <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                          <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-white/40 bg-white/40 backdrop-blur-md shadow-sm">
                             <img src={src} className="w-full h-full object-cover" alt="" />
                             <button type="button" onClick={() => removePhoto(i)}
                               className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center font-bold">×</button>
@@ -648,7 +652,7 @@ SELLER_FORM_HTML = r"""
                     </label>
                     <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                       placeholder="0911223344"
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-700 mb-1 block">
@@ -657,7 +661,7 @@ SELLER_FORM_HTML = r"""
                     </label>
                     <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
                       placeholder="@username"
-                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                   </div>
                 </div>
               )}
@@ -688,12 +692,12 @@ SELLER_FORM_HTML = r"""
             {step < 3 ? (
               <button type="button" onClick={() => { if (step===1 && !canNext1) return; setStep(s => s+1); }}
                 disabled={step===1 ? !canNext1 : photoBusy}
-                className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40">
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:brightness-110 active:scale-95 text-xs shadow-md active:scale-95 disabled:opacity-40">
                 <span className="lang-am">ቀጣይ →</span><span className="lang-en">Next →</span>
               </button>
             ) : (
               <button id="submitBtn" type="button" onClick={(e) => submitListing(e)} disabled={!canSubmit || submitting}
-                className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:brightness-110 active:scale-95 text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
                 {submitting ? (
                   <span className="flex items-center gap-1.5 font-bold">
                     <span className="lang-am">እየተመዘገበ ነው... ⏳</span>
@@ -859,7 +863,7 @@ BUYER_FORM_HTML = r"""
               </p>
               <div className="flex flex-col gap-2 pt-2">
                 <a href="/explorer"
-                  className="w-full py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md text-center block">
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs shadow-md text-center block">
                   <span className="lang-am">ወደ ገበያ ሂድ</span>
                   <span className="lang-en">View Marketplace</span>
                 </a>
@@ -876,8 +880,12 @@ BUYER_FORM_HTML = r"""
 
       return (
         <div className="min-h-screen bg-[#b5eff3] pb-24">
-          <div className="fixed top-0 left-0 right-0 z-40 bg-[#16acbd] shadow-md px-4 py-2.5 text-white flex items-center justify-between">
-            <h1 className="font-extrabold text-xs tracking-wide">
+          <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white flex items-center justify-between gap-2 border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
+            <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.Telegram.WebApp.close(); else window.history.back(); } catch(e) { window.history.back(); } }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
+              ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
+            </button>
+            <h1 className="font-extrabold text-xs tracking-wide truncate flex-1 text-center">
               <span className="lang-am">የሚፈልጉትን ንብረት ይግለጹ</span>
               <span className="lang-en">Submit Buyer Request</span>
             </h1>
@@ -894,7 +902,7 @@ BUYER_FORM_HTML = r"""
           </div>
 
           <div className="pt-14 px-3.5">
-            <div className="bg-white rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-slate-200/80 space-y-3.5">
+            <div className="rounded-2xl p-4 bg-white/70 backdrop-blur-2xl border border-white/30 shadow-2xl shadow-cyan-950/20 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/40 bg-white/40 backdrop-blur-md/80 space-y-3.5">
               <div>
                 <label className="text-xs font-bold text-slate-700 mb-1 block">
                   <span className="lang-am">📦 ምድብ</span>
@@ -917,7 +925,7 @@ BUYER_FORM_HTML = r"""
                     <input type="text" inputMode="numeric" value={budgetMin}
                       onChange={e => setBudgetMin(formatPrice(e.target.value))}
                       placeholder="1,000,000"
-                      className="w-full pl-9 pr-2 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
+                      className="w-full pl-9 pr-2 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
                   </div>
                   <span className="text-slate-400 font-bold">—</span>
                   <div className="flex-1 relative">
@@ -925,7 +933,7 @@ BUYER_FORM_HTML = r"""
                     <input type="text" inputMode="numeric" value={budgetMax}
                       onChange={e => setBudgetMax(formatPrice(e.target.value))}
                       placeholder="2,500,000"
-                      className="w-full pl-10 pr-2 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
+                      className="w-full pl-10 pr-2 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
                   </div>
                 </div>
               </div>
@@ -956,7 +964,7 @@ BUYER_FORM_HTML = r"""
                 </label>
                 <textarea value={details} onChange={e => setDetails(e.target.value)} rows={3}
                   placeholder="Toyota Vitz 2020, white, automatic, clean condition..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -966,7 +974,7 @@ BUYER_FORM_HTML = r"""
                   </label>
                   <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                     placeholder="0911223344"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 mb-1 block">
@@ -974,7 +982,7 @@ BUYER_FORM_HTML = r"""
                   </label>
                   <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
                     placeholder="@username"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
                 </div>
               </div>
             </div>
@@ -992,7 +1000,7 @@ BUYER_FORM_HTML = r"""
               <span className="lang-am">ሰርዝ</span><span className="lang-en">Cancel</span>
             </button>
             <button type="button" onClick={submit} disabled={!details || submitting}
-              className="flex-1 py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
+              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
               {submitting ? (
                 <span className="flex items-center gap-1.5 font-bold">
                   <span className="lang-am">እየተመዘገበ ነው... ⏳</span>
