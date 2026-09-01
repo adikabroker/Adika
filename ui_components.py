@@ -1205,7 +1205,7 @@ EXPLORER_HTML = r"""
 
     /* Corporate tool cards */
     .tool-card-pro {
-      padding: 0.45rem 0.5rem; border-radius: 0.8rem; text-align: left;
+      padding: 0.4rem 0.45rem; border-radius: 0.75rem; text-align: left;
       background: rgba(6, 182, 212, 0.08);
       border: 1px solid rgba(34, 211, 238, 0.28);
       color: #e2e8f0;
@@ -1213,7 +1213,7 @@ EXPLORER_HTML = r"""
       transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
       display: flex; flex-direction: column; justify-content: space-between; gap: 0.28rem;
       box-shadow: 0 4px 14px rgba(2, 6, 23, 0.15);
-      min-height: 72px; height: auto; position: relative; overflow: hidden;
+      min-height: 0; height: auto; position: relative; overflow: hidden;
     }
     .tool-card-pro:hover {
       transform: translateY(-3px) scale(1.015);
@@ -1223,7 +1223,7 @@ EXPLORER_HTML = r"""
     }
     .tool-card-pro:active { transform: scale(0.97); }
     .tool-card-pro .tool-title {
-      font-weight: 800; font-size: 9px; color: #ffffff; line-height: 1.15;
+      font-weight: 800; font-size: 0.75rem; color: #ffffff; line-height: 1.15;
       text-shadow: 0 1px 3px rgba(0,0,0,0.55);
     }
     .tool-card-pro .tool-sub {
@@ -1232,7 +1232,7 @@ EXPLORER_HTML = r"""
       filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.35));
     }
     .tool-icon-wrap {
-      width: 20px; height: 20px; border-radius: 0.45rem;
+      width: 1.75rem; height: 1.75rem; border-radius: 0.45rem;
       display: flex; align-items: center; justify-content: center;
       background: rgba(34, 211, 238, 0.12);
       border: 1px solid rgba(34, 211, 238, 0.30);
@@ -1295,8 +1295,8 @@ EXPLORER_HTML = r"""
     }
 
     .tools-grid-compact {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.55rem;
-      flex: 1 1 auto; height: 100%; align-items: stretch;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
+      flex: 0 1 auto; height: auto; align-items: start;
     }
     @media (max-width: 340px) {
       .tools-grid-compact { grid-template-columns: repeat(2, 1fr); }
@@ -1717,11 +1717,11 @@ EXPLORER_HTML = r"""
       </div>
 
       <!-- Tab 1: AI Tools Hub -->
-      <div id="aiToolsView" class="flex-1 flex flex-col justify-between p-2.5 pb-3 space-y-1.5 tools-ambient-wrap overflow-hidden" style="background:transparent;">
+      <div id="aiToolsView" class="flex-1 flex flex-col h-full max-h-full justify-between p-3 overflow-hidden tools-ambient-wrap" style="background:transparent;">
         <div class="tools-ambient-blob cyan"></div>
         <div class="tools-ambient-blob indigo"></div>
         <!-- Smart Budget & Purchase Advisor -->
-        <div class="budget-glass-card py-2 px-2.5 space-y-1 relative z-10 shrink-0">
+        <div class="budget-glass-card py-2 px-3 mb-2 space-y-1 relative z-10 shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5 text-white font-extrabold text-xs drop-shadow-md">
               <span>💡</span>
@@ -1737,15 +1737,15 @@ EXPLORER_HTML = r"""
               <div class="flex items-center justify-between mb-1">
                 <label class="text-[10px] font-bold text-white drop-shadow-md">ጠቅላላ በጀት (ETB)</label>
               </div>
-              <input id="advisorBudget" type="number" value="2000000" placeholder="2,000,000" class="w-full px-2 py-1.5 rounded-lg bg-white/15 border border-white/25 text-[11px] font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
-              <div id="advisorBudgetFormatted" class="text-[9px] font-medium text-slate-400/70 mt-0.5">2,000,000 ETB</div>
+              <input id="advisorBudget" type="number" value="2000000" placeholder="2,000,000" class="w-full py-1.5 px-2.5 rounded-lg bg-white/15 border border-white/25 text-xs font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
+              <div id="advisorBudgetFormatted" class="hidden text-[9px] font-medium text-slate-400/70 mt-0.5">2,000,000 ETB</div>
             </div>
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="text-[10px] font-bold text-white drop-shadow-md">ወርሃዊ ገቢ (ETB)</label>
               </div>
-              <input id="advisorMonthlyIncome" type="number" value="25000" placeholder="25,000" class="w-full px-2 py-1.5 rounded-lg bg-white/15 border border-white/25 text-[11px] font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
-              <div id="advisorIncomeFormatted" class="text-[9px] font-medium text-slate-400/70 mt-0.5">25,000 / ወር</div>
+              <input id="advisorMonthlyIncome" type="number" value="25000" placeholder="25,000" class="w-full py-1.5 px-2.5 rounded-lg bg-white/15 border border-white/25 text-xs font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
+              <div id="advisorIncomeFormatted" class="hidden text-[9px] font-medium text-slate-400/70 mt-0.5">25,000 / ወር</div>
             </div>
           </div>
           <div class="flex gap-1 overflow-x-auto no-scrollbar">
@@ -1757,7 +1757,7 @@ EXPLORER_HTML = r"""
           </div>
 
           <!-- Generate opportunity cards (does NOT jump to chat) -->
-          <button id="advisorBtn" type="button" class="w-full py-1.5 rounded-xl bg-cyan-400/25 hover:bg-cyan-400/35 text-cyan-100 font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-cyan-400/40 backdrop-blur-md">
+          <button id="advisorBtn" type="button" class="w-full py-1 rounded-xl bg-cyan-400/25 hover:bg-cyan-400/35 text-cyan-100 font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-cyan-400/40 backdrop-blur-md">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
             <span>የኢንቨስትመንት አማራጮች አሳይ</span>
           </button>
@@ -1822,56 +1822,56 @@ EXPLORER_HTML = r"""
           </div>
         </div>
 
-        <!-- Tools Grid -->
-        <div class="pb-32" style="padding-bottom: 140px;">
-          <h4 class="text-xs font-extrabold text-slate-700 mb-2">
+        <!-- Tools Grid + Finance Banner (no extra bottom pad — banner must stay on-screen) -->
+        <div class="flex-1 flex flex-col min-h-0 justify-between">
+          <h4 class="text-[10px] font-extrabold text-white drop-shadow-md mb-1.5 shrink-0">
             <span class="lang-am">ተጨማሪ የፋይናንስና የህግ መሳሪያዎች</span>
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
           </h4>
-          <div class="tools-grid-compact text-xs flex-1 h-full">
-            <button id="toolDutyBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.0s">
+          <div class="tools-grid-compact text-xs shrink min-h-0">
+            <button id="toolDutyBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.0s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
               <span class="tool-title">የቀረጥ ስሌት</span>
               <span class="tool-sub">Customs Duty & Taxes</span>
             </button>
-            <button id="toolLoanBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.08s">
+            <button id="toolLoanBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.08s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h18M5 10V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2M5 10v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/><circle cx="12" cy="14" r="1.5"/></svg></span>
               <span class="tool-title">የባንክ ብድር</span>
               <span class="tool-sub">Mortgage & Auto Loan</span>
             </button>
-            <button id="toolCompareBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.16s">
+            <button id="toolCompareBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.16s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h8M8 12h8M8 17h5"/><path d="M4 4v16M20 4v16"/></svg></span>
               <span class="tool-title">የመኪና ንጽጽር</span>
               <span class="tool-sub">Vehicle Comparison</span>
             </button>
-            <button id="toolContractBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.24s">
+            <button id="toolContractBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.24s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg></span>
               <span class="tool-title">የሽያጭ ውል</span>
               <span class="tool-sub">Legal Sales Contract</span>
             </button>
-            <button id="toolPoaBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.32s">
+            <button id="toolPoaBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.32s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
               <span class="tool-title">ውክልና ማረጋገጫ</span>
               <span class="tool-sub">Verify Power of Attorney</span>
             </button>
-            <button id="toolDiagBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.4s">
+            <button id="toolDiagBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.4s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
               <span class="tool-title">የምርመራ ወረቀት</span>
               <span class="tool-sub">Garage Diagnostic Sheet</span>
             </button>
-            <button id="toolChassisBtn" type="button" class="tool-card-pro stagger-in h-full flex flex-col justify-between p-2 min-h-[72px]" style="animation-delay:0.48s">
+            <button id="toolChassisBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.48s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/><path d="M12 14v3"/></svg></span>
               <span class="tool-title">የሻሲ ማረጋገጫ</span>
               <span class="tool-sub">Chassis / VIN Specs</span>
             </button>
-            <button id="toolLandMapBtn" type="button" class="tool-card-pro">
+            <button id="toolLandMapBtn" type="button" class="tool-card-pro flex flex-col justify-between py-2 px-2">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/><circle cx="12" cy="10" r="2"/></svg></span>
               <span class="tool-title">የዲጂታል ካርታ ማጣሪያ</span>
               <span class="tool-sub">Cadastral Map Verification</span>
             </button>
           </div>
           <button type="button" id="hubFinanceAdvisorBanner"
-            class="w-full mt-2 bg-gradient-to-r from-cyan-500/20 via-slate-900/50 to-indigo-500/20 backdrop-blur-2xl border border-cyan-400/40 rounded-2xl p-4 flex items-center justify-between shadow-lg shadow-cyan-500/10 hover:border-cyan-400 transition-all cursor-pointer relative z-10 shrink-0">
+            class="w-full bg-gradient-to-r from-cyan-500/20 via-slate-900/60 to-indigo-500/20 backdrop-blur-2xl border border-cyan-400/50 rounded-2xl p-3 mt-2 flex items-center justify-between shadow-lg shadow-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer relative z-10 shrink-0">
             <div class="min-w-0 text-left pr-2">
               <div class="text-white font-extrabold text-[12px] leading-tight drop-shadow-md">💡 ዲጂታል የፋይናንስ አማካሪ</div>
               <div class="text-cyan-300 text-[10px] font-semibold drop-shadow-[0_0_8px_rgba(34,211,238,0.45)] mt-0.5">Adika AI Financial Advisor</div>
