@@ -2616,42 +2616,50 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Broker registration -->
-  <div id="brokerRegModal" class="fixed inset-0 z-[200] hidden items-end justify-center" style="background:rgba(15,23,42,0.35);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);">
-    <div class="relative w-full max-w-lg rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden bg-slate-900/60 backdrop-blur-2xl border border-white/20 shadow-2xl">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-white/15 shrink-0 gap-2">
-        <button type="button" onclick="(function(){var m=document.getElementById('brokerRegModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}document.body.style.overflow='';})()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white text-sm font-medium transition-all active:scale-95 shrink-0">
+  <div id="brokerRegModal" class="fixed inset-0 z-[200] hidden items-center justify-center p-4" style="background:rgba(2,6,23,0.40);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);">
+    <div class="relative w-full max-w-lg rounded-3xl max-h-[90vh] flex flex-col overflow-hidden bg-white/15 backdrop-blur-3xl border border-white/40 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-white/25 shrink-0 gap-2">
+        <button type="button" onclick="(function(){var m=document.getElementById('brokerRegModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}document.body.style.overflow='';})()"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white border border-white/30 text-xs font-medium transition-all active:scale-95 shrink-0">
           ← Back
         </button>
-        <h2 class="text-white font-bold text-base truncate text-center flex-1">ደላላ ምዝገባ</h2>
-        <button type="button" onclick="(function(){var m=document.getElementById('brokerRegModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}document.body.style.overflow='';})()" class="p-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white transition-all active:scale-95 shrink-0 leading-none">
+        <h2 class="text-white font-bold text-base truncate text-center flex-1 drop-shadow-sm">ደላላ ምዝገባ</h2>
+        <button type="button" onclick="(function(){var m=document.getElementById('brokerRegModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}document.body.style.overflow='';})()"
+          class="p-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white transition-all active:scale-95 shrink-0 leading-none text-sm">
           ✕
         </button>
       </div>
-      <div class="px-5 py-3 overflow-y-auto flex-1" style="padding-bottom: 8px;">
-        <label class="text-xs font-bold text-cyan-100/90">ሙሉ ስም</label>
-        <input id="brName" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/12 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="ስም" />
-        <label class="text-xs font-bold text-cyan-100/90">ስልክ ቁጥር</label>
-        <input id="brPhone" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/12 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="09xxxxxxxx" />
-        <label class="text-xs font-bold text-cyan-100/90">Telegram username</label>
-        <input id="brUser" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/12 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="@username" />
-        <div class="text-xs font-bold text-cyan-100/90 mb-1">የሚሰሩበት ምድብ</div>
-        <div class="flex flex-wrap gap-2 mb-3">
-          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat accent-cyan-400" value="መኪና" checked /> 🚗 መኪና</label>
-          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat accent-cyan-400" value="ቤት" /> 🏠 ቤት</label>
-          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat accent-cyan-400" value="ንግድ" /> 🏢 ንግድ</label>
+      <div class="px-5 py-4 overflow-y-auto flex-1" style="padding-bottom: 8px;">
+        <label class="text-xs font-bold text-white/90 mb-1 block">ሙሉ ስም</label>
+        <input id="brName" class="w-full mb-3 px-4 py-3 rounded-2xl text-sm font-bold text-white placeholder-slate-200 bg-white/20 backdrop-blur-md border border-white/30 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/40 transition-all" placeholder="ስም" />
+        <label class="text-xs font-bold text-white/90 mb-1 block">ስልክ ቁጥር</label>
+        <input id="brPhone" class="w-full mb-3 px-4 py-3 rounded-2xl text-sm font-bold text-white placeholder-slate-200 bg-white/20 backdrop-blur-md border border-white/30 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/40 transition-all" placeholder="09xxxxxxxx" />
+        <label class="text-xs font-bold text-white/90 mb-1 block">Telegram username</label>
+        <input id="brUser" class="w-full mb-3 px-4 py-3 rounded-2xl text-sm font-bold text-white placeholder-slate-200 bg-white/20 backdrop-blur-md border border-white/30 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/40 transition-all" placeholder="@username" />
+        <div class="text-xs font-bold text-white/90 mb-2">የሚሰሩበት ምድብ</div>
+        <div class="flex flex-wrap gap-2 mb-4">
+          <label class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold">
+            <input type="checkbox" class="brCat accent-cyan-400" value="መኪና" checked /> 🚗 መኪና
+          </label>
+          <label class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold">
+            <input type="checkbox" class="brCat accent-cyan-400" value="ቤት" /> 🏠 ቤት
+          </label>
+          <label class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold">
+            <input type="checkbox" class="brCat accent-cyan-400" value="ንግድ" /> 🏢 ንግድ
+          </label>
         </div>
-        <label class="text-xs font-bold text-cyan-100/90">የመታወቂያ ፎቶ (አማራጭ)</label>
+        <label class="text-xs font-bold text-white/90 mb-1 block">የመታወቂያ ፎቶ (አማራጭ)</label>
         <div class="mt-1 mb-2 flex gap-2 items-center">
-          <label class="flex-1 py-3 rounded-xl border-2 border-dashed border-white/25 bg-white/10 text-center text-xs font-bold text-cyan-100/90 cursor-pointer active:bg-white/12">
+          <label class="flex-1 py-3 rounded-2xl border-2 border-dashed border-white/30 bg-white/15 backdrop-blur-md text-center text-xs font-bold text-white cursor-pointer active:bg-white/25">
             📷 ፎቶ አንሳ / ምረጥ
             <input id="brIdPhoto" type="file" accept="image/*" capture="environment" class="hidden" />
           </label>
-          <img id="brIdPreview" alt="" class="hidden w-14 h-14 rounded-xl object-cover border border-white/25" />
+          <img id="brIdPreview" alt="" class="hidden w-14 h-14 rounded-xl object-cover border border-white/30" />
         </div>
-        <p class="text-[10px] text-slate-300/80 mb-2">ምዝገባው ለአድሚን ይላካል — ከተረጋገጠ በኋላ ደላላ ይሆናሉ።</p>
+        <p class="text-[10px] text-white/70 mb-2">ምዝገባው ለአድሚን ይላካል — ከተረጋገጠ በኋላ ደላላ ይሆናሉ።</p>
       </div>
-      <div class="px-5 pt-2 pb-5 border-t border-white/15 shrink-0" style="background:rgba(15,23,42,0.92)" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
-        <button type="button" id="brSubmitBtn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-black hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-cyan-500/25">
+      <div class="px-5 pt-2 pb-5 border-t border-white/25 shrink-0 bg-white/10 backdrop-blur-md" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
+        <button type="button" id="brSubmitBtn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-teal-300 text-slate-950 font-black hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-cyan-400/30">
           ✅ መመዝገብ / Submit
         </button>
       </div>
@@ -2660,7 +2668,6 @@ EXPLORER_HTML = r"""
   </div>
 
 
-    
 <script>
   (function () {
     var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
