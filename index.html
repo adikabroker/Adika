@@ -5478,5 +5478,96 @@
     }, 5000);
   })();
   </script>
+
+<script>
+(function(){
+  function el(id){ return document.getElementById(id); }
+  function show(id){
+    var n = el(id); if(!n) return;
+    n.classList.remove("hidden");
+    if(n.className.indexOf("items-")>=0 || id==="analysisView" || id==="aiModal") n.classList.add("flex");
+  }
+  function hide(id){
+    var n = el(id); if(!n) return;
+    n.classList.add("hidden");
+    n.classList.remove("flex");
+  }
+  function closeAll(){
+    ["aiModal","analysisView","modalOverlay","brokerRegModal","roleSelectModal","dutyModal","loanModal","compareModal","contractModal","poaModal","landMapModal","diagModal","chassisModal"].forEach(hide);
+  }
+  function openChat(){ hide("aiModal"); show("analysisView"); }
+  function openTools(){ hide("analysisView"); show("aiModal"); }
+  function openHome(){ closeAll(); try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){ window.scrollTo(0,0);} }
+
+  document.addEventListener("click", function(e){
+    var t = e.target.closest("button, a, [data-live], .adika-card");
+    if(!t) return;
+    var id = t.id || "";
+
+    if(id==="navHome" || id==="aiHubBackBtn" || id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
+    if(id==="navAi" || id==="adikaPromoBanner" || (t.closest && t.closest("#adikaPromoBanner") && t.tagName==="BUTTON")){ e.preventDefault(); e.stopPropagation(); openTools(); return; }
+    if(id==="navMessages" || id==="openChatFromTools"){ e.preventDefault(); e.stopPropagation(); openChat(); return; }
+    if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
+    if(id==="fabBtn"){
+      e.preventDefault(); e.stopPropagation();
+      var buy = false;
+      try { buy = !!(window.state && window.state.tab && window.state.tab !== "marketplace"); } catch(err){}
+      location.href = buy ? "/buyer-form" : "/seller-form";
+      return;
+    }
+    if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
+    if(id==="tabSell"){ e.stopPropagation(); }
+    if(id==="tabBuy"){ e.stopPropagation(); }
+    if(id==="langAmBtn" || id==="langEnBtn"){ e.stopPropagation(); }
+
+    if(t.getAttribute("data-live")==="1" || t.classList.contains("adika-card")){
+      var card = t.closest(".adika-card") || t;
+      var items = window.__adikaLiveItems || (window.state && window.state.items) || [];
+      var cards = Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card"));
+      var idx = cards.indexOf(card);
+      var it = items[idx];
+      if(!it) return;
+      e.preventDefault(); e.stopPropagation();
+      if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
+      if(el("modalPrice")){
+        var n=Number(String(it.price||"").replace(/[^\d.]/g,""));
+        el("modalPrice").textContent = (!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB");
+      }
+      if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
+      var media = el("modalMediaContainer");
+      if(media){
+        var p=it.photo_urls||it.photos||it.image_url||"";
+        if(Array.isArray(p)) p=p[0]||"";
+        if(typeof p==="string" && p.charAt(0)==="["){ try{p=JSON.parse(p)[0];}catch(ex){} }
+        media.innerHTML = p ? '<img src="'+String(p).replace(/"/g,'')+'" style="width:100%;height:100%;object-fit:cover;">' : "";
+      }
+      if(el("modalCallBtn")) el("modalCallBtn").href = "tel:"+(it.phone||it.phone_number||"");
+      show("modalOverlay");
+      return;
+    }
+
+    if(id==="modalClose" || id==="modalBackBtn" || t.classList.contains("js-close")){
+      e.preventDefault(); e.stopPropagation(); closeAll(); return;
+    }
+    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); openChat(); return; }
+  }, true);
+
+  var send = el("advisorChatSend");
+  if(send && !send.__bound){
+    send.__bound = true;
+    send.addEventListener("click", function(){
+      var inp = el("advisorChatInput");
+      var log = el("advisorChatLog");
+      var msg = inp ? String(inp.value||"").trim() : "";
+      if(!msg) return;
+      if(log) log.innerHTML += '<div class="text-right"><span class="inline-block bg-teal-600 text-white p-2 rounded-2xl">'+msg+"</span></div>";
+      if(inp) inp.value = "";
+      fetch("/api/advisor/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})})
+        .then(function(r){return r.json();})
+        .then(function(d){ if(log) log.innerHTML += '<div class="bg-white p-2 rounded-2xl">'+(d.reply||d.message||d.text||"ተቀብያለሁ")+"</div>"; })
+        .catch(function(){ if(log) log.innerHTML += "<div>አልተሳካም</div>"; });
+    });
+  }
+})();
+</script>
 </body>
-</html>
