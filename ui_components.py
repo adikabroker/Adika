@@ -1253,63 +1253,74 @@ EXPLORER_HTML = r"""
       <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
-    <!-- Ultra-slim Horizontal Digital Tools Reel (h-16) -->
-    <div id="homeHero" class="mt-0.5 mb-1.5 -mx-1 pt-0.5">
-      <div class="px-1 mb-1 flex items-center gap-1.5">
-        <span class="text-[9px] font-black tracking-wide text-slate-600/80 uppercase">አዲካ ዲጂታል ሲስተም</span>
-        <span class="flex-1 h-px bg-slate-300/40"></span>
-      </div>
-      <div id="toolsReel" class="flex gap-2 overflow-x-auto no-scrollbar py-0.5 px-1 snap-x snap-mandatory">
-        <!-- 1 POA -->
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
-                data-tool="poa"
-                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #22d3ee, #6366f1, #22d3ee); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(34,211,238,0.25);">
-          <div class="flex justify-between items-center">
-            <span class="text-[7px] font-black tracking-widest text-cyan-300/90">ዲጂታል ህግ</span>
-            <span class="text-[9px] font-bold text-cyan-300">→</span>
+    <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
+    <div id="homeHero" class="mt-0.5 pt-0 mb-1.5 px-0">
+      <div id="adikaPromoBanner" class="relative w-full h-14 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
+           style="background: rgba(15,23,42,0.78); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+                  border: 1.5px solid transparent;
+                  background-image: linear-gradient(rgba(15,23,42,0.82), rgba(15,23,42,0.82)), linear-gradient(90deg, #22d3ee, #2dd4bf, #6366f1, #22d3ee);
+                  background-origin: border-box; background-clip: padding-box, border-box;
+                  box-shadow: 0 0 14px rgba(34,211,238,0.28), inset 0 1px 0 rgba(255,255,255,0.08);">
+        <!-- Animated neon edge shimmer -->
+        <div class="absolute inset-0 pointer-events-none opacity-40" style="background: linear-gradient(90deg, transparent, rgba(34,211,238,0.15), transparent); animation: adikaShimmer 2.8s linear infinite;"></div>
+
+        <!-- Slides container -->
+        <div id="promoSlides" class="relative h-full w-full">
+          <!-- Slide 0: POA -->
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-100 scale-100 translate-x-0" data-tool="poa" data-idx="0">
+            <span class="text-lg shrink-0">📜</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-black text-white leading-tight truncate">የውክልና ማጣሪያ</p>
+              <p class="text-[9px] text-cyan-200/90 font-medium truncate">የውክልና ሰነዶችን ህጋዊነት በስካን ያረጋገጡ</p>
+            </div>
+            <span class="text-[10px] font-bold text-cyan-300 shrink-0">ክፈት →</span>
           </div>
-          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">📜 የውክልና ማጣሪያ</p>
-        </button>
-        <!-- 2 Chassis -->
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
-                data-tool="chassis"
-                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #14b8a6, #22d3ee, #14b8a6); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(20,184,166,0.25);">
-          <div class="flex justify-between items-center">
-            <span class="text-[7px] font-black tracking-widest text-teal-200/90">VIN AUDIT</span>
-            <span class="text-[9px] font-bold text-teal-200">→</span>
+          <!-- Slide 1: Chassis -->
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-0 scale-95 translate-x-4 pointer-events-none" data-tool="chassis" data-idx="1">
+            <span class="text-lg shrink-0">🔍</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-black text-white leading-tight truncate">የሻንሲ ማጣሪያ</p>
+              <p class="text-[9px] text-teal-200/90 font-medium truncate">የመኪናውን እውነተኛ ታሪክ እና VIN ይመርምሩ</p>
+            </div>
+            <span class="text-[10px] font-bold text-teal-300 shrink-0">ክፈት →</span>
           </div>
-          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">🔍 የሻንሲ ማጣሪያ</p>
-        </button>
-        <!-- 3 Duty -->
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
-                data-tool="duty"
-                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #6366f1, #a855f7, #6366f1); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(99,102,241,0.25);">
-          <div class="flex justify-between items-center">
-            <span class="text-[7px] font-black tracking-widest text-indigo-200/90">CUSTOMS</span>
-            <span class="text-[9px] font-bold text-indigo-200">→</span>
+          <!-- Slide 2: Duty -->
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-0 scale-95 translate-x-4 pointer-events-none" data-tool="duty" data-idx="2">
+            <span class="text-lg shrink-0">🧮</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-black text-white leading-tight truncate">የቀረጥ ስሌት</p>
+              <p class="text-[9px] text-indigo-200/90 font-medium truncate">የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ ስሌት</p>
+            </div>
+            <span class="text-[10px] font-bold text-indigo-300 shrink-0">ክፈት →</span>
           </div>
-          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">🧮 የቀረጥ ስሌት</p>
-        </button>
-        <!-- 4 Bank Loan -->
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
-                data-tool="loan"
-                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #a855f7, #ec4899, #a855f7); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(168,85,247,0.25);">
-          <div class="flex justify-between items-center">
-            <span class="text-[7px] font-black tracking-widest text-purple-200/90">MORTGAGE</span>
-            <span class="text-[9px] font-bold text-purple-200">→</span>
+          <!-- Slide 3: Loan -->
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-0 scale-95 translate-x-4 pointer-events-none" data-tool="loan" data-idx="3">
+            <span class="text-lg shrink-0">🏦</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-black text-white leading-tight truncate">የባንክ ብድር</p>
+              <p class="text-[9px] text-purple-200/90 font-medium truncate">የቤት እና የመኪና ብድር ወርሃዊ ስሌት</p>
+            </div>
+            <span class="text-[10px] font-bold text-purple-300 shrink-0">ክፈት →</span>
           </div>
-          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">🏦 የባንክ ብድር</p>
-        </button>
-        <!-- 5 Car Compare -->
-        <button type="button" class="tool-reel-card snap-center shrink-0 w-52 h-16 rounded-xl p-2 text-left active:scale-[0.98] transition-all"
-                data-tool="compare"
-                style="background: rgba(15,23,42,0.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1.5px solid transparent; background-image: linear-gradient(rgba(15,23,42,0.72), rgba(15,23,42,0.72)), linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 12px rgba(245,158,11,0.25);">
-          <div class="flex justify-between items-center">
-            <span class="text-[7px] font-black tracking-widest text-amber-200/90">COMPARE</span>
-            <span class="text-[9px] font-bold text-amber-200">→</span>
+          <!-- Slide 4: Compare -->
+          <div class="promo-slide absolute inset-0 flex items-center gap-2.5 px-3 transition-all duration-500 ease-out opacity-0 scale-95 translate-x-4 pointer-events-none" data-tool="compare" data-idx="4">
+            <span class="text-lg shrink-0">⚖️</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-black text-white leading-tight truncate">የመኪና ንፅፅር</p>
+              <p class="text-[9px] text-amber-200/90 font-medium truncate">የሁለት መኪናዎችን ብቃት ጎን ለጎን ያወዳድሩ</p>
+            </div>
+            <span class="text-[10px] font-bold text-amber-300 shrink-0">ክፈት →</span>
           </div>
-          <p class="text-[11px] font-black text-white mt-1 tracking-tight leading-tight">⚖️ የመኪና ንፅፅር</p>
-        </button>
+        </div>
+
+        <!-- Dot indicators -->
+        <div id="promoDots" class="absolute bottom-1 right-2 flex gap-1 z-10">
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/90 transition-all" data-i="0"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="1"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="2"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="3"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="4"></span>
+        </div>
       </div>
       <div class="hidden">
         <button id="heroAdvisorBtn" type="button"></button>
@@ -1320,6 +1331,7 @@ EXPLORER_HTML = r"""
         <div id="smartBannerTrack"></div>
         <div id="smartBannerDots"></div>
         <div id="smartToolsBanner"></div>
+        <div id="toolsReel"></div>
       </div>
     </div>
 
@@ -5828,8 +5840,15 @@ EXPLORER_HTML = r"""
     })();
 
 
-    // ---- Ultra-slim Tools Reel → direct form routes; bottom nav home-only ----
-    (function initToolsReel() {
+    // ---- Adika Digital System Promo Banner: auto-play infinite loop (3.5s) ----
+    (function initPromoBanner() {
+      var INTERVAL_MS = 3500;
+      var slides = [];
+      var dots = [];
+      var idx = 0;
+      var timer = null;
+      var banner = null;
+
       var btnMap = {
         poa: "toolPoaBtn",
         chassis: "toolChassisBtn",
@@ -5851,15 +5870,54 @@ EXPLORER_HTML = r"""
         } catch (e) {}
       }
 
-      function openFormTool(toolKey) {
+      function showSlide(next) {
+        if (!slides.length) return;
+        var prev = idx;
+        idx = ((next % slides.length) + slides.length) % slides.length;
+        slides.forEach(function (el, i) {
+          el.classList.remove("is-active", "is-exit", "is-enter");
+          if (i === idx) {
+            el.classList.add("is-enter");
+            // force reflow then active (kinetic zoom-in + slide)
+            void el.offsetWidth;
+            el.classList.remove("is-enter");
+            el.classList.add("is-active");
+            el.style.opacity = "1";
+            el.style.transform = "scale(1) translateX(0)";
+            el.style.pointerEvents = "auto";
+          } else if (i === prev) {
+            el.classList.add("is-exit");
+            el.style.opacity = "0";
+            el.style.transform = "scale(0.92) translateX(-12px)";
+            el.style.pointerEvents = "none";
+          } else {
+            el.style.opacity = "0";
+            el.style.transform = "scale(0.95) translateX(16px)";
+            el.style.pointerEvents = "none";
+          }
+        });
+        dots.forEach(function (d, i) {
+          d.style.background = i === idx ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.28)";
+          d.style.width = i === idx ? "10px" : "6px";
+          d.style.borderRadius = i === idx ? "4px" : "999px";
+        });
+      }
+
+      function openCurrentTool() {
+        if (!slides[idx]) return;
+        var tool = slides[idx].getAttribute("data-tool") || "";
+        if (tool === "loan") {
+          window.__adikaOpenToolChat && window.__adikaOpenToolChat("loan");
+          return;
+        }
         try {
           setHomeChrome(false);
           if (typeof showAnalysisView === "function") showAnalysisView(true);
           setTimeout(function () {
-            var id = btnMap[toolKey];
+            var id = btnMap[tool];
             var el = id ? document.getElementById(id) : null;
             if (el) el.click();
-            else if (typeof openToolModal === "function") openToolModal(toolKey);
+            else if (typeof openToolModal === "function") openToolModal(tool);
           }, 100);
         } catch (e) {}
       }
@@ -5886,7 +5944,6 @@ EXPLORER_HTML = r"""
         } catch (e) {}
       };
 
-      // Wrap showAnalysisView so back restores home chrome
       try {
         if (typeof showAnalysisView === "function" && !window.__adikaNavWrapped) {
           window.__adikaNavWrapped = true;
@@ -5894,17 +5951,53 @@ EXPLORER_HTML = r"""
           window.showAnalysisView = function (on) {
             try { _origShow(on); } catch (e) {}
             setHomeChrome(!on);
+            if (on && timer) { clearInterval(timer); timer = null; }
+            if (!on) startAuto();
           };
         }
       } catch (e) {}
 
-      document.querySelectorAll(".tool-reel-card").forEach(function (card) {
-        card.onclick = function () {
-          var tool = card.getAttribute("data-tool") || "";
-          if (tool === "loan") window.__adikaOpenToolChat("loan");
-          else openFormTool(tool);
-        };
-      });
+      function startAuto() {
+        if (timer) clearInterval(timer);
+        timer = setInterval(function () {
+          showSlide(idx + 1);
+        }, INTERVAL_MS);
+      }
+
+      function boot() {
+        banner = document.getElementById("adikaPromoBanner");
+        slides = Array.prototype.slice.call(document.querySelectorAll(".promo-slide"));
+        dots = Array.prototype.slice.call(document.querySelectorAll(".promo-dot"));
+        if (!slides.length) return;
+        showSlide(0);
+        startAuto();
+        if (banner) {
+          banner.onclick = function () {
+            openCurrentTool();
+          };
+          // pause briefly on touch then resume
+          banner.addEventListener("touchstart", function () {
+            if (timer) { clearInterval(timer); timer = null; }
+          }, { passive: true });
+          banner.addEventListener("touchend", function () {
+            setTimeout(startAuto, 2500);
+          }, { passive: true });
+        }
+        dots.forEach(function (d) {
+          d.onclick = function (ev) {
+            ev.stopPropagation();
+            var i = parseInt(d.getAttribute("data-i") || "0", 10);
+            showSlide(i);
+            startAuto();
+          };
+        });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", boot);
+      } else {
+        boot();
+      }
 
       var br = document.getElementById("brokerCtaHome");
       if (br) {
@@ -5919,6 +6012,7 @@ EXPLORER_HTML = r"""
         };
       }
     })();
+
 
 
 
