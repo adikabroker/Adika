@@ -502,52 +502,82 @@
     <div id="status" class="text-center py-2 text-slate-600 font-semibold text-xs" style="display:none;"></div>
 
     <!-- 2-Column Grid — STATIC DEMO CARDS so UI never blank even if JS fails -->
-    <div id="grid" class="grid grid-cols-2 gap-2.5">
-      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🚗</div>
-        <div style="padding:8px 10px;">
-          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">Toyota Vitz ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
-          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 1,850,000 ETB</div>
-        </div>
-      </div>
-      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🚗</div>
-        <div style="padding:8px 10px;">
-          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">Hyundai Tucson ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
-          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 4,200,000 ETB</div>
-        </div>
-      </div>
-      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🏠</div>
-        <div style="padding:8px 10px;">
-          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">አፓርታማ ቦሌ ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
-          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 6,500,000 ETB</div>
-        </div>
-      </div>
-      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🏠</div>
-        <div style="padding:8px 10px;">
-          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">መሬት አዲስ ከተማ ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
-          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 ለዋጋ ደውሉ</div>
-        </div>
-      </div>
-    </div>
+    <div id="grid" class="grid grid-cols-2 gap-2.5"></div>
     <script>
     (function(){
-      // Independent of main app JS — keep cards visible if main script crashes
-      try {
-        var s = document.getElementById("status");
-        if (s) { s.style.display = "none"; s.innerHTML = ""; }
-      } catch (e) {}
-      window.__adikaShowDemo = function(){
-        var g = document.getElementById("grid");
-        if (!g || (g.children && g.children.length > 0)) return;
-        g.innerHTML = document.getElementById("grid").innerHTML;
-      };
+      function money(v){
+        var n = Number(String(v||"").replace(/[^\d.]/g,""));
+        if(!n || n<=0 || n>300000000) return "ለዋጋ ደውሉ";
+        return Math.round(n).toLocaleString("en-US") + " ETB";
+      }
+      function photoOf(it){
+        var p = (it&&(it.photo_urls||it.photos||it.listing_photos||it.image_url||it.image||it.photo)) || "";
+        if(Array.isArray(p)) p = p[0]||"";
+        if(p && typeof p==="object") p = p.url||p.src||"";
+        if(typeof p==="string" && p.charAt(0)==="["){ try{ p=JSON.parse(p)[0]||""; }catch(e){} }
+        p = String(p||"").trim();
+        if(!p || p==="null") return "";
+        return p;
+      }
+      function titleOf(it){
+        var t=[it.brand,it.model].filter(Boolean).join(" ").trim();
+        if(t) return t;
+        return it.sub_category||it.title||it.category||it.main_category||"ማስታወቂያ";
+      }
+      function isHouse(it){
+        var c=String(it.main_category||it.category||"");
+        return c.indexOf("ቤት")>=0 || /house|property|real/i.test(c);
+      }
+      function pick(d){
+        if(!d) return [];
+        if(Array.isArray(d)) return d;
+        var keys=["items","listings","results"];
+        for(var i=0;i<keys.length;i++){ if(Array.isArray(d[keys[i]])) return d[keys[i]]; }
+        if(d.data){
+          if(Array.isArray(d.data)) return d.data;
+          for(var j=0;j<keys.length;j++){ if(Array.isArray(d.data[keys[j]])) return d.data[keys[j]]; }
+        }
+        return [];
+      }
+      function paint(items){
+        var g=document.getElementById("grid");
+        if(!g || !items || !items.length) return;
+        var html="";
+        for(var i=0;i<items.length;i++){
+          var it=items[i]||{};
+          var src=photoOf(it);
+          var icon=isHouse(it)?"🏠":"🚗";
+          var img=src?('<img src="'+String(src).replace(/"/g,"")+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'" />'):("");
+          html += '<button type="button" class="adika-card" data-live="1" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);text-align:left;border:0;">'+
+            '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);position:relative;overflow:hidden;">'+
+              '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;">'+icon+'</div>'+img+
+            '</div>'+
+            '<div style="padding:8px 10px;">'+
+              '<div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">'+titleOf(it)+' ✓</div></div>'+
+              '<div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 '+money(it.price)+'</div>'+
+            '</div></button>';
+        }
+        g.innerHTML = html;
+        window.__adikaLiveItems = items;
+      }
+      window.__adikaPaintListings = paint;
+      function tryFetch(urls, i){
+        if(i>=urls.length) return;
+        fetch(urls[i], {credentials:"same-origin"})
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            var items=pick(d);
+            if(items.length) paint(items);
+            else tryFetch(urls, i+1);
+          })
+          .catch(function(){ tryFetch(urls, i+1); });
+      }
+      var qs="page=1&limit=40&order=DESC&active_only=1&type=SELL";
+      tryFetch(["/api/listings?"+qs, "/api/explorer/listings?"+qs], 0);
     })();
     </script>
 
-    <!-- Load More -->
+        <!-- Load More -->
     <div class="text-center mt-3.5 mb-2">
       <button id="more" type="button"
         class="hidden px-5 py-2 rounded-full bg-white text-[#16acbd] font-extrabold text-xs shadow-md border border-white/60 active:scale-95 transition-all">
@@ -2547,11 +2577,11 @@
       if (state.chassisOnly) qs += "&chassis_only=1";
 
       var urls = [];
+      urls.push("/api/listings?" + qs);
+      urls.push("/api/explorer/listings?" + qs);
       if (useForYou) {
         urls.push("/api/feed/for-you?page=" + page + "&limit=24&user_id=" + encodeURIComponent(state.userId || "0"));
       }
-      urls.push("/api/explorer/listings?" + qs);
-      urls.push("/api/listings?" + qs);
 
       var done = false;
       function applyItems(items, hasMore) {
@@ -2584,7 +2614,7 @@
           })
           .then(function (r) {
             clearTimeout(timer);
-            var items = (r.data.items || r.data.listings || r.data.results || []);
+            var items = (r.data.items || r.data.listings || r.data.results || (r.data.data && (r.data.data.items || r.data.data.listings)) || r.data.data || []);
             if (!Array.isArray(items)) items = [];
             if (items.length > 0) {
               applyItems(items, !!(r.data.has_more || r.data.hasMore));
