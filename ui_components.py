@@ -361,9 +361,9 @@ SELLER_FORM_HTML = r"""
             try { localStorage.removeItem('adika_draft_seller'); } catch (e) {}
             setTimeout(() => {
               if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                try { window.location.href='/'; } catch(e) {}
+                try { window.location.href='/explorer'; } catch(e) {}
               } else {
-                window.location.href = "/";
+                window.location.href = "/explorer";
               }
             }, 3000);
           } else {
@@ -415,7 +415,7 @@ SELLER_FORM_HTML = r"""
         <div className="min-h-screen bg-[#b5eff3] pb-24">
           <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
             <div className="flex items-center justify-between max-w-md mx-auto mb-1.5 gap-2">
-              <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.location.href='/'; else window.location.href='/'; } catch(e) { window.location.href='/'; } }}
+              <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.location.href='/explorer'; else window.location.href='/explorer'; } catch(e) { window.location.href='/explorer'; } }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
                 ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
               </button>
@@ -679,7 +679,7 @@ SELLER_FORM_HTML = r"""
                   try { resetForm(); } catch (e) {}
                   try {
                     if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                      window.location.href='/';
+                      window.location.href='/explorer';
                     } else {
                       window.location.href = '/explorer';
                     }
@@ -835,7 +835,7 @@ BUYER_FORM_HTML = r"""
             try { localStorage.removeItem('adika_draft_buyer'); } catch (e) {}
             setTimeout(() => {
               if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
-                try { window.location.href='/'; } catch(e) {}
+                try { window.location.href='/explorer'; } catch(e) {}
               }
             }, 3000);
           } else {
@@ -881,7 +881,7 @@ BUYER_FORM_HTML = r"""
       return (
         <div className="min-h-screen bg-[#b5eff3] pb-24">
           <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white flex items-center justify-between gap-2 border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
-            <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.location.href='/'; else window.location.href='/'; } catch(e) { window.location.href='/'; } }}
+            <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.location.href='/explorer'; else window.location.href='/explorer'; } catch(e) { window.location.href='/explorer'; } }}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
               ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
             </button>
@@ -992,7 +992,7 @@ BUYER_FORM_HTML = r"""
             <button type="button" onClick={() => {
                   try { if (typeof resetForm === 'function') resetForm(); } catch(e) {}
                   try {
-                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) window.location.href='/';
+                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) window.location.href='/explorer';
                     else window.location.href = '/explorer';
                   } catch (e) { window.location.href = '/explorer'; }
                 }}
@@ -2616,9 +2616,9 @@ EXPLORER_HTML = r"""
   </div>
 
   <!-- Broker registration -->
-  <div id="brokerRegModal" class="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-md hidden items-end justify-center">
-    <div class="w-full max-w-md rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden border border-white/20 shadow-2xl shadow-cyan-950/20"
-         style="background: rgba(15,23,42,0.90); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);">
+  <div id="brokerRegModal" class="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-xl hidden items-end justify-center">
+    <div class="w-full max-w-md rounded-t-3xl max-h-[92vh] flex flex-col overflow-hidden border border-white/30 shadow-2xl shadow-cyan-950/30"
+         style="background: rgba(15,23,42,0.72); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);">
       <div class="flex justify-between items-center px-4 pt-3 pb-2 border-b border-white/15 shrink-0 gap-2">
         <button type="button" onclick="closeModal('brokerRegModal')" class="flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition-all shrink-0">
           ← Back
@@ -2628,20 +2628,20 @@ EXPLORER_HTML = r"""
       </div>
       <div class="px-5 py-3 overflow-y-auto flex-1" style="padding-bottom: 8px;">
         <label class="text-xs font-bold text-cyan-100/90">ሙሉ ስም</label>
-        <input id="brName" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/15 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="ስም" />
+        <input id="brName" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/12 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="ስም" />
         <label class="text-xs font-bold text-cyan-100/90">ስልክ ቁጥር</label>
-        <input id="brPhone" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/15 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="09xxxxxxxx" />
+        <input id="brPhone" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/12 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="09xxxxxxxx" />
         <label class="text-xs font-bold text-cyan-100/90">Telegram username</label>
-        <input id="brUser" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/15 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="@username" />
+        <input id="brUser" class="w-full mb-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-white placeholder-slate-400 bg-white/12 border border-white/30 backdrop-blur-md focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 outline-none" placeholder="@username" />
         <div class="text-xs font-bold text-cyan-100/90 mb-1">የሚሰሩበት ምድብ</div>
         <div class="flex flex-wrap gap-2 mb-3">
-          <label class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
-          <label class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
-          <label class="px-3 py-1.5 rounded-full bg-white/15 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
+          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat" value="መኪና" checked /> 🚗 መኪና</label>
+          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat" value="ቤት" /> 🏠 ቤት</label>
+          <label class="px-3 py-1.5 rounded-full bg-white/12 text-xs font-bold"><input type="checkbox" class="brCat" value="ንግድ" /> 🏢 ንግድ</label>
         </div>
         <label class="text-xs font-bold text-cyan-100/90">የመታወቂያ ፎቶ (አማራጭ)</label>
         <div class="mt-1 mb-2 flex gap-2 items-center">
-          <label class="flex-1 py-3 rounded-xl border-2 border-dashed border-white/25 bg-white/10 text-center text-xs font-bold text-cyan-100/90 cursor-pointer active:bg-white/15">
+          <label class="flex-1 py-3 rounded-xl border-2 border-dashed border-white/25 bg-white/10 text-center text-xs font-bold text-cyan-100/90 cursor-pointer active:bg-white/12">
             📷 ፎቶ አንሳ / ምረጥ
             <input id="brIdPhoto" type="file" accept="image/*" capture="environment" class="hidden" />
           </label>
@@ -4869,17 +4869,22 @@ EXPLORER_HTML = r"""
 
     // AI Smart Filter modal handlers
     document.getElementById("navAi").onclick = function() {
+      /* Tools Hub / Purchase & Budget Advisor — NOT direct chat */
       try {
-        if (typeof window.__adikaOpenToolChat === "function") {
-          window.__adikaOpenToolChat("general_assistant");
-        } else if (typeof showAnalysisView === "function") {
+        if (typeof showAnalysisView === "function") {
           showAnalysisView(true);
         } else {
-          aiModal.classList.remove("hidden");
-          aiModal.classList.add("flex");
+          var av = document.getElementById("analysisView");
+          if (av) { av.classList.remove("hidden"); av.style.display = "block"; }
+          try {
+            var nav = document.getElementById("adikaBottomNav");
+            var fab = document.getElementById("fabBtn");
+            if (nav) nav.style.display = "none";
+            if (fab) fab.style.display = "none";
+          } catch (e3) {}
         }
       } catch (e) {
-        try { showAnalysisView(true); } catch (e2) {}
+        console.error("navAi", e);
       }
     };
     aiModalClose.onclick = function() {
