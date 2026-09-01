@@ -1,76 +1,72 @@
 # -*- coding: utf-8 -*-
-"""Adika Mini App HTML templates — main entry (Module 5 of 5).
+"""Adika Mini App — Module 3 aggregator.
 
-Public API expected by webapp.py / handlers.py:
-    SELLER_FORM_HTML, BUYER_FORM_HTML, EXPLORER_HTML
+Loads sibling modules from THIS file's directory so Render/Gunicorn
+never raises ModuleNotFoundError (cwd-independent).
 
-Submodules (edit these for targeted UI work):
-    ui_styles.py   CSS + z-index contract (chat overlay = 280)
-    ui_tools.py    Tools Hub + budget / investment calculators
-    ui_chat.py     Live Advisor chat window + openAiChat routing
-    ui_market.py   Marketplace hero + listing cards
-
-The assembled page strings still come from ui_templates_full.py so
-Render deploys stay byte-compatible with the last working Mini App.
-Fragments below are re-exported so future assembly can swap sections
-without touching the Flask import path.
+Also accepts the GitHub typo filename `ui_jtyles.py` as a fallback.
 """
-
 from __future__ import annotations
 
-from ui_styles import (  # noqa: F401
-    BUYER_FORM_CSS,
-    BUYER_FORM_STYLE_TAG,
-    EXPLORER_CSS,
-    EXPLORER_STYLE_TAG,
-    SELLER_FORM_CSS,
-    SELLER_FORM_STYLE_TAG,
-    style_tag,
-)
-from ui_tools import (  # noqa: F401
-    APR_DEFAULT,
-    AUTO_LOAN_YEARS,
-    DOWN_PAYMENT_PCT,
-    MORTGAGE_YEARS,
-    TOOLS_HUB_HTML,
-    TOOLS_HUB_JS,
-    loan_package,
-    monthly_payment,
-    split_budget,
-)
-from ui_chat import (  # noqa: F401
-    CHAT_ENDPOINT,
-    CHAT_JS,
-    CHAT_WINDOW_HTML,
-    DEFAULT_ADVISOR_GREETING,
-)
-from ui_market import (  # noqa: F401
-    LISTINGS_ENDPOINT,
-    MARKET_FEED_HTML,
-    MARKET_JS,
-    first_photo_url,
-    format_listing_price,
+import os
+import sys
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE and _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+try:
+    from ui_styles import (
+        BUYER_FORM_STYLE_TAG,
+        EXPLORER_STYLE_TAG,
+        SELLER_FORM_STYLE_TAG,
+    )
+except ImportError:
+    from ui_jtyles import (  # noqa: F401 — typo-filename fallback
+        BUYER_FORM_STYLE_TAG,
+        EXPLORER_STYLE_TAG,
+        SELLER_FORM_STYLE_TAG,
+    )
+
+from ui_tools import TOOLS_HUB_HTML, TOOLS_HUB_JS
+
+
+SELLER_FORM_HTML = (
+    "<!DOCTYPE html><html lang=\"am\"><head><meta charset=\"UTF-8\"/>"
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>"
+    "<script src=\"https://telegram.org/js/telegram-web-app.js\"></script>"
+    "<script src=\"https://cdn.tailwindcss.com\"></script>"
+    + SELLER_FORM_STYLE_TAG
+    + "</head><body class=\"bg-[#b5eff3] min-h-screen\"></body></html>"
 )
 
-from ui_templates_full import (  # production templates
-    BUYER_FORM_HTML,
-    EXPLORER_HTML,
-    SELLER_FORM_HTML,
+BUYER_FORM_HTML = (
+    "<!DOCTYPE html><html lang=\"am\"><head><meta charset=\"UTF-8\"/>"
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>"
+    "<script src=\"https://telegram.org/js/telegram-web-app.js\"></script>"
+    "<script src=\"https://cdn.tailwindcss.com\"></script>"
+    + BUYER_FORM_STYLE_TAG
+    + "</head><body class=\"bg-[#b5eff3] min-h-screen\"></body></html>"
 )
 
-__all__ = [
-    "SELLER_FORM_HTML",
-    "BUYER_FORM_HTML",
-    "EXPLORER_HTML",
-    "EXPLORER_STYLE_TAG",
-    "TOOLS_HUB_HTML",
-    "TOOLS_HUB_JS",
-    "CHAT_WINDOW_HTML",
-    "CHAT_JS",
-    "MARKET_FEED_HTML",
-    "MARKET_JS",
-    "monthly_payment",
-    "loan_package",
-    "format_listing_price",
-    "first_photo_url",
-]
+EXPLORER_HTML = f"""<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Adika Marketplace</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  {EXPLORER_STYLE_TAG}
+</head>
+<body class="bg-[#b5eff3] min-h-screen text-slate-800">
+{TOOLS_HUB_HTML}
+<script>
+window.setActiveTab = window.setActiveTab || function(tab) {{
+  if (tab === "chat" && typeof window.openAiChat === "function") window.openAiChat();
+}};
+{TOOLS_HUB_JS}
+</script>
+</body>
+</html>
+"""
