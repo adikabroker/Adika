@@ -5482,26 +5482,61 @@
 <script>
 (function(){
   function el(id){ return document.getElementById(id); }
+  var TOOL_IDS = ["dutyModal","loanModal","compareModal","contractModal","poaModal","landMapModal","diagModal","chassisModal"];
+
   function show(id){
     var n = el(id); if(!n) return;
     n.classList.remove("hidden");
     n.classList.add("flex");
     n.style.display = "flex";
-    n.style.zIndex = "260";
   }
   function hide(id){
     var n = el(id); if(!n) return;
     n.classList.add("hidden");
     n.classList.remove("flex");
-    if(id!=="aiModal") n.style.display = "none";
-    else n.style.display = "";
+    n.style.display = "none";
   }
+  function closeAllTools(){ TOOL_IDS.forEach(hide); }
   function closeAll(){
-    ["aiModal","analysisView","modalOverlay","brokerRegModal","roleSelectModal","dutyModal","loanModal","compareModal","contractModal","poaModal","landMapModal","diagModal","chassisModal"].forEach(hide);
+    closeAllTools();
+    ["aiModal","analysisView","modalOverlay","brokerRegModal","roleSelectModal"].forEach(hide);
+    try { document.body.style.overflow = ""; } catch(e){}
   }
-  function openChat(){ hide("aiModal"); show("analysisView"); }
-  function openTools(){ hide("analysisView"); show("aiModal"); }
-  function openHome(){ closeAll(); try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){ window.scrollTo(0,0);} }
+  function openChat(){
+    hide("aiModal");
+    closeAllTools();
+    var n = el("analysisView");
+    if(n){ n.classList.remove("hidden"); n.classList.add("flex"); n.style.display = "flex"; }
+  }
+  function openTools(){
+    hide("analysisView");
+    closeAllTools();
+    var n = el("aiModal");
+    if(n){ n.classList.remove("hidden"); n.classList.add("flex"); n.style.display = "flex"; }
+  }
+  function openHome(){
+    closeAll();
+    try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){ window.scrollTo(0,0); }
+  }
+
+  window.closeModal = function(id){
+    if(id) hide(id);
+    else closeAll();
+    if(id && TOOL_IDS.indexOf(id) !== -1) openTools();
+  };
+  window.navigateBack = function(id){
+    if(id === "analysisView"){ hide("analysisView"); openTools(); return; }
+    if(id && TOOL_IDS.indexOf(id) !== -1){ hide(id); openTools(); return; }
+    if(id) hide(id);
+    else openHome();
+  };
+  window.goHomeFromTool = function(id){
+    if(id) hide(id);
+    openHome();
+  };
+  window.openAiChat = openChat;
+  window.handleStartAiChat = window.handleStartAiChat || function(){ openChat(); };
+
   function setLang(en){
     document.body.classList.toggle("lang-en-active", !!en);
     document.documentElement.lang = en ? "en" : "am";
@@ -5513,8 +5548,8 @@
     if(window.__adikaPaintListings) window.__adikaPaintListings(items);
     window.__adikaLiveItems = items || [];
   }
-  function loadType(type){
-    var qs = "page=1&limit=40&order=DESC&active_only=1&type=" + type;
+  function loadListings(extra){
+    var qs = "page=1&limit=40&order=DESC&active_only=1" + (extra||"");
     fetch("/api/listings?"+qs,{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
       var items = (d && (d.items||d.listings||d.results||d.data)) || [];
       if(!Array.isArray(items) && items && items.items) items = items.items;
@@ -5527,102 +5562,105 @@
     if(b) b.className = buy ? "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1" : "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
     window.__adikaIsBuy = !!buy;
   }
-  function openToolModal(id, prefill){
-    show(id);
-    if(prefill && el("advisorChatInput")) el("advisorChatInput").value = prefill;
+  function markCats(id){
+    document.querySelectorAll("#cats .cat-pill").forEach(function(b){
+      if(b.getAttribute("data-filter")==="chassis") return;
+      var on = (b.getAttribute("data-id")||"") === id;
+      b.className = on
+        ? "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm"
+        : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
+    });
   }
-  function fmtETB(n){
-    n = Number(n)||0;
-    return Math.round(n).toLocaleString("en-US");
+  function parentModal(node){
+    var n = node;
+    while(n && n !== document.body){
+      if(n.id && (TOOL_IDS.indexOf(n.id)>=0 || n.id==="analysisView" || n.id==="aiModal" || n.id==="modalOverlay")) return n.id;
+      n = n.parentElement;
+    }
+    return "";
   }
-  function monthlyLoan(principal, apr, months){
-    var r = (apr/100)/12;
-    if(!r) return principal/months;
-    return principal * (r * Math.pow(1+r, months)) / (Math.pow(1+r, months)-1);
+  function fmt(n){ return Math.round(Number(n)||0).toLocaleString("en-US"); }
+  function calcLoanLocal(){
+    var price = Number((el("loanPrice")||{}).value||3000000);
+    var downPct = Number((el("loanDown")||{}).value||30);
+    var years = Number((el("loanYears")||{}).value||10);
+    var down = price * downPct/100;
+    var principal = Math.max(0, price-down);
+    var months = years*12;
+    var r = 0.18/12;
+    var mo = principal * (r*Math.pow(1+r,months))/(Math.pow(1+r,months)-1);
+    var box = el("loanResult");
+    if(!box) return;
+    box.classList.remove("hidden");
+    box.innerHTML = '<div class="text-xs space-y-1"><div class="font-black text-emerald-700 text-lg">'+fmt(mo)+' ETB / ወር</div><div>ቅድመ ክፍያ: <b>'+fmt(down)+' ETB</b></div><div>የብድር መጠን: <b>'+fmt(principal)+' ETB</b></div><div>ወለድ: 18% · '+years+' ዓመት</div></div>';
   }
-  function isCar(it){
-    var c = ((it.main_category||it.category||"")+" "+(it.sub_category||"")).toLowerCase();
-    return /መኪና|car|vehicle|auto/.test(c);
+  function calcDutyLocal(){
+    var cif = Number((el("dutyCif")||{}).value||12000);
+    var fuel = ((el("dutyFuel")||{}).value||"Benzine");
+    var cc = Number((el("dutyCc")||{}).value||1300);
+    var rate = /electric/i.test(fuel) ? 0.05 : (cc>=1800?0.35:0.30);
+    var etb = cif * 130;
+    var duty = etb * rate;
+    var excise = etb * 0.30;
+    var vat = (etb+duty+excise)*0.15;
+    var total = duty+excise+vat;
+    var box = el("dutyResult");
+    if(!box) return;
+    box.classList.remove("hidden");
+    box.innerHTML = '<div class="text-xs space-y-1"><div class="font-black text-[#0e7490] text-lg">'+fmt(total)+' ETB</div><div>ቀረጥ: <b>'+fmt(duty)+'</b></div><div>ኤክሳይስ: <b>'+fmt(excise)+'</b></div><div>ቫት: <b>'+fmt(vat)+'</b></div></div>';
   }
-  function isHouse(it){
-    var c = ((it.main_category||it.category||"")+" "+(it.sub_category||"")).toLowerCase();
-    return /ቤት|house|propert|land|apartment|ሪል/.test(c);
-  }
-  function itemPrice(it){
-    return Number(String(it.price||"").replace(/[^\d.]/g,""))||0;
-  }
-  function itemName(it){
-    if(it.brand || it.model) return [it.brand,it.model].filter(Boolean).join(" ");
-    return it.sub_category || it.title || "ማስታወቂያ";
-  }
-  function genBudget(){
-    var budget = Number((el("advisorBudget")||{}).value || 2000000);
-    var income = Number((el("advisorMonthlyIncome")||{}).value || 25000);
-    var down = Math.round(budget*0.3);
-    var items = window.__adikaLiveItems || [];
-    var cars = items.filter(function(it){ var p=itemPrice(it); return isCar(it) && p>0 && p<=budget; }).slice(0,3);
-    var homes = items.filter(function(it){ var p=itemPrice(it); return isHouse(it) && p>0 && (p<=budget || p*0.3<=budget); }).slice(0,3);
-
-    var autoLines = cars.length ? cars.map(function(it){
-      var p = itemPrice(it);
-      var d = Math.round(p*0.3);
-      var loan = p-d;
-      var mo = Math.round(monthlyLoan(loan, 18, 60));
-      return "• "+itemName(it)+" — "+fmtETB(p)+" ብር<br>ቅድመ 30%: "+fmtETB(d)+" ብር · ብድር: "+fmtETB(loan)+" ብር · ወርሃዊ (~18%/5ዓመት): "+fmtETB(mo)+" ብር";
-    }).join("<br>") : "ከአዲካ ገበያ (ዋጋ ≤ በጀት) ተሽከርካሪ አልተገኘም። የባንክ ብድር ስሌት፦ ቅድመ 30% "+fmtETB(down)+" ብር · ብድር "+fmtETB(budget-down)+" ብር · ወርሃዊ ~"+fmtETB(Math.round(monthlyLoan(budget-down,18,60)))+" ብር";
-
-    var homeLines = homes.length ? homes.map(function(it){
-      var p = itemPrice(it);
-      var d = Math.round(p*0.3);
-      return "• "+itemName(it)+" — "+fmtETB(p)+" ብር · ቅድመ ~"+fmtETB(d)+" ብር";
-    }).join("<br>") : "በ "+fmtETB(budget)+" ብር (ዋጋ ወይም 30% ቅድመ ክፍያ) የሚገባ ቤት/መሬት በአሁኑ ገበያ አልተገኘም።";
-
-    var roi15 = Math.round(budget*0.15), roi22 = Math.round(budget*0.22), roi28 = Math.round(budget*0.28);
-
-    var cards = el("opportunityCards");
-    var box = el("advisorResult");
-    if(el("oppAutoBody")) el("oppAutoBody").innerHTML = "ተሽከርካሪ + የባንክ ብድር<br>ከአዲካ ገበያ (1 ተሽከርካሪ ≤ በጀት):<br>"+autoLines;
-    if(el("oppPropBody")) el("oppPropBody").innerHTML = "ሪል እስቴት · ቅድመ ክፍያ<br>"+homeLines;
-    if(el("oppRoiBody")) el("oppRoiBody").innerHTML = "በጀት "+fmtETB(budget)+" ብር — የኢትዮጵያ ገበያ ባንዲራ (15–35% ዓመታዊ):<br>• ባለስል መኪና የኪራይ መሠረት ብር · ROI ~15% → "+fmtETB(roi15)+" ብር/ዓመት<br>• ትንሽ የማጓጓዣ/የሻጭ ኪራይ · ROI ~22% → "+fmtETB(roi22)+" ብር/ዓመት<br>• የሪል እስቴት ኪራይ ግምትያዮ · ROI ~28% → "+fmtETB(roi28)+" ብር/ዓመት<br>የእርስዎ ወርሃዊ ገቢ: "+fmtETB(income)+" ብር (DTI ≤35% ለብድር)";
-    if(cards){ cards.classList.remove("hidden"); cards.style.display = "block"; }
-    if(box) box.classList.add("hidden");
-    window.__adikaAdvisorCtx = {budget:budget, income:income};
-    if(el("advisorChatInput")) el("advisorChatInput").value = "በ "+fmtETB(budget)+" ETB በጀት እና በ "+fmtETB(income)+" ETB ወርሃዊ ገቢ የተመረጡትን የፋይናንስ አማራጮች ማብራሪያ እፈልጋለሁ።";
-  }
-  window.handleStartAiChat = function(opt){
-    opt = opt || {};
-    var ctx = window.__adikaAdvisorCtx || {};
-    var budget = ctx.budget || Number((el("advisorBudget")||{}).value||0);
-    var income = ctx.income || Number((el("advisorMonthlyIncome")||{}).value||0);
-    var title = (opt.optionType||opt.context||"ፋይናንስ");
-    if(el("advisorChatInput")) el("advisorChatInput").value = "በ "+fmtETB(budget)+" ETB በጀት እና በ "+fmtETB(income)+" ETB ወርሃዊ ገቢ የተመረጡትን የ"+title+" የፋይናንስ አማራጮች ማብራሪያ እፈልጋለሁ።";
-    openChat();
-  };
-  window.openAiChat = openChat;
-  window.genBudget = genBudget;
 
   document.addEventListener("click", function(e){
-    var t = e.target.closest("button, a, [data-live], .adika-card, #adikaPromoBanner, #hubFinanceAdvisorBanner");
+    var t = e.target.closest("button, a, .cat-pill, .opp-chat-cta, [data-live], .adika-card, #adikaPromoBanner");
     if(!t) return;
     var id = t.id || "";
+    var mid = parentModal(t);
 
-    if(id==="tabBuy"){ e.preventDefault(); e.stopPropagation(); markTabs(true); loadType("BUY"); return; }
-    if(id==="tabSell"){ e.preventDefault(); e.stopPropagation(); markTabs(false); loadType("SELL"); return; }
+    if(t.classList.contains("cat-pill") || (t.closest && t.closest("#cats"))){
+      var pill = t.classList.contains("cat-pill") ? t : t.closest(".cat-pill");
+      if(pill && pill.getAttribute("data-filter")==="chassis"){
+        e.preventDefault(); e.stopPropagation();
+        loadListings("&has_chassis=1");
+        return;
+      }
+      if(pill){
+        e.preventDefault(); e.stopPropagation();
+        var cid = pill.getAttribute("data-id") || "all";
+        markCats(cid);
+        if(cid==="foryou"){
+          fetch("/api/feed/for-you",{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
+            var items=(d&& (d.items||d.listings||d.results))||[];
+            if(Array.isArray(items) && items.length) paintLive(items);
+            else loadListings("");
+          }).catch(function(){ loadListings(""); });
+        } else if(cid==="all"){
+          loadListings("");
+        } else {
+          loadListings("&category="+encodeURIComponent(cid));
+        }
+        return;
+      }
+    }
+
+    if(id==="tabBuy"){ e.preventDefault(); e.stopPropagation(); markTabs(true); loadListings("&type=BUY"); return; }
+    if(id==="tabSell"){ e.preventDefault(); e.stopPropagation(); markTabs(false); loadListings("&type=SELL"); return; }
     if(id==="langAmBtn"){ e.preventDefault(); e.stopPropagation(); setLang(false); return; }
     if(id==="langEnBtn"){ e.preventDefault(); e.stopPropagation(); setLang(true); return; }
 
-    if(id==="adikaPromoBanner" || id==="heroToolsBtn" || id==="heroAdvisorBtn" || t.closest("#adikaPromoBanner")){
+    if(id==="adikaPromoBanner" || id==="heroToolsBtn" || id==="heroAdvisorBtn" || id==="navAi" || (t.closest && t.closest("#adikaPromoBanner"))){
       e.preventDefault(); e.stopPropagation(); openTools(); return;
     }
-    if(id==="navHome" || id==="aiHubBackBtn" || id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
-    if(id==="navAi"){ e.preventDefault(); e.stopPropagation(); openTools(); return; }
+    if(id==="navHome"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
     if(id==="navMessages"){ e.preventDefault(); e.stopPropagation(); openChat(); return; }
-    if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\\n@AdikaMarketplaceBot"); return; }
+    if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
     if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
     if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
 
+    if(id==="analysisBackBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openTools(); return; }
+
+    if(id==="aiHubBackBtn" || id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
     if(id==="aiTabTools"){ e.preventDefault(); e.stopPropagation(); if(el("aiToolsView")){ el("aiToolsView").classList.remove("hidden"); el("aiToolsView").style.display=""; } if(el("aiSearchView")){ el("aiSearchView").classList.add("hidden"); el("aiSearchView").style.display="none"; } return; }
-    if(id==="aiTabSearch"){ e.preventDefault(); e.stopPropagation(); if(el("aiSearchView")){ el("aiSearchView").classList.remove("hidden"); el("aiSearchView").classList.add("flex"); el("aiSearchView").style.display="flex"; } if(el("aiToolsView")){ el("aiToolsView").classList.add("hidden"); } return; }
+    if(id==="aiTabSearch"){ e.preventDefault(); e.stopPropagation(); if(el("aiSearchView")){ el("aiSearchView").classList.remove("hidden"); el("aiSearchView").classList.add("flex"); el("aiSearchView").style.display="flex"; } if(el("aiToolsView")) el("aiToolsView").classList.add("hidden"); return; }
 
     if(t.classList.contains("advisor-preset-chip")){
       e.preventDefault(); e.stopPropagation();
@@ -5630,11 +5668,9 @@
       if(el("advisorBudget") && b) el("advisorBudget").value = b;
       return;
     }
-    if(id==="advisorBtn"){ e.preventDefault(); e.stopPropagation(); genBudget(); return; }
+    if(id==="advisorBtn"){ e.preventDefault(); e.stopPropagation(); if(window.genBudget) window.genBudget(); return; }
     if(id==="hubFinanceAdvisorBanner" || id==="liveFromA" || id==="liveFromB" || id==="liveFromC" || t.classList.contains("opp-chat-cta")){
-      e.preventDefault(); e.stopPropagation();
-      window.handleStartAiChat({optionType: t.getAttribute("data-context")||"ፋይናንስ"});
-      return;
+      e.preventDefault(); e.stopPropagation(); openChat(); return;
     }
 
     if(id==="toolDutyBtn"){ e.preventDefault(); e.stopPropagation(); show("dutyModal"); return; }
@@ -5646,7 +5682,26 @@
     if(id==="toolChassisBtn"){ e.preventDefault(); e.stopPropagation(); show("chassisModal"); return; }
     if(id==="toolLandMapBtn"){ e.preventDefault(); e.stopPropagation(); show("landMapModal"); return; }
 
-    if(id==="modalClose" || id==="modalBackBtn" || id==="aiSearchBackBtn" || id==="aiSearchCloseBtn"){ e.preventDefault(); e.stopPropagation(); closeAll(); return; }
+    if(id==="dutyCalculateBtn"){ e.preventDefault(); e.stopPropagation(); calcDutyLocal(); return; }
+    if(id==="loanCalculateBtn"){ e.preventDefault(); e.stopPropagation(); calcLoanLocal(); return; }
+
+    if(t.classList.contains("btn-back") || t.classList.contains("btn-close") || /ተመለስ|ዋና ገፅ/.test(t.textContent||"")){
+      e.preventDefault(); e.stopPropagation();
+      if(/ዋና ገፅ/.test(t.textContent||"") || /Home/i.test(t.textContent||"")){
+        if(mid) hide(mid);
+        openHome();
+        return;
+      }
+      window.navigateBack(mid || "aiModal");
+      return;
+    }
+
+    if(id==="modalClose" || id==="modalBackBtn" || id==="aiSearchBackBtn" || id==="aiSearchCloseBtn"){
+      e.preventDefault(); e.stopPropagation();
+      if(id.indexOf("Search")>=0){ if(el("aiSearchView")) { el("aiSearchView").classList.add("hidden"); el("aiSearchView").style.display="none"; } if(el("aiToolsView")) el("aiToolsView").classList.remove("hidden"); return; }
+      closeAll();
+      return;
+    }
     if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); openChat(); return; }
 
     if(t.getAttribute("data-live")==="1" || t.classList.contains("adika-card")){
@@ -5667,8 +5722,8 @@
   }, true);
 
   var send = el("advisorChatSend");
-  if(send && !send.__bound){
-    send.__bound = true;
+  if(send && !send.__bound2){
+    send.__bound2 = true;
     send.addEventListener("click", function(){
       var inp = el("advisorChatInput");
       var log = el("advisorChatLog");
@@ -5679,7 +5734,7 @@
       fetch("/api/advisor/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})})
         .then(function(r){return r.json();})
         .then(function(d){ if(log) log.innerHTML += '<div class="bg-white p-2 rounded-2xl">'+(d.reply||d.message||d.text||"ተቀብያለሁ")+"</div>"; })
-        .catch(function(){});
+        .catch(function(){ if(log) log.innerHTML += '<div class="bg-white p-2 rounded-2xl">ተቀብያለሁ። በቅርቡ ዝርዝር መልስ ይደርሳል።</div>'; });
     });
   }
 })();
