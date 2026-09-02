@@ -318,9 +318,13 @@
     }
     #hubToolsDock { flex: 0 0 auto; padding-bottom: 8px; }
     #hubResultsNav { display: none; }
+    #hubSeniorCta { display: none; }
     body.hub-results-open #hubToolsDock { display: none !important; }
     body.hub-results-open #hubResultsNav { display: flex !important; }
     body.hub-results-open #opportunityCards { display: block !important; }
+    body.hub-results-open #hubSeniorCta { display: flex !important; }
+    body.hub-results-open #aiToolsView { overflow: hidden !important; }
+    body.hub-results-open .advisor-preset-chip { display: none !important; }
     .tools-ambient-wrap { position: relative; overflow: hidden; }
     .tools-ambient-blob {
       position: absolute; width: 11rem; height: 11rem; border-radius: 9999px;
@@ -379,20 +383,19 @@
       .tools-grid-compact { grid-template-columns: repeat(2, 1fr); }
     }
     .opp-card {
-      border-radius: 0.85rem; padding: 0.7rem 0.75rem;
+      border-radius: 0.7rem; padding: 0.42rem 0.55rem;
       background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
       border: 1px solid #334155; color: #e2e8f0;
-      box-shadow: 0 6px 16px rgba(2,6,23,0.28);
+      box-shadow: 0 4px 12px rgba(2,6,23,0.22);
     }
-    .opp-card .opp-label { font-size: 9px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
-    .opp-card .opp-title { font-size: 13px; font-weight: 900; color: #fff; margin-top: 3px; line-height: 1.25; }
-    .opp-card .opp-body { font-size: 11px; color: #cbd5e1; margin-top: 6px; line-height: 1.45; }
+    .opp-card .opp-label { font-size: 8px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+    .opp-card .opp-title { font-size: 11px; font-weight: 900; color: #fff; margin-top: 1px; line-height: 1.2; }
+    .opp-card .opp-body { font-size: 9px; color: #94a3b8; margin-top: 3px; line-height: 1.3; }
     .opp-card .opp-cta {
-      margin-top: 0.7rem; width: 100%; padding: 0.7rem 0.65rem;
-      border-radius: 0.7rem; font-size: 11px; font-weight: 800; line-height: 1.3;
+      margin-top: 0.35rem; width: 100%; padding: 0.28rem 0.4rem;
+      border-radius: 0.45rem; font-size: 9px; font-weight: 800; line-height: 1.2;
       background: linear-gradient(90deg, #0d9488, #0891b2); color: #fff;
       border: none; text-align: center;
-      box-shadow: 0 6px 14px rgba(8,145,178,0.28);
     }
     /* Sticky chat input at absolute bottom of analysis view */
     #analysisView { display: none; flex-direction: column; }
@@ -936,9 +939,8 @@
           </button>
 
 
-          <div id="hubResultsNav" class="hidden items-center justify-between gap-2 mb-2">
-            <button type="button" id="hubResultsBackBtn" class="flex-1 py-2 rounded-xl bg-white/12 border border-white/25 text-white text-[12px] font-bold">← ተመለስ</button>
-            <button type="button" id="hubResultsHomeBtn" class="flex-1 py-2 rounded-xl bg-cyan-400/25 border border-cyan-300/40 text-cyan-50 text-[12px] font-bold">🏠 ዋና ገጽ</button>
+          <div id="hubResultsNav" class="hidden items-center gap-2 mb-1.5">
+            <button type="button" id="hubResultsBackBtn" class="px-3 py-1 rounded-lg bg-white/12 border border-white/25 text-white text-[11px] font-bold">← ተመለስ</button>
           </div>
           <!-- 3 Investment Opportunity Cards -->
           <div id="opportunityCards" class="hidden space-y-1.5">
@@ -946,21 +948,26 @@
               <div class="opp-label text-amber-400">A · Automotive</div>
               <div class="opp-title">ተሽከርካሪ + የባንክ ብድር</div>
               <div id="oppAutoBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="auto" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'auto',optionType:'Automotive'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="auto" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'auto',optionType:'Automotive'});else if(window.openAiChat)openAiChat();">ጥልቅ ትንተና →</button>
             </div>
             <div class="opp-card" data-opp="property">
               <div class="opp-label text-sky-400">B · Real Estate</div>
               <div class="opp-title">ሪል እስቴት · ቅድመ ክፍያ</div>
               <div id="oppPropBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="property" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'property',optionType:'Real Estate'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="property" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'property',optionType:'Real Estate'});else if(window.openAiChat)openAiChat();">ጥልቅ ትንተና →</button>
             </div>
             <div class="opp-card" data-opp="roi">
               <div class="opp-label text-emerald-400">C · Business ROI</div>
               <div class="opp-title">ንግድ / Startup · ዓመታዊ ROI</div>
               <div id="oppRoiBody" class="opp-body">ከበጀት ቀመር እየተሰላ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="roi" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'roi',optionType:'Business'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="roi" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'roi',optionType:'Business'});else if(window.openAiChat)openAiChat();">ጥልቅ ትንተና →</button>
             </div>
           </div>
+          <button type="button" id="hubSeniorCta" class="hidden w-full mt-2 py-2.5 px-3 rounded-xl text-[11px] font-extrabold leading-snug text-white text-center"
+            style="background:linear-gradient(90deg,#0e7490,#16acbd);border:1px solid rgba(103,232,249,0.35);"
+            onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'business',optionType:'Senior Advisor'});else if(window.openAiChat)openAiChat();">
+            ተጨማሪ የቢዝነስ ሀሳቦችን በጥልቀት ለመወያየት ወደ አዲካ ዲጂታል ሲኒዮር አማካሪ →
+          </button>
 
           <!-- Result Container -->
           <div id="advisorResult" class="hidden p-3 bg-white rounded-2xl border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium shadow-sm space-y-3"></div>
