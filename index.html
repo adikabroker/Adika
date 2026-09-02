@@ -312,11 +312,15 @@
       overflow-x: hidden !important;
     }
     #opportunityCards {
-      max-height: 34vh !important;
-      overflow-y: auto !important;
-      padding-bottom: 4px;
+      max-height: none !important;
+      overflow: visible !important;
+      padding-bottom: 12px;
     }
     #hubToolsDock { flex: 0 0 auto; padding-bottom: 8px; }
+    #hubResultsNav { display: none; }
+    body.hub-results-open #hubToolsDock { display: none !important; }
+    body.hub-results-open #hubResultsNav { display: flex !important; }
+    body.hub-results-open #opportunityCards { display: block !important; }
     .tools-ambient-wrap { position: relative; overflow: hidden; }
     .tools-ambient-blob {
       position: absolute; width: 11rem; height: 11rem; border-radius: 9999px;
@@ -375,20 +379,20 @@
       .tools-grid-compact { grid-template-columns: repeat(2, 1fr); }
     }
     .opp-card {
-      border-radius: 0.65rem; padding: 0.45rem 0.55rem;
+      border-radius: 0.85rem; padding: 0.7rem 0.75rem;
       background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
       border: 1px solid #334155; color: #e2e8f0;
-      box-shadow: 0 4px 12px rgba(2,6,23,0.2);
+      box-shadow: 0 6px 16px rgba(2,6,23,0.28);
     }
-    .opp-card .opp-label { font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
-    .opp-card .opp-title { font-size: 11px; font-weight: 900; color: #fff; margin-top: 1px; line-height: 1.2; }
-    .opp-card .opp-body { font-size: 9px; color: #94a3b8; margin-top: 3px; line-height: 1.35; }
-    .opp-card { padding: 8px 9px !important; }
+    .opp-card .opp-label { font-size: 9px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+    .opp-card .opp-title { font-size: 13px; font-weight: 900; color: #fff; margin-top: 3px; line-height: 1.25; }
+    .opp-card .opp-body { font-size: 11px; color: #cbd5e1; margin-top: 6px; line-height: 1.45; }
     .opp-card .opp-cta {
-      margin-top: 0.3rem; width: 100%; padding: 0.3rem 0.4rem;
-      border-radius: 0.45rem; font-size: 8px; font-weight: 800; line-height: 1.25;
+      margin-top: 0.7rem; width: 100%; padding: 0.7rem 0.65rem;
+      border-radius: 0.7rem; font-size: 11px; font-weight: 800; line-height: 1.3;
       background: linear-gradient(90deg, #0d9488, #0891b2); color: #fff;
       border: none; text-align: center;
+      box-shadow: 0 6px 14px rgba(8,145,178,0.28);
     }
     /* Sticky chat input at absolute bottom of analysis view */
     #analysisView { display: none; flex-direction: column; }
@@ -931,6 +935,11 @@
             <span>የኢንቨስትመንት አማራጮች አሳይ</span>
           </button>
 
+
+          <div id="hubResultsNav" class="hidden items-center justify-between gap-2 mb-2">
+            <button type="button" id="hubResultsBackBtn" class="flex-1 py-2 rounded-xl bg-white/12 border border-white/25 text-white text-[12px] font-bold">← ተመለስ</button>
+            <button type="button" id="hubResultsHomeBtn" class="flex-1 py-2 rounded-xl bg-cyan-400/25 border border-cyan-300/40 text-cyan-50 text-[12px] font-bold">🏠 ዋና ገጽ</button>
+          </div>
           <!-- 3 Investment Opportunity Cards -->
           <div id="opportunityCards" class="hidden space-y-1.5">
             <div class="opp-card" data-opp="auto">
@@ -3305,6 +3314,9 @@
       var roiBody = document.getElementById("oppRoiBody");
       var box = document.getElementById("opportunityCards");
       if (box) box.classList.remove("hidden");
+      document.body.classList.add("hub-results-open");
+      var dock0=document.getElementById("hubToolsDock"); if(dock0) dock0.style.display="none";
+      var rnav0=document.getElementById("hubResultsNav"); if(rnav0){ rnav0.classList.remove("hidden"); rnav0.style.display="flex"; }
       if (autoBody) autoBody.innerHTML = "ከአዲካ ገበያ እየተጫነ…";
       if (propBody) propBody.innerHTML = "ከአዲካ ገበያ እየተጫነ…";
       if (roiBody) roiBody.innerHTML = "እየተሰላ…";
@@ -5806,19 +5818,21 @@
     if(el("oppPropBody")) el("oppPropBody").innerHTML = "ሪል እስቴት · ቅድመ ክፍያ<br>"+homeTxt;
     if(el("oppRoiBody")) el("oppRoiBody").innerHTML = "በጀት "+fmt(budget)+" ብር<br>• ROI 15% → "+fmt(budget*0.15)+" ብር/ዓመት<br>• ROI 22% → "+fmt(budget*0.22)+" ብር/ዓመት<br>• ROI 28% → "+fmt(budget*0.28)+" ብር/ዓመት<br>ወርሃዊ ገቢ: "+fmt(income)+" ብር";
     var cards = el("opportunityCards");
-    if(cards){ cards.classList.remove("hidden"); cards.style.display="block"; cards.style.position="relative"; cards.style.zIndex="8"; cards.style.paddingBottom="8px"; }
-    var grid = el("hubToolsGrid");
-    if(grid){ grid.style.display=""; grid.style.maxHeight=""; }
-    var ban = el("hubFinanceAdvisorBanner");
-    if(ban){
-      ban.style.display="flex";
-      ban.style.position="relative";
-      ban.style.zIndex="40";
-      ban.style.marginTop="10px";
-      ban.style.marginBottom="8px";
-    }
+    if(cards){ cards.classList.remove("hidden"); cards.style.display="block"; }
+    document.body.classList.add("hub-results-open");
+    var dock = el("hubToolsDock"); if(dock) dock.style.display="none";
+    var rnav = el("hubResultsNav"); if(rnav){ rnav.classList.remove("hidden"); rnav.style.display="flex"; }
     try{ var wrap=el("aiToolsView"); if(wrap){ wrap.scrollTop = 0; } }catch(e){}
   }
+  function closeHubResults(){
+    document.body.classList.remove("hub-results-open");
+    var cards = el("opportunityCards");
+    if(cards){ cards.classList.add("hidden"); cards.style.display="none"; }
+    var dock = el("hubToolsDock"); if(dock) dock.style.display="";
+    var rnav = el("hubResultsNav"); if(rnav){ rnav.classList.add("hidden"); rnav.style.display="none"; }
+  }
+  window.closeHubResults = closeHubResults;
+
   window.genBudget = localOpp;
   window.renderOpportunityCards = window.renderOpportunityCards || localOpp;
 
