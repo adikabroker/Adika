@@ -1163,24 +1163,24 @@
   <!-- ================================================================= -->
   <!-- 5. BOTTOM-SHEET DETAIL MODAL WITH DYNAMIC ACTION BUTTONS          -->
   <!-- ================================================================= -->
-  <div id="modalOverlay" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="modalOverlay" class="fixed inset-0 z-[270] bg-slate-950/70 backdrop-blur-md hidden items-stretch justify-center">
     <div id="modalSheet"
-      class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      class="w-full max-w-md h-full bg-[#f3fbfc] flex flex-col shadow-2xl overflow-hidden">
 
-      <div class="px-3 py-2 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 gap-2">
+      <div class="px-3 py-2.5 text-white flex items-center justify-between shrink-0 gap-2" style="background:linear-gradient(90deg,#0e7490,#16acbd);">
         <div class="flex items-center gap-1.5 min-w-0">
-          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] shrink-0">← ተመለስ</button>
-          <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-[#16acbd]/10 text-[#0e7490] text-[10px] font-bold truncate">Property</span>
-          <span id="modalIdBadge" class="text-[10px] text-slate-400 font-semibold shrink-0">#ADK-</span>
+          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] shrink-0">← ተመለስ</button>
+          <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-bold truncate">Property</span>
+          <span id="modalIdBadge" class="text-[10px] text-cyan-100 font-semibold shrink-0">#ADK-</span>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
-          <button id="modalFavBtn" type="button" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-rose-500 font-bold flex items-center justify-center text-sm">❤️</button>
-          <button id="modalClose" type="button" class="w-7 h-7 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-sm shadow-sm" aria-label="Close">✕</button>
+          <button id="modalFavBtn" type="button" class="w-8 h-8 rounded-full bg-white/15 text-white font-bold flex items-center justify-center text-sm">♡</button>
+          <button id="modalClose" type="button" class="w-8 h-8 rounded-full bg-slate-900/80 text-white font-bold flex items-center justify-center text-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
-      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-4 space-y-3.5 pb-2">
-        <div id="modalMediaContainer" class="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 relative"></div>
+      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3 space-y-3 pb-24">
+        <div id="modalMediaContainer" class="w-full aspect-[16/10] rounded-2xl overflow-hidden bg-slate-200 relative shadow-sm"></div>
 
         <div>
           <div class="flex items-center gap-1">
@@ -2579,6 +2579,12 @@
 
       modalOverlay.classList.remove("hidden");
       modalOverlay.classList.add("flex");
+      modalOverlay.style.display = "flex";
+      try{
+        var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
+        var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
+        var h=document.getElementById("adikaFixedHeader"); if(h) h.style.visibility="hidden";
+      }catch(e){}
 
       // Populate dynamic category action buttons
       var actionsRow = document.getElementById("modalActionButtonsRow");
@@ -2622,6 +2628,12 @@
     function closeDetailModalPreserve() {
       modalOverlay.classList.add("hidden");
       modalOverlay.classList.remove("flex");
+      modalOverlay.style.display = "none";
+      try{
+        var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="";
+        var f=document.getElementById("fabBtn"); if(f) f.style.display="";
+        var h=document.getElementById("adikaFixedHeader"); if(h) h.style.visibility="";
+      }catch(e){}
       state.selectedItem = null;
       try {
         window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
@@ -6041,6 +6053,8 @@
       e.preventDefault(); e.stopPropagation(); openTools(); return;
     }
     if(id==="navHome"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
+    if(id==="inboxBackBtn"){ e.preventDefault(); e.stopPropagation(); var pane=document.getElementById("inboxThreadPane"); if(pane && !pane.classList.contains("hidden")){ if(window.openInbox) openInbox(); return; } if(window.closeInbox) closeInbox(); return; }
+    if(id==="inboxCloseBtn"){ e.preventDefault(); e.stopPropagation(); if(window.closeInbox) closeInbox(); return; }
     if(id==="navMessages"){ e.preventDefault(); e.stopPropagation(); if(window.openInbox) openInbox(); return; }
     if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
     if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
@@ -6296,7 +6310,18 @@
   }
   window.openInbox = function(){
     showInbox(true);
+    try{
+      var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
+      var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
+    }catch(e){}
     loadThreads();
+  };
+  window.closeInbox = function(){
+    showInbox(false);
+    try{
+      var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="";
+      var f=document.getElementById("fabBtn"); if(f) f.style.display="";
+    }catch(e){}
   };
   window.openListingMessage = function(listing){
     listing = listing || window.state && state.selectedItem || {};
@@ -6323,9 +6348,9 @@
   if(back) back.onclick = function(){
     var pane = document.getElementById("inboxThreadPane");
     if(pane && !pane.classList.contains("hidden")){ loadThreads(); return; }
-    showInbox(false);
+    if(window.closeInbox) closeInbox(); else showInbox(false);
   };
-  if(close) close.onclick = function(){ showInbox(false); };
+  if(close) close.onclick = function(){ if(window.closeInbox) closeInbox(); else showInbox(false); };
   var send = document.getElementById("inboxSendBtn");
   if(send) send.onclick = sendMsg;
 })();
