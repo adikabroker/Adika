@@ -799,7 +799,7 @@
       </div>
 
       <!-- Tab 1: AI Tools Hub -->
-      <div id="aiToolsView" class="flex-1 flex flex-col h-full max-h-full justify-between p-3 overflow-hidden tools-ambient-wrap" style="background:transparent;">
+      <div id="aiToolsView" class="flex-1 flex flex-col h-full max-h-full p-3 overflow-y-auto tools-ambient-wrap" style="background:transparent;">
         <div class="tools-ambient-blob cyan"></div>
         <div class="tools-ambient-blob indigo"></div>
         <!-- Smart Budget & Purchase Advisor -->
@@ -910,7 +910,7 @@
             <span class="lang-am">ተጨማሪ የፋይናንስና የህግ መሳሪያዎች</span>
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
           </h4>
-          <div class="tools-grid-compact text-xs shrink min-h-0">
+          <div id="hubToolsGrid" class="tools-grid-compact text-xs shrink min-h-0">
             <button id="toolDutyBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.0s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
               <span class="tool-title">የቀረጥ ስሌት</span>
@@ -1200,8 +1200,8 @@
 
   <!-- Modal: Executive Institutional Comparison Dashboard -->
   <div id="compareModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-slate-950 rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-800">
-      <div class="px-3 py-2.5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
+    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-3 py-2.5 bg-gradient-to-r from-slate-950 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="min-w-0">
           <div class="text-[9px] font-bold tracking-wide uppercase text-amber-400/90">Adika Institutional Analytics</div>
           <h3 class="font-black text-xs tracking-wide truncate">Comparison Engine</h3>
@@ -1606,10 +1606,10 @@
       <div class="p-4 overflow-y-auto flex-1 space-y-3 text-xs">
         <div id="landMapUploadPanel" class="space-y-3">
           <label class="block cursor-pointer">
-            <div class="rounded-2xl border-2 border-dashed border-[#1e73be]/50 bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 text-center active:scale-[0.99] transition">
-              <div class="text-3xl mb-2">📷</div>
-              <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ ያስገቡ</div>
-              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
+            <div class="rounded-2xl border-2 border-dashed border-cyan-400/40 bg-white/5 p-7 text-center active:scale-[0.99] transition" style="background:linear-gradient(180deg,rgba(8,47,73,0.55),rgba(2,6,23,0.75));">
+              <div class="mx-auto w-14 h-14 rounded-2xl bg-cyan-400/15 border border-cyan-300/30 flex items-center justify-center text-2xl mb-3">📷</div>
+              <div class="font-black text-white text-sm drop-shadow-md">የካርታውን ፎቶ ያስገቡ</div>
+              <div class="text-[10px] text-cyan-100/80 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
             </div>
             <input id="landMapFile" type="file" accept="image/*" class="hidden" />
           </label>
@@ -1715,7 +1715,7 @@
             <span class="lang-en">Enter 17-Digit Chassis / VIN Number</span>
           </label>
           <div class="relative">
-            <input id="chassisInput" type="text" placeholder="ለምሳሌ፡ JTDKB20U... (17 Digits)" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-mono uppercase font-black tracking-wider text-slate-800" />
+            <input id="chassisInput" type="text" placeholder="ለምሳሌ፡ JTDKB20U... (17 Digits)" class="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/25 focus:ring-2 focus:ring-cyan-400 outline-none text-xs font-mono uppercase font-black tracking-wider text-white placeholder-white/40" />
           </div>
           
           <!-- Sample Test Chips -->
@@ -1725,10 +1725,10 @@
               <span class="lang-en">Sample VINs:</span>
             </span>
             <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="JTDKB20U00189342">Toyota Vitz (Japan)</button>
-              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="KMHD381CBKU782910">Hyundai Tucson (Korea)</button>
-              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="LGXC12480PA093821">BYD Song Plus (EV)</button>
-              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="MA3FBE41S00123984">Suzuki Dzire (Auto)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1.5 rounded-lg bg-white/12 hover:bg-cyan-400/25 text-[10px] font-bold text-white border border-white/30 transition-all shrink-0" data-vin="JTDKB20U00189342">Toyota Vitz (Japan)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1.5 rounded-lg bg-white/12 hover:bg-cyan-400/25 text-[10px] font-bold text-white border border-white/30 transition-all shrink-0" data-vin="KMHD381CBKU782910">Hyundai Tucson (Korea)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1.5 rounded-lg bg-white/12 hover:bg-cyan-400/25 text-[10px] font-bold text-white border border-white/30 transition-all shrink-0" data-vin="LGXC12480PA093821">BYD Song Plus (EV)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1.5 rounded-lg bg-white/12 hover:bg-cyan-400/25 text-[10px] font-bold text-white border border-white/30 transition-all shrink-0" data-vin="MA3FBE41S00123984">Suzuki Dzire (Auto)</button>
             </div>
           </div>
         </div>
@@ -1739,8 +1739,8 @@
 
         <div id="chassisResult" class="hidden font-medium"></div>
       </div>
-      <div class="p-2.5 border-t border-slate-100 bg-white shrink-0">
-        <button type="button" onclick="navigateBack('chassisModal')" class="w-full py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs active:scale-[0.98]">
+      <div class="p-2.5 border-t border-white/10 shrink-0">
+        <button type="button" onclick="navigateBack('chassisModal')" class="w-full py-2.5 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-xs active:scale-[0.98]">
           ← ተመለስ
         </button>
       </div>
@@ -5708,7 +5708,12 @@
     if(el("oppPropBody")) el("oppPropBody").innerHTML = "ሪል እስቴት · ቅድመ ክፍያ<br>"+homeTxt;
     if(el("oppRoiBody")) el("oppRoiBody").innerHTML = "በጀት "+fmt(budget)+" ብር<br>• ROI 15% → "+fmt(budget*0.15)+" ብር/ዓመት<br>• ROI 22% → "+fmt(budget*0.22)+" ብር/ዓመት<br>• ROI 28% → "+fmt(budget*0.28)+" ብር/ዓመት<br>ወርሃዊ ገቢ: "+fmt(income)+" ብር";
     var cards = el("opportunityCards");
-    if(cards){ cards.classList.remove("hidden"); cards.style.display="block"; }
+    if(cards){ cards.classList.remove("hidden"); cards.style.display="block"; cards.style.position="relative"; cards.style.zIndex="5"; }
+    var grid = el("hubToolsGrid");
+    if(grid){ grid.style.maxHeight="160px"; grid.style.overflow="hidden"; }
+    var ban = el("hubFinanceAdvisorBanner");
+    if(ban){ ban.style.position="relative"; ban.style.zIndex="30"; ban.style.marginTop="10px"; }
+    try{ el("aiToolsView").scrollTop = 0; }catch(e){}
   }
   window.genBudget = localOpp;
   window.renderOpportunityCards = window.renderOpportunityCards || localOpp;
@@ -5818,7 +5823,7 @@
 
   document.addEventListener("click", function(e){
 
-    var t = e.target.closest("button, a, .cat-pill, .opp-chat-cta, [data-live], .adika-card, #adikaPromoBanner");
+    var t = e.target.closest("button, a, .cat-pill, .opp-chat-cta, .compare-tab, .vin-sample-chip, [data-live], .adika-card, #adikaPromoBanner, #hubFinanceAdvisorBanner");
     if(!t) return;
     var id = t.id || "";
     var mid = parentModal(t);
@@ -5907,6 +5912,20 @@
       return;
     }
     if(id==="advisorBtn"){ e.preventDefault(); e.stopPropagation(); if(typeof window.renderOpportunityCards==="function") window.renderOpportunityCards(); else if(window.genBudget) window.genBudget(); else localOpp(); return; }
+    if(t.classList.contains("compare-tab") || t.getAttribute("data-ctab")){
+      e.preventDefault(); e.stopPropagation();
+      var tab = t.classList.contains("compare-tab") ? t : t.closest(".compare-tab");
+      var mode = (tab && tab.getAttribute("data-ctab")) || "vehicles";
+      document.querySelectorAll(".compare-tab").forEach(function(x){
+        x.className = "compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-300 hover:text-white bg-white/5";
+      });
+      if(tab) tab.className = "compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all bg-teal-600 text-white shadow";
+      var pv=el("comparePanelVehicles"), pp=el("comparePanelProperty"), pb=el("comparePanelBusiness");
+      if(pv){ pv.classList.toggle("hidden", mode!=="vehicles"); pv.style.display = mode==="vehicles" ? "block" : "none"; }
+      if(pp){ pp.classList.toggle("hidden", mode!=="property"); pp.style.display = mode==="property" ? "block" : "none"; }
+      if(pb){ pb.classList.toggle("hidden", mode!=="business"); pb.style.display = mode==="business" ? "block" : "none"; }
+      return;
+    }
     if(id==="compareBtn"){ e.preventDefault(); e.stopPropagation(); localCompare(); return; }
     if(id==="cStepNext"){ e.preventDefault(); e.stopPropagation(); localContractStep(1); return; }
     if(id==="cStepPrev"){ e.preventDefault(); e.stopPropagation(); localContractStep(-1); return; }
