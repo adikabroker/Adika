@@ -6339,27 +6339,24 @@
   }
   window.openListingMessage = function(listing){
     listing = listing || (window.state && state.selectedItem) || {};
-    var s = sellerFromListing(listing);
-    var peer = s.peer;
-    if(!peer){
-      var fallback = s.uname || "AkremFF";
-      var url = "https://t.me/" + fallback;
+    var telegramValue = listing.telegram_username || listing.telegram_id || "";
+    var cleanUsername = String(telegramValue).trim()
+      .replace(/^https?:\/\/(?:www\.)?t\.me\//i, "")
+      .replace(/^@+/, "")
+      .split(/[?#/]/)[0]
+      .replace(/[^A-Za-z0-9_]/g, "");
+    if(cleanUsername){
+      var telegramUrl = "https://t.me/" + cleanUsername;
       try{
-        if(window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(url);
-        else window.open(url, "_blank");
-      }catch(e){ window.open(url, "_blank"); }
+        if(window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(telegramUrl);
+        else window.open(telegramUrl, "_blank");
+      }catch(e){ window.open(telegramUrl, "_blank"); }
       return;
     }
-    if(String(peer) === uid()){
-      alert("የራስዎ ማስታወቂያ ነው");
-      return;
+    var phone = listing.phone_number || listing.phone || "";
+    if(phone){
+      window.location.href = "tel:" + String(phone).replace(/\s+/g, "");
     }
-    showInbox(true);
-    try{
-      var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
-      var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
-    }catch(e){}
-    openThread(listing.id, peer, listing.sub_category || listing.title || listing.brand || "ማስታወቂያ");
   };
   document.addEventListener("click", function(e){
     var th = e.target.closest && e.target.closest(".inbox-thread");
