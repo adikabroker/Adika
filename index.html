@@ -1,4 +1,1126 @@
+# -*- coding: utf-8 -*-
+"""Adika Mini App HTML templates (Telegram WebApp).
 
+Self-contained: SELLER_FORM_HTML, BUYER_FORM_HTML, EXPLORER_HTML.
+Optional sibling modules (ui_styles, ui_tools) are imported if present
+and NEVER crash the page if missing.
+"""
+from __future__ import annotations
+
+import logging
+import os
+import sys
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE and _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+try:
+    import ui_styles  # noqa: F401
+except Exception as exc:
+    logging.getLogger(__name__).warning("ui_styles optional import skipped: %s", exc)
+
+try:
+    import ui_tools  # noqa: F401
+except Exception as exc:
+    logging.getLogger(__name__).warning("ui_tools optional import skipped: %s", exc)
+
+
+SELLER_FORM_HTML = r"""
+<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Post Listing | ማስታወቂያ ልቀቅ</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
+
+  <style>
+    body { margin:0; background:#b5eff3; font-family:system-ui,-apple-system,sans-serif; -webkit-tap-highlight-color:transparent; }
+    .lang-en { display: none !important; }
+    .lang-am { display: inline-block !important; }
+    body.lang-en-active .lang-en { display: inline-block !important; }
+    body.lang-en-active .lang-am { display: none !important; }
+    .chip-active { background:#16acbd; color:#fff; font-weight:700; box-shadow:0 2px 6px rgba(22,172,189,.35); border: 1px solid #16acbd; }
+    .chip-idle { background:#ffffff; color:#334155; border:1px solid #cbd5e1; font-weight: 600; }
+    input, textarea, select { font-size: 15px !important; }
+  
+    
+      100% { transform: translateX(120%); }
+    }
+    
+      50% { filter: drop-shadow(0 0 10px rgba(99,102,241,0.55)); }
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+      100% { transform: translateX(120%); }
+    }
+    
+    
+      50% { transform: scale(1.15); opacity: 0.85; }
+    }
+    
+    .promo-slide {
+      will-change: opacity, transform;
+    }
+    .promo-slide .promo-orb {
+      transition: opacity 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms,
+                  transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) 0ms;
+    }
+    .promo-slide .promo-icon {
+      transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 80ms,
+                  transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 80ms;
+    }
+    .promo-slide .promo-title,
+    .promo-slide .promo-sub {
+      transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms,
+                  transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 160ms;
+    }
+    .promo-slide .promo-cta {
+      transition: opacity 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 240ms,
+                  transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) 240ms;
+    }
+    .promo-slide:not(.is-active) .promo-orb,
+    .promo-slide:not(.is-active) .promo-icon,
+    .promo-slide:not(.is-active) .promo-title,
+    .promo-slide:not(.is-active) .promo-sub,
+    .promo-slide:not(.is-active) .promo-cta {
+      opacity: 0;
+      transform: scale(0.85) translateY(12px);
+    }
+    .promo-slide.is-active .promo-orb {
+      opacity: 1;
+      transform: scale(1);
+      animation: adikaGlowOrb 2s ease-in-out infinite;
+    }
+    .promo-slide.is-active .promo-icon {
+      opacity: 1;
+      transform: scale(1) rotateY(0deg);
+    }
+    .promo-slide.is-active .promo-title,
+    .promo-slide.is-active .promo-sub {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .promo-slide.is-active .promo-cta {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .promo-slide.is-active {
+      opacity: 1 !important;
+      transform: scale(1) translateY(0) !important;
+      pointer-events: auto !important;
+      z-index: 2;
+    }
+    .promo-slide.is-exit {
+      opacity: 0 !important;
+      transform: scale(0.92) translateY(-22px) !important;
+      pointer-events: none !important;
+      z-index: 1;
+    }
+
+    @keyframes adikaShimmer {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(120%); }
+    }
+    @keyframes adikaNeonPulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(34,211,238,0.35), 0 0 18px rgba(56,189,248,0.2), inset 0 1px 0 rgba(255,255,255,0.1); }
+      50% { box-shadow: 0 0 16px rgba(45,212,191,0.45), 0 0 24px rgba(34,211,238,0.28), inset 0 1px 0 rgba(255,255,255,0.12); }
+    }
+    @keyframes adikaGlowOrb {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.18); opacity: 0.85; }
+    }
+    @keyframes adikaHeartbeat {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+    @keyframes adikaLetterIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #adikaPromoBanner {
+      animation: adikaNeonPulse 2.2s ease-in-out infinite;
+    }
+    .promo-slide { will-change: opacity, transform; }
+    .promo-slide.is-active { opacity: 1 !important; transform: scale(1) translateY(0) !important; pointer-events: auto !important; z-index: 2; }
+    .promo-slide.is-exit { opacity: 0 !important; transform: scale(0.92) translateY(-22px) !important; pointer-events: none !important; z-index: 1; }
+    .promo-slide.is-active .promo-orb { opacity: 1; animation: adikaGlowOrb 2s ease-in-out infinite; }
+    .promo-slide.is-active .promo-icon {
+      animation: none;
+      opacity: 1;
+      transform: scale(1);
+    }
+    .promo-slide.is-active .promo-cta {
+      animation: adikaHeartbeat 1.6s ease-in-out infinite;
+      animation-delay: 0.4s;
+    }
+    .promo-slide:not(.is-active) .promo-orb,
+    .promo-slide:not(.is-active) .promo-icon,
+    .promo-slide:not(.is-active) .promo-title,
+    .promo-slide:not(.is-active) .promo-sub,
+    .promo-slide:not(.is-active) .promo-cta {
+      opacity: 0;
+    }
+    .promo-slide.is-active .promo-letter {
+      animation: adikaLetterIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+</style>
+</head>
+<body class="bg-[#b5eff3] min-h-screen text-slate-800">
+<script>
+window.openAiChat = window.openAiChat || function(prefillText){
+  try {
+    var tools = ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal","aiSearchView"];
+    for (var i=0;i<tools.length;i++){
+      var el = document.getElementById(tools[i]);
+      if (!el) continue;
+      el.classList.add("hidden");
+      el.classList.remove("flex");
+      el.style.setProperty("display","none","important");
+    }
+    var v = document.getElementById("analysisView");
+    if (v){
+      v.classList.remove("hidden");
+      v.classList.add("flex");
+      v.style.setProperty("display","flex","important");
+      v.style.setProperty("z-index","260","important");
+    }
+    document.body.style.overflow = "hidden";
+    var log = document.getElementById("advisorChatLog");
+    if (log && !log.dataset.seeded){
+      log.innerHTML = "";
+      window.advisorChatHistory = [];
+      var hello = "ሰላም! እኔ የ Adika Senior Financial Advisor ነኝ። እንዴት ልረዳዎት?";
+      if (typeof appendAdvisorChat === "function") appendAdvisorChat("advisor", hello);
+      log.dataset.seeded = "1";
+    }
+    var input = document.getElementById("advisorChatInput");
+    if (prefillText && input){
+      input.value = prefillText;
+      setTimeout(function(){
+        var sendBtn = document.getElementById("advisorChatSend");
+        if (sendBtn) sendBtn.click();
+      }, 30);
+    }
+  } catch (err) { console.error("openAiChat", err); }
+};
+window.handleStartAiChat = window.handleStartAiChat || function(opts){
+  opts = opts || {};
+  var budgetEl = document.getElementById("advisorBudget");
+  var incomeEl = document.getElementById("advisorMonthlyIncome");
+  var budget = Number(opts.budget || (budgetEl && budgetEl.value) || 0);
+  var income = Number(opts.income || (incomeEl && incomeEl.value) || 0);
+  var kind = opts.optionType || opts.context || "general";
+  var b = (budget||0).toLocaleString();
+  var inc = (income||0).toLocaleString();
+  var title = kind;
+  if (kind==="auto" || kind==="Automotive") title = "ተሽከርካሪ";
+  else if (kind==="property" || kind==="Real Estate") title = "ሪል እስቴት";
+  else if (kind==="roi" || kind==="Business") title = "ንግድ";
+  else title = "ፋይናንስ";
+  var prompt = "በ " + b + " ETB በጀት እና በ " + inc + " ETB ወርሃዊ ገቢ የተመረጡትን የ" + title + " የፋይናንስ አማራጮች ማብራሪያ እፈልጋለሁ።";
+  window.openAiChat(prompt);
+};
+
+document.addEventListener("click", function(ev){
+  var t = ev.target;
+  if (!t || !t.closest) return;
+  if (t.closest("#hubFinanceAdvisorBanner")) {
+    ev.preventDefault(); ev.stopPropagation();
+    if (window.handleStartAiChat) window.handleStartAiChat({optionType:"general"});
+    return;
+  }
+  var cta = t.closest(".opp-chat-cta");
+  if (cta) {
+    ev.preventDefault(); ev.stopPropagation();
+    if (window.handleStartAiChat) window.handleStartAiChat({context: cta.getAttribute("data-context")||"auto"});
+  }
+}, true);
+</script>
+
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+    const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
+      expand(){}, ready(){}, close(){}, initDataUnsafe: {}, setHeaderColor(){}, setBackgroundColor(){}
+    };
+    try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
+
+    const user = tg.initDataUnsafe?.user || {};
+    const autoUsername = user.username ? '@' + user.username : '';
+    const autoPhone = user.phone_number || '';
+
+    function formatPrice(val) {
+      const digits = String(val).replace(/[^\d]/g, '');
+      return digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+    }
+    function parsePrice(val) {
+      return String(val).replace(/[^\d]/g, '');
+    }
+
+    function Chip({ am, en, active, onClick, danger }) {
+      return (
+        <button type="button" onClick={onClick}
+          className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all shadow-sm ${
+            active ? (danger ? 'bg-rose-500 text-white font-bold' : 'chip-active') : 'chip-idle hover:bg-slate-50'
+          }`}>
+          <span className="lang-am">{am}</span>
+          <span className="lang-en">{en}</span>
+        </button>
+      );
+    }
+
+    function ToggleCard({ active, onToggle, icon, am, en, danger }) {
+      return (
+        <button type="button" onClick={onToggle}
+          className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-left bg-white shadow-[0_4px_14px_rgba(15,23,42,0.06)] ${
+            active ? (danger ? 'border-rose-300 text-rose-700 bg-rose-50/50' : 'border-[#16acbd]/40 text-[#0e7490] bg-[#16acbd]/5') : 'border-slate-200/80 text-slate-700'
+          }`}>
+          <div className="flex items-center gap-2">
+            <span className="text-base">{icon}</span>
+            <div className="text-xs font-bold text-slate-800">
+              <span className="lang-am">{am}</span>
+              <span className="lang-en">{en}</span>
+            </div>
+          </div>
+          <div className={`w-10 h-5 rounded-full relative transition-colors ${active ? (danger ? 'bg-rose-500' : 'bg-[#16acbd]') : 'bg-slate-300'}`}>
+            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${active ? 'translate-x-5' : 'translate-x-0.5'}`} />
+          </div>
+        </button>
+      );
+    }
+
+    function SellerForm() {
+      const [lang, setLang] = useState(() => localStorage.getItem('adika_lang') || 'am');
+
+      useEffect(() => {
+        if (lang === 'en') document.body.classList.add('lang-en-active');
+        else document.body.classList.remove('lang-en-active');
+      }, [lang]);
+
+      const switchLang = (newLang) => {
+        setLang(newLang);
+        localStorage.setItem('adika_lang', newLang);
+        if (newLang === 'en') document.body.classList.add('lang-en-active');
+        else document.body.classList.remove('lang-en-active');
+      };
+
+      const [step, setStep] = useState(1);
+      const [category, setCategory] = useState('መኪና');
+      const [carModel, setCarModel] = useState('');
+      const [fuel, setFuel] = useState('');
+      const [transmission, setTransmission] = useState('');
+      const [mileage, setMileage] = useState('');
+      const [condition, setCondition] = useState('');
+      const [carType, setCarType] = useState('');
+      const [chassisNumber, setChassisNumber] = useState('');
+      const [locationArea, setLocationArea] = useState('');
+      const [bedrooms, setBedrooms] = useState('');
+      const [bathrooms, setBathrooms] = useState('');
+      const [parking, setParking] = useState(false);
+      const [houseCondition, setHouseCondition] = useState('');
+      const [houseType, setHouseType] = useState('');
+      const [price, setPrice] = useState('');
+      const [negotiable, setNegotiable] = useState(true);
+      const [urgent, setUrgent] = useState(false);
+      const [description, setDescription] = useState('');
+      const [phone, setPhone] = useState(autoPhone);
+      const [telegramUser, setTelegramUser] = useState(autoUsername);
+      const [photos, setPhotos] = useState([]);
+      const [photoBusy, setPhotoBusy] = useState(false);
+      const [photoError, setPhotoError] = useState('');
+      const [status, setStatus] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+      const fileRef = useRef(null);
+
+      const compressImage = (file) => new Promise((resolve, reject) => {
+        try {
+          if (!file || file.size > 8 * 1024 * 1024) return reject(new Error('Max 8MB'));
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let cw = img.width, ch = img.height;
+              const max = 1000;
+              if (cw > max || ch > max) {
+                if (cw > ch) { ch = (ch / cw) * max; cw = max; }
+                else { cw = (cw / ch) * max; cw = max; }
+              }
+              canvas.width = cw; canvas.height = ch;
+              canvas.getContext('2d').drawImage(img, 0, 0, cw, ch);
+              resolve(canvas.toDataURL('image/jpeg', 0.65));
+            };
+            img.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        } catch (err) { reject(err); }
+      });
+
+      const addFiles = async (fileList) => {
+        setPhotoError('');
+        const files = Array.from(fileList || []).slice(0, 5 - photos.length);
+        if (!files.length) return;
+        setPhotoBusy(true);
+        try {
+          for (const f of files) {
+            if (!f.type || !f.type.startsWith('image/')) continue;
+            const dataUrl = await compressImage(f);
+            setPhotos(prev => prev.length < 5 ? [...prev, dataUrl] : prev);
+          }
+        } catch (err) {
+          setPhotoError(String(err.message || err));
+        } finally {
+          setPhotoBusy(false);
+        }
+      };
+
+      const removePhoto = (i) => setPhotos(prev => prev.filter((_, idx) => idx !== i));
+      const canNext1 = category && (category === 'መኪና' ? (carModel || carType || condition) : (houseType || locationArea));
+      const canSubmit = Boolean(description && description.trim());
+
+      const resetForm = () => {
+        setStep(1);
+        setCarModel('');
+        setFuel('');
+        setTransmission('');
+        setMileage('');
+        setCondition('');
+        setCarType('');
+        setChassisNumber('');
+        setLocationArea('');
+        setBedrooms('');
+        setBathrooms('');
+        setParking(false);
+        setHouseCondition('');
+        setHouseType('');
+        setPrice('');
+        setNegotiable(true);
+        setUrgent(false);
+        setDescription('');
+        setPhotos([]);
+      };
+
+      const submitListing = async (event) => {
+        if (event && event.preventDefault) event.preventDefault();
+        if (!canSubmit || submitting) return;
+        setSubmitting(true);
+        setStatus('');
+        const isCar = category === 'መኪና';
+        const subCat = isCar ? (carModel || carType) : (houseType ? `${houseType}${locationArea ? ` • ${locationArea}` : ''}` : locationArea);
+        const data = {
+          user_id: user.id || 'unknown',
+          category,
+          sub_category: subCat,
+          price: parsePrice(price),
+          negotiable,
+          urgent_sale: urgent,
+          description,
+          phone,
+          telegram_user: telegramUser,
+          photos,
+          car_model: carModel,
+          location_area: locationArea,
+          chassis_number: chassisNumber,
+          ...(isCar ? {
+            fuel_type: fuel, transmission, mileage, condition, car_type: carType, chassis_number: chassisNumber
+          } : {
+            bedrooms, bathrooms,
+            parking: parking ? 'አለ' : 'የለም',
+            condition: houseCondition, house_type: houseType
+          })
+        };
+        try {
+          const res = await fetch('/api/submit-listing', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+          });
+          const result = await res.json().catch(() => ({}));
+          if (res.ok && (result.success === true || result.status === 'success' || result.req_id)) {
+            setStatus('ok');
+            resetForm();
+            try { localStorage.removeItem('adika_draft_seller'); } catch (e) {}
+            setTimeout(() => {
+              if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
+                try { window.location.href='/explorer'; } catch(e) {}
+              } else {
+                window.location.href = "/explorer";
+              }
+            }, 3000);
+          } else {
+            const msg = result.message || 'የማስታወቂያ ምዝገባው አልተሳካም። እባክዎ እንደገና ይሞክሩ።';
+            setStatus(msg);
+            alert(msg);
+            setSubmitting(false);
+          }
+        } catch (e) {
+          const errMsg = 'የኔትወርክ ስህተት አጋጥሟል። እባክዎ እንደገና ይሞክሩ።';
+          setStatus(errMsg);
+          alert(errMsg);
+          setSubmitting(false);
+        }
+      };
+      window.submitListing = submitListing;
+
+      if (status === 'ok') {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-6 bg-[#b5eff3]">
+            <div className="bg-white rounded-3xl p-6 text-center space-y-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/60 max-w-sm w-full">
+              <div className="w-16 h-16 rounded-full bg-[#16acbd]/15 text-[#16acbd] flex items-center justify-center text-3xl mx-auto">✓</div>
+              <h2 className="font-bold text-base text-slate-800">
+                <span className="lang-am">ማስታወቂያዎ በተሳካ ሁኔታ ተመዝግቧል!</span>
+                <span className="lang-en">Listing Successfully Posted!</span>
+              </h2>
+              <p className="font-medium text-xs text-slate-600 leading-relaxed px-2">
+                <span className="lang-am">ንብረትዎ ለተረጋገጡ ደላሎችና ገዢዎች ተሰራጭቷል።</span>
+                <span className="lang-en">Your listing has been submitted and broadcasted to verified buyers & brokers.</span>
+              </p>
+              <div className="flex flex-col gap-2 pt-2">
+                <a href="/explorer"
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:brightness-110 active:scale-95 text-xs shadow-md text-center block">
+                  <span className="lang-am">ወደ ገበያ ሂድ</span>
+                  <span className="lang-en">View Marketplace</span>
+                </a>
+                <button type="button" onClick={() => { setStatus(''); resetForm(); }}
+                  className="w-full py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">
+                  <span className="lang-am">+ ሌላ ማስታወቂያ ልቀቅ</span>
+                  <span className="lang-en">+ Post Another</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-[#b5eff3] pb-24">
+          <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
+            <div className="flex items-center justify-between max-w-md mx-auto mb-1.5 gap-2">
+              <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.location.href='/explorer'; else window.location.href='/explorer'; } catch(e) { window.location.href='/explorer'; } }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
+                ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
+              </button>
+              <div className="font-extrabold text-xs tracking-wide truncate text-center flex-1">
+                <span className="lang-am">ማስታወቂያ ልቀቅ</span>
+                <span className="lang-en">Post Listing</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center bg-black/20 p-0.5 rounded-lg shrink-0">
+                  <button type="button" onClick={() => switchLang('am')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all ${lang === 'am' ? 'bg-white text-[#16acbd] shadow-sm' : 'text-white/80'}`}>
+                    AM
+                  </button>
+                  <button type="button" onClick={() => switchLang('en')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all ${lang === 'en' ? 'bg-white text-[#16acbd] shadow-sm' : 'text-white/80'}`}>
+                    EN
+                  </button>
+                </div>
+                <div className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold">{step}/3</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 max-w-xs mx-auto">
+              {[1, 2, 3].map((i) => (
+                <React.Fragment key={i}>
+                  <div className="flex-1 text-center">
+                    <div className={`mx-auto w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      step >= i ? 'bg-white text-[#16acbd]' : 'bg-white/30 text-white'
+                    }`}>{i}</div>
+                  </div>
+                  {i < 3 && <div className={`h-0.5 flex-1 rounded ${step > i ? 'bg-white' : 'bg-white/30'}`} />}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-20 px-3.5">
+            <div className="bg-white rounded-2xl p-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/40 bg-white/40 backdrop-blur-md/80 space-y-4">
+              {step === 1 && (
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1.5 block">
+                      <span className="lang-am">📦 ምድብ</span>
+                      <span className="lang-en">📦 Category</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <Chip am="🚗 መኪና" en="🚗 Vehicle" active={category==='መኪና'} onClick={() => setCategory('መኪና')} />
+                      <Chip am="🏠 ቤት" en="🏠 Property" active={category==='ቤት'} onClick={() => setCategory('ቤት')} />
+                    </div>
+                  </div>
+
+                  {category === 'መኪና' ? (
+                    <>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">🚘 የመኪና ስም / ሞዴል</span>
+                          <span className="lang-en">🚘 Car Make / Model</span>
+                        </label>
+                        <input type="text" value={carModel} onChange={e => setCarModel(e.target.value)}
+                          placeholder="Toyota Vitz 2020 / Hyundai Tucson"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">🚗 የመኪና አይነት</span>
+                          <span className="lang-en">🚗 Vehicle Type</span>
+                        </label>
+                        <div className="flex gap-1.5 overflow-x-auto pb-1">
+                          {[['Sedan','Sedan'],['SUV / 4WD','SUV / 4WD'],['Commercial','Commercial']].map(([am,en]) =>
+                            <Chip key={am} am={am} en={en} active={carType===am} onClick={() => setCarType(am)} />
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">⛽ የነዳጅ አይነት</span>
+                          <span className="lang-en">⛽ Fuel Type</span>
+                        </label>
+                        <div className="flex gap-1.5 overflow-x-auto pb-1">
+                          {[['ቤንዚን','Petrol'],['ናፍጣ','Diesel'],['ኤሌክትሪክ','Electric'],['ሀይብሪድ','Hybrid']].map(([am,en]) =>
+                            <Chip key={am} am={am} en={en} active={fuel===am} onClick={() => setFuel(am)} />
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">⚙️ ማርሽ</span>
+                          <span className="lang-en">⚙️ Transmission</span>
+                        </label>
+                        <div className="flex gap-2">
+                          {[['ኦቶማቲክ','Automatic'],['ማኑዋል','Manual']].map(([am,en]) =>
+                            <Chip key={am} am={am} en={en} active={transmission===am} onClick={() => setTransmission(am)} />
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">📊 ሁኔታ</span>
+                          <span className="lang-en">📊 Condition</span>
+                        </label>
+                        <div className="flex gap-1.5 overflow-x-auto pb-1">
+                          {[['አዲስ','Brand New'],['ንጹህ የያዘ','Clean Used'],['ጥገና የሚፈልግ','Needs Repair']].map(([am,en]) =>
+                            <Chip key={am} am={am} en={en} active={condition===am} onClick={() => setCondition(am)} />
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">🛣️ ኪሎሜትር (KM)</span>
+                          <span className="lang-en">🛣️ Mileage (KM)</span>
+                        </label>
+                        <input type="number" value={mileage} onChange={e => setMileage(e.target.value)}
+                          placeholder="45000"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                          <span>
+                            <span className="lang-am">🛡️ የሻሲ ቁጥር (Chassis/VIN)</span>
+                            <span className="lang-en">🛡️ Chassis / VIN</span>
+                          </span>
+                          <span className="text-[10px] text-[#0e7490] font-semibold bg-[#16acbd]/10 px-1.5 py-0.5 rounded">
+                            <span className="lang-am">አማራጭ (ኦፊሴላዊ ባጅ ያገኛል)</span>
+                            <span className="lang-en">Optional (Grants Verified Badge)</span>
+                          </span>
+                        </label>
+                        <input type="text" value={chassisNumber} onChange={e => setChassisNumber(e.target.value.toUpperCase())}
+                          placeholder="ለምሳሌ፡ JTDKN36U48... (17 Digits)"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-mono uppercase font-bold text-slate-800" />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">🏠 የቤት አይነት</span>
+                          <span className="lang-en">🏠 Property Type</span>
+                        </label>
+                        <div className="flex gap-1.5 overflow-x-auto pb-1">
+                          {[['ቪላ','Villa'],['አፓርታማ','Apartment'],['ኮንዶሚኒየም','Condo'],['ንግድ ቦታ','Commercial'],['መሬት','Land']].map(([am,en]) =>
+                            <Chip key={am} am={am} en={en} active={houseType===am} onClick={() => setHouseType(am)} />
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">📍 አካባቢ / ቦታ</span>
+                          <span className="lang-en">📍 Location / Area</span>
+                        </label>
+                        <input type="text" value={locationArea} onChange={e => setLocationArea(e.target.value)}
+                          placeholder="Bole, CMC, Kazanchis, 150m²"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">🛏️ መኝታ ክፍሎች</span>
+                          <span className="lang-en">🛏️ Bedrooms</span>
+                        </label>
+                        <div className="flex gap-1.5">
+                          {['1','2','3','4','5+'].map(b =>
+                            <Chip key={b} am={b} en={b} active={bedrooms===b} onClick={() => setBedrooms(b)} />
+                          )}
+                        </div>
+                      </div>
+                      <ToggleCard active={parking} onToggle={() => setParking(!parking)} icon="🚗" am="የመኪና ማቆሚያ አለው" en="Dedicated Parking" />
+                    </>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      <span className="lang-am">📝 ዝርዝር መግለጫ</span>
+                      <span className="lang-en">📝 Description</span>
+                    </label>
+                    <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3}
+                      placeholder="ስለ ንብረቱ ተጨማሪ መረጃ ይግለጹ / Add specifications..."
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
+                  </div>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      <span className="lang-am">💰 ዋጋ (ብር)</span>
+                      <span className="lang-en">💰 Price (ETB)</span>
+                    </label>
+                    <div className="relative">
+                      <input type="text" inputMode="numeric" value={price}
+                        onChange={e => setPrice(formatPrice(e.target.value))}
+                        placeholder="2,500,000"
+                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold text-slate-900" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#16acbd]">ETB</span>
+                    </div>
+                  </div>
+                  <ToggleCard active={negotiable} onToggle={() => setNegotiable(!negotiable)} icon="🤝" am="የሚደራደር ዋጋ" en="Negotiable Price" />
+                  <ToggleCard active={urgent} onToggle={() => setUrgent(!urgent)} icon="⚡" am="አስቸኳይ ሽያጭ" en="Urgent Sale" danger />
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      <span className="lang-am">📸 ፎቶዎች (እስከ 5)</span>
+                      <span className="lang-en">📸 Photos (Up to 5)</span>
+                    </label>
+                    <div onClick={() => fileRef.current?.click()}
+                      className="border-2 border-dashed border-slate-200 bg-slate-50/70 hover:bg-slate-50 rounded-2xl p-5 text-center cursor-pointer transition-all">
+                      <div className="text-2xl mb-1">📷</div>
+                      <p className="text-xs font-bold text-slate-700">
+                        <span className="lang-am">ፎቶ ይስቀሉ</span>
+                        <span className="lang-en">Upload Photos</span>
+                      </p>
+                      <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+                        onChange={e => { addFiles(e.target.files); e.target.value=''; }} />
+                    </div>
+                    {photos.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mt-2.5">
+                        {photos.map((src, i) => (
+                          <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-white/40 bg-white/40 backdrop-blur-md shadow-sm">
+                            <img src={src} className="w-full h-full object-cover" alt="" />
+                            <button type="button" onClick={() => removePhoto(i)}
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-xs flex items-center justify-center font-bold">×</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      <span className="lang-am">📞 ስልክ ቁጥር</span>
+                      <span className="lang-en">📞 Phone Number</span>
+                    </label>
+                    <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                      placeholder="0911223344"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 mb-1 block">
+                      <span className="lang-am">📱 ቴሌግራም</span>
+                      <span className="lang-en">📱 Telegram</span>
+                    </label>
+                    <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
+                      placeholder="@username"
+                      className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex gap-2 z-40">
+            {step > 1 ? (
+              <button type="button" onClick={() => setStep(s => s-1)}
+                className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">
+                <span className="lang-am">ተመለስ</span><span className="lang-en">Back</span>
+              </button>
+            ) : (
+              <button type="button" onClick={() => {
+                  try { resetForm(); } catch (e) {}
+                  try {
+                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
+                      window.location.href='/explorer';
+                    } else {
+                      window.location.href = '/explorer';
+                    }
+                  } catch (e) { window.location.href = '/explorer'; }
+                }}
+                className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">
+                <span className="lang-am">ሰርዝ</span><span className="lang-en">Cancel</span>
+              </button>
+            )}
+            {step < 3 ? (
+              <button type="button" onClick={() => { if (step===1 && !canNext1) return; setStep(s => s+1); }}
+                disabled={step===1 ? !canNext1 : photoBusy}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:brightness-110 active:scale-95 text-xs shadow-md active:scale-95 disabled:opacity-40">
+                <span className="lang-am">ቀጣይ →</span><span className="lang-en">Next →</span>
+              </button>
+            ) : (
+              <button id="submitBtn" type="button" onClick={(e) => submitListing(e)} disabled={!canSubmit || submitting}
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold hover:brightness-110 active:scale-95 text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
+                {submitting ? (
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <span className="lang-am">እየተመዘገበ ነው... ⏳</span>
+                    <span className="lang-en">Posting... ⏳</span>
+                  </span>
+                ) : (
+                  <>
+                    <span className="lang-am">🚀 ማስታወቂያ መዝግብ</span>
+                    <span className="lang-en">🚀 Submit Listing</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<SellerForm />);
+  </script>
+</body>
+</html>
+"""
+
+BUYER_FORM_HTML = r"""
+<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Post Buyer Request | የፍላጎት ጥያቄ</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.0/babel.min.js"></script>
+
+  <style>
+    body { margin:0; background:#b5eff3; font-family:system-ui,-apple-system,sans-serif; -webkit-tap-highlight-color:transparent; }
+    .lang-en { display: none !important; }
+    .lang-am { display: inline-block !important; }
+    body.lang-en-active .lang-en { display: inline-block !important; }
+    body.lang-en-active .lang-am { display: none !important; }
+    .chip-active { background:#16acbd; color:#fff; font-weight:700; box-shadow:0 2px 6px rgba(22,172,189,.35); border: 1px solid #16acbd; }
+    .chip-idle { background:#ffffff; color:#334155; border:1px solid #cbd5e1; font-weight: 600; }
+    input, textarea { font-size: 15px !important; }
+  </style>
+</head>
+<body class="bg-[#b5eff3] min-h-screen text-slate-800">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
+      expand(){}, ready(){}, close(){}, initDataUnsafe: {}, setHeaderColor(){}, setBackgroundColor(){}
+    };
+    try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
+
+    const user = tg.initDataUnsafe?.user || {};
+    const autoUsername = user.username ? '@' + user.username : '';
+    const autoPhone = user.phone_number || '';
+
+    function formatPrice(val) {
+      const digits = String(val).replace(/[^\d]/g, '');
+      return digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+    }
+    function parsePrice(val) {
+      return String(val).replace(/[^\d]/g, '');
+    }
+
+    function Chip({ am, en, active, onClick }) {
+      return (
+        <button type="button" onClick={onClick}
+          className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all shadow-sm ${active ? 'chip-active' : 'chip-idle hover:bg-slate-50'}`}>
+          <span className="lang-am">{am}</span>
+          <span className="lang-en">{en}</span>
+        </button>
+      );
+    }
+
+    function BuyerForm() {
+      const [lang, setLang] = useState(() => localStorage.getItem('adika_lang') || 'am');
+
+      useEffect(() => {
+        if (lang === 'en') document.body.classList.add('lang-en-active');
+        else document.body.classList.remove('lang-en-active');
+      }, [lang]);
+
+      const switchLang = (newLang) => {
+        setLang(newLang);
+        localStorage.setItem('adika_lang', newLang);
+        if (newLang === 'en') document.body.classList.add('lang-en-active');
+        else document.body.classList.remove('lang-en-active');
+      };
+
+      const [category, setCategory] = useState('መኪና');
+      const [budgetMin, setBudgetMin] = useState('');
+      const [budgetMax, setBudgetMax] = useState('');
+      const [createAlert, setCreateAlert] = useState(true);
+      const [details, setDetails] = useState('');
+      const [phone, setPhone] = useState(autoPhone);
+      const [telegramUser, setTelegramUser] = useState(autoUsername);
+      const [status, setStatus] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+
+      const resetForm = () => {
+        setBudgetMin('');
+        setBudgetMax('');
+        setCreateAlert(true);
+        setDetails('');
+      };
+
+      const submit = async () => {
+        if (!details || submitting) return;
+        setSubmitting(true);
+        setStatus('');
+        const data = {
+          user_id: user.id || 'unknown',
+          category,
+          budget_min: parsePrice(budgetMin),
+          budget_max: parsePrice(budgetMax),
+          create_alert: createAlert,
+          details,
+          phone,
+          telegram_user: telegramUser
+        };
+        try {
+          const res = await fetch('/api/submit-request', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(data)
+          });
+          const result = await res.json();
+          if (res.ok && (result.success === true || result.status === 'success' || result.req_id)) {
+            setStatus('ok');
+            resetForm();
+            try { localStorage.removeItem('adika_draft_buyer'); } catch (e) {}
+            setTimeout(() => {
+              if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
+                try { window.location.href='/explorer'; } catch(e) {}
+              }
+            }, 3000);
+          } else {
+            setStatus(result.message || 'Submission error');
+            setSubmitting(false);
+          }
+        } catch (e) {
+          setStatus('Network error');
+          setSubmitting(false);
+        }
+      };
+
+      if (status === 'ok') {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-6 bg-[#b5eff3]">
+            <div className="bg-white rounded-3xl p-6 text-center space-y-4 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/60 max-w-sm w-full">
+              <div className="w-16 h-16 rounded-full bg-[#16acbd]/15 text-[#16acbd] flex items-center justify-center text-3xl mx-auto">✓</div>
+              <h2 className="font-bold text-base text-slate-800">
+                <span className="lang-am">ጥያቄዎ በተሳካ ሁኔታ ተመዝግቧል!</span>
+                <span className="lang-en">Request Broadcasted!</span>
+              </h2>
+              <p className="font-medium text-xs text-slate-600 leading-relaxed px-2">
+                <span className="lang-am">የፍላጎት ጥያቄዎ ለተረጋገጡ ደላሎችና ሻጮች ተሰራጭቷል።</span>
+                <span className="lang-en">Your request has been saved and shared with certified brokers and sellers.</span>
+              </p>
+              <div className="flex flex-col gap-2 pt-2">
+                <a href="/explorer"
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs shadow-md text-center block">
+                  <span className="lang-am">ወደ ገበያ ሂድ</span>
+                  <span className="lang-en">View Marketplace</span>
+                </a>
+                <button type="button" onClick={() => { setStatus(''); resetForm(); }}
+                  className="w-full py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">
+                  <span className="lang-am">+ ሌላ ጥያቄ ላክ</span>
+                  <span className="lang-en">+ Submit Another</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-[#b5eff3] pb-24">
+          <div className="fixed top-0 left-0 right-0 z-40 shadow-md px-3 py-2 text-white flex items-center justify-between gap-2 border-b border-white/20" style={{background:'rgba(15,23,42,0.82)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
+            <button type="button" onClick={() => { try { if (window.Telegram && window.Telegram.WebApp) window.location.href='/explorer'; else window.location.href='/explorer'; } catch(e) { window.location.href='/explorer'; } }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[11px] font-medium shrink-0">
+              ← <span className="lang-am">ወደ ዋና ገፅ</span><span className="lang-en">Back</span>
+            </button>
+            <h1 className="font-extrabold text-xs tracking-wide truncate flex-1 text-center">
+              <span className="lang-am">የሚፈልጉትን ንብረት ይግለጹ</span>
+              <span className="lang-en">Submit Buyer Request</span>
+            </h1>
+            <div className="flex items-center bg-black/20 p-0.5 rounded-lg shrink-0">
+              <button type="button" onClick={() => switchLang('am')}
+                className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all ${lang === 'am' ? 'bg-white text-[#16acbd] shadow-sm' : 'text-white/80'}`}>
+                AM
+              </button>
+              <button type="button" onClick={() => switchLang('en')}
+                className={`px-2 py-0.5 rounded text-[10px] font-extrabold transition-all ${lang === 'en' ? 'bg-white text-[#16acbd] shadow-sm' : 'text-white/80'}`}>
+                EN
+              </button>
+            </div>
+          </div>
+
+          <div className="pt-14 px-3.5">
+            <div className="rounded-2xl p-4 bg-white/70 backdrop-blur-2xl border border-white/30 shadow-2xl shadow-cyan-950/20 shadow-[0_12px_28px_rgba(15,23,42,0.12)] border border-white/40 bg-white/40 backdrop-blur-md/80 space-y-3.5">
+              <div>
+                <label className="text-xs font-bold text-slate-700 mb-1 block">
+                  <span className="lang-am">📦 ምድብ</span>
+                  <span className="lang-en">📦 Category</span>
+                </label>
+                <div className="flex gap-2">
+                  <Chip am="🚗 መኪና" en="🚗 Vehicle" active={category==='መኪና'} onClick={() => setCategory('መኪና')} />
+                  <Chip am="🏠 ቤት" en="🏠 Property" active={category==='ቤት'} onClick={() => setCategory('ቤት')} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 mb-1 block">
+                  <span className="lang-am">💰 የበጀት ክልል (ብር)</span>
+                  <span className="lang-en">💰 Budget Range (ETB)</span>
+                </label>
+                <div className="flex gap-2 items-center">
+                  <div className="flex-1 relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Min</span>
+                    <input type="text" inputMode="numeric" value={budgetMin}
+                      onChange={e => setBudgetMin(formatPrice(e.target.value))}
+                      placeholder="1,000,000"
+                      className="w-full pl-9 pr-2 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
+                  </div>
+                  <span className="text-slate-400 font-bold">—</span>
+                  <div className="flex-1 relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Max</span>
+                    <input type="text" inputMode="numeric" value={budgetMax}
+                      onChange={e => setBudgetMax(formatPrice(e.target.value))}
+                      placeholder="2,500,000"
+                      className="w-full pl-10 pr-2 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-semibold" />
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" onClick={() => setCreateAlert(!createAlert)}
+                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
+                  createAlert ? 'bg-[#16acbd]/10 border-[#16acbd]/50 text-[#0e7490]' : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
+                <div className="text-xs font-semibold">
+                  <div>
+                    <span className="lang-am">🔔 ፈጣን ማሳወቂያ</span>
+                    <span className="lang-en">🔔 Match Alert</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    <span className="lang-am">ተመሳሳይ ንብረት ሲለቀቅ ማሳወቂያ ይድረሰኝ</span>
+                    <span className="lang-en">Notify me when matching items post</span>
+                  </div>
+                </div>
+                <div className={`w-9 h-5 rounded-full relative transition-colors shrink-0 ${createAlert ? 'bg-[#16acbd]' : 'bg-slate-300'}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${createAlert ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </div>
+              </button>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 mb-1 block">
+                  <span className="lang-am">📝 ዝርዝር ፍላጎትና መስፈርቶች</span>
+                  <span className="lang-en">📝 Requirements & Details</span>
+                </label>
+                <textarea value={details} onChange={e => setDetails(e.target.value)} rows={3}
+                  placeholder="Toyota Vitz 2020, white, automatic, clean condition..."
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs resize-none" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1 block">
+                    <span className="lang-am">📞 ስልክ</span><span className="lang-en">📞 Phone</span>
+                  </label>
+                  <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                    placeholder="0911223344"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 mb-1 block">
+                    <span className="lang-am">📱 ቴሌግራም</span><span className="lang-en">📱 Telegram</span>
+                  </label>
+                  <input type="text" value={telegramUser} onChange={e => setTelegramUser(e.target.value)}
+                    placeholder="@username"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-white/40 bg-white/40 backdrop-blur-md focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex gap-2 z-40">
+            <button type="button" onClick={() => {
+                  try { if (typeof resetForm === 'function') resetForm(); } catch(e) {}
+                  try {
+                    if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) window.location.href='/explorer';
+                    else window.location.href = '/explorer';
+                  } catch (e) { window.location.href = '/explorer'; }
+                }}
+              className="w-1/3 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs active:scale-95">
+              <span className="lang-am">ሰርዝ</span><span className="lang-en">Cancel</span>
+            </button>
+            <button type="button" onClick={submit} disabled={!details || submitting}
+              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs shadow-md active:scale-95 disabled:opacity-40 flex items-center justify-center gap-1.5">
+              {submitting ? (
+                <span className="flex items-center gap-1.5 font-bold">
+                  <span className="lang-am">እየተመዘገበ ነው... ⏳</span>
+                  <span className="lang-en">Broadcasting... ⏳</span>
+                </span>
+              ) : (
+                <>
+                  <span className="lang-am">📨 ጥያቄውን ላክ</span>
+                  <span className="lang-en">📨 Broadcast Request</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<BuyerForm />);
+  </script>
+</body>
+</html>
+"""
+
+EXPLORER_HTML = r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,82 +1139,6 @@
       -webkit-tap-highlight-color: transparent;
     }
     *, *::before, *::after { box-sizing: border-box; }
-
-    @keyframes adikaBlink {
-      0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(16,185,129,0.95); }
-      50% { opacity: 0.25; box-shadow: 0 0 2px rgba(16,185,129,0.4); }
-    }
-    .adika-live-dot {
-      width: 8px; height: 8px; border-radius: 999px;
-      background: #10b981;
-      animation: adikaBlink 1.5s ease-in-out infinite;
-      border: 0;
-    }
-
-    @keyframes adikaShimmer {
-      0% { transform: translateX(-120%); }
-      100% { transform: translateX(120%); }
-    }
-    @keyframes adikaLetterIn {
-      0% { opacity: 0; transform: translateY(14px) rotateX(55deg); filter: blur(4px); }
-      100% { opacity: 1; transform: translateY(0) rotateX(0); filter: blur(0); }
-    }
-    @keyframes adikaSubIn {
-      0% { opacity: 0; transform: translateX(-18px); }
-      100% { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes adikaCtaPulse {
-      0%,100% { transform: scale(1); box-shadow: 0 2px 8px rgba(14,165,233,0.35); }
-      50% { transform: scale(1.05); box-shadow: 0 4px 14px rgba(14,165,233,0.55); }
-    }
-    @keyframes adikaWipe {
-      0% { clip-path: inset(0 100% 0 0); opacity: 0.4; }
-      100% { clip-path: inset(0 0 0 0); opacity: 1; }
-    }
-    .promo-slide.is-active .promo-title { animation: adikaWipe .45s cubic-bezier(.16,1,.3,1) both; }
-    .promo-slide.is-active .promo-letter {
-      display: inline-block;
-      animation: adikaLetterIn .42s cubic-bezier(.22,1,.36,1) both;
-    }
-    .promo-slide.is-active .promo-sub { animation: adikaSubIn .4s ease .12s both; }
-    .promo-slide.is-active .promo-cta { animation: adikaCtaPulse 1.8s ease-in-out .2s infinite; }
-    .promo-slide.is-active .promo-icon { animation: adikaLetterIn .5s cubic-bezier(.34,1.56,.64,1) both; }
-
-    .adika-view-chip {
-      background: rgba(0,0,0,0.58);
-      color: #fff;
-      font-size: 9px;
-      font-weight: 800;
-      border-radius: 999px;
-      padding: 2px 6px;
-      backdrop-filter: blur(6px);
-      display: inline-flex; align-items: center; gap: 3px;
-    }
-
-
-    /* Hub-matched tool sheets */
-    .hub-sheet {
-      background: linear-gradient(165deg, rgba(15,23,42,0.98) 0%, rgba(8,47,73,0.96) 50%, rgba(2,6,23,0.98) 100%) !important;
-      color: #f8fafc !important;
-      border: 1px solid rgba(34,211,238,0.28) !important;
-      box-shadow: 0 -16px 48px rgba(6,182,212,0.22) !important;
-    }
-    .hub-sheet label, .hub-sheet .text-slate-700, .hub-sheet .text-slate-600, .hub-sheet .text-slate-500 {
-      color: #e2e8f0 !important;
-    }
-    .hub-sheet input, .hub-sheet select, .hub-sheet textarea {
-      background: rgba(255,255,255,0.08) !important;
-      border-color: rgba(255,255,255,0.22) !important;
-      color: #fff !important;
-    }
-    .hub-sheet input::placeholder, .hub-sheet textarea::placeholder { color: rgba(148,163,184,0.85) !important; }
-    .hub-sheet .bg-slate-50, .hub-sheet .bg-white { background: rgba(255,255,255,0.06) !important; }
-    .hub-sheet .text-slate-800, .hub-sheet .text-slate-900 { color: #f8fafc !important; }
-    .hub-header {
-      background: linear-gradient(90deg, #0f172a, #0e7490, #16acbd) !important;
-      border-bottom: 1px solid rgba(255,255,255,0.12);
-    }
-
 
     /* Bulletproof CSS Dual-Class Language Switcher */
     .lang-en { display: none !important; }
@@ -115,18 +1161,6 @@
     .adika-card:active {
       transform: scale(0.98);
     }
-
-    .adika-card .card-title-row { display:flex; align-items:center; justify-content:space-between; gap:4px; min-width:0; }
-    .adika-card .card-title { font-size:10px !important; font-weight:800; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; line-height:1.2; }
-    .adika-card .card-time { font-size:8px !important; color:rgba(148,163,184,0.52) !important; font-weight:600; white-space:nowrap; flex-shrink:0; }
-    .adika-card .card-price {
-      font-size:9px !important; font-weight:800; color:#0e7490;
-      background:rgba(22,172,189,0.10); padding:2px 6px; border-radius:7px;
-      white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis;
-      max-width:78%; line-height:1.2;
-    }
-    #grid { gap: 8px !important; }
-
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -230,42 +1264,38 @@
 
     /* Glass chat bubbles */
     .chat-bubble-user {
-      margin-left: 2rem; padding: 0.75rem 0.9rem; border-radius: 1.05rem 1.05rem 0.35rem 1.05rem;
-      background: linear-gradient(135deg, #0e7490, #14b8a6);
-      color: #fff; box-shadow: 0 10px 28px rgba(6,182,212,0.28);
-      border: 1px solid rgba(255,255,255,0.18);
+      margin-left: 1.5rem; padding: 0.7rem 0.85rem; border-radius: 1rem;
+      background: linear-gradient(135deg, #0d9488, #059669);
+      color: #fff; box-shadow: 0 8px 24px rgba(13, 148, 136, 0.25);
+      border: 1px solid rgba(255,255,255,0.15);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     }
     .chat-bubble-ai {
-      margin-right: 2rem; padding: 0.75rem 0.9rem; border-radius: 1.05rem 1.05rem 1.05rem 0.35rem;
-      background: rgba(15,23,42,0.72);
-      border: 1px solid rgba(34,211,238,0.22);
-      box-shadow: 0 10px 28px rgba(2,6,23,0.35);
-      color: #e2e8f0;
+      margin-right: 1.5rem; padding: 0.7rem 0.85rem; border-radius: 1rem;
+      background: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.45);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      color: #0f172a;
     }
     .chat-input-bar {
-      display: flex; align-items: flex-end; gap: 0.55rem;
-      padding: 0.7rem 0.75rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
-      border-top: 1px solid rgba(34,211,238,0.18);
-      background: rgba(2,6,23,0.88);
-      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      display: flex; align-items: flex-end; gap: 0.4rem;
+      padding: 0.55rem; border-top: 1px solid rgba(226,232,240,0.9);
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     }
     .chat-input-bar textarea {
-      flex: 1; min-height: 48px; max-height: 130px; resize: none;
-      border-radius: 1rem; padding: 0.7rem 0.9rem;
-      font-size: 13px; line-height: 1.45; border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(255,255,255,0.08); color: #f8fafc; outline: none;
+      flex: 1; min-height: 38px; max-height: 110px; resize: none;
+      border-radius: 0.85rem; padding: 0.55rem 0.75rem;
+      font-size: 12px; line-height: 1.4; border: 1px solid #e2e8f0;
+      background: #f8fafc; outline: none;
     }
-    .chat-input-bar textarea::placeholder { color: rgba(226,232,240,0.45); }
-    .chat-input-bar textarea:focus { border-color: #22d3ee; box-shadow: 0 0 0 2px rgba(34,211,238,0.25); }
+    .chat-input-bar textarea:focus { border-color: #14b8a6; box-shadow: 0 0 0 2px rgba(20,184,166,0.2); }
     .chat-send-btn {
-      width: 48px; height: 48px; border-radius: 999px; flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: 999px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #22d3ee, #14b8a6); color: #0f172a;
-      border: none; box-shadow: 0 8px 20px rgba(34,211,238,0.35);
-    }
-    #analysisView .chat-input-sticky {
-      position: relative !important; bottom: auto !important; left: auto !important; right: auto !important;
-      max-width: none !important; margin: 0 !important;
+      background: linear-gradient(135deg, #0d9488, #059669); color: #fff;
+      border: none; box-shadow: 0 4px 12px rgba(13,148,136,0.35);
     }
     .chat-send-btn:active { transform: scale(0.94); }
 
@@ -308,22 +1338,8 @@
     #aiToolsView {
       position: relative; z-index: 1;
       display: flex; flex-direction: column;
-      overflow-y: auto !important;
-      overflow-x: hidden !important;
+      overflow: hidden !important;
     }
-    #opportunityCards {
-      max-height: none !important;
-      overflow: visible !important;
-      padding-bottom: 12px;
-    }
-    #hubToolsDock { flex: 0 0 auto; padding-bottom: 8px; }
-    #hubResultsNav { display: none; }
-    #hubSeniorCta { display: none; }
-    body.hub-results-open #hubToolsDock { display: none !important; }
-    body.hub-results-open #hubResultsNav { display: flex !important; }
-    body.hub-results-open #opportunityCards { display: block !important; }
-    body.hub-results-open #hubSeniorCta { display: none !important; }
-    body.hub-results-open #aiToolsView { overflow: hidden !important; }
     .tools-ambient-wrap { position: relative; overflow: hidden; }
     .tools-ambient-blob {
       position: absolute; width: 11rem; height: 11rem; border-radius: 9999px;
@@ -382,19 +1398,19 @@
       .tools-grid-compact { grid-template-columns: repeat(2, 1fr); }
     }
     .opp-card {
-      border-radius: 0.75rem; padding: 0.5rem 0.6rem;
-      background: linear-gradient(145deg, rgba(15,23,42,0.92), rgba(8,47,73,0.88));
-      border: 1px solid rgba(148,163,184,0.28); color: #e2e8f0;
+      border-radius: 0.65rem; padding: 0.45rem 0.55rem;
+      background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+      border: 1px solid #334155; color: #e2e8f0;
+      box-shadow: 0 4px 12px rgba(2,6,23,0.2);
     }
-    .opp-card .opp-label { font-size: 8px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #67e8f9; }
-    .opp-card .opp-title { font-size: 12px; font-weight: 900; color: #fff; margin-top: 2px; line-height: 1.2; }
-    .opp-card .opp-body { font-size: 10px; color: #cbd5e1; margin-top: 4px; line-height: 1.35; }
+    .opp-card .opp-label { font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .opp-card .opp-title { font-size: 11px; font-weight: 900; color: #fff; margin-top: 1px; line-height: 1.2; }
+    .opp-card .opp-body { font-size: 9px; color: #94a3b8; margin-top: 3px; line-height: 1.35; }
     .opp-card .opp-cta {
-      margin-top: 0.45rem; width: 100%; padding: 0.28rem 0.5rem;
-      border-radius: 0.7rem; font-size: 11px; font-weight: 800; line-height: 1.2;
-      background: rgba(34,211,238,0.25); color: #ecfeff;
-      border: 1px solid rgba(34,211,238,0.4);
-      text-align: center;
+      margin-top: 0.35rem; width: 100%; padding: 0.35rem 0.4rem;
+      border-radius: 0.45rem; font-size: 8px; font-weight: 800; line-height: 1.25;
+      background: linear-gradient(90deg, #0d9488, #0891b2); color: #fff;
+      border: none; text-align: center;
     }
     /* Sticky chat input at absolute bottom of analysis view */
     #analysisView { display: none; flex-direction: column; }
@@ -518,7 +1534,7 @@
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-1.5 pb-32" style="padding-top: 108px; padding-bottom: 140px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5 pb-32" style="padding-top: 118px; padding-bottom: 140px;">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-1 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -526,7 +1542,7 @@
     </div>
 
     <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
-    <div id="homeHero" class="mt-0 mb-1 px-0">
+    <div id="homeHero" class="-mt-2 pt-0 mb-1 px-0">
       <div id="adikaPromoBanner" class="relative w-full h-11 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
            style="margin-top:0; background: rgba(15,23,42,0.90); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                   border: 1.5px solid transparent;
@@ -582,45 +1598,14 @@
             </div>
             <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
-
-          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="contract" data-idx="5" style="opacity:0;pointer-events:none">
-            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(125,211,252,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">📄</span>
-            <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">የሽያጭ ውል</p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">ህጋዊ የመኪናና የቤት ውል በሰከንዶች ያዘጋጁ</p>
-            </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">አስጀምር ➔</span>
-          </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="diag" data-idx="6" style="opacity:0;pointer-events:none">
-            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(52,211,153,0.4),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">📋</span>
-            <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">የምርመራ ወረቀት</p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የጋራዥ ምርመራ ወረቀት ወዲያውኑ ይተንትኑ</p>
-            </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">አስጀምር ➔</span>
-          </div>
-          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="cadastral" data-idx="7" style="opacity:0;pointer-events:none">
-            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(56,189,248,0.4),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">🗺️</span>
-            <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">የዲጂታል ካርታ ማጣሪያ</p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የመሬት ካርታ ፎቶ አስገብተው ያረጋግጡ</p>
-            </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">አስጀምር ➔</span>
-          </div>
         </div>
 
-        <div id="promoDots" class="absolute bottom-1 right-2 flex gap-1 z-10">
+        id="promoDots" class="absolute bottom-1 right-2 flex gap-1 z-10">
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/90 transition-all" data-i="0"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="1"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="2"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="3"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="4"></span>
-          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="5"></span>
-          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="6"></span>
-          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="7"></span>
         </div>
       </div>
       <div class="hidden">
@@ -639,128 +1624,52 @@
     <div id="status" class="text-center py-2 text-slate-600 font-semibold text-xs" style="display:none;"></div>
 
     <!-- 2-Column Grid — STATIC DEMO CARDS so UI never blank even if JS fails -->
-    <div id="grid" class="grid grid-cols-2 gap-2"></div>
+    <div id="grid" class="grid grid-cols-2 gap-2.5">
+      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🚗</div>
+        <div style="padding:8px 10px;">
+          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">Toyota Vitz ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
+          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 1,850,000 ETB</div>
+        </div>
+      </div>
+      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🚗</div>
+        <div style="padding:8px 10px;">
+          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">Hyundai Tucson ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
+          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 4,200,000 ETB</div>
+        </div>
+      </div>
+      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🏠</div>
+        <div style="padding:8px 10px;">
+          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">አፓርታማ ቦሌ ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
+          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 6,500,000 ETB</div>
+        </div>
+      </div>
+      <div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">🏠</div>
+        <div style="padding:8px 10px;">
+          <div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">መሬት አዲስ ከተማ ✓</div><div style="font-size:10px;color:#64748b;">now</div></div>
+          <div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 ለዋጋ ደውሉ</div>
+        </div>
+      </div>
+    </div>
     <script>
     (function(){
-      function money(v){
-        var n = Number(String(v||"").replace(/[^\d.]/g,""));
-        if(!n || n<=0 || n>300000000) return "ለዋጋ ደውሉ";
-        return Math.round(n).toLocaleString("en-US") + " ETB";
-      }
-      function photoOf(it){
-        var p = (it&&(it.photo_urls||it.photos||it.listing_photos||it.image_url||it.image||it.photo)) || "";
-        if(Array.isArray(p)) p = p[0]||"";
-        if(p && typeof p==="object") p = p.url||p.src||"";
-        if(typeof p==="string" && p.charAt(0)==="["){ try{ p=JSON.parse(p)[0]||""; }catch(e){} }
-        p = String(p||"").trim();
-        if(!p || p==="null") return "";
-        return p;
-      }
-      function titleOf(it){
-        var t=[it.brand,it.model].filter(Boolean).join(" ").trim();
-        if(t) return t;
-        return it.sub_category||it.title||it.category||it.main_category||"ማስታወቂያ";
-      }
-      function isHouse(it){
-        var c=String(it.main_category||it.category||"");
-        return c.indexOf("ቤት")>=0 || /house|property|real/i.test(c);
-      }
-      function pick(d){
-        if(!d) return [];
-        if(Array.isArray(d)) return d;
-        var keys=["items","listings","results"];
-        for(var i=0;i<keys.length;i++){ if(Array.isArray(d[keys[i]])) return d[keys[i]]; }
-        if(d.data){
-          if(Array.isArray(d.data)) return d.data;
-          for(var j=0;j<keys.length;j++){ if(Array.isArray(d.data[keys[j]])) return d.data[keys[j]]; }
-        }
-        return [];
-      }
-      function ago(s){
-        if(!s) return "";
-        var d=new Date(s); if(isNaN(d.getTime())) return "";
-        var sec=Math.max(0,Math.floor((Date.now()-d.getTime())/1000));
-        if(sec<60) return "now";
-        if(sec<3600) return Math.floor(sec/60)+"m ago";
-        if(sec<86400) return Math.floor(sec/3600)+"h ago";
-        return Math.floor(sec/86400)+"d ago";
-      }
-      function viewsOf(it){
-        var v=Number(it.view_count||it.views_count||0);
-        if(v>0) return v;
-        var id=String(it.id||it.title||"x");
-        var h=0; for(var i=0;i<id.length;i++) h=((h<<5)-h)+id.charCodeAt(i);
-        return Math.abs(h%87)+12;
-      }
-      function isBuyItem(it){
-        var t=((it&&it.req_type)||"")+" "+((it&&it.action_type)||"")+" "+((it&&it.listing_type)||"");
-        return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t);
-      }
-      function paint(items){
-        var g=document.getElementById("grid");
-        if(!g) return;
-        items = items || [];
-        if(window.__adikaIsBuy) items = items.filter(isBuyItem);
-        else items = items.filter(function(it){ return !isBuyItem(it); });
-        if(!items.length){
-          g.innerHTML = window.__adikaIsBuy
-            ? '<div style="grid-column:1/-1;padding:28px 12px;text-align:center;color:#475569;font-weight:800;">📋 የፈላጊ ጥያቄ አልተገኘም</div>'
-            : '';
-          window.__adikaLiveItems = [];
-          return;
-        }
-        if(window.__adikaCreateCard){
-          g.innerHTML="";
-          items.forEach(function(it){ try{ g.appendChild(window.__adikaCreateCard(it)); }catch(e){} });
-          window.__adikaLiveItems = items;
-          return;
-        }
-        var html="";
-        for(var i=0;i<items.length;i++){
-          var it=items[i]||{};
-          var src=photoOf(it);
-          var icon=isHouse(it)?"🏠":"🚗";
-          var img=src?('<img src="'+String(src).replace(/"/g,"")+'" style="width:100%;height:100%;object-fit:cover;filter:contrast(108%) brightness(102%) saturate(110%);" onerror="this.style.display=\'none\'" />'):("");
-          var views=viewsOf(it);
-          var time=ago(it.created_at||it.posted_at||it.date);
-          html += '<button type="button" class="adika-card" data-live="1" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 20px rgba(15,23,42,0.08);text-align:left;border:1px solid rgba(226,232,240,0.8);">'+
-            '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);position:relative;overflow:hidden;">'+
-              '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;">'+icon+'</div>'+img+
-              '<span class="adika-live-dot" style="position:absolute;top:8px;left:8px;z-index:2;"></span>'+
-              '<span class="adika-view-chip" style="position:absolute;bottom:8px;left:8px;z-index:2;">👁 '+views+'</span>'+
-            '</div>'+
-            '<div style="padding:7px 8px 8px;">'+
-              '<div class="card-title-row">'+
-                '<div class="card-title">'+titleOf(it)+' <span style="color:#10b981;">✓</span></div>'+
-                '<div class="card-time">'+time+'</div>'+
-              '</div>'+
-              '<div style="margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:4px;">'+
-                '<div class="card-price">💰 '+money(it.price)+'</div>'+
-                '<span class="card-fav-btn" data-id="'+String(it.id||"")+'" style="font-size:16px;line-height:1;">🤍</span>'+
-              '</div>'+
-            '</div></button>';
-        }
-        g.innerHTML = html;
-        window.__adikaLiveItems = items;
-      }
-      window.__adikaPaintListings = paint;
-      function tryFetch(urls, i){
-        if(i>=urls.length) return;
-        fetch(urls[i], {credentials:"same-origin"})
-          .then(function(r){ return r.json(); })
-          .then(function(d){
-            var items=pick(d);
-            if(items.length) paint(items);
-            else tryFetch(urls, i+1);
-          })
-          .catch(function(){ tryFetch(urls, i+1); });
-      }
-      var qs="page=1&limit=40&order=DESC&active_only=1&type=SELL";
-      tryFetch(["/api/listings?"+qs, "/api/explorer/listings?"+qs], 0);
+      // Independent of main app JS — keep cards visible if main script crashes
+      try {
+        var s = document.getElementById("status");
+        if (s) { s.style.display = "none"; s.innerHTML = ""; }
+      } catch (e) {}
+      window.__adikaShowDemo = function(){
+        var g = document.getElementById("grid");
+        if (!g || (g.children && g.children.length > 0)) return;
+        g.innerHTML = document.getElementById("grid").innerHTML;
+      };
     })();
     </script>
 
-        <!-- Load More -->
+    <!-- Load More -->
     <div class="text-center mt-3.5 mb-2">
       <button id="more" type="button"
         class="hidden px-5 py-2 rounded-full bg-white text-[#16acbd] font-extrabold text-xs shadow-md border border-white/60 active:scale-95 transition-all">
@@ -833,56 +1742,36 @@
   </nav>
 
 
-
-  <div id="inboxView" class="fixed inset-0 z-[275] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
-    <div class="shrink-0 px-3 py-2.5 flex items-center justify-between text-white" style="background:linear-gradient(90deg,#0e7490,#16acbd);">
-      <button type="button" id="inboxBackBtn" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">← ተመለስ</button>
-      <div class="font-black text-sm truncate">መልእክት</div>
-      <button type="button" id="inboxCloseBtn" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
-    </div>
-    <div id="inboxThreadList" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
-    <div id="inboxThreadPane" class="hidden flex-1 flex flex-col min-h-0">
-      <div id="inboxThreadMeta" class="px-3 py-2 text-[11px] font-bold text-slate-600 border-b bg-white/80"></div>
-      <div id="inboxThreadLog" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
-      <div class="shrink-0 p-2.5 bg-white border-t flex gap-2">
-        <textarea id="inboxCompose" rows="1" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" placeholder="መልእክት ይጻፉ..."></textarea>
-        <button type="button" id="inboxSendBtn" class="px-4 rounded-xl bg-[#16acbd] text-white font-black text-sm">ላክ</button>
-      </div>
-    </div>
-  </div>
-
   <!-- DEDICATED LIVE ADVISOR CHAT (full-screen view state) -->
-  <div id="analysisView" class="fixed inset-0 z-[280] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(165deg,#020617 0%,#0b3a4a 55%,#021016 100%);">
-    <div class="shrink-0 px-3 py-2.5 text-white flex items-center justify-between" style="background:linear-gradient(90deg,#020617,#0e7490,#16acbd);border-bottom:1px solid rgba(255,255,255,0.12);">
+  <div id="analysisView" class="fixed inset-0 z-[240] bg-[#b5eff3] hidden flex-col max-w-md mx-auto w-full">
+    <div class="shrink-0 px-3 py-2 bg-[#16acbd] text-white flex items-center justify-between shadow-md">
       <div class="flex items-center gap-2 min-w-0">
-        <button id="analysisBackBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-bold">← ሀብ</button>
-        <button id="analysisHomeBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[10px] font-bold">🏠 ዋና ገፅ</button>
+        <button id="analysisBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-bold">← ተመለስ</button>
         <div class="min-w-0 flex-1">
-          <div class="font-black text-xs truncate">አዲካ ዲጂታል አማካሪ</div>
-          <div class="text-[10px] text-cyan-100/85 truncate">Adika Digital System · Live Desk</div>
+          <div class="font-black text-xs truncate">Adika Senior Financial Advisor</div>
+          <div class="text-[10px] text-white/85 truncate">Live Advisor Chat</div>
         </div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
-        <span class="text-[9px] font-extrabold text-emerald-200 bg-emerald-400/15 px-2 py-0.5 rounded-full border border-emerald-300/30">ዝግጁ</span>
-        <button id="analysisCloseBtn" type="button" class="w-8 h-8 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-bold text-sm">✕</button>
+        <span class="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">ዝግጁ</span>
+        <button type="button" onclick="navigateBack('analysisView')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
       </div>
     </div>
-    <div class="chat-shell flex-1 flex flex-col min-h-0 relative overflow-hidden">
-      <div class="absolute top-8 left-6 w-40 h-40 rounded-full pointer-events-none" style="background:rgba(34,211,238,0.16);filter:blur(40px);"></div>
-      <div class="absolute bottom-16 right-4 w-36 h-36 rounded-full pointer-events-none" style="background:rgba(99,102,241,0.16);filter:blur(40px);"></div>
-      <div class="px-3 pt-3 pb-1 shrink-0 relative z-10">
-        <div class="rounded-2xl px-3 py-2 flex items-center justify-between" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.22);">
-          <div class="text-[11px] font-black text-white flex items-center gap-1.5">
-            <span>💬</span><span>የቀጥታ የፋይናንስ ውይይት</span>
+    <div class="chat-shell flex-1 flex flex-col min-h-0 bg-slate-50/70">
+      <div class="px-3 pt-2 pb-1 shrink-0">
+        <div class="rounded-xl px-3 py-1.5 bg-slate-900/80 text-white flex items-center justify-between">
+          <div class="text-[11px] font-black flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+            <span>የቀጥታ ውይይት</span>
           </div>
-          <span class="text-[9px] font-bold text-cyan-300">ፈጣን ምላሽ</span>
+          <span class="text-[9px] font-bold text-emerald-300">ፈጣን ምላሽ</span>
         </div>
       </div>
-      <div id="advisorChatLog" class="flex-1 overflow-y-auto px-3 pt-3 pb-3 space-y-2.5 text-xs scroll-smooth relative z-10"></div>
-      <div class="chat-input-bar relative z-20 shrink-0">
-        <textarea id="advisorChatInput" rows="2" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር በአማርኛ ይጠይቁ..."></textarea>
+      <div id="advisorChatLog" class="flex-1 overflow-y-auto px-3 pt-2 space-y-2.5 text-xs scroll-smooth"></div>
+      <div class="chat-input-sticky chat-input-bar">
+        <textarea id="advisorChatInput" rows="1" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር ይጠይቁ..."></textarea>
         <button id="advisorChatSend" type="button" class="chat-send-btn" aria-label="Send">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
         </button>
       </div>
     </div>
@@ -898,9 +1787,9 @@
       <div class="px-2.5 py-1.5 text-white flex flex-col gap-1 shrink-0 border-b border-white/20"
            style="background:rgba(255,255,255,0.06);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
         <div class="flex items-center justify-between gap-2">
-          <button type="button" id="aiHubBackBtn"
+          <button type="button" id="aiHubBackBtn" onclick="(function(){try{document.getElementById('aiModalClose').onclick();}catch(e){var m=document.getElementById('aiModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}var n=document.getElementById('adikaBottomNav');var f=document.getElementById('fabBtn');if(n)n.style.display='';if(f)f.style.display='';}})()"
             class="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white text-sm font-semibold transition-all active:scale-95 shrink-0">
-            ← <span class="lang-am">ተመለስ</span><span class="lang-en">Back</span>
+            ← <span class="lang-am">ወደ ዋና ገፅ</span><span class="lang-en">Home</span>
           </button>
           <h3 class="font-extrabold text-sm tracking-wide text-white drop-shadow-md text-center flex-1 truncate">
             Adika Digital Hub 🛠️
@@ -924,7 +1813,7 @@
       </div>
 
       <!-- Tab 1: AI Tools Hub -->
-      <div id="aiToolsView" class="flex-1 flex flex-col h-full max-h-full p-3 overflow-y-auto tools-ambient-wrap" style="background:transparent;">
+      <div id="aiToolsView" class="flex-1 flex flex-col h-full max-h-full justify-between p-3 overflow-hidden tools-ambient-wrap" style="background:transparent;">
         <div class="tools-ambient-blob cyan"></div>
         <div class="tools-ambient-blob indigo"></div>
         <!-- Smart Budget & Purchase Advisor -->
@@ -969,26 +1858,25 @@
             <span>የኢንቨስትመንት አማራጮች አሳይ</span>
           </button>
 
-
           <!-- 3 Investment Opportunity Cards -->
           <div id="opportunityCards" class="hidden space-y-1.5">
             <div class="opp-card" data-opp="auto">
               <div class="opp-label text-amber-400">A · Automotive</div>
               <div class="opp-title">ተሽከርካሪ + የባንክ ብድር</div>
               <div id="oppAutoBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="auto" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'auto',optionType:'Automotive'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና →</button>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="auto" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'auto',optionType:'Automotive'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="property">
               <div class="opp-label text-sky-400">B · Real Estate</div>
               <div class="opp-title">ሪል እስቴት · ቅድመ ክፍያ</div>
               <div id="oppPropBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="property" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'property',optionType:'Real Estate'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና →</button>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="property" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'property',optionType:'Real Estate'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
             <div class="opp-card" data-opp="roi">
               <div class="opp-label text-emerald-400">C · Business ROI</div>
               <div class="opp-title">ንግድ / Startup · ዓመታዊ ROI</div>
               <div id="oppRoiBody" class="opp-body">ከበጀት ቀመር እየተሰላ…</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="roi" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'roi',optionType:'Business'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና →</button>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="roi" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'roi',optionType:'Business'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና ከ Adika ዲጂታል አማካሪ Live Chat ያድርጉ →</button>
             </div>
           </div>
 
@@ -1030,13 +1918,13 @@
           </div>
         </div>
 
-        <!-- Tools Grid + Finance Banner -->
-        <div id="hubToolsDock" class="flex flex-col shrink-0">
+        <!-- Tools Grid + Finance Banner (no extra bottom pad — banner must stay on-screen) -->
+        <div class="flex-1 flex flex-col min-h-0 justify-between">
           <h4 class="text-[10px] font-extrabold text-white drop-shadow-md mb-1.5 shrink-0">
             <span class="lang-am">ተጨማሪ የፋይናንስና የህግ መሳሪያዎች</span>
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
           </h4>
-          <div id="hubToolsGrid" class="tools-grid-compact text-xs shrink min-h-0">
+          <div class="tools-grid-compact text-xs shrink min-h-0">
             <button id="toolDutyBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.0s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
               <span class="tool-title">የቀረጥ ስሌት</span>
@@ -1083,7 +1971,7 @@
             class="w-full bg-gradient-to-r from-cyan-500/20 via-slate-900/60 to-indigo-500/20 backdrop-blur-2xl border border-cyan-400/50 rounded-2xl p-3 mt-2 flex items-center justify-between shadow-lg shadow-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer relative z-10 shrink-0">
             <div class="min-w-0 text-left pr-2">
               <div class="text-white font-extrabold text-[12px] leading-tight drop-shadow-md">💡 ዲጂታል የፋይናንስ አማካሪ</div>
-              <div class="text-cyan-300 text-[10px] font-semibold drop-shadow-[0_0_8px_rgba(34,211,238,0.45)] mt-0.5">Adika Senior Digital Financial Advisor</div>
+              <div class="text-cyan-300 text-[10px] font-semibold drop-shadow-[0_0_8px_rgba(34,211,238,0.45)] mt-0.5">Adika AI Financial Advisor</div>
             </div>
             <span class="bg-cyan-400 text-slate-950 px-3 py-1.5 rounded-xl font-bold text-xs shrink-0 shadow-md shadow-cyan-400/30">አሁኑኑ አማክር →</span>
           </button>
@@ -1092,7 +1980,7 @@
 
       <!-- Smart Search glass overlay (sits on Tools Hub; Back/X only close this panel) -->
       <div id="aiSearchView" class="absolute inset-0 z-30 items-end sm:items-center justify-center p-0 sm:p-4"
-           style="display:none;pointer-events:auto;background:rgba(2,6,23,0.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);">
+           style="display:none;pointer-events:none;background:rgba(2,6,23,0.50);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);">
         <div class="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 transition-all shadow-[0_10px_40px_rgba(6,182,212,0.2)] border border-white/30"
              style="background:rgba(255,255,255,0.15);backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);">
           <div class="flex items-center justify-between gap-2 mb-4">
@@ -1101,7 +1989,7 @@
               ← <span class="lang-am">መመለስ</span><span class="lang-en">Back</span>
             </button>
             <h3 class="text-cyan-300 font-bold text-sm drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] text-center flex-1">
-              🔍 ዲጂታል ፍለጋ
+              🔍 AI Smart Search
             </h3>
             <button type="button" id="aiSearchCloseBtn"
               class="bg-white/20 hover:bg-white/30 text-white rounded-full p-1.5 border border-white/30 w-8 h-8 flex items-center justify-center active:scale-95">
@@ -1163,24 +2051,24 @@
   <!-- ================================================================= -->
   <!-- 5. BOTTOM-SHEET DETAIL MODAL WITH DYNAMIC ACTION BUTTONS          -->
   <!-- ================================================================= -->
-  <div id="modalOverlay" class="fixed inset-0 z-[270] bg-slate-950/70 backdrop-blur-md hidden items-stretch justify-center">
+  <div id="modalOverlay" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div id="modalSheet"
-      class="w-full max-w-md h-full bg-[#f3fbfc] flex flex-col shadow-2xl overflow-hidden">
+      class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
 
-      <div class="px-3 py-2.5 text-white flex items-center justify-between shrink-0 gap-2" style="background:linear-gradient(90deg,#0e7490,#16acbd);">
+      <div class="px-3 py-2 bg-white border-b border-slate-100 flex items-center justify-between shrink-0 gap-2">
         <div class="flex items-center gap-1.5 min-w-0">
-          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] shrink-0">← ተመለስ</button>
-          <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-bold truncate">Property</span>
-          <span id="modalIdBadge" class="text-[10px] text-cyan-100 font-semibold shrink-0">#ADK-</span>
+          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] shrink-0">← ተመለስ</button>
+          <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-[#16acbd]/10 text-[#0e7490] text-[10px] font-bold truncate">Property</span>
+          <span id="modalIdBadge" class="text-[10px] text-slate-400 font-semibold shrink-0">#ADK-</span>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
-          <button id="modalFavBtn" type="button" class="w-8 h-8 rounded-full bg-white/15 text-white font-bold flex items-center justify-center text-sm">♡</button>
-          <button id="modalClose" type="button" class="w-8 h-8 rounded-full bg-slate-900/80 text-white font-bold flex items-center justify-center text-sm" aria-label="Close">✕</button>
+          <button id="modalFavBtn" type="button" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-rose-500 font-bold flex items-center justify-center text-sm">❤️</button>
+          <button id="modalClose" type="button" class="w-7 h-7 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-sm shadow-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
-      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3 space-y-3 pb-24">
-        <div id="modalMediaContainer" class="w-full aspect-[16/10] rounded-2xl overflow-hidden bg-slate-200 relative shadow-sm"></div>
+      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-4 space-y-3.5 pb-2">
+        <div id="modalMediaContainer" class="w-full aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 relative"></div>
 
         <div>
           <div class="flex items-center gap-1">
@@ -1238,12 +2126,10 @@
           <span class="lang-am">ደውል</span>
           <span class="lang-en">Call</span>
         </a>
-        <button id="modalChatBtn" type="button"
+        <a id="modalChatBtn" href="#"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
-          <span>💬</span>
-          <span class="lang-am">መልእክት</span>
-          <span class="lang-en">Message</span>
-        </button>
+          <span>💬</span> <span>Telegram</span>
+        </a>
         <button id="modalShareBtn" type="button"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
           <span>🔗</span>
@@ -1259,9 +2145,9 @@
   <!-- ================================================================= -->
 
   <!-- Modal: Customs Duty Calculator -->
-  <div id="dutyModal" class="fixed inset-0 z-[260] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
-    <div class="hub-sheet w-full max-w-md rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden">
-      <div class="hub-header px-4 py-3 text-white flex items-center justify-between shrink-0">
+  <div id="dutyModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🧮 የኢትዮጵያ ጉምሩክ የቀረጥ ስሌት (Duty Calculator)</h3>
 <div class="flex items-center gap-1 shrink-0">
           <button type="button" onclick="navigateBack('dutyModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
@@ -1295,9 +2181,9 @@
   </div>
 
   <!-- Modal: Bank Loan & Mortgage -->
-  <div id="loanModal" class="fixed inset-0 z-[260] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
-    <div class="hub-sheet w-full max-w-md rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden">
-      <div class="hub-header px-4 py-3 text-white flex items-center justify-between shrink-0">
+  <div id="loanModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🏦 የባንክ ብድርና ወርሃዊ ክፍያ (Bank Loan)</h3>
 <div class="flex items-center gap-1 shrink-0">
           <button type="button" onclick="navigateBack('loanModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
@@ -1327,9 +2213,9 @@
   </div>
 
   <!-- Modal: Executive Institutional Comparison Dashboard -->
-  <div id="compareModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-      <div class="px-3 py-2.5 bg-gradient-to-r from-slate-950 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
+  <div id="compareModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-slate-950 rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-800">
+      <div class="px-3 py-2.5 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
         <div class="min-w-0">
           <div class="text-[9px] font-bold tracking-wide uppercase text-amber-400/90">Adika Institutional Analytics</div>
           <h3 class="font-black text-xs tracking-wide truncate">Comparison Engine</h3>
@@ -1431,7 +2317,7 @@
   </div>
 
   <!-- Modal: Legal Contract Generator -->
-  <div id="contractModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="contractModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ ውል ማዘጋጃ (Contract Wizard)</h3>
@@ -1668,8 +2554,8 @@
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
-  <div id="poaModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+  <div id="poaModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3.5 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0 shadow-sm">
         <div class="flex items-center gap-2 min-w-0">
           <div class="w-8 h-8 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-base shadow-inner shrink-0">📄</div>
@@ -1688,16 +2574,23 @@
         </div>
       </div>
 
-      <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs" style="background:linear-gradient(180deg,#0b3a4a,#021016);">
-        <label class="block cursor-pointer">
-          <div class="rounded-2xl border-2 border-dashed border-cyan-400/40 p-7 text-center active:scale-[0.99] transition" style="background:linear-gradient(180deg,rgba(8,47,73,0.55),rgba(2,6,23,0.75));">
-            <div class="mx-auto w-14 h-14 rounded-2xl bg-cyan-400/15 border border-cyan-300/30 flex items-center justify-center text-2xl mb-3">📷</div>
-            <div class="font-black text-white text-sm drop-shadow-md">የውክልናውን ፎቶ ያስገቡ</div>
-            <div class="text-[10px] text-cyan-100/80 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ከጋለሪ ይምረጡ ወይም ፎቶ ያንሱ</div>
-          </div>
-          <input id="poaImageFile" type="file" accept="image/*,application/pdf" class="hidden" />
-        </label>
-        <p class="text-[10px] text-cyan-100/60 leading-snug text-center">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
+      <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs bg-[#f8fafc]">
+        <div class="p-2.5 rounded-2xl bg-white border border-[#16acbd]/25 shadow-xs flex items-start gap-2.5 text-[11px] text-slate-600">
+          <span class="text-base shrink-0 mt-0.5">📱</span>
+          <div class="leading-snug">የውክልና ሰነዱን ፎቶ ይጭኑ። በአዲካ ዲጂታል ሲስተም ይመረመራል። ዲጂታል ምዝገባ የሌለው የቆየ ሰነድ በአካል ቢሮ ማረጋገጥ ያስፈልጋል።</div>
+        </div>
+
+        <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
+          <label class="block cursor-pointer">
+            <div class="rounded-2xl border-2 border-dashed border-[#16acbd]/50 bg-gradient-to-br from-slate-50 to-cyan-50/50 p-6 text-center active:scale-[0.99] transition">
+              <div class="text-3xl mb-2">📷</div>
+              <div class="font-black text-slate-800 text-sm">የውክልናውን ፎቶ ያስገቡ</div>
+              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">ከጋለሪ ይምረጡ ወይም ፎቶ ያንሱ — በ Adika Digital System ይመረመራል</div>
+            </div>
+            <input id="poaImageFile" type="file" accept="image/*,application/pdf" class="hidden" />
+          </label>
+          <p class="text-[10px] text-slate-400 leading-snug text-center">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
+        </div>
 
         <div id="poaScanBusy" class="hidden p-3 text-center text-[11px] text-slate-500 bg-white rounded-xl border border-slate-100">
           ⏳ በአዲካ ዲጂታል ሲስተም እየተመረመረ ነው…
@@ -1710,8 +2603,8 @@
   <!-- Modal: Diagnostic Sheet Analyzer -->
 
   <!-- Modal: Digital Cadastral Map Verifier (Adika Digital System) -->
-  <div id="landMapModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+  <div id="landMapModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="min-w-0">
           <div class="font-black text-xs tracking-tight">🛡️ የዲጂታል ካርታ ማጣሪያ</div>
@@ -1727,10 +2620,10 @@
       <div class="p-4 overflow-y-auto flex-1 space-y-3 text-xs">
         <div id="landMapUploadPanel" class="space-y-3">
           <label class="block cursor-pointer">
-            <div class="rounded-2xl border-2 border-dashed border-cyan-400/40 bg-white/5 p-7 text-center active:scale-[0.99] transition" style="background:linear-gradient(180deg,rgba(8,47,73,0.55),rgba(2,6,23,0.75));">
-              <div class="mx-auto w-14 h-14 rounded-2xl bg-cyan-400/15 border border-cyan-300/30 flex items-center justify-center text-2xl mb-3">📷</div>
-              <div class="font-black text-white text-sm drop-shadow-md">የካርታውን ፎቶ ያስገቡ</div>
-              <div class="text-[10px] text-cyan-100/80 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
+            <div class="rounded-2xl border-2 border-dashed border-[#1e73be]/50 bg-gradient-to-br from-slate-50 to-blue-50/50 p-6 text-center active:scale-[0.99] transition">
+              <div class="text-3xl mb-2">📷</div>
+              <div class="font-black text-slate-800 text-sm">የካርታውን ፎቶ ያስገቡ</div>
+              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
             </div>
             <input id="landMapFile" type="file" accept="image/*" class="hidden" />
           </label>
@@ -1785,8 +2678,8 @@
     </div>
   </div>
 
-  <div id="diagModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+  <div id="diagModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🛠️ የምርመራ ወረቀት ተንታኝ (Diagnostic Analyzer)</h3>
 <div class="flex items-center gap-1 shrink-0">
@@ -1813,8 +2706,8 @@
   </div>
 
   <!-- Modal: Chassis & VIN Verification Tool -->
-  <div id="chassisModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+  <div id="chassisModal" class="fixed inset-0 z-[210] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="flex items-center gap-1.5">
           <span class="text-base">🛡️</span>
@@ -1836,7 +2729,7 @@
             <span class="lang-en">Enter 17-Digit Chassis / VIN Number</span>
           </label>
           <div class="relative">
-            <input id="chassisInput" type="text" placeholder="ለምሳሌ፡ JTDKB20U... (17 Digits)" class="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/25 focus:ring-2 focus:ring-cyan-400 outline-none text-xs font-mono uppercase font-black tracking-wider text-white placeholder-white/40" />
+            <input id="chassisInput" type="text" placeholder="ለምሳሌ፡ JTDKB20U... (17 Digits)" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-mono uppercase font-black tracking-wider text-slate-800" />
           </div>
           
           <!-- Sample Test Chips -->
@@ -1846,10 +2739,10 @@
               <span class="lang-en">Sample VINs:</span>
             </span>
             <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-              <button type="button" class="vin-sample-chip px-2.5 py-1.5 rounded-lg bg-white/12 hover:bg-cyan-400/25 text-[10px] font-bold text-white border border-white/30 transition-all shrink-0" data-vin="JTDKB20U00189342">Toyota Vitz (Japan)</button>
-              <button type="button" class="vin-sample-chip px-2.5 py-1.5 rounded-lg bg-white/12 hover:bg-cyan-400/25 text-[10px] font-bold text-white border border-white/30 transition-all shrink-0" data-vin="KMHD381CBKU782910">Hyundai Tucson (Korea)</button>
-              <button type="button" class="vin-sample-chip px-2.5 py-1.5 rounded-lg bg-white/12 hover:bg-cyan-400/25 text-[10px] font-bold text-white border border-white/30 transition-all shrink-0" data-vin="LGXC12480PA093821">BYD Song Plus (EV)</button>
-              <button type="button" class="vin-sample-chip px-2.5 py-1.5 rounded-lg bg-white/12 hover:bg-cyan-400/25 text-[10px] font-bold text-white border border-white/30 transition-all shrink-0" data-vin="MA3FBE41S00123984">Suzuki Dzire (Auto)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="JTDKB20U00189342">Toyota Vitz (Japan)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="KMHD381CBKU782910">Hyundai Tucson (Korea)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="LGXC12480PA093821">BYD Song Plus (EV)</button>
+              <button type="button" class="vin-sample-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-[#16acbd]/10 hover:text-[#0e7490] text-[10px] font-bold text-slate-600 border border-slate-200 transition-all shrink-0" data-vin="MA3FBE41S00123984">Suzuki Dzire (Auto)</button>
             </div>
           </div>
         </div>
@@ -1860,8 +2753,8 @@
 
         <div id="chassisResult" class="hidden font-medium"></div>
       </div>
-      <div class="p-2.5 border-t border-white/10 shrink-0">
-        <button type="button" onclick="navigateBack('chassisModal')" class="w-full py-2.5 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-xs active:scale-[0.98]">
+      <div class="p-2.5 border-t border-slate-100 bg-white shrink-0">
+        <button type="button" onclick="navigateBack('chassisModal')" class="w-full py-2.5 rounded-xl bg-slate-800 text-white font-bold text-xs active:scale-[0.98]">
           ← ተመለስ
         </button>
       </div>
@@ -1941,15 +2834,6 @@
 
 <script>
   (function () {
-    var memoryStore = window.memoryStore || {};
-    window.memoryStore = memoryStore;
-    var __mem = memoryStore;
-    window.__mem = memoryStore;
-    window._lsGet = function(k){ return memoryStore[k] != null ? memoryStore[k] : null; };
-    window._lsSet = function(k,v){ memoryStore[k] = String(v); };
-    window._lsDel = function(k){ delete memoryStore[k]; };
-    var _lsGet = window._lsGet, _lsSet = window._lsSet, _lsDel = window._lsDel;
-
     var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
     if (tg) {
       try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
@@ -1957,14 +2841,14 @@
 
     var favorites = {};
     try {
-      favorites = JSON.parse(_lsGet('adika_favs') || '{}');
+      favorites = JSON.parse(localStorage.getItem('adika_favs') || '{}');
     } catch(e) {}
 
     function toggleFav(id) {
       var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
-      try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
+      try { localStorage.setItem('adika_favs', JSON.stringify(favorites)); } catch(e){}
       renderFavoritesUI();
       // Persist bookmark for price-drop alerts (Telegram chat_id)
       try {
@@ -2019,26 +2903,26 @@
           brand: bm.brand || ""
         };
         var hist = [];
-        try { hist = JSON.parse(_lsGet("viewHistory") || "[]"); } catch (e) { hist = []; }
+        try { hist = JSON.parse(localStorage.getItem("viewHistory") || "[]"); } catch (e) { hist = []; }
         if (!Array.isArray(hist)) hist = [];
         hist = hist.filter(function(h) { return String(h.id) !== String(entry.id); });
         hist.unshift(entry);
         hist = hist.slice(0, 3);
-        _lsSet("viewHistory", JSON.stringify(hist));
+        localStorage.setItem("viewHistory", JSON.stringify(hist));
         // Zero-cost intent key (last 3 categories + prices)
         try {
           var intent = hist.map(function(h) {
             return { category: h.category || "", price: h.price || 0, model: h.model || "", brand: h.brand || "" };
           });
-          _lsSet("adik_user_intent", JSON.stringify(intent));
+          localStorage.setItem("adik_user_intent", JSON.stringify(intent));
         } catch (e2) {}
       } catch (e) {}
     }
     function getViewHistory() {
       try {
-        var hist = JSON.parse(_lsGet("viewHistory") || "[]");
+        var hist = JSON.parse(localStorage.getItem("viewHistory") || "[]");
         if (!Array.isArray(hist) || !hist.length) {
-          hist = JSON.parse(_lsGet("adik_user_intent") || "[]");
+          hist = JSON.parse(localStorage.getItem("adik_user_intent") || "[]");
         }
         return Array.isArray(hist) ? hist : [];
       } catch (e) { return []; }
@@ -2183,7 +3067,8 @@
       } catch (e) {}
     }
 
-    // Do not paint hardcoded demo cars. Real listings come from /api/listings.
+    // Paint demo cards IMMEDIATELY — before any network call
+    try { renderFallbackCards(DEMO_LISTINGS); } catch (e) { console.error("[Adika] fallback render", e); }
 
     var moreBtn = document.getElementById("more");
     var tabSell = document.getElementById("tabSell");
@@ -2225,7 +3110,7 @@
     // BULLETPROOF CSS DUAL-CLASS LANGUAGE SWITCHER
     // =================================================================
     function setLanguage(lang) {
-      _lsSet('adika_lang', lang);
+      localStorage.setItem('adika_lang', lang);
       if (lang === 'en') {
         document.body.classList.add('lang-en-active');
         langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
@@ -2242,7 +3127,7 @@
     langAmBtn.onclick = function() { setLanguage('am'); };
     langEnBtn.onclick = function() { setLanguage('en'); };
 
-    var initialLang = _lsGet('adika_lang') || 'am';
+    var initialLang = localStorage.getItem('adika_lang') || 'am';
     setLanguage(initialLang);
 
     function esc(s) {
@@ -2437,23 +3322,24 @@
       card.className = "adika-card cursor-pointer";
       card.innerHTML =
         '<div class="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">' +
-          '<div class="adika-live-dot absolute top-2 left-2 z-10"></div>' +
+          '<div class="absolute top-2 left-2 z-10 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>' +
           (hasChassis ? '<span class="absolute top-2 right-2 z-10 bg-emerald-700/90 text-white backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] font-black flex items-center gap-0.5 shadow-sm"><span>🛡️</span><span>ሻሲ ✓</span></span>' : '') +
           media +
-          '<span class="adika-view-chip absolute bottom-1.5 left-1.5 z-10">👁 ' + esc(views || Math.abs(String(item.id||'x').length*13%87)+12) + '</span>' +
+          (views ? '<span class="absolute bottom-1.5 left-1.5 z-10 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] text-white font-bold">👁️ ' + esc(views) + '</span>' : '') +
         '</div>' +
         '<div class="px-2 py-1.5 flex flex-col gap-1">' +
           /* Top row: Brand-Model left | time right */
-          '<div class="card-title-row">' +
-            '<div class="card-title flex items-center gap-0.5">' +
+          '<div class="flex items-center justify-between gap-1.5 min-w-0">' +
+            '<div class="font-extrabold text-[11px] text-slate-800 truncate min-w-0 flex items-center gap-0.5">' +
               '<span class="truncate lang-am">' + esc(cardTitleAm) + '</span>' +
               '<span class="truncate lang-en">' + esc(cardTitleEn) + '</span>' +
-              '<span class="text-emerald-600 text-[9px] shrink-0">✓</span>' +
+              '<span class="text-emerald-600 text-[10px] shrink-0">✓</span>' +
             '</div>' +
-            (timeLabel ? '<span class="card-time">' + esc(timeLabel) + '</span>' : '') +
+            (timeLabel ? '<span class="text-[9px] text-slate-400 font-medium whitespace-nowrap shrink-0">' + esc(timeLabel) + '</span>' : '') +
           '</div>' +
-          '<div class="flex items-center justify-between gap-1 min-w-0 mt-1">' +
-            '<div class="card-price">💰 ' + esc(priceLabel) + '</div>' +
+          /* Bottom row: Price left | heart right */
+          '<div class="flex items-center justify-between gap-1.5 min-w-0">' +
+            '<div class="inline-block px-1.5 py-0.5 rounded bg-[#16acbd]/10 text-[#0e7490] font-black text-[10px] truncate max-w-[85%]">💰 ' + esc(priceLabel) + '</div>' +
             '<button type="button" class="card-fav-btn text-sm p-0.5 transition-transform active:scale-75 shrink-0 leading-none" data-id="' + esc(item.id) + '">' +
               (isFav ? '❤️' : '🤍') +
             '</button>' +
@@ -2472,7 +3358,6 @@
 
       return card;
     }
-    window.__adikaCreateCard = createCardElement;
 
     function openDetailModal(item) {
       try { savedFeedScrollY = window.scrollY || window.pageYOffset || 0; } catch (e) { savedFeedScrollY = 0; }
@@ -2554,10 +3439,30 @@
       }
       modalSpecs.innerHTML = specsHtml || '<div>Status: <span class="font-bold text-slate-800">Active & Verified ✔</span></div>';
 
-      var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
-      var tUser = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
+      var phone = String(item.phone_number || item.phone || extra.phone_number || extra.phone || "").replace(/\s+/g, "");
+      var tUser = String(item.telegram_username || extra.telegram_username || extra.telegram_user || item.telegram_user || "").replace(/^@+/, "");
       modalCallBtn.href = phone ? ("tel:" + phone) : "#";
-      modalChatBtn.href = tUser ? ("https://t.me/" + tUser) : (item.user_chat_id ? ("tg://user?id=" + item.user_chat_id) : "#");
+      modalChatBtn.href = tUser ? ("https://t.me/" + tUser) : "#";
+      modalChatBtn.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var listing = item || (window.state && state.selectedItem) || {};
+        var extra2 = listing.extra_data || extra || {};
+        if (typeof extra2 === "string") { try { extra2 = JSON.parse(extra2); } catch (err) { extra2 = {}; } }
+        var targetUsername = String(listing.telegram_username || extra2.telegram_username || extra2.telegram_user || listing.telegram_user || "").replace(/^@+/, "");
+        var phoneNumber = String(listing.phone_number || listing.phone || extra2.phone_number || extra2.phone || "").replace(/\s+/g, "");
+        if (targetUsername) {
+          var url = "https://t.me/" + targetUsername;
+          if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(url);
+          else window.open(url, "_blank");
+          return;
+        }
+        if (phoneNumber) {
+          window.location.href = "tel:" + phoneNumber;
+          return;
+        }
+        alert("የሻጭ Telegram username ወይም ስልክ አልተገኘም");
+      };
 
       modalFavBtn.innerHTML = favorites[item.id] ? "❤️" : "🤍";
       modalFavBtn.onclick = function() {
@@ -2579,12 +3484,6 @@
 
       modalOverlay.classList.remove("hidden");
       modalOverlay.classList.add("flex");
-      modalOverlay.style.display = "flex";
-      try{
-        var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
-        var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
-        var h=document.getElementById("adikaFixedHeader"); if(h) h.style.visibility="hidden";
-      }catch(e){}
 
       // Populate dynamic category action buttons
       var actionsRow = document.getElementById("modalActionButtonsRow");
@@ -2628,12 +3527,6 @@
     function closeDetailModalPreserve() {
       modalOverlay.classList.add("hidden");
       modalOverlay.classList.remove("flex");
-      modalOverlay.style.display = "none";
-      try{
-        var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="";
-        var f=document.getElementById("fabBtn"); if(f) f.style.display="";
-        var h=document.getElementById("adikaFixedHeader"); if(h) h.style.visibility="";
-      }catch(e){}
       state.selectedItem = null;
       try {
         window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
@@ -2710,13 +3603,6 @@
       } catch (e) {}
       items = items || [];
       try {
-        var buyTab = (state.tab && state.tab !== "marketplace") || !!window.__adikaIsBuy;
-        function isBuyItem(it){
-          var t = ((it&&it.req_type)||"")+" "+((it&&it.action_type)||"")+" "+((it&&it.listing_type)||"")+" "+((it&&it.post_type)||"");
-          return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t);
-        }
-        if (buyTab) items = items.filter(isBuyItem);
-        else items = items.filter(function(it){ return !isBuyItem(it); });
         if (!append) {
           if (grid) grid.innerHTML = "";
           state.items = items;
@@ -2725,28 +3611,17 @@
         }
         if (!items.length) {
           if (!append) {
-            if (buyTab) {
-              try {
-                if (statusEl) {
-                  statusEl.style.display = "block";
-                  statusEl.innerHTML =
-                    '<div class="py-8 px-4 text-center text-slate-600 text-sm font-bold">' +
-                      '<div class="text-2xl mb-2">📋</div>' +
-                      '<span class="lang-am">የፈላጊ ጥያቄ አልተገኘም</span>' +
-                      '<div class="text-[11px] font-medium text-slate-400 mt-1">አዲስ ፍላጎት ለመለጠፍ + ይጫኑ</div>' +
-                    '</div>';
-                }
-              } catch (e) {}
-            } else {
-              try {
-                if (grid) grid.innerHTML = "";
-                if (statusEl) {
-                  statusEl.style.display = "block";
-                  statusEl.innerHTML =
-                    '<div class="py-8 px-4 text-center text-slate-600 text-sm font-bold">ምንም ማስታወቂያ አልተገኘም</div>';
-                }
-              } catch (e) {}
-            }
+            // Never leave blank blue screen — show demo cards + soft message
+            try { renderFallbackCards(DEMO_LISTINGS); } catch (e) {}
+            try {
+              if (statusEl) {
+                statusEl.style.display = "block";
+                statusEl.innerHTML =
+                  '<div class="py-3 px-3 text-center text-slate-600 text-xs font-bold">' +
+                    '<span class="lang-am">የቀጥታ ዝርዝር በመጠባበቅ ላይ… ናሙና ካርዶች ተታይተዋል</span>' +
+                  '</div>';
+              }
+            } catch (e) {}
           }
           try { if (moreBtn) moreBtn.classList.add("hidden"); } catch (e) {}
           return;
@@ -2807,11 +3682,11 @@
       if (state.chassisOnly) qs += "&chassis_only=1";
 
       var urls = [];
-      urls.push("/api/listings?" + qs);
-      urls.push("/api/explorer/listings?" + qs);
       if (useForYou) {
         urls.push("/api/feed/for-you?page=" + page + "&limit=24&user_id=" + encodeURIComponent(state.userId || "0"));
       }
+      urls.push("/api/explorer/listings?" + qs);
+      urls.push("/api/listings?" + qs);
 
       var done = false;
       function applyItems(items, hasMore) {
@@ -2844,7 +3719,7 @@
           })
           .then(function (r) {
             clearTimeout(timer);
-            var items = (r.data.items || r.data.listings || r.data.results || (r.data.data && (r.data.data.items || r.data.data.listings)) || r.data.data || []);
+            var items = (r.data.items || r.data.listings || r.data.results || []);
             if (!Array.isArray(items)) items = [];
             if (items.length > 0) {
               applyItems(items, !!(r.data.has_more || r.data.hasMore));
@@ -3286,16 +4161,6 @@
       }
     })();
 
-    window.setActiveTab = function(tab){
-      if(tab === "chat" || tab === "advisor"){
-        if(typeof showAnalysisView === "function") showAnalysisView(true);
-        else if(typeof window.openAiChat === "function") window.openAiChat();
-      } else if(tab === "tools"){
-        if(typeof window.openTools === "function") window.openTools();
-      } else if(tab === "home" || tab === "marketplace"){
-        if(typeof window.openHome === "function") window.openHome();
-      }
-    };
     function showAnalysisView(show) {
       var v = document.getElementById("analysisView");
       if (!v) return;
@@ -3310,9 +4175,7 @@
       }
     }
     var analysisBackBtn = document.getElementById("analysisBackBtn");
-    if (analysisBackBtn) analysisBackBtn.onclick = function(e) { if(e){e.preventDefault();e.stopPropagation();} showAnalysisView(false); if(window.openTools) openTools(); };
-    var analysisCloseBtn = document.getElementById("analysisCloseBtn");
-    if (analysisCloseBtn) analysisCloseBtn.onclick = function(e) { if(e){e.preventDefault();e.stopPropagation();} showAnalysisView(false); if(window.openTools) openTools(); };
+    if (analysisBackBtn) analysisBackBtn.onclick = function() { showAnalysisView(false); };
 
     var advisorChatHistory = [];
 
@@ -3380,9 +4243,6 @@
       var roiBody = document.getElementById("oppRoiBody");
       var box = document.getElementById("opportunityCards");
       if (box) box.classList.remove("hidden");
-      document.body.classList.add("hub-results-open");
-      var dock0=document.getElementById("hubToolsDock"); if(dock0) dock0.style.display="none";
-      var rnav0=document.getElementById("hubResultsNav"); if(rnav0){ rnav0.classList.remove("hidden"); rnav0.style.display="flex"; }
       if (autoBody) autoBody.innerHTML = "ከአዲካ ገበያ እየተጫነ…";
       if (propBody) propBody.innerHTML = "ከአዲካ ገበያ እየተጫነ…";
       if (roiBody) roiBody.innerHTML = "እየተሰላ…";
@@ -4482,7 +5342,11 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     document.getElementById("navMessages").onclick = function () {
-      if (window.openInbox) window.openInbox();
+      if (tg && tg.openTelegramLink) {
+        tg.openTelegramLink("https://t.me/AdikaMarketplaceBot");
+      } else {
+        window.open("https://t.me/AdikaMarketplaceBot", "_blank");
+      }
     };
     document.getElementById("navHelp").onclick = function () {
       var msg = "Adika Marketplace • Help Center\nContact @AdikaMarketplaceBot or call 0911000000.";
@@ -4526,9 +5390,9 @@
         lastExtract = extract || lastExtract;
         if (!lastExtract) return;
         try {
-          _lsSet("adika_land_map_last", JSON.stringify(lastExtract));
+          localStorage.setItem("adika_land_map_last", JSON.stringify(lastExtract));
           var draft = {};
-          try { draft = JSON.parse(_lsGet("adika_contract_draft_v2") || "{}") || {}; } catch (e) {}
+          try { draft = JSON.parse(localStorage.getItem("adika_contract_draft_v2") || "{}") || {}; } catch (e) {}
           draft.contract_type = (draft.contract_type && String(draft.contract_type).indexOf("house") >= 0)
             ? draft.contract_type : "house_sale";
           draft.property_info = draft.property_info || {};
@@ -4540,7 +5404,7 @@
             draft.seller_info = draft.seller_info || {};
             draft.seller_info.name = lastExtract.name;
           }
-          _lsSet("adika_contract_draft_v2", JSON.stringify(draft));
+          localStorage.setItem("adika_contract_draft_v2", JSON.stringify(draft));
         } catch (e) {}
       }
 
@@ -5165,11 +6029,11 @@
         if (prev) prev.classList.toggle("hidden", n <= 0);
         if (next) next.classList.toggle("hidden", n >= 3);
         syncTypeUI();
-        try { _lsSet(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
+        try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
       }
       function restoreDraft() {
         try {
-          var raw = _lsGet(SUB_KEY);
+          var raw = localStorage.getItem(SUB_KEY);
           if (!raw) return;
           var d = JSON.parse(raw);
           if (!d) return;
@@ -5258,7 +6122,7 @@
           saveBtn.disabled = true;
           saveContract("Draft").then(function(res) {
             if (res.contract_id) draftId = res.contract_id;
-            try { _lsSet(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
+            try { localStorage.setItem(SUB_KEY, JSON.stringify(collectPayload("Draft"))); } catch (e) {}
             if (tg && tg.showAlert) tg.showAlert(res.message || "ረቂቅ ተቀምጧል");
             else alert(res.message || "ረቂቅ ተቀምጧል");
           }).catch(function() { alert("ማስቀመጥ አልተቻለም"); })
@@ -5392,22 +6256,22 @@
       // Role gate
       var roleKey = "adika_role_v1";
       var hasRole = false;
-      try { hasRole = !!_lsGet(roleKey); } catch (e) {}
+      try { hasRole = !!localStorage.getItem(roleKey); } catch (e) {}
       // Do not block the marketplace behind role modal — optional entry only
       // if (!hasRole) openM("roleSelectModal");
-      try { if (!hasRole) _lsSet(roleKey, "user"); } catch (e) {}
+      try { if (!hasRole) localStorage.setItem(roleKey, "user"); } catch (e) {}
 
       var roleUser = document.getElementById("roleUserBtn");
       var roleBroker = document.getElementById("roleBrokerBtn");
       if (roleUser) roleUser.onclick = function() {
-        try { _lsSet(roleKey, "user"); } catch (e) {}
+        try { localStorage.setItem(roleKey, "user"); } catch (e) {}
         closeM("roleSelectModal");
         state.feedMode = "all";
         paintFeedModes();
         load(false);
       };
       if (roleBroker) roleBroker.onclick = function() {
-        try { _lsSet(roleKey, "broker"); } catch (e) {}
+        try { localStorage.setItem(roleKey, "broker"); } catch (e) {}
         closeM("roleSelectModal");
         openM("brokerRegModal");
       };
@@ -5433,18 +6297,21 @@
 
       var brSubmit = document.getElementById("brSubmitBtn");
       if (brSubmit) brSubmit.onclick = function() {
-        var name = (document.getElementById("brName") || {}).value || "";
-        var phone = (document.getElementById("brPhone") || {}).value || "";
-        var user = (document.getElementById("brUser") || {}).value || "";
+        var tgUser = {};
+        try { tgUser = (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) || {}; } catch (e) { tgUser = {}; }
+        var name = ((document.getElementById("brName") || {}).value || "").trim() || [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ");
+        var phone = ((document.getElementById("brPhone") || {}).value || "").trim();
+        var typedUser = ((document.getElementById("brUser") || {}).value || "").trim().replace(/^@+/, "");
+        var autoUser = String(tgUser.username || "").replace(/^@+/, "");
+        var user = autoUser || typedUser;
         var cats = [];
         document.querySelectorAll(".brCat:checked").forEach(function(c) { cats.push(c.value); });
-        var tid = state.userId || 0;
-        try {
-          if ((!tid || tid === 0) && window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
-            tid = Telegram.WebApp.initDataUnsafe.user.id || 0;
-          }
-        } catch (e) {}
-        if (!name || !phone) { alert("ስም እና ስልክ ያስፈልጋሉ"); return; }
+        var tid = state.userId || tgUser.id || 0;
+        var phoneDigits = phone.replace(/\D/g, "");
+        if (!name) { alert("ሙሉ ስም ያስፈልጋል"); return; }
+        if (phoneDigits.length < 9) { alert("ትክክለኛ ስልክ ቁጥር ያስገቡ (ዋና የመገናኛ መንገድ ነው)"); return; }
+        var handle = user ? ("@" + user) : "";
+        var telegramLink = user ? ("https://t.me/" + user) : (tid ? ("https://t.me/user?id=" + tid) : "");
         brSubmit.disabled = true;
         brSubmit.textContent = "እየተመዘገበ ነው…";
         fetch("/api/brokers/register", {
@@ -5454,7 +6321,11 @@
             telegram_id: tid,
             name: name,
             phone: phone,
-            username: user,
+            phone_number: phone,
+            username: handle,
+            telegram_username: handle,
+            telegram_link: telegramLink,
+            telegram_user: tgUser,
             categories: cats,
             id_photo: brIdDataUrl || null
           })
@@ -5701,7 +6572,7 @@
     } catch (e) {
       console.error("[Adika] initial load", e);
       try { state.loading = false; } catch (e2) {}
-      try { if(window.__adikaPaintListings) window.__adikaPaintListings([]); } catch (e3) {}
+      try { renderFallbackCards(DEMO_LISTINGS); } catch (e3) {}
     }
 
     // If after 5s still only demos / empty, force explorer once more
@@ -5719,715 +6590,6 @@
     }, 5000);
   })();
   </script>
-
-<script>
-(function(){
-  function el(id){ return document.getElementById(id); }
-  var TOOL_IDS = ["dutyModal","loanModal","compareModal","contractModal","poaModal","landMapModal","diagModal","chassisModal"];
-
-  function show(id){
-    var n = el(id); if(!n) return;
-    n.classList.remove("hidden");
-    n.classList.add("flex");
-    n.style.display = "flex";
-  }
-  function hide(id){
-    var n = el(id); if(!n) return;
-    n.classList.add("hidden");
-    n.classList.remove("flex");
-    n.style.display = "none";
-  }
-  function closeAllTools(){ TOOL_IDS.forEach(hide); }
-  function closeAll(){
-    closeAllTools();
-    ["aiModal","analysisView","modalOverlay","brokerRegModal","roleSelectModal"].forEach(hide);
-    try { document.body.style.overflow = ""; } catch(e){}
-  }
-  function seedChat(){
-    var log = el("advisorChatLog");
-    if(!log) return;
-    if(log.dataset.seeded === "1" && log.children.length) return;
-    log.innerHTML = '<div class="chat-bubble-ai"><div class="text-[9px] font-bold text-cyan-300 mb-0.5">አዲካ ዲጂታል አማካሪ</div><div class="text-xs font-medium leading-relaxed">ሰላም። በአዲካ ዲጂታል ሲስተም የፋይናንስ አማካሪ ነኝ። ስለ መኪና፣ ቤት፣ ብድር ወይም ኢንቨስትመንት በአማርኛ ይጠይቁኝ — ዋጋ ከገበያ ዝርዝር ካለ ብቻ እጠቀማለሁ።</div></div>';
-    log.dataset.seeded = "1";
-  }
-  function openChat(){
-    window.__adikaChatFrom = "hub";
-    var tools = el("aiModal");
-    if(tools){ tools.classList.add("hidden"); tools.classList.remove("flex"); tools.style.display="none"; }
-    closeAllTools();
-    var n = el("analysisView");
-    if(n){ n.classList.remove("hidden"); n.classList.add("flex"); n.style.display="flex"; n.style.zIndex="280"; }
-    seedChat();
-  }
-  function openTools(){
-    hide("analysisView");
-    closeAllTools();
-    var n = el("aiModal");
-    if(n){ n.classList.remove("hidden"); n.classList.add("flex"); n.style.display="flex"; n.style.zIndex="260"; }
-  }
-  function openHome(){
-    closeAll();
-    try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){ window.scrollTo(0,0); }
-  }
-
-  window.closeModal = function(id){
-    if(id) hide(id);
-    else closeAll();
-    if(id && TOOL_IDS.indexOf(id) !== -1) openTools();
-  };
-  window.navigateBack = function(id){
-    if(id === "analysisView"){ hide("analysisView"); openTools(); return; }
-    if(id && TOOL_IDS.indexOf(id) !== -1){ hide(id); openTools(); return; }
-    if(id) hide(id);
-    else openHome();
-  };
-  window.goHomeFromTool = function(id){
-    if(id) hide(id);
-    openHome();
-  };
-  window.openAiChat = openChat;
-  window.handleStartAiChat = window.handleStartAiChat || function(){ openChat(); };
-
-  function setLang(en){
-    document.body.classList.toggle("lang-en-active", !!en);
-    document.documentElement.lang = en ? "en" : "am";
-    var am = el("langAmBtn"), enBtn = el("langEnBtn");
-    if(am) am.className = en ? "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80" : "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
-    if(enBtn) enBtn.className = en ? "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm" : "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80";
-  }
-  function paintLive(items){
-    if(window.__adikaPaintListings) window.__adikaPaintListings(items);
-    window.__adikaLiveItems = items || [];
-  }
-  function loadListings(extra){
-    var qs = "page=1&limit=40&order=DESC&active_only=1" + (extra||"");
-    var buy = /type=BUY/i.test(extra||"") || !!window.__adikaIsBuy;
-    fetch("/api/listings?"+qs,{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
-      var items = (d && (d.items||d.listings||d.results||d.data)) || [];
-      if(!Array.isArray(items) && items && items.items) items = items.items;
-      function isBuyItem(it){
-        var t=((it&&it.req_type)||"")+" "+((it&&it.action_type)||"")+" "+((it&&it.listing_type)||"");
-        return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t);
-      }
-      if(Array.isArray(items)){
-        items = buy ? items.filter(isBuyItem) : items.filter(function(it){ return !isBuyItem(it); });
-        paintLive(items);
-      }
-    }).catch(function(){
-      if(buy) paintLive([]);
-    });
-  }
-  function markTabs(buy){
-    var s = el("tabSell"), b = el("tabBuy");
-    if(s) s.className = buy ? "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1" : "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
-    if(b) b.className = buy ? "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1" : "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
-    window.__adikaIsBuy = !!buy;
-  }
-  function markCats(id){
-    document.querySelectorAll("#cats .cat-pill").forEach(function(b){
-      if(b.getAttribute("data-filter")==="chassis") return;
-      var on = (b.getAttribute("data-id")||"") === id;
-      b.className = on
-        ? "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm"
-        : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
-    });
-  }
-  function parentModal(node){
-    var n = node;
-    while(n && n !== document.body){
-      if(n.id && (TOOL_IDS.indexOf(n.id)>=0 || n.id==="analysisView" || n.id==="aiModal" || n.id==="modalOverlay")) return n.id;
-      n = n.parentElement;
-    }
-    return "";
-  }
-  function fmt(n){ return Math.round(Number(n)||0).toLocaleString("en-US"); }
-  function calcLoanLocal(){
-    var price = Number((el("loanPrice")||{}).value||3000000);
-    var downPct = Number((el("loanDown")||{}).value||30);
-    var years = Number((el("loanYears")||{}).value||10);
-    var down = price * downPct/100;
-    var principal = Math.max(0, price-down);
-    var months = years*12;
-    var r = 0.18/12;
-    var mo = principal * (r*Math.pow(1+r,months))/(Math.pow(1+r,months)-1);
-    var box = el("loanResult");
-    if(!box) return;
-    box.classList.remove("hidden");
-    box.innerHTML = '<div class="text-xs space-y-1"><div class="font-black text-emerald-700 text-lg">'+fmt(mo)+' ETB / ወር</div><div>ቅድመ ክፍያ: <b>'+fmt(down)+' ETB</b></div><div>የብድር መጠን: <b>'+fmt(principal)+' ETB</b></div><div>ወለድ: 18% · '+years+' ዓመት</div></div>';
-  }
-  function calcDutyLocal(){
-    var cif = Number((el("dutyCif")||{}).value||12000);
-    var fuel = ((el("dutyFuel")||{}).value||"Benzine");
-    var cc = Number((el("dutyCc")||{}).value||1300);
-    var rate = /electric/i.test(fuel) ? 0.05 : (cc>=1800?0.35:0.30);
-    var etb = cif * 130;
-    var duty = etb * rate;
-    var excise = etb * 0.30;
-    var vat = (etb+duty+excise)*0.15;
-    var total = duty+excise+vat;
-    var box = el("dutyResult");
-    if(!box) return;
-    box.classList.remove("hidden");
-    box.innerHTML = '<div class="text-xs space-y-1"><div class="font-black text-[#0e7490] text-lg">'+fmt(total)+' ETB</div><div>ቀረጥ: <b>'+fmt(duty)+'</b></div><div>ኤክሳይስ: <b>'+fmt(excise)+'</b></div><div>ቫት: <b>'+fmt(vat)+'</b></div></div>';
-  }
-
-
-  window.__cStep = window.__cStep || 0;
-  function localOpp(){
-    var budget = Number((el("advisorBudget")||{}).value || 2000000);
-    var income = Number((el("advisorMonthlyIncome")||{}).value || 25000);
-    var down = Math.round(budget*0.3);
-    var items = window.__adikaLiveItems || [];
-    function price(it){ return Number(String(it.price||"").replace(/[^\d.]/g,""))||0; }
-    function name(it){ return [it.brand,it.model].filter(Boolean).join(" ") || it.sub_category || it.title || "ማስታወቂያ"; }
-    function isCar(it){ return /መኪና|car|vehicle|auto/i.test((it.main_category||"")+" "+(it.category||"")); }
-    function isHouse(it){ return /ቤት|house|propert|land|apartment/i.test((it.main_category||"")+" "+(it.category||"")); }
-    var cars = items.filter(function(it){ var p=price(it); return isCar(it)&&p>0&&p<=budget; }).slice(0,3);
-    var homes = items.filter(function(it){ var p=price(it); return isHouse(it)&&p>0&&(p<=budget||p*0.3<=budget); }).slice(0,3);
-    var autoTxt = cars.length ? cars.map(function(it){ var p=price(it); return "• "+name(it)+" — "+fmt(p)+" ብር"; }).join("<br>") : "ከአዲካ ገበያ በዚህ በጀት ተሽከርካሪ አልተገኘም። ቅድመ 30% "+fmt(down)+" ብር።";
-    var homeTxt = homes.length ? homes.map(function(it){ return "• "+name(it)+" — "+fmt(price(it))+" ብር"; }).join("<br>") : "በ "+fmt(budget)+" ብር የሚገባ ቤት/መሬት አልተገኘም።";
-    if(el("oppAutoBody")) el("oppAutoBody").innerHTML = "ተሽከርካሪ + የባንክ ብድር<br>"+autoTxt;
-    if(el("oppPropBody")) el("oppPropBody").innerHTML = "ሪል እስቴት · ቅድመ ክፍያ<br>"+homeTxt;
-    if(el("oppRoiBody")) el("oppRoiBody").innerHTML = "በጀት "+fmt(budget)+" ብር<br>• ROI 15% → "+fmt(budget*0.15)+" ብር/ዓመት<br>• ROI 22% → "+fmt(budget*0.22)+" ብር/ዓመት<br>• ROI 28% → "+fmt(budget*0.28)+" ብር/ዓመት<br>ወርሃዊ ገቢ: "+fmt(income)+" ብር";
-    var cards = el("opportunityCards");
-    if(cards){ cards.classList.remove("hidden"); cards.style.display="block"; }
-    document.body.classList.add("hub-results-open");
-    var dock = el("hubToolsDock"); if(dock) dock.style.display="none";
-    var rnav = el("hubResultsNav"); if(rnav){ rnav.classList.remove("hidden"); rnav.style.display="flex"; }
-    try{ var wrap=el("aiToolsView"); if(wrap){ wrap.scrollTop = 0; } }catch(e){}
-  }
-  function closeHubResults(){
-    document.body.classList.remove("hub-results-open");
-    var cards = el("opportunityCards");
-    if(cards){ cards.classList.add("hidden"); cards.style.display="none"; }
-    var dock = el("hubToolsDock"); if(dock) dock.style.display="";
-    var rnav = el("hubResultsNav"); if(rnav){ rnav.classList.add("hidden"); rnav.style.display="none"; }
-  }
-  window.closeHubResults = closeHubResults;
-
-  window.genBudget = localOpp;
-  window.renderOpportunityCards = window.renderOpportunityCards || localOpp;
-
-  function localCompare(){
-    var a = ((el("compareCar1")||{}).value||"Toyota Vitz");
-    var b = ((el("compareCar2")||{}).value||"BYD Dolphin");
-    var y1 = ((el("compareYear1")||{}).value||"2018");
-    var y2 = ((el("compareYear2")||{}).value||"2023");
-    var box = el("compareResult");
-    if(!box) return;
-    box.classList.remove("hidden");
-    box.innerHTML = '<div class="rounded-2xl border border-slate-700 bg-slate-900/80 p-3 text-white text-xs space-y-2">'+
-      '<div class="font-black text-emerald-400">ውጤት</div>'+
-      '<div><b>'+a+' ('+y1+')</b> vs <b>'+b+' ('+y2+')</b></div>'+
-      '<div class="text-slate-300">አዲሱ ሞዴል በነዳጅ/ኤሌክትሪክ ወጪና ዋጋ ረጅም ጊዜ ሊበልጥ ይችላል። ትክክለኛ የገበያ ዋጋ ከአዲካ ዝርዝር ይመልከቱ።</div>'+
-      '<button type="button" class="opp-chat-cta w-full py-2 rounded-xl bg-teal-600 font-bold">ጥልቅ ትንተና Live Chat ያድርጉ →</button>'+
-      '</div>';
-  }
-
-  function localContractStep(delta){
-    if(delta) window.__cStep = Math.max(0, Math.min(3, (window.__cStep||0)+delta));
-    var n = window.__cStep||0;
-    [0,1,2,3].forEach(function(i){
-      var panel = el("contractStep"+i);
-      if(panel) panel.classList.toggle("hidden", i!==n);
-    });
-    document.querySelectorAll(".contract-step-tab").forEach(function(btn){
-      var s = Number(btn.getAttribute("data-step"));
-      btn.className = s===n
-        ? "contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm"
-        : "contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500";
-    });
-    var prev = el("cStepPrev"), next = el("cStepNext");
-    if(prev) prev.classList.toggle("hidden", n<=0);
-    if(next){ next.classList.toggle("hidden", n>=3); next.textContent = n>=3 ? "ጨርስ" : "ቀጣይ →"; }
-  }
-  function localContractFinish(finalized){
-    var box = el("contractResult");
-    if(!box) return;
-    box.classList.remove("hidden");
-    var seller = (el("cSellerName")||{}).value || "ሻጭ";
-    var buyer = (el("cBuyerName")||{}).value || "ገዢ";
-    var price = (el("cTotalPrice")||{}).value || "0";
-    box.innerHTML = '<div class="text-xs space-y-1"><div class="font-black text-emerald-700">'+(finalized?"ውሉ ተጠናቅቋል":"ረቂቅ ተቀምጧል")+'</div><div>ሻጭ: <b>'+seller+'</b></div><div>ገዢ: <b>'+buyer+'</b></div><div>ዋጋ: <b>'+price+' ETB</b></div><div class="text-slate-500">PDF ለማውረድ ከሰርቨር ጋር ሲገናኝ ይቀጥላል።</div></div>';
-    box.scrollIntoView({behavior:"smooth",block:"nearest"});
-  }
-
-  function localChassis(vin){
-    vin = String(vin||"").trim().toUpperCase();
-    var box = el("chassisResult");
-    if(!box) return;
-    box.classList.remove("hidden");
-    if(vin.length<5){
-      box.innerHTML = '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-bold">⚠️ እባክዎን የሻሲ ቁጥር ያስገቡ።</div>';
-      return;
-    }
-    var map = {
-      "JTDKB20U00189342": ["Toyota","Vitz","2012","Japan","1.3L Benzine"],
-      "KMHD381CBKU782910": ["Hyundai","Tucson","2019","Korea","2.0L Diesel"],
-      "LGXC12480PA093821": ["BYD","Song Plus","2023","China","Electric"],
-      "MA3FBE41S00123984": ["Suzuki","Dzire","2018","India","1.2L Benzine"]
-    };
-    var d = map[vin] || ["—","ከ VIN ቅድመ-ፊደል","—","—","—"];
-    if(!map[vin]){
-      if(vin.indexOf("JTD")===0) d=["Toyota","(VIN ግምት)","—","Japan","Benzine"];
-      else if(vin.indexOf("KMH")===0) d=["Hyundai","(VIN ግምት)","—","Korea","—"];
-      else if(vin.indexOf("LGX")===0) d=["BYD","(VIN ግምት)","—","China","EV"];
-      else if(vin.indexOf("MA3")===0) d=["Suzuki","(VIN ግምት)","—","India","—"];
-    }
-    box.innerHTML = '<div class="p-3 bg-slate-900 text-white rounded-2xl text-xs space-y-1">'+
-      '<div class="text-emerald-400 font-black">✓ ሻሲ ተነቧል</div>'+
-      '<div class="font-black text-sm">'+d[0]+' '+d[1]+'</div>'+
-      '<div class="font-mono text-slate-400">'+vin+'</div>'+
-      '<div>አመት: '+d[2]+' · አገር: '+d[3]+' · ሞተር: '+d[4]+'</div></div>';
-    fetch("/api/verify-chassis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({vin:vin})})
-      .then(function(r){return r.json();})
-      .then(function(res){
-        if(res && res.data && res.data.specs){
-          var sp=res.data.specs;
-          box.innerHTML = '<div class="p-3 bg-slate-900 text-white rounded-2xl text-xs space-y-1">'+
-            '<div class="text-emerald-400 font-black">✓ Official Specs</div>'+
-            '<div class="font-black text-sm">'+(sp.make||"")+" "+(sp.model||"")+'</div>'+
-            '<div class="font-mono text-slate-400">'+(sp.vin||vin)+'</div>'+
-            '<div>አመት: '+(sp.year||"—")+' · '+(sp.country||"")+' · '+(sp.engine||sp.fuel_type||"")+'</div></div>';
-        }
-      }).catch(function(){});
-  }
-
-  function localDiag(){
-    var model = ((el("diagCarModel")||{}).value||"መኪና");
-    var txt = ((el("diagInput")||el("diagNotes")||{}).value||"");
-    var box = el("diagResult") || el("diagAnalyzeBtn");
-    var out = el("diagResult");
-    if(!out){
-      out = document.createElement("div");
-      out.id="diagResult";
-      var btn=el("diagAnalyzeBtn");
-      if(btn&&btn.parentNode) btn.parentNode.appendChild(out);
-    }
-    out.classList.remove("hidden");
-    out.innerHTML = '<div class="p-3 bg-slate-50 border rounded-xl text-xs">'+
-      '<div class="font-black text-slate-800">የምርመራ ማጠቃለያ — '+model+'</div>'+
-      '<div class="text-slate-600 mt-1">'+(txt||"ጽሁፍ ካልገባ የተጫነው ወረቀት ብቻ ይታያል። ግልጽ ያልሆነ ወጪ አንገምትም።")+'</div>'+
-      '<button type="button" class="opp-chat-cta mt-2 w-full py-2 rounded-xl bg-[#16acbd] text-white font-bold">ስለ '+model+' አማክር →</button></div>';
-  }
-
-  document.addEventListener("click", function(e){
-
-    var t = e.target.closest("button, a, .cat-pill, .opp-chat-cta, .compare-tab, .vin-sample-chip, [data-live], .adika-card, #adikaPromoBanner, #hubFinanceAdvisorBanner");
-    if(!t) return;
-    var id = t.id || "";
-    var mid = parentModal(t);
-
-    if(t.classList.contains("cat-pill") || (t.closest && t.closest("#cats"))){
-      var pill = t.classList.contains("cat-pill") ? t : t.closest(".cat-pill");
-      if(pill && pill.getAttribute("data-filter")==="chassis"){
-        e.preventDefault(); e.stopPropagation();
-        loadListings("&has_chassis=1");
-        return;
-      }
-      if(pill){
-        e.preventDefault(); e.stopPropagation();
-        var cid = pill.getAttribute("data-id") || "all";
-        markCats(cid);
-        if(cid==="foryou"){
-          fetch("/api/feed/for-you",{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
-            var items=(d&& (d.items||d.listings||d.results))||[];
-            if(Array.isArray(items) && items.length) paintLive(items);
-            else loadListings("");
-          }).catch(function(){ loadListings(""); });
-        } else if(cid==="all"){
-          loadListings("");
-        } else {
-          loadListings("&category="+encodeURIComponent(cid));
-        }
-        return;
-      }
-    }
-
-    if(id==="tabBuy"){ e.preventDefault(); e.stopPropagation(); markTabs(true); loadListings("&type=BUY"); return; }
-    if(id==="tabSell"){ e.preventDefault(); e.stopPropagation(); markTabs(false); loadListings("&type=SELL"); return; }
-    if(id==="langAmBtn"){ e.preventDefault(); e.stopPropagation(); setLang(false); return; }
-    if(id==="langEnBtn"){ e.preventDefault(); e.stopPropagation(); setLang(true); return; }
-
-    if(id==="adikaPromoBanner" || id==="heroToolsBtn" || id==="heroAdvisorBtn" || id==="navAi" || (t.closest && t.closest("#adikaPromoBanner"))){
-      e.preventDefault(); e.stopPropagation(); openTools(); return;
-    }
-    if(id==="navHome"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
-    if(id==="inboxBackBtn"){ e.preventDefault(); e.stopPropagation(); var pane=document.getElementById("inboxThreadPane"); if(pane && !pane.classList.contains("hidden")){ if(window.openInbox) openInbox(); return; } if(window.closeInbox) closeInbox(); return; }
-    if(id==="inboxCloseBtn"){ e.preventDefault(); e.stopPropagation(); if(window.closeInbox) closeInbox(); return; }
-    if(id==="navMessages"){ e.preventDefault(); e.stopPropagation(); if(window.openInbox) openInbox(); return; }
-    if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
-    if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
-    if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
-
-    if(id==="analysisHomeBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openHome(); return; }
-    if(id==="analysisBackBtn" || id==="analysisCloseBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openTools(); return; }
-
-    if(id==="aiHubBackBtn"){ e.preventDefault(); e.stopPropagation(); if(document.body.classList.contains("hub-results-open") && window.closeHubResults){ closeHubResults(); return; } openHome(); return; }
-    if(id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
-    if(id==="aiTabTools"){ e.preventDefault(); e.stopPropagation(); if(el("aiToolsView")){ el("aiToolsView").classList.remove("hidden"); el("aiToolsView").style.display=""; } if(el("aiSearchView")){ el("aiSearchView").classList.add("hidden"); el("aiSearchView").style.display="none"; } return; }
-    if(id==="aiTabSearch"){ e.preventDefault(); e.stopPropagation(); if(el("aiSearchView")){ el("aiSearchView").classList.remove("hidden"); el("aiSearchView").classList.add("flex"); el("aiSearchView").style.display="flex"; el("aiSearchView").style.pointerEvents="auto"; } return; }
-    if(t.classList.contains("ai-chip")){
-      e.preventDefault(); e.stopPropagation();
-      var q = t.getAttribute("data-q")||t.textContent||"";
-      if(el("aiPrompt")) el("aiPrompt").value = ((el("aiPrompt").value||"")+" "+q).trim();
-      t.classList.toggle("ring-2"); t.classList.toggle("ring-cyan-300");
-      return;
-    }
-    if(t.classList.contains("price-chip")){
-      e.preventDefault(); e.stopPropagation();
-      var pr = t.getAttribute("data-price")||"";
-      if(el("aiPrompt")) el("aiPrompt").value = ((el("aiPrompt").value||"")+" "+pr).trim();
-      document.querySelectorAll(".price-chip").forEach(function(c){ c.classList.remove("ring-2","ring-cyan-300"); });
-      t.classList.add("ring-2","ring-cyan-300");
-      return;
-    }
-    if(id==="aiResetBtn"){
-      e.preventDefault(); e.stopPropagation();
-      if(el("aiPrompt")) el("aiPrompt").value="";
-      document.querySelectorAll(".ai-chip,.price-chip").forEach(function(c){ c.classList.remove("ring-2","ring-cyan-300"); });
-      return;
-    }
-    if(id==="aiApplyBtn"){
-      e.preventDefault(); e.stopPropagation();
-      var q = ((el("aiPrompt")||{}).value||"").trim();
-      if(el("q")) el("q").value = q;
-      if(el("aiSearchView")){ el("aiSearchView").style.display="none"; el("aiSearchView").classList.add("hidden"); }
-      openHome();
-      if(q) loadListings("&q="+encodeURIComponent(q));
-      else loadListings("");
-      return;
-    }
-
-    if(t.classList.contains("advisor-preset-chip")){
-      e.preventDefault(); e.stopPropagation();
-      var b = t.getAttribute("data-budget");
-      if(el("advisorBudget") && b) el("advisorBudget").value = b;
-      return;
-    }
-    if(id==="advisorBtn"){ e.preventDefault(); e.stopPropagation(); if(typeof window.renderOpportunityCards==="function") window.renderOpportunityCards(); else if(window.genBudget) window.genBudget(); else localOpp(); return; }
-    if(t.classList.contains("compare-tab") || t.getAttribute("data-ctab")){
-      e.preventDefault(); e.stopPropagation();
-      var tab = t.classList.contains("compare-tab") ? t : t.closest(".compare-tab");
-      var mode = (tab && tab.getAttribute("data-ctab")) || "vehicles";
-      document.querySelectorAll(".compare-tab").forEach(function(x){
-        x.className = "compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-300 hover:text-white bg-white/5";
-      });
-      if(tab) tab.className = "compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all bg-teal-600 text-white shadow";
-      var pv=el("comparePanelVehicles"), pp=el("comparePanelProperty"), pb=el("comparePanelBusiness");
-      if(pv){ pv.classList.toggle("hidden", mode!=="vehicles"); pv.style.display = mode==="vehicles" ? "block" : "none"; }
-      if(pp){ pp.classList.toggle("hidden", mode!=="property"); pp.style.display = mode==="property" ? "block" : "none"; }
-      if(pb){ pb.classList.toggle("hidden", mode!=="business"); pb.style.display = mode==="business" ? "block" : "none"; }
-      return;
-    }
-    if(id==="compareBtn"){ e.preventDefault(); e.stopPropagation(); localCompare(); return; }
-    if(id==="cStepNext"){ e.preventDefault(); e.stopPropagation(); localContractStep(1); return; }
-    if(id==="cStepPrev"){ e.preventDefault(); e.stopPropagation(); localContractStep(-1); return; }
-    if(t.classList.contains("contract-step-tab")){ e.preventDefault(); e.stopPropagation(); window.__cStep=Number(t.getAttribute("data-step")||0); localContractStep(0); return; }
-    if(id==="cFinalizeBtn" || id==="cSaveDraftBtn"){ e.preventDefault(); e.stopPropagation(); localContractFinish(id==="cFinalizeBtn"); return; }
-    if(t.classList.contains("vin-sample-chip")){ e.preventDefault(); e.stopPropagation(); var vin=t.getAttribute("data-vin")||""; if(el("chassisInput")) el("chassisInput").value=vin; localChassis(vin); return; }
-    if(id==="chassisVerifyBtn"){ e.preventDefault(); e.stopPropagation(); localChassis((el("chassisInput")||{}).value||""); return; }
-    if(id==="diagAnalyzeBtn"){ e.preventDefault(); e.stopPropagation(); localDiag(); return; }
-    if(id==="hubFinanceAdvisorBanner" || id==="liveFromA" || id==="liveFromB" || id==="liveFromC" || t.classList.contains("opp-chat-cta")){
-      e.preventDefault(); e.stopPropagation(); openChat(); return;
-    }
-
-    if(id==="toolDutyBtn"){ e.preventDefault(); e.stopPropagation(); show("dutyModal"); return; }
-    if(id==="toolLoanBtn"){ e.preventDefault(); e.stopPropagation(); show("loanModal"); return; }
-    if(id==="toolCompareBtn"){ e.preventDefault(); e.stopPropagation(); show("compareModal"); return; }
-    if(id==="toolContractBtn"){ e.preventDefault(); e.stopPropagation(); show("contractModal"); return; }
-    if(id==="toolPoaBtn"){ e.preventDefault(); e.stopPropagation(); show("poaModal"); return; }
-    if(id==="toolDiagBtn"){ e.preventDefault(); e.stopPropagation(); show("diagModal"); return; }
-    if(id==="toolChassisBtn"){ e.preventDefault(); e.stopPropagation(); show("chassisModal"); return; }
-    if(id==="toolLandMapBtn"){ e.preventDefault(); e.stopPropagation(); show("landMapModal"); return; }
-
-    if(id==="dutyCalculateBtn"){ e.preventDefault(); e.stopPropagation(); calcDutyLocal(); return; }
-    if(id==="loanCalculateBtn"){ e.preventDefault(); e.stopPropagation(); calcLoanLocal(); return; }
-
-    if(t.classList.contains("btn-back") || t.classList.contains("btn-close") || /ተመለስ|ዋና ገፅ|ሀብ/.test(t.textContent||"")){
-      e.preventDefault(); e.stopPropagation();
-      if(el("analysisView") && el("analysisView").style.display==="flex"){ hide("analysisView"); openTools(); return; }
-      if(/ዋና ገፅ/.test(t.textContent||"") || /Home/i.test(t.textContent||"")){
-        if(mid) hide(mid);
-        openHome();
-        return;
-      }
-      window.navigateBack(mid || "aiModal");
-      return;
-    }
-
-    if(id==="modalClose" || id==="modalBackBtn" || id==="aiSearchBackBtn" || id==="aiSearchCloseBtn"){
-      e.preventDefault(); e.stopPropagation();
-      if(id.indexOf("Search")>=0){ if(el("aiSearchView")) { el("aiSearchView").classList.add("hidden"); el("aiSearchView").style.display="none"; } if(el("aiToolsView")) el("aiToolsView").classList.remove("hidden"); return; }
-      closeAll();
-      return;
-    }
-    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); if(window.openListingMessage) openListingMessage(); return; }
-
-    if(t.getAttribute("data-live")==="1" || t.classList.contains("adika-card")){
-      var card = t.closest(".adika-card") || t;
-      var items = window.__adikaLiveItems || [];
-      var cards = Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card"));
-      var it = items[cards.indexOf(card)];
-      if(!it) return;
-      e.preventDefault(); e.stopPropagation();
-      if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
-      if(el("modalPrice")){
-        var n=Number(String(it.price||"").replace(/[^\d.]/g,""));
-        el("modalPrice").textContent = (!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB");
-      }
-      if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
-      show("modalOverlay");
-    }
-  }, true);
-
-  var send = el("advisorChatSend");
-  if(send && !send.__bound2){
-    send.__bound2 = true;
-    send.addEventListener("click", function(){
-      var inp = el("advisorChatInput");
-      var log = el("advisorChatLog");
-      var msg = inp ? String(inp.value||"").trim() : "";
-      if(!msg) return;
-      if(log) log.innerHTML += '<div class="text-right"><span class="inline-block bg-teal-600 text-white p-2 rounded-2xl">'+msg+"</span></div>";
-      if(inp) inp.value="";
-      fetch("/api/advisor/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})})
-        .then(function(r){return r.json();})
-        .then(function(d){ if(log) log.innerHTML += '<div class="bg-white p-2 rounded-2xl">'+(d.reply||d.message||d.text||"ተቀብያለሁ")+"</div>"; })
-        .catch(function(){ if(log) log.innerHTML += '<div class="bg-white p-2 rounded-2xl">ተቀብያለሁ። በቅርቡ ዝርዝር መልስ ይደርሳል።</div>'; });
-    });
-  }
-})();
-</script>
-<script>
-(function(){
-  function fitFeed(){
-    var hdr = document.getElementById("adikaFixedHeader");
-    var main = document.getElementById("adikaMainFeed");
-    if(!hdr || !main) return;
-    var h = Math.ceil(hdr.getBoundingClientRect().height || 0);
-    main.style.paddingTop = (h + 6) + "px";
-  }
-  fitFeed();
-  window.addEventListener("resize", fitFeed);
-  setTimeout(fitFeed, 200);
-  setTimeout(fitFeed, 800);
-})();
-</script>
-
-<script>
-(function(){
-  function uid(){
-    try{
-      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-      return String((u && u.id) || (window.state && state.userId) || "guest");
-    }catch(e){ return "guest"; }
-  }
-  function uname(){
-    try{
-      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-      if(!u) return "Adika User";
-      return [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username || "Adika User";
-    }catch(e){ return "Adika User"; }
-  }
-  var ctx = { listing_id:"", peer_id:"", listing_title:"" };
-  function showInbox(on){
-    var v = document.getElementById("inboxView");
-    if(!v) return;
-    if(on){ v.classList.remove("hidden"); v.classList.add("flex"); v.style.display="flex"; }
-    else { v.classList.add("hidden"); v.classList.remove("flex"); v.style.display="none"; }
-  }
-  function loadThreads(){
-    var list = document.getElementById("inboxThreadList");
-    var pane = document.getElementById("inboxThreadPane");
-    if(list) list.classList.remove("hidden");
-    if(pane) pane.classList.add("hidden");
-    if(list) list.innerHTML = '<div class="text-center text-xs text-slate-500 py-6">እየጫነ ነው...</div>';
-    fetch("/api/messages?user_id="+encodeURIComponent(uid()), {credentials:"same-origin"})
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var items = (d && d.items) || [];
-        if(!list) return;
-        if(!items.length){
-          list.innerHTML = '<div class="text-center text-sm font-bold text-slate-500 py-10">መልእክት የለም<br><span class="text-[11px] font-medium">ከማስታወቂያ ላይ «መልእክት» ይጫኑ</span></div>';
-          return;
-        }
-        list.innerHTML = items.map(function(it){
-          return '<button type="button" class="w-full text-left bg-white rounded-2xl p-3 shadow-sm border border-slate-100 inbox-thread" data-lid="'+String(it.listing_id||"")+'" data-peer="'+String(it.peer_id||"")+'" data-title="'+(it.listing_title||"").replace(/"/g,"")+'">'+
-            '<div class="font-black text-sm text-slate-800">'+(it.listing_title||"ማስታወቂያ")+'</div>'+
-            '<div class="text-[11px] text-slate-500 mt-1 truncate">'+(it.last_message||"")+'</div></button>';
-        }).join("");
-      }).catch(function(){
-        if(list) list.innerHTML = '<div class="text-center text-xs text-rose-500 py-6">መልእክት መጫን አልተሳካም</div>';
-      });
-  }
-  function openThread(lid, peer, title){
-    ctx.listing_id = String(lid||"");
-    ctx.peer_id = String(peer||"");
-    ctx.listing_title = title || "";
-    var list = document.getElementById("inboxThreadList");
-    var pane = document.getElementById("inboxThreadPane");
-    var meta = document.getElementById("inboxThreadMeta");
-    if(list) list.classList.add("hidden");
-    if(pane) pane.classList.remove("hidden");
-    if(meta) meta.textContent = ctx.listing_title || ("ውይይት #" + ctx.listing_id);
-    loadThread();
-  }
-  function loadThread(){
-    var log = document.getElementById("inboxThreadLog");
-    if(!log) return;
-    fetch("/api/messages?user_id="+encodeURIComponent(uid())+"&listing_id="+encodeURIComponent(ctx.listing_id)+"&peer_id="+encodeURIComponent(ctx.peer_id), {credentials:"same-origin"})
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var items = (d && d.items) || [];
-        log.innerHTML = items.map(function(m){
-          var mine = !!m.mine;
-          return '<div class="'+(mine?"text-right":"text-left")+'"><div class="inline-block max-w-[80%] px-3 py-2 rounded-2xl text-[13px] '+(mine?"bg-[#16acbd] text-white":"bg-white border border-slate-200 text-slate-800")+'">'+(m.body||"")+'</div></div>';
-        }).join("") || '<div class="text-center text-xs text-slate-400 py-6">መልእክት ይጀምሩ</div>';
-        log.scrollTop = log.scrollHeight;
-      }).catch(function(){});
-  }
-  function sendMsg(){
-    var box = document.getElementById("inboxCompose");
-    var text = box ? String(box.value||"").trim() : "";
-    if(!text || !ctx.peer_id) return;
-    fetch("/api/send_message", {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      credentials:"same-origin",
-      body: JSON.stringify({
-        user_id: uid(),
-        receiver_id: ctx.peer_id,
-        listing_id: ctx.listing_id,
-        listing_title: ctx.listing_title,
-        sender_name: uname(),
-        text: text
-      })
-    }).then(function(r){ return r.json(); }).then(function(d){
-      if(box) box.value = "";
-      loadThread();
-    }).catch(function(){});
-  }
-  window.openInbox = function(){
-    showInbox(true);
-    try{
-      var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
-      var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
-    }catch(e){}
-    loadThreads();
-  };
-  window.closeInbox = function(){
-    showInbox(false);
-    try{
-      var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="";
-      var f=document.getElementById("fabBtn"); if(f) f.style.display="";
-    }catch(e){}
-  };
-  function sellerFromListing(listing){
-    listing = listing || {};
-    var extra = listing.extra_data || {};
-    if(typeof extra === "string"){ try{ extra = JSON.parse(extra); }catch(e){ extra = {}; } }
-    var peer = listing.user_chat_id || listing.user_id || listing.seller_id || listing.telegram_id || listing.owner_id || extra.user_id || extra.telegram_id || extra.chat_id || "";
-    var uname = listing.telegram_username || listing.telegram_user || listing.user_name || extra.telegram_user || extra.telegram_username || extra.username || "";
-    if(!uname){
-      var m = String(listing.description||"").match(/@([A-Za-z0-9_]{4,})/);
-      if(m) uname = m[1];
-    }
-    uname = String(uname||"").replace(/^@/,"");
-    if(!peer && uname) peer = uname;
-    return { peer: String(peer||""), uname: uname };
-  }
-  window.openListingMessage = function(listing){
-    listing = listing || (window.state && state.selectedItem) || {};
-    var s = sellerFromListing(listing);
-    var peer = s.peer;
-    if(!peer){
-      var fallback = s.uname || "AkremFF";
-      var url = "https://t.me/" + fallback;
-      try{
-        if(window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(url);
-        else window.open(url, "_blank");
-      }catch(e){ window.open(url, "_blank"); }
-      return;
-    }
-    if(String(peer) === uid()){
-      alert("የራስዎ ማስታወቂያ ነው");
-      return;
-    }
-    showInbox(true);
-    try{
-      var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
-      var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
-    }catch(e){}
-    openThread(listing.id, peer, listing.sub_category || listing.title || listing.brand || "ማስታወቂያ");
-  };
-  document.addEventListener("click", function(e){
-    var th = e.target.closest && e.target.closest(".inbox-thread");
-    if(th){
-      openThread(th.getAttribute("data-lid"), th.getAttribute("data-peer"), th.getAttribute("data-title"));
-    }
-  });
-  var back = document.getElementById("inboxBackBtn");
-  var close = document.getElementById("inboxCloseBtn");
-  if(back) back.onclick = function(){
-    var pane = document.getElementById("inboxThreadPane");
-    if(pane && !pane.classList.contains("hidden")){ loadThreads(); return; }
-    if(window.closeInbox) closeInbox(); else showInbox(false);
-  };
-  if(close) close.onclick = function(){ if(window.closeInbox) closeInbox(); else showInbox(false); };
-  var send = document.getElementById("inboxSendBtn");
-  if(send) send.onclick = sendMsg;
-})();
-</script>
-
-<!-- standalone promo rotator -->
-
-<script>
-(function(){
-  function splitTitle(el){
-    var title = el.querySelector(".promo-title");
-    if(!title || title.dataset.split==="1") return;
-    var raw = title.textContent || "";
-    title.innerHTML = raw.split("").map(function(ch,i){
-      if(ch===" ") return " ";
-      return '<span class="promo-letter" style="animation-delay:'+(i*28)+'ms">'+ch+'</span>';
-    }).join("");
-    title.dataset.split = "1";
-  }
-  function run(){
-    var slides = document.querySelectorAll("#promoSlides .promo-slide");
-    var dots = document.querySelectorAll("#promoDots .promo-dot");
-    if(!slides.length) return;
-    slides.forEach(splitTitle);
-    var i = 0;
-    function paint(n){
-      i = ((n % slides.length)+slides.length)%slides.length;
-      slides.forEach(function(s,k){
-        var on = k===i;
-        s.style.opacity = on ? "1" : "0";
-        s.style.pointerEvents = on ? "auto" : "none";
-        s.style.transform = on ? "translateY(0) scale(1)" : "translateY(12px) scale(0.97)";
-        s.style.transition = "opacity .4s ease, transform .45s cubic-bezier(.16,1,.3,1)";
-        s.classList.toggle("is-active", on);
-        if(on){
-          s.querySelectorAll(".promo-letter").forEach(function(L){
-            L.style.animation = "none";
-            void L.offsetWidth;
-            L.style.animation = "";
-          });
-        }
-      });
-      dots.forEach(function(d,k){
-        d.style.background = k===i ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.28)";
-        d.style.width = k===i ? "10px" : "6px";
-      });
-    }
-    paint(0);
-    setInterval(function(){ paint(i+1); }, 3400);
-  }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", run);
-  else run();
-})();
-</script>
 </body>
 </html>
+"""
