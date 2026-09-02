@@ -2341,6 +2341,7 @@
     function parsePhotosList(item) {
       if (!item) return [];
       var candidates = [
+        item.images,
         item.photos,
         item.photo_urls,
         item.listing_photos,
@@ -2504,9 +2505,11 @@
       modalDesc.textContent = item.description || "No further details provided.";
 
       // Image gallery carousel
+      var fallbackImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'%3E%3Crect width='800' height='500' fill='%23e2e8f0'/%3E%3Cpath d='M290 320l75-85 60 65 45-50 105 120H225z' fill='%2394a3b8'/%3E%3Ccircle cx='490' cy='185' r='35' fill='%2394a3b8'/%3E%3Ctext x='400' y='425' text-anchor='middle' font-family='Arial,sans-serif' font-size='28' font-weight='700' fill='%23475569'%3ENo image available%3C/text%3E%3C/svg%3E";
       if (photos.length > 0) {
         var slides = photos.map(function(u, i) {
-          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img src="' + esc(getImageUrl(u) || u || "") + '" alt="" class="listing-photo-enhance" loading="' + (i === 0 ? "eager" : "lazy") + '" /></div>';
+          var imageUrl = getImageUrl(u) || u || fallbackImage;
+          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img src="' + esc(imageUrl) + '" alt="" class="listing-photo-enhance" loading="' + (i === 0 ? "eager" : "lazy") + '" onerror="this.onerror=null;this.src=\'' + fallbackImage + '\';" /></div>';
         }).join("");
         var dots = photos.length > 1 ? ('<div class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">' +
           photos.map(function(_, i) {
@@ -2533,10 +2536,7 @@
         }
       } else {
         modalMediaContainer.innerHTML =
-          '<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white">' +
-            '<span class="text-4xl mb-1">' + (isCar ? '🚗' : '🏠') + '</span>' +
-            '<span class="text-xs font-bold">No Image Available</span>' +
-          '</div>';
+          '<img src="' + fallbackImage + '" alt="No image available" class="listing-photo-enhance" />';
       }
 
       var specsHtml = "";
@@ -6338,24 +6338,27 @@
     return { peer: String(peer||""), uname: uname };
   }
   window.openListingMessage = function(listing){
-    listing = listing || (window.state && state.selectedItem) || {};
-    var telegramValue = listing.telegram_username || listing.telegram_id || "";
-    var cleanUsername = String(telegramValue).trim()
-      .replace(/^https?:\/\/(?:www\.)?t\.me\//i, "")
-      .replace(/^@+/, "")
-      .split(/[?#/]/)[0]
-      .replace(/[^A-Za-z0-9_]/g, "");
-    if(cleanUsername){
-      var telegramUrl = "https://t.me/" + cleanUsername;
-      try{
-        if(window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(telegramUrl);
-        else window.open(telegramUrl, "_blank");
-      }catch(e){ window.open(telegramUrl, "_blank"); }
+    try{
+      listing = listing || (window.state && state.selectedItem) || {};
+      var telegramValue = listing.telegram_username || listing.telegram_id || "";
+      var cleanUsername = String(telegramValue).trim()
+        .replace(/^https?:\/\/(?:www\.)?t\.me\//i, "")
+        .replace(/^@+/, "")
+        .split(/[?#/]/)[0]
+        .replace(/[^A-Za-z0-9_]/g, "");
+      if(cleanUsername){
+        var telegramUrl = "https://t.me/" + cleanUsername;
+        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
+          Telegram.WebApp.openTelegramLink(telegramUrl);
+        } else {
+          window.open(telegramUrl, "_blank");
+        }
+        return;
+      }
+      var phone = listing.phone_number || listing.phone || "";
+      if(phone) window.location.href = "tel:" + String(phone).replace(/\s+/g, "");
+    }catch(e){
       return;
-    }
-    var phone = listing.phone_number || listing.phone || "";
-    if(phone){
-      window.location.href = "tel:" + String(phone).replace(/\s+/g, "");
     }
   };
   document.addEventListener("click", function(e){
