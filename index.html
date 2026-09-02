@@ -18,6 +18,30 @@
     }
     *, *::before, *::after { box-sizing: border-box; }
 
+    /* Hub-matched tool sheets */
+    .hub-sheet {
+      background: linear-gradient(165deg, rgba(15,23,42,0.98) 0%, rgba(8,47,73,0.96) 50%, rgba(2,6,23,0.98) 100%) !important;
+      color: #f8fafc !important;
+      border: 1px solid rgba(34,211,238,0.28) !important;
+      box-shadow: 0 -16px 48px rgba(6,182,212,0.22) !important;
+    }
+    .hub-sheet label, .hub-sheet .text-slate-700, .hub-sheet .text-slate-600, .hub-sheet .text-slate-500 {
+      color: #e2e8f0 !important;
+    }
+    .hub-sheet input, .hub-sheet select, .hub-sheet textarea {
+      background: rgba(255,255,255,0.08) !important;
+      border-color: rgba(255,255,255,0.22) !important;
+      color: #fff !important;
+    }
+    .hub-sheet input::placeholder, .hub-sheet textarea::placeholder { color: rgba(148,163,184,0.85) !important; }
+    .hub-sheet .bg-slate-50, .hub-sheet .bg-white { background: rgba(255,255,255,0.06) !important; }
+    .hub-sheet .text-slate-800, .hub-sheet .text-slate-900 { color: #f8fafc !important; }
+    .hub-header {
+      background: linear-gradient(90deg, #0f172a, #0e7490, #16acbd) !important;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+
     /* Bulletproof CSS Dual-Class Language Switcher */
     .lang-en { display: none !important; }
     .lang-am { display: inline-block !important; }
@@ -888,7 +912,7 @@
 
       <!-- Smart Search glass overlay (sits on Tools Hub; Back/X only close this panel) -->
       <div id="aiSearchView" class="absolute inset-0 z-30 items-end sm:items-center justify-center p-0 sm:p-4"
-           style="display:none;pointer-events:none;background:rgba(2,6,23,0.50);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);">
+           style="display:none;pointer-events:auto;background:rgba(2,6,23,0.55);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);">
         <div class="relative w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 transition-all shadow-[0_10px_40px_rgba(6,182,212,0.2)] border border-white/30"
              style="background:rgba(255,255,255,0.15);backdrop-filter:blur(32px);-webkit-backdrop-filter:blur(32px);">
           <div class="flex items-center justify-between gap-2 mb-4">
@@ -1053,9 +1077,9 @@
   <!-- ================================================================= -->
 
   <!-- Modal: Customs Duty Calculator -->
-  <div id="dutyModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
-      <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
+  <div id="dutyModal" class="fixed inset-0 z-[260] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
+    <div class="hub-sheet w-full max-w-md rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden">
+      <div class="hub-header px-4 py-3 text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🧮 የኢትዮጵያ ጉምሩክ የቀረጥ ስሌት (Duty Calculator)</h3>
 <div class="flex items-center gap-1 shrink-0">
           <button type="button" onclick="navigateBack('dutyModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
@@ -1089,9 +1113,9 @@
   </div>
 
   <!-- Modal: Bank Loan & Mortgage -->
-  <div id="loanModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
-      <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
+  <div id="loanModal" class="fixed inset-0 z-[260] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
+    <div class="hub-sheet w-full max-w-md rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden">
+      <div class="hub-header px-4 py-3 text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🏦 የባንክ ብድርና ወርሃዊ ክፍያ (Bank Loan)</h3>
 <div class="flex items-center gap-1 shrink-0">
           <button type="button" onclick="navigateBack('loanModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
@@ -1512,7 +1536,7 @@
 
   <!-- Modal: Digital Cadastral Map Verifier (Adika Digital System) -->
   <div id="landMapModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="min-w-0">
           <div class="font-black text-xs tracking-tight">🛡️ የዲጂታል ካርታ ማጣሪያ</div>
@@ -1587,7 +1611,7 @@
   </div>
 
   <div id="diagModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🛠️ የምርመራ ወረቀት ተንታኝ (Diagnostic Analyzer)</h3>
 <div class="flex items-center gap-1 shrink-0">
@@ -1615,7 +1639,7 @@
 
   <!-- Modal: Chassis & VIN Verification Tool -->
   <div id="chassisModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="flex items-center gap-1.5">
           <span class="text-base">🛡️</span>
@@ -5788,7 +5812,38 @@
 
     if(id==="aiHubBackBtn" || id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
     if(id==="aiTabTools"){ e.preventDefault(); e.stopPropagation(); if(el("aiToolsView")){ el("aiToolsView").classList.remove("hidden"); el("aiToolsView").style.display=""; } if(el("aiSearchView")){ el("aiSearchView").classList.add("hidden"); el("aiSearchView").style.display="none"; } return; }
-    if(id==="aiTabSearch"){ e.preventDefault(); e.stopPropagation(); if(el("aiSearchView")){ el("aiSearchView").classList.remove("hidden"); el("aiSearchView").classList.add("flex"); el("aiSearchView").style.display="flex"; } if(el("aiToolsView")) el("aiToolsView").classList.add("hidden"); return; }
+    if(id==="aiTabSearch"){ e.preventDefault(); e.stopPropagation(); if(el("aiSearchView")){ el("aiSearchView").classList.remove("hidden"); el("aiSearchView").classList.add("flex"); el("aiSearchView").style.display="flex"; el("aiSearchView").style.pointerEvents="auto"; } return; }
+    if(t.classList.contains("ai-chip")){
+      e.preventDefault(); e.stopPropagation();
+      var q = t.getAttribute("data-q")||t.textContent||"";
+      if(el("aiPrompt")) el("aiPrompt").value = ((el("aiPrompt").value||"")+" "+q).trim();
+      t.classList.toggle("ring-2"); t.classList.toggle("ring-cyan-300");
+      return;
+    }
+    if(t.classList.contains("price-chip")){
+      e.preventDefault(); e.stopPropagation();
+      var pr = t.getAttribute("data-price")||"";
+      if(el("aiPrompt")) el("aiPrompt").value = ((el("aiPrompt").value||"")+" "+pr).trim();
+      document.querySelectorAll(".price-chip").forEach(function(c){ c.classList.remove("ring-2","ring-cyan-300"); });
+      t.classList.add("ring-2","ring-cyan-300");
+      return;
+    }
+    if(id==="aiResetBtn"){
+      e.preventDefault(); e.stopPropagation();
+      if(el("aiPrompt")) el("aiPrompt").value="";
+      document.querySelectorAll(".ai-chip,.price-chip").forEach(function(c){ c.classList.remove("ring-2","ring-cyan-300"); });
+      return;
+    }
+    if(id==="aiApplyBtn"){
+      e.preventDefault(); e.stopPropagation();
+      var q = ((el("aiPrompt")||{}).value||"").trim();
+      if(el("q")) el("q").value = q;
+      if(el("aiSearchView")){ el("aiSearchView").style.display="none"; el("aiSearchView").classList.add("hidden"); }
+      openHome();
+      if(q) loadListings("&q="+encodeURIComponent(q));
+      else loadListings("");
+      return;
+    }
 
     if(t.classList.contains("advisor-preset-chip")){
       e.preventDefault(); e.stopPropagation();
