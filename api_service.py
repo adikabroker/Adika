@@ -3258,6 +3258,30 @@ function shareContract() {{
                             item['created_at'] = item['created_at'].isoformat()
                         except Exception:
                             item['created_at'] = str(item['created_at'])
+                    extra = item.get('extra_data') if isinstance(item.get('extra_data'), dict) else {}
+                    seller = (
+                        item.get('user_chat_id') or item.get('user_id') or item.get('telegram_id')
+                        or item.get('owner_id') or item.get('seller_id')
+                        or extra.get('user_id') or extra.get('telegram_id') or extra.get('chat_id')
+                    )
+                    uname = (
+                        item.get('telegram_username') or item.get('telegram_user') or item.get('user_name')
+                        or extra.get('telegram_user') or extra.get('telegram_username') or extra.get('username')
+                    )
+                    if not uname:
+                        import re as _re
+                        _m = _re.search(r'@([A-Za-z0-9_]{4,})', str(item.get('description') or ''))
+                        if _m:
+                            uname = _m.group(1)
+                    if uname:
+                        uname = str(uname).lstrip('@')
+                    if not seller and uname:
+                        seller = uname
+                    item['user_id'] = seller
+                    item['seller_id'] = seller
+                    item['telegram_id'] = seller or item.get('telegram_id')
+                    item['user_chat_id'] = item.get('user_chat_id') or seller
+                    item['telegram_username'] = uname or ''
                     items.append(item)
 
                 safe_items = [_safe(it) for it in items]
