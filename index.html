@@ -1921,11 +1921,13 @@
 
 <script>
   (function () {
-    var __mem = window.__mem || {};
-    window.__mem = __mem;
-    window._lsGet = window._lsGet || function(k){ try { return localStorage.getItem(k); } catch(e) { return __mem[k] || null; } };
-    window._lsSet = window._lsSet || function(k,v){ try { localStorage.setItem(k,v); } catch(e) { __mem[k] = String(v); } };
-    window._lsDel = window._lsDel || function(k){ try { localStorage.removeItem(k); } catch(e) { delete __mem[k]; } };
+    var memoryStore = window.memoryStore || {};
+    window.memoryStore = memoryStore;
+    var __mem = memoryStore;
+    window.__mem = memoryStore;
+    window._lsGet = function(k){ return memoryStore[k] != null ? memoryStore[k] : null; };
+    window._lsSet = function(k,v){ memoryStore[k] = String(v); };
+    window._lsDel = function(k){ delete memoryStore[k]; };
     var _lsGet = window._lsGet, _lsSet = window._lsSet, _lsDel = window._lsDel;
 
     var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
@@ -2161,8 +2163,7 @@
       } catch (e) {}
     }
 
-    // Paint demo cards IMMEDIATELY — before any network call
-    try { renderFallbackCards(DEMO_LISTINGS); } catch (e) { console.error("[Adika] fallback render", e); }
+    // Do not paint hardcoded demo cars. Real listings come from /api/listings.
 
     var moreBtn = document.getElementById("more");
     var tabSell = document.getElementById("tabSell");
@@ -2705,16 +2706,14 @@
                 }
               } catch (e) {}
             } else {
-            try { renderFallbackCards(DEMO_LISTINGS); } catch (e) {}
-            try {
-              if (statusEl) {
-                statusEl.style.display = "block";
-                statusEl.innerHTML =
-                  '<div class="py-3 px-3 text-center text-slate-600 text-xs font-bold">' +
-                    '<span class="lang-am">የቀጥታ ዝርዝር በመጠባበቅ ላይ… ናሙና ካርዶች ተታይተዋል</span>' +
-                  '</div>';
-              }
-            } catch (e) {}
+              try {
+                if (grid) grid.innerHTML = "";
+                if (statusEl) {
+                  statusEl.style.display = "block";
+                  statusEl.innerHTML =
+                    '<div class="py-8 px-4 text-center text-slate-600 text-sm font-bold">ምንም ማስታወቂያ አልተገኘም</div>';
+                }
+              } catch (e) {}
             }
           }
           try { if (moreBtn) moreBtn.classList.add("hidden"); } catch (e) {}
@@ -3255,6 +3254,16 @@
       }
     })();
 
+    window.setActiveTab = function(tab){
+      if(tab === "chat" || tab === "advisor"){
+        if(typeof showAnalysisView === "function") showAnalysisView(true);
+        else if(typeof window.openAiChat === "function") window.openAiChat();
+      } else if(tab === "tools"){
+        if(typeof window.openTools === "function") window.openTools();
+      } else if(tab === "home" || tab === "marketplace"){
+        if(typeof window.openHome === "function") window.openHome();
+      }
+    };
     function showAnalysisView(show) {
       var v = document.getElementById("analysisView");
       if (!v) return;
@@ -5664,7 +5673,7 @@
     } catch (e) {
       console.error("[Adika] initial load", e);
       try { state.loading = false; } catch (e2) {}
-      try { renderFallbackCards(DEMO_LISTINGS); } catch (e3) {}
+      try { if(window.__adikaPaintListings) window.__adikaPaintListings([]); } catch (e3) {}
     }
 
     // If after 5s still only demos / empty, force explorer once more
