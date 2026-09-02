@@ -2338,90 +2338,68 @@
       return "";
     }
 
-    function listingFallbackImage(isCar) {
-      var icon = isCar ? "🚗" : "🏠";
-      var label = isCar ? "Vehicle" : "Property";
-      return "data:image/svg+xml," + encodeURIComponent(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500">' +
-        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
-        '<stop offset="0%" stop-color="#16acbd"/><stop offset="100%" stop-color="#0e7490"/>' +
-        '</linearGradient></defs>' +
-        '<rect fill="url(#g)" width="100%" height="100%"/>' +
-        '<text x="50%" y="46%" text-anchor="middle" font-size="64">' + icon + '</text>' +
-        '<text x="50%" y="62%" text-anchor="middle" fill="#ffffff" font-family="system-ui,sans-serif" font-size="28" font-weight="700">' + label + '</text>' +
-        '</svg>'
-      );
-    }
-
-    function resolveDetailImageSrc(item) {
-      if (!item) return listingFallbackImage(true);
+    function parsePhotosList(item) {
+      if (!item) return [];
       var extra = item.extra_data || {};
       if (typeof extra === "string") {
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
       }
-      var images = item.images || extra.images || [];
-      var firstFromImages = "";
-      if (Array.isArray(images) && images.length) firstFromImages = getImageUrl(images[0]) || "";
-      else if (typeof images === "string") firstFromImages = getImageUrl(images);
-      var src = getImageUrl(item.image_url) || firstFromImages || getImageUrl(item.image) || getImageUrl(item.photo_url) || "";
-      if (!src) {
-        var parsed = parsePhotosList(item);
-        src = parsed[0] || "";
-      }
-      if (!src || src === "null" || src === "undefined") {
-        var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
-        return listingFallbackImage(isCar);
-      }
-      return src;
-    }
-
-    function parsePhotosList(item) {
-      if (!item) return [];
+      if (!extra || typeof extra !== "object") extra = {};
       var candidates = [
-        item.image_url,
-        item.images,
-        item.image,
         item.photos,
         item.photo_urls,
         item.listing_photos,
         item.photo_url,
-        item.photo_id
+        item.image_url,
+        item.images,
+        item.photo_id,
+        item.photo,
+        item.image,
+        extra.photos,
+        extra.photo_urls,
+        extra.listing_photos,
+        extra.photo_url,
+        extra.image_url,
+        extra.images,
+        extra.photo_id,
+        extra.photo
       ];
       var out = [];
-      for (var i = 0; i < candidates.length; i++) {
-        var raw = candidates[i];
-        if (raw == null || raw === "") continue;
-        if (Array.isArray(raw)) {
-          for (var j = 0; j < raw.length; j++) {
-            var u = getImageUrl(raw[j]);
-            if (u) out.push(u);
-          }
-        } else if (typeof raw === "string") {
-          var s = raw.trim();
-          if (s.charAt(0) === "[") {
-            try {
-              var arr = JSON.parse(s);
-              if (Array.isArray(arr)) {
-                for (var k = 0; k < arr.length; k++) {
-                  var u2 = getImageUrl(arr[k]);
-                  if (u2) out.push(u2);
-                }
-              }
-            } catch (e) {
-              if (s) out.push(s);
-            }
-          } else if (s) {
-            out.push(s);
-          }
-        } else {
-          var u3 = getImageUrl(raw);
-          if (u3) out.push(u3);
+      function pushOne(val) {
+        if (val == null || val === "") return;
+        if (Array.isArray(val)) {
+          for (var j = 0; j < val.length; j++) pushOne(val[j]);
+          return;
         }
+        if (typeof val === "object") {
+          var ou = getImageUrl(val);
+          if (ou) out.push(ou);
+          return;
+        }
+        var s = String(val).trim();
+        if (!s || s === "null" || s === "undefined") return;
+        if (s.charAt(0) === "[") {
+          try {
+            var arr = JSON.parse(s);
+            if (Array.isArray(arr)) { for (var k = 0; k < arr.length; k++) pushOne(arr[k]); return; }
+          } catch (e) {}
+        }
+        // Skip pure Telegram file_ids that are not usable as <img src>
+        if (/^[A-Za-z0-9_-]{20,}$/.test(s) && s.indexOf("http") !== 0 && s.indexOf("data:") !== 0 && s.indexOf("/") !== 0) {
+          // Still keep — some deployments proxy via /api/photo/
+          out.push(s.indexOf("/api/") === 0 ? s : ("/api/photo/" + encodeURIComponent(s)));
+          return;
+        }
+        out.push(s);
       }
+      for (var i = 0; i < candidates.length; i++) pushOne(candidates[i]);
       var seen = {};
       var uniq = [];
       for (var x = 0; x < out.length; x++) {
-        if (!seen[out[x]]) { seen[out[x]] = 1; uniq.push(out[x]); }
+        var key = out[x];
+        if (!key || seen[key]) continue;
+        seen[key] = 1;
+        uniq.push(key);
       }
       return uniq;
     }
@@ -2514,6 +2492,7 @@
     window.__adikaCreateCard = createCardElement;
 
     function openDetailModal(item) {
+      // exposed below
       try { savedFeedScrollY = window.scrollY || window.pageYOffset || 0; } catch (e) { savedFeedScrollY = 0; }
       state.selectedItem = item;
       pushViewHistory(item);
@@ -2523,9 +2502,6 @@
       }
       var photos = parsePhotosList(item);
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
-      var detailImgSrc = resolveDetailImageSrc(item);
-      var fallbackSrc = listingFallbackImage(isCar);
-      if (!photos.length && detailImgSrc && detailImgSrc !== fallbackSrc) photos = [detailImgSrc];
 
       var modalTitleText = "";
       if (isCar) {
@@ -2545,18 +2521,22 @@
       modalTime.textContent = relativeTime(item.created_at) ? ("⏱️ " + relativeTime(item.created_at)) : "";
       modalDesc.textContent = item.description || "No further details provided.";
 
-      // Image gallery carousel — listing.image_url / listing.images[0] with fallback src
+      // Image gallery carousel — always fill container; fallback on broken src
       if (photos.length > 0) {
         var slides = photos.map(function(u, i) {
-          var src = esc(getImageUrl(u) || u || (i === 0 ? detailImgSrc : "") || fallbackSrc);
-          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img id="' + (i === 0 ? "modalDetailImage" : "") + '" src="' + src + '" alt="" class="listing-photo-enhance" loading="' + (i === 0 ? "eager" : "lazy") + '" onerror="this.onerror=null;this.src=\'' + fallbackSrc.replace(/'/g, "%27") + '\';" /></div>';
+          var src = esc(getImageUrl(u) || u || "");
+          return '<div class="modal-slide shrink-0 w-full h-full snap-center relative" style="min-width:100%;height:100%;">' +
+            '<img src="' + src + '" alt="" loading="' + (i === 0 ? "eager" : "lazy") + '" ' +
+            'style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;" ' +
+            'onerror="this.style.display=\'none\';var p=this.parentNode;if(p&&!p.querySelector(\'.ph-fallback\')){var f=document.createElement(\'div\');f.className=\'ph-fallback\';f.style.cssText=\'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#16acbd,#0e7490);color:#fff;\';f.innerHTML=\'<span style=font-size:2rem>📷</span><span style=font-size:11px;font-weight:700>Image unavailable</span>\';p.appendChild(f);}" />' +
+            '</div>';
         }).join("");
         var dots = photos.length > 1 ? ('<div class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">' +
           photos.map(function(_, i) {
             return '<button type="button" class="modal-dot w-1.5 h-1.5 rounded-full ' + (i === 0 ? "bg-white" : "bg-white/50") + '" data-idx="' + i + '"></button>';
           }).join("") + '</div>') : "";
         modalMediaContainer.innerHTML =
-          '<div id="modalGalleryTrack" class="flex w-full h-full overflow-x-auto snap-x snap-mandatory no-scrollbar">' + slides + '</div>' + dots;
+          '<div id="modalGalleryTrack" class="flex w-full h-full overflow-x-auto snap-x snap-mandatory no-scrollbar" style="height:100%;">' + slides + '</div>' + dots;
         var track = document.getElementById("modalGalleryTrack");
         if (track && photos.length > 1) {
           track.onscroll = function() {
@@ -2576,20 +2556,11 @@
         }
       } else {
         modalMediaContainer.innerHTML =
-          '<div class="modal-slide w-full h-full">' +
-            '<img id="modalDetailImage" src="' + esc(detailImgSrc || fallbackSrc) + '" alt="" class="listing-photo-enhance" onerror="this.onerror=null;this.src=\'' + fallbackSrc.replace(/'/g, "%27") + '\';" />' +
+          '<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white" style="min-height:100%;">' +
+            '<span class="text-4xl mb-1">' + (isCar ? '🚗' : '🏠') + '</span>' +
+            '<span class="text-xs font-bold">No Image Available</span>' +
           '</div>';
       }
-      try {
-        var detailImgEl = document.getElementById("modalDetailImage");
-        if (detailImgEl) {
-          detailImgEl.src = detailImgSrc || fallbackSrc;
-          detailImgEl.onerror = function() {
-            this.onerror = null;
-            this.src = fallbackSrc;
-          };
-        }
-      } catch (imgErr) {}
 
       var specsHtml = "";
       if (isCar) {
@@ -2607,30 +2578,9 @@
       modalSpecs.innerHTML = specsHtml || '<div>Status: <span class="font-bold text-slate-800">Active & Verified ✔</span></div>';
 
       var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
-      var tUser = String(
-        extra.telegram_username || extra.telegram_user || item.telegram_username || item.telegram_user || ""
-      ).replace(/^@/, "").trim();
+      var tUser = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
       modalCallBtn.href = phone ? ("tel:" + phone) : "#";
-      if (modalChatBtn) {
-        modalChatBtn.setAttribute("data-username", tUser);
-        modalChatBtn.setAttribute("data-telegram-id", String(item.telegram_id || extra.telegram_id || item.user_chat_id || ""));
-      }
-      modalChatBtn.onclick = function(ev) {
-        try {
-          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-          if (window.openListingMessage) window.openListingMessage(item);
-        } catch (err) {
-          try {
-            var cleanUsername = tUser || "AdikaMarketplace";
-            var url = "https://t.me/" + cleanUsername;
-            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
-              Telegram.WebApp.openTelegramLink(url);
-            } else {
-              window.open(url, "_blank");
-            }
-          } catch (e2) {}
-        }
-      };
+      modalChatBtn.href = tUser ? ("https://t.me/" + tUser) : (item.user_chat_id ? ("tg://user?id=" + item.user_chat_id) : "#");
 
       modalFavBtn.innerHTML = favorites[item.id] ? "❤️" : "🤍";
       modalFavBtn.onclick = function() {
@@ -2697,6 +2647,8 @@
       }
       loadRecommendations(item);
     }
+
+    window.openDetailModal = openDetailModal;
 
     function closeDetailModalPreserve() {
       modalOverlay.classList.add("hidden");
@@ -6235,58 +6187,37 @@
       closeAll();
       return;
     }
-    if(id==="modalChatBtn"){
-      e.preventDefault(); e.stopPropagation();
-      try {
-        var selected = (window.state && window.state.selectedItem) || {};
-        if(window.openListingMessage) window.openListingMessage(selected);
-      } catch (err) {
-        try {
-          var cleanUsername = "";
-          try {
-            var extra = selected && selected.extra_data;
-            if (typeof extra === "string") extra = JSON.parse(extra);
-            cleanUsername = String((selected && (selected.telegram_username || selected.telegram_user)) || (extra && (extra.telegram_username || extra.telegram_user)) || "").replace(/^@/, "").trim();
-          } catch (e0) { cleanUsername = ""; }
-          if (!cleanUsername) cleanUsername = "AdikaMarketplace";
-          var url = "https://t.me/" + cleanUsername;
-          if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
-            Telegram.WebApp.openTelegramLink(url);
-          } else {
-            window.open(url, "_blank");
-          }
-        } catch (e2) {}
-      }
-      return;
-    }
+    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); if(window.openListingMessage) openListingMessage(); return; }
 
     if(t.getAttribute("data-live")==="1" || t.classList.contains("adika-card")){
       var card = t.closest(".adika-card") || t;
+      if(!card) return;
+      // Prefer full detail modal (photos + specs). Fall back only if missing.
       var items = window.__adikaLiveItems || [];
       var cards = Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card"));
       var it = items[cards.indexOf(card)];
+      if(!it){
+        // Try matching by data-id if present
+        var did = card.getAttribute("data-id") || (card.querySelector && card.querySelector("[data-id]") && card.querySelector("[data-id]").getAttribute("data-id"));
+        if(did && items.length){
+          for(var ii=0;ii<items.length;ii++){ if(String(items[ii].id)===String(did)){ it=items[ii]; break; } }
+        }
+      }
       if(!it) return;
       e.preventDefault(); e.stopPropagation();
-      if (typeof openDetailModal === "function") {
-        try { openDetailModal(it); return; } catch (e0) {}
-      }
-      if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
-      if(el("modalPrice")){
-        var n=Number(String(it.price||"").replace(/[^\d.]/g,""));
-        el("modalPrice").textContent = (!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB");
-      }
-      if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
-      try {
-        var mediaBox = el("modalMediaContainer");
-        if (mediaBox) {
-          var liveSrc = (it.image_url || (Array.isArray(it.images) && it.images[0]) || it.photo_url || "");
-          if (liveSrc && typeof liveSrc === "object") liveSrc = liveSrc.url || liveSrc.src || "";
-          if (liveSrc) {
-            mediaBox.innerHTML = '<img id="modalDetailImage" src="' + String(liveSrc).replace(/"/g, "") + '" alt="" class="listing-photo-enhance" />';
-          }
+      if(typeof openDetailModal === "function"){
+        openDetailModal(it);
+      } else if(window.openDetailModal){
+        window.openDetailModal(it);
+      } else {
+        if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
+        if(el("modalPrice")){
+          var n=Number(String(it.price||"").replace(/[^\d.]/g,""));
+          el("modalPrice").textContent = (!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB");
         }
-      } catch (e1) {}
-      show("modalOverlay");
+        if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
+        show("modalOverlay");
+      }
     }
   }, true);
 
@@ -6436,75 +6367,39 @@
     listing = listing || {};
     var extra = listing.extra_data || {};
     if(typeof extra === "string"){ try{ extra = JSON.parse(extra); }catch(e){ extra = {}; } }
-    if(!extra || typeof extra !== "object") extra = {};
     var peer = listing.user_chat_id || listing.user_id || listing.seller_id || listing.telegram_id || listing.owner_id || extra.user_id || extra.telegram_id || extra.chat_id || "";
     var uname = listing.telegram_username || listing.telegram_user || listing.user_name || extra.telegram_user || extra.telegram_username || extra.username || "";
     if(!uname){
       var m = String(listing.description||"").match(/@([A-Za-z0-9_]{4,})/);
       if(m) uname = m[1];
     }
-    uname = String(uname||"").replace(/^@/,"").trim();
+    uname = String(uname||"").replace(/^@/,"");
     if(!peer && uname) peer = uname;
-    return { peer: String(peer||""), uname: uname, telegram_id: String(listing.telegram_id || extra.telegram_id || listing.user_chat_id || "") };
+    return { peer: String(peer||""), uname: uname };
   }
   window.openListingMessage = function(listing){
-    try {
-      listing = listing || (window.state && window.state.selectedItem) || {};
-      var s = sellerFromListing(listing);
-      var cleanUsername = String(s.uname || "").replace(/^@/, "").replace(/[^A-Za-z0-9_]/g, "").trim();
-      var telegramId = String(s.telegram_id || s.peer || "").trim();
-
-      if (cleanUsername) {
-        var url = "https://t.me/" + cleanUsername;
-        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
-          Telegram.WebApp.openTelegramLink(url);
-        } else {
-          window.open(url, "_blank");
-        }
-        return;
-      }
-
-      if (telegramId && /^\d+$/.test(telegramId) && String(telegramId) === String(uid())) {
-        alert("የራስዎ ማስታወቂያ ነው");
-        return;
-      }
-
-      if (telegramId && listing && listing.id) {
-        showInbox(true);
-        try{
-          var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
-          var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
-        }catch(e){}
-        openThread(listing.id, telegramId, listing.sub_category || listing.title || listing.brand || "ማስታወቂያ");
-        return;
-      }
-
-      var fallbackUrl = "https://t.me/" + (cleanUsername || "AdikaMarketplace");
-      if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
-        Telegram.WebApp.openTelegramLink(fallbackUrl);
-      } else {
-        window.open(fallbackUrl, "_blank");
-      }
-    } catch (err) {
-      try {
-        var cleanUsername = "AdikaMarketplace";
-        try {
-          var extra = (listing && listing.extra_data) || {};
-          if (typeof extra === "string") extra = JSON.parse(extra);
-          cleanUsername = String(
-            (listing && (listing.telegram_username || listing.telegram_user)) ||
-            (extra && (extra.telegram_username || extra.telegram_user)) ||
-            "AdikaMarketplace"
-          ).replace(/^@/, "").replace(/[^A-Za-z0-9_]/g, "") || "AdikaMarketplace";
-        } catch (e0) {}
-        var url = "https://t.me/" + cleanUsername;
-        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
-          Telegram.WebApp.openTelegramLink(url);
-        } else {
-          window.open(url, "_blank");
-        }
-      } catch (e2) {}
+    listing = listing || (window.state && state.selectedItem) || {};
+    var s = sellerFromListing(listing);
+    var peer = s.peer;
+    if(!peer){
+      var fallback = s.uname || "AkremFF";
+      var url = "https://t.me/" + fallback;
+      try{
+        if(window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(url);
+        else window.open(url, "_blank");
+      }catch(e){ window.open(url, "_blank"); }
+      return;
     }
+    if(String(peer) === uid()){
+      alert("የራስዎ ማስታወቂያ ነው");
+      return;
+    }
+    showInbox(true);
+    try{
+      var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
+      var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
+    }catch(e){}
+    openThread(listing.id, peer, listing.sub_category || listing.title || listing.brand || "ማስታወቂያ");
   };
   document.addEventListener("click", function(e){
     var th = e.target.closest && e.target.closest(".inbox-thread");
