@@ -26,8 +26,38 @@
       width: 8px; height: 8px; border-radius: 999px;
       background: #10b981;
       animation: adikaBlink 1.5s ease-in-out infinite;
-      border: 1.5px solid #fff;
+      border: 0;
     }
+
+    @keyframes adikaShimmer {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(120%); }
+    }
+    @keyframes adikaLetterIn {
+      0% { opacity: 0; transform: translateY(14px) rotateX(55deg); filter: blur(4px); }
+      100% { opacity: 1; transform: translateY(0) rotateX(0); filter: blur(0); }
+    }
+    @keyframes adikaSubIn {
+      0% { opacity: 0; transform: translateX(-18px); }
+      100% { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes adikaCtaPulse {
+      0%,100% { transform: scale(1); box-shadow: 0 2px 8px rgba(14,165,233,0.35); }
+      50% { transform: scale(1.05); box-shadow: 0 4px 14px rgba(14,165,233,0.55); }
+    }
+    @keyframes adikaWipe {
+      0% { clip-path: inset(0 100% 0 0); opacity: 0.4; }
+      100% { clip-path: inset(0 0 0 0); opacity: 1; }
+    }
+    .promo-slide.is-active .promo-title { animation: adikaWipe .45s cubic-bezier(.16,1,.3,1) both; }
+    .promo-slide.is-active .promo-letter {
+      display: inline-block;
+      animation: adikaLetterIn .42s cubic-bezier(.22,1,.36,1) both;
+    }
+    .promo-slide.is-active .promo-sub { animation: adikaSubIn .4s ease .12s both; }
+    .promo-slide.is-active .promo-cta { animation: adikaCtaPulse 1.8s ease-in-out .2s infinite; }
+    .promo-slide.is-active .promo-icon { animation: adikaLetterIn .5s cubic-bezier(.34,1.56,.64,1) both; }
+
     .adika-view-chip {
       background: rgba(0,0,0,0.58);
       color: #fff;
@@ -346,8 +376,9 @@
     .opp-card .opp-label { font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
     .opp-card .opp-title { font-size: 11px; font-weight: 900; color: #fff; margin-top: 1px; line-height: 1.2; }
     .opp-card .opp-body { font-size: 9px; color: #94a3b8; margin-top: 3px; line-height: 1.35; }
+    .opp-card { padding: 8px 9px !important; }
     .opp-card .opp-cta {
-      margin-top: 0.35rem; width: 100%; padding: 0.35rem 0.4rem;
+      margin-top: 0.3rem; width: 100%; padding: 0.3rem 0.4rem;
       border-radius: 0.45rem; font-size: 8px; font-weight: 800; line-height: 1.25;
       background: linear-gradient(90deg, #0d9488, #0891b2); color: #fff;
       border: none; text-align: center;
@@ -474,7 +505,7 @@
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-1.5 pb-32" style="padding-top: 126px; padding-bottom: 140px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-1.5 pb-32" style="padding-top: 108px; padding-bottom: 140px;">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-1 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -482,7 +513,7 @@
     </div>
 
     <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
-    <div id="homeHero" class="mt-0 mb-1.5 px-0">
+    <div id="homeHero" class="mt-0 mb-1 px-0">
       <div id="adikaPromoBanner" class="relative w-full h-11 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
            style="margin-top:0; background: rgba(15,23,42,0.90); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                   border: 1.5px solid transparent;
@@ -779,7 +810,8 @@
   <div id="analysisView" class="fixed inset-0 z-[280] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(165deg,#020617 0%,#0b3a4a 55%,#021016 100%);">
     <div class="shrink-0 px-3 py-2.5 text-white flex items-center justify-between" style="background:linear-gradient(90deg,#020617,#0e7490,#16acbd);border-bottom:1px solid rgba(255,255,255,0.12);">
       <div class="flex items-center gap-2 min-w-0">
-        <button id="analysisBackBtn" type="button" class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[11px] font-bold">← ሀብ</button>
+        <button id="analysisBackBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-bold">← ሀብ</button>
+        <button id="analysisHomeBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[10px] font-bold">🏠 ዋና ገፅ</button>
         <div class="min-w-0 flex-1">
           <div class="font-black text-xs truncate">አዲካ ዲጂታል አማካሪ</div>
           <div class="text-[10px] text-cyan-100/85 truncate">Adika Digital System · Live Desk</div>
@@ -5769,16 +5801,16 @@
     var cards = el("opportunityCards");
     if(cards){ cards.classList.remove("hidden"); cards.style.display="block"; cards.style.position="relative"; cards.style.zIndex="8"; cards.style.paddingBottom="8px"; }
     var grid = el("hubToolsGrid");
-    if(grid){ grid.style.display="none"; }
+    if(grid){ grid.style.display=""; grid.style.maxHeight=""; }
     var ban = el("hubFinanceAdvisorBanner");
     if(ban){
       ban.style.display="flex";
       ban.style.position="relative";
       ban.style.zIndex="40";
-      ban.style.marginTop="12px";
-      ban.style.marginBottom="18px";
+      ban.style.marginTop="10px";
+      ban.style.marginBottom="8px";
     }
-    try{ var wrap=el("aiToolsView"); if(wrap){ wrap.scrollTop = wrap.scrollHeight; } }catch(e){}
+    try{ var wrap=el("aiToolsView"); if(wrap){ wrap.scrollTop = 0; } }catch(e){}
   }
   window.genBudget = localOpp;
   window.renderOpportunityCards = window.renderOpportunityCards || localOpp;
@@ -5933,6 +5965,7 @@
     if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
     if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
 
+    if(id==="analysisHomeBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openHome(); return; }
     if(id==="analysisBackBtn" || id==="analysisCloseBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openTools(); return; }
 
     if(id==="aiHubBackBtn" || id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
@@ -6074,10 +6107,21 @@
 
 <script>
 (function(){
+  function splitTitle(el){
+    var title = el.querySelector(".promo-title");
+    if(!title || title.dataset.split==="1") return;
+    var raw = title.textContent || "";
+    title.innerHTML = raw.split("").map(function(ch,i){
+      if(ch===" ") return " ";
+      return '<span class="promo-letter" style="animation-delay:'+(i*28)+'ms">'+ch+'</span>';
+    }).join("");
+    title.dataset.split = "1";
+  }
   function run(){
     var slides = document.querySelectorAll("#promoSlides .promo-slide");
     var dots = document.querySelectorAll("#promoDots .promo-dot");
     if(!slides.length) return;
+    slides.forEach(splitTitle);
     var i = 0;
     function paint(n){
       i = ((n % slides.length)+slides.length)%slides.length;
@@ -6085,9 +6129,16 @@
         var on = k===i;
         s.style.opacity = on ? "1" : "0";
         s.style.pointerEvents = on ? "auto" : "none";
-        s.style.transform = on ? "translateY(0) scale(1)" : "translateY(10px) scale(0.96)";
-        s.style.transition = "opacity .35s ease, transform .35s cubic-bezier(.16,1,.3,1)";
+        s.style.transform = on ? "translateY(0) scale(1)" : "translateY(12px) scale(0.97)";
+        s.style.transition = "opacity .4s ease, transform .45s cubic-bezier(.16,1,.3,1)";
         s.classList.toggle("is-active", on);
+        if(on){
+          s.querySelectorAll(".promo-letter").forEach(function(L){
+            L.style.animation = "none";
+            void L.offsetWidth;
+            L.style.animation = "";
+          });
+        }
       });
       dots.forEach(function(d,k){
         d.style.background = k===i ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.28)";
@@ -6095,7 +6146,7 @@
       });
     }
     paint(0);
-    setInterval(function(){ paint(i+1); }, 3200);
+    setInterval(function(){ paint(i+1); }, 3400);
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", run);
   else run();
