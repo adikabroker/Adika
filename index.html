@@ -833,6 +833,24 @@
   </nav>
 
 
+
+  <div id="inboxView" class="fixed inset-0 z-[275] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
+    <div class="shrink-0 px-3 py-2.5 flex items-center justify-between text-white" style="background:linear-gradient(90deg,#0e7490,#16acbd);">
+      <button type="button" id="inboxBackBtn" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">← ተመለስ</button>
+      <div class="font-black text-sm truncate">መልእክት</div>
+      <button type="button" id="inboxCloseBtn" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
+    </div>
+    <div id="inboxThreadList" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+    <div id="inboxThreadPane" class="hidden flex-1 flex flex-col min-h-0">
+      <div id="inboxThreadMeta" class="px-3 py-2 text-[11px] font-bold text-slate-600 border-b bg-white/80"></div>
+      <div id="inboxThreadLog" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
+      <div class="shrink-0 p-2.5 bg-white border-t flex gap-2">
+        <textarea id="inboxCompose" rows="1" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" placeholder="መልእክት ይጻፉ..."></textarea>
+        <button type="button" id="inboxSendBtn" class="px-4 rounded-xl bg-[#16acbd] text-white font-black text-sm">ላክ</button>
+      </div>
+    </div>
+  </div>
+
   <!-- DEDICATED LIVE ADVISOR CHAT (full-screen view state) -->
   <div id="analysisView" class="fixed inset-0 z-[280] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(165deg,#020617 0%,#0b3a4a 55%,#021016 100%);">
     <div class="shrink-0 px-3 py-2.5 text-white flex items-center justify-between" style="background:linear-gradient(90deg,#020617,#0e7490,#16acbd);border-bottom:1px solid rgba(255,255,255,0.12);">
@@ -1220,10 +1238,12 @@
           <span class="lang-am">ደውል</span>
           <span class="lang-en">Call</span>
         </a>
-        <a id="modalChatBtn" href="#"
+        <button id="modalChatBtn" type="button"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
-          <span>💬</span> <span>Telegram</span>
-        </a>
+          <span>💬</span>
+          <span class="lang-am">መልእክት</span>
+          <span class="lang-en">Message</span>
+        </button>
         <button id="modalShareBtn" type="button"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
           <span>🔗</span>
@@ -4450,11 +4470,7 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
     document.getElementById("navMessages").onclick = function () {
-      if (tg && tg.openTelegramLink) {
-        tg.openTelegramLink("https://t.me/AdikaMarketplaceBot");
-      } else {
-        window.open("https://t.me/AdikaMarketplaceBot", "_blank");
-      }
+      if (window.openInbox) window.openInbox();
     };
     document.getElementById("navHelp").onclick = function () {
       var msg = "Adika Marketplace • Help Center\nContact @AdikaMarketplaceBot or call 0911000000.";
@@ -6025,7 +6041,7 @@
       e.preventDefault(); e.stopPropagation(); openTools(); return;
     }
     if(id==="navHome"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
-    if(id==="navMessages"){ e.preventDefault(); e.stopPropagation(); openChat(); return; }
+    if(id==="navMessages"){ e.preventDefault(); e.stopPropagation(); if(window.openInbox) openInbox(); return; }
     if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
     if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
     if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
@@ -6132,7 +6148,7 @@
       closeAll();
       return;
     }
-    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); openChat(); return; }
+    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); if(window.openListingMessage) openListingMessage(); return; }
 
     if(t.getAttribute("data-live")==="1" || t.classList.contains("adika-card")){
       var card = t.closest(".adika-card") || t;
@@ -6184,6 +6200,137 @@
   setTimeout(fitFeed, 800);
 })();
 </script>
+
+<script>
+(function(){
+  function uid(){
+    try{
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      return String((u && u.id) || (window.state && state.userId) || "guest");
+    }catch(e){ return "guest"; }
+  }
+  function uname(){
+    try{
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if(!u) return "Adika User";
+      return [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username || "Adika User";
+    }catch(e){ return "Adika User"; }
+  }
+  var ctx = { listing_id:"", peer_id:"", listing_title:"" };
+  function showInbox(on){
+    var v = document.getElementById("inboxView");
+    if(!v) return;
+    if(on){ v.classList.remove("hidden"); v.classList.add("flex"); v.style.display="flex"; }
+    else { v.classList.add("hidden"); v.classList.remove("flex"); v.style.display="none"; }
+  }
+  function loadThreads(){
+    var list = document.getElementById("inboxThreadList");
+    var pane = document.getElementById("inboxThreadPane");
+    if(list) list.classList.remove("hidden");
+    if(pane) pane.classList.add("hidden");
+    if(list) list.innerHTML = '<div class="text-center text-xs text-slate-500 py-6">እየጫነ ነው...</div>';
+    fetch("/api/messages?user_id="+encodeURIComponent(uid()), {credentials:"same-origin"})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var items = (d && d.items) || [];
+        if(!list) return;
+        if(!items.length){
+          list.innerHTML = '<div class="text-center text-sm font-bold text-slate-500 py-10">መልእክት የለም<br><span class="text-[11px] font-medium">ከማስታወቂያ ላይ «መልእክት» ይጫኑ</span></div>';
+          return;
+        }
+        list.innerHTML = items.map(function(it){
+          return '<button type="button" class="w-full text-left bg-white rounded-2xl p-3 shadow-sm border border-slate-100 inbox-thread" data-lid="'+String(it.listing_id||"")+'" data-peer="'+String(it.peer_id||"")+'" data-title="'+(it.listing_title||"").replace(/"/g,"")+'">'+
+            '<div class="font-black text-sm text-slate-800">'+(it.listing_title||"ማስታወቂያ")+'</div>'+
+            '<div class="text-[11px] text-slate-500 mt-1 truncate">'+(it.last_message||"")+'</div></button>';
+        }).join("");
+      }).catch(function(){
+        if(list) list.innerHTML = '<div class="text-center text-xs text-rose-500 py-6">መልእክት መጫን አልተሳካም</div>';
+      });
+  }
+  function openThread(lid, peer, title){
+    ctx.listing_id = String(lid||"");
+    ctx.peer_id = String(peer||"");
+    ctx.listing_title = title || "";
+    var list = document.getElementById("inboxThreadList");
+    var pane = document.getElementById("inboxThreadPane");
+    var meta = document.getElementById("inboxThreadMeta");
+    if(list) list.classList.add("hidden");
+    if(pane) pane.classList.remove("hidden");
+    if(meta) meta.textContent = ctx.listing_title || ("ውይይት #" + ctx.listing_id);
+    loadThread();
+  }
+  function loadThread(){
+    var log = document.getElementById("inboxThreadLog");
+    if(!log) return;
+    fetch("/api/messages?user_id="+encodeURIComponent(uid())+"&listing_id="+encodeURIComponent(ctx.listing_id)+"&peer_id="+encodeURIComponent(ctx.peer_id), {credentials:"same-origin"})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var items = (d && d.items) || [];
+        log.innerHTML = items.map(function(m){
+          var mine = !!m.mine;
+          return '<div class="'+(mine?"text-right":"text-left")+'"><div class="inline-block max-w-[80%] px-3 py-2 rounded-2xl text-[13px] '+(mine?"bg-[#16acbd] text-white":"bg-white border border-slate-200 text-slate-800")+'">'+(m.body||"")+'</div></div>';
+        }).join("") || '<div class="text-center text-xs text-slate-400 py-6">መልእክት ይጀምሩ</div>';
+        log.scrollTop = log.scrollHeight;
+      }).catch(function(){});
+  }
+  function sendMsg(){
+    var box = document.getElementById("inboxCompose");
+    var text = box ? String(box.value||"").trim() : "";
+    if(!text || !ctx.peer_id) return;
+    fetch("/api/send_message", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      credentials:"same-origin",
+      body: JSON.stringify({
+        user_id: uid(),
+        receiver_id: ctx.peer_id,
+        listing_id: ctx.listing_id,
+        listing_title: ctx.listing_title,
+        sender_name: uname(),
+        text: text
+      })
+    }).then(function(r){ return r.json(); }).then(function(d){
+      if(box) box.value = "";
+      loadThread();
+    }).catch(function(){});
+  }
+  window.openInbox = function(){
+    showInbox(true);
+    loadThreads();
+  };
+  window.openListingMessage = function(listing){
+    listing = listing || window.state && state.selectedItem || {};
+    var peer = String(listing.user_chat_id || listing.user_id || listing.telegram_id || listing.owner_id || "");
+    if(!peer){
+      alert("የሻጩ መለያ አልተገኘም");
+      return;
+    }
+    if(String(peer) === uid()){
+      alert("የራስዎ ማስታወቂያ ነው");
+      return;
+    }
+    showInbox(true);
+    openThread(listing.id, peer, listing.sub_category || listing.title || listing.brand || "ማስታወቂያ");
+  };
+  document.addEventListener("click", function(e){
+    var th = e.target.closest && e.target.closest(".inbox-thread");
+    if(th){
+      openThread(th.getAttribute("data-lid"), th.getAttribute("data-peer"), th.getAttribute("data-title"));
+    }
+  });
+  var back = document.getElementById("inboxBackBtn");
+  var close = document.getElementById("inboxCloseBtn");
+  if(back) back.onclick = function(){
+    var pane = document.getElementById("inboxThreadPane");
+    if(pane && !pane.classList.contains("hidden")){ loadThreads(); return; }
+    showInbox(false);
+  };
+  if(close) close.onclick = function(){ showInbox(false); };
+  var send = document.getElementById("inboxSendBtn");
+  if(send) send.onclick = sendMsg;
+})();
+</script>
+
 <!-- standalone promo rotator -->
 
 <script>
