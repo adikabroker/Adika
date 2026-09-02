@@ -16,7 +16,7 @@ import os
 import asyncio
 import random
 import threading
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_from_directory
 
 from config import (
     logger, PORT, MAX_IMAGE_BYTES, ADMIN_CHAT_ID_INT, DATABASE_URL, WEBAPP_URL,
@@ -85,21 +85,24 @@ def _json_safe(obj):
 _api_service._json_safe = _json_safe
 
 
+def _read_index_html():
+    """Always prefer the live static/index.html file over a stale import."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    for path in (
+        os.path.join(here, "static", "index.html"),
+        os.path.join(here, "index.html"),
+    ):
+        if os.path.isfile(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                return fh.read()
+    return EXPLORER_HTML
+
+
 @web_app.route('/')
 def home():
-    return (
-        "<html><body style='font-family:sans-serif;padding:24px;background:#b5eff3'>"
-        "<div style='background:#fff;padding:20px;border-radius:16px;box-shadow:0 12px 28px rgba(15,23,42,0.12);max-width:500px;margin:auto'>"
-        "<h2 style='color:#16acbd;margin-top:0'>Adika Marketplace Server</h2>"
-        "<p>Fast CSS Dual-Class Language Switcher Mini App.</p>"
-        f"<p>WEBAPP_URL: <code>{WEBAPP_URL}</code></p>"
-        "<ul>"
-        "<li><a href='/explorer'>/explorer (Main Mini App)</a></li>"
-        "<li><a href='/seller-form'>/seller-form (Post Listing)</a></li>"
-        "<li><a href='/buyer-form'>/buyer-form (Post Request)</a></li>"
-        "<li><a href='/api/health'>/api/health</a></li>"
-        "</ul></div></body></html>"
-    ), 200, {"Content-Type": "text/html; charset=utf-8"}
+    r = Response(_read_index_html(), mimetype="text/html; charset=utf-8")
+    r.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+    return r
 
 
 @web_app.route('/seller-form')
@@ -112,10 +115,10 @@ def webapp_buyer_form():
     return Response(BUYER_FORM_HTML, mimetype='text/html; charset=utf-8')
 
 
-@web_app.route('/explorer')
+@web_app.route("/explorer")
 def explorer_page():
-    r = Response(EXPLORER_HTML, mimetype='text/html; charset=utf-8')
-    r.headers['Cache-Control'] = 'no-store'
+    r = Response(_read_index_html(), mimetype="text/html; charset=utf-8")
+    r.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     return r
 
 
