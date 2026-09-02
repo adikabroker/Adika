@@ -5610,7 +5610,135 @@
     box.innerHTML = '<div class="text-xs space-y-1"><div class="font-black text-[#0e7490] text-lg">'+fmt(total)+' ETB</div><div>ቀረጥ: <b>'+fmt(duty)+'</b></div><div>ኤክሳይስ: <b>'+fmt(excise)+'</b></div><div>ቫት: <b>'+fmt(vat)+'</b></div></div>';
   }
 
+
+  window.__cStep = window.__cStep || 0;
+  function localOpp(){
+    var budget = Number((el("advisorBudget")||{}).value || 2000000);
+    var income = Number((el("advisorMonthlyIncome")||{}).value || 25000);
+    var down = Math.round(budget*0.3);
+    var items = window.__adikaLiveItems || [];
+    function price(it){ return Number(String(it.price||"").replace(/[^\d.]/g,""))||0; }
+    function name(it){ return [it.brand,it.model].filter(Boolean).join(" ") || it.sub_category || it.title || "ማስታወቂያ"; }
+    function isCar(it){ return /መኪና|car|vehicle|auto/i.test((it.main_category||"")+" "+(it.category||"")); }
+    function isHouse(it){ return /ቤት|house|propert|land|apartment/i.test((it.main_category||"")+" "+(it.category||"")); }
+    var cars = items.filter(function(it){ var p=price(it); return isCar(it)&&p>0&&p<=budget; }).slice(0,3);
+    var homes = items.filter(function(it){ var p=price(it); return isHouse(it)&&p>0&&(p<=budget||p*0.3<=budget); }).slice(0,3);
+    var autoTxt = cars.length ? cars.map(function(it){ var p=price(it); return "• "+name(it)+" — "+fmt(p)+" ብር"; }).join("<br>") : "ከአዲካ ገበያ በዚህ በጀት ተሽከርካሪ አልተገኘም። ቅድመ 30% "+fmt(down)+" ብር።";
+    var homeTxt = homes.length ? homes.map(function(it){ return "• "+name(it)+" — "+fmt(price(it))+" ብር"; }).join("<br>") : "በ "+fmt(budget)+" ብር የሚገባ ቤት/መሬት አልተገኘም።";
+    if(el("oppAutoBody")) el("oppAutoBody").innerHTML = "ተሽከርካሪ + የባንክ ብድር<br>"+autoTxt;
+    if(el("oppPropBody")) el("oppPropBody").innerHTML = "ሪል እስቴት · ቅድመ ክፍያ<br>"+homeTxt;
+    if(el("oppRoiBody")) el("oppRoiBody").innerHTML = "በጀት "+fmt(budget)+" ብር<br>• ROI 15% → "+fmt(budget*0.15)+" ብር/ዓመት<br>• ROI 22% → "+fmt(budget*0.22)+" ብር/ዓመት<br>• ROI 28% → "+fmt(budget*0.28)+" ብር/ዓመት<br>ወርሃዊ ገቢ: "+fmt(income)+" ብር";
+    var cards = el("opportunityCards");
+    if(cards){ cards.classList.remove("hidden"); cards.style.display="block"; }
+  }
+  window.genBudget = localOpp;
+  window.renderOpportunityCards = window.renderOpportunityCards || localOpp;
+
+  function localCompare(){
+    var a = ((el("compareCar1")||{}).value||"Toyota Vitz");
+    var b = ((el("compareCar2")||{}).value||"BYD Dolphin");
+    var y1 = ((el("compareYear1")||{}).value||"2018");
+    var y2 = ((el("compareYear2")||{}).value||"2023");
+    var box = el("compareResult");
+    if(!box) return;
+    box.classList.remove("hidden");
+    box.innerHTML = '<div class="rounded-2xl border border-slate-700 bg-slate-900/80 p-3 text-white text-xs space-y-2">'+
+      '<div class="font-black text-emerald-400">ውጤት</div>'+
+      '<div><b>'+a+' ('+y1+')</b> vs <b>'+b+' ('+y2+')</b></div>'+
+      '<div class="text-slate-300">አዲሱ ሞዴል በነዳጅ/ኤሌክትሪክ ወጪና ዋጋ ረጅም ጊዜ ሊበልጥ ይችላል። ትክክለኛ የገበያ ዋጋ ከአዲካ ዝርዝር ይመልከቱ።</div>'+
+      '<button type="button" class="opp-chat-cta w-full py-2 rounded-xl bg-teal-600 font-bold">ጥልቅ ትንተና Live Chat ያድርጉ →</button>'+
+      '</div>';
+  }
+
+  function localContractStep(delta){
+    if(delta) window.__cStep = Math.max(0, Math.min(3, (window.__cStep||0)+delta));
+    var n = window.__cStep||0;
+    [0,1,2,3].forEach(function(i){
+      var panel = el("contractStep"+i);
+      if(panel) panel.classList.toggle("hidden", i!==n);
+    });
+    document.querySelectorAll(".contract-step-tab").forEach(function(btn){
+      var s = Number(btn.getAttribute("data-step"));
+      btn.className = s===n
+        ? "contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm"
+        : "contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500";
+    });
+    var prev = el("cStepPrev"), next = el("cStepNext");
+    if(prev) prev.classList.toggle("hidden", n<=0);
+    if(next){ next.classList.toggle("hidden", n>=3); next.textContent = n>=3 ? "ጨርስ" : "ቀጣይ →"; }
+  }
+  function localContractFinish(finalized){
+    var box = el("contractResult");
+    if(!box) return;
+    box.classList.remove("hidden");
+    var seller = (el("cSellerName")||{}).value || "ሻጭ";
+    var buyer = (el("cBuyerName")||{}).value || "ገዢ";
+    var price = (el("cTotalPrice")||{}).value || "0";
+    box.innerHTML = '<div class="text-xs space-y-1"><div class="font-black text-emerald-700">'+(finalized?"ውሉ ተጠናቅቋል":"ረቂቅ ተቀምጧል")+'</div><div>ሻጭ: <b>'+seller+'</b></div><div>ገዢ: <b>'+buyer+'</b></div><div>ዋጋ: <b>'+price+' ETB</b></div><div class="text-slate-500">PDF ለማውረድ ከሰርቨር ጋር ሲገናኝ ይቀጥላል።</div></div>';
+    box.scrollIntoView({behavior:"smooth",block:"nearest"});
+  }
+
+  function localChassis(vin){
+    vin = String(vin||"").trim().toUpperCase();
+    var box = el("chassisResult");
+    if(!box) return;
+    box.classList.remove("hidden");
+    if(vin.length<5){
+      box.innerHTML = '<div class="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-bold">⚠️ እባክዎን የሻሲ ቁጥር ያስገቡ።</div>';
+      return;
+    }
+    var map = {
+      "JTDKB20U00189342": ["Toyota","Vitz","2012","Japan","1.3L Benzine"],
+      "KMHD381CBKU782910": ["Hyundai","Tucson","2019","Korea","2.0L Diesel"],
+      "LGXC12480PA093821": ["BYD","Song Plus","2023","China","Electric"],
+      "MA3FBE41S00123984": ["Suzuki","Dzire","2018","India","1.2L Benzine"]
+    };
+    var d = map[vin] || ["—","ከ VIN ቅድመ-ፊደል","—","—","—"];
+    if(!map[vin]){
+      if(vin.indexOf("JTD")===0) d=["Toyota","(VIN ግምት)","—","Japan","Benzine"];
+      else if(vin.indexOf("KMH")===0) d=["Hyundai","(VIN ግምት)","—","Korea","—"];
+      else if(vin.indexOf("LGX")===0) d=["BYD","(VIN ግምት)","—","China","EV"];
+      else if(vin.indexOf("MA3")===0) d=["Suzuki","(VIN ግምት)","—","India","—"];
+    }
+    box.innerHTML = '<div class="p-3 bg-slate-900 text-white rounded-2xl text-xs space-y-1">'+
+      '<div class="text-emerald-400 font-black">✓ ሻሲ ተነቧል</div>'+
+      '<div class="font-black text-sm">'+d[0]+' '+d[1]+'</div>'+
+      '<div class="font-mono text-slate-400">'+vin+'</div>'+
+      '<div>አመት: '+d[2]+' · አገር: '+d[3]+' · ሞተር: '+d[4]+'</div></div>';
+    fetch("/api/verify-chassis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({vin:vin})})
+      .then(function(r){return r.json();})
+      .then(function(res){
+        if(res && res.data && res.data.specs){
+          var sp=res.data.specs;
+          box.innerHTML = '<div class="p-3 bg-slate-900 text-white rounded-2xl text-xs space-y-1">'+
+            '<div class="text-emerald-400 font-black">✓ Official Specs</div>'+
+            '<div class="font-black text-sm">'+(sp.make||"")+" "+(sp.model||"")+'</div>'+
+            '<div class="font-mono text-slate-400">'+(sp.vin||vin)+'</div>'+
+            '<div>አመት: '+(sp.year||"—")+' · '+(sp.country||"")+' · '+(sp.engine||sp.fuel_type||"")+'</div></div>';
+        }
+      }).catch(function(){});
+  }
+
+  function localDiag(){
+    var model = ((el("diagCarModel")||{}).value||"መኪና");
+    var txt = ((el("diagInput")||el("diagNotes")||{}).value||"");
+    var box = el("diagResult") || el("diagAnalyzeBtn");
+    var out = el("diagResult");
+    if(!out){
+      out = document.createElement("div");
+      out.id="diagResult";
+      var btn=el("diagAnalyzeBtn");
+      if(btn&&btn.parentNode) btn.parentNode.appendChild(out);
+    }
+    out.classList.remove("hidden");
+    out.innerHTML = '<div class="p-3 bg-slate-50 border rounded-xl text-xs">'+
+      '<div class="font-black text-slate-800">የምርመራ ማጠቃለያ — '+model+'</div>'+
+      '<div class="text-slate-600 mt-1">'+(txt||"ጽሁፍ ካልገባ የተጫነው ወረቀት ብቻ ይታያል። ግልጽ ያልሆነ ወጪ አንገምትም።")+'</div>'+
+      '<button type="button" class="opp-chat-cta mt-2 w-full py-2 rounded-xl bg-[#16acbd] text-white font-bold">ስለ '+model+' አማክር →</button></div>';
+  }
+
   document.addEventListener("click", function(e){
+
     var t = e.target.closest("button, a, .cat-pill, .opp-chat-cta, [data-live], .adika-card, #adikaPromoBanner");
     if(!t) return;
     var id = t.id || "";
@@ -5668,7 +5796,15 @@
       if(el("advisorBudget") && b) el("advisorBudget").value = b;
       return;
     }
-    if(id==="advisorBtn"){ e.preventDefault(); e.stopPropagation(); if(window.genBudget) window.genBudget(); return; }
+    if(id==="advisorBtn"){ e.preventDefault(); e.stopPropagation(); if(typeof window.renderOpportunityCards==="function") window.renderOpportunityCards(); else if(window.genBudget) window.genBudget(); else localOpp(); return; }
+    if(id==="compareBtn"){ e.preventDefault(); e.stopPropagation(); localCompare(); return; }
+    if(id==="cStepNext"){ e.preventDefault(); e.stopPropagation(); localContractStep(1); return; }
+    if(id==="cStepPrev"){ e.preventDefault(); e.stopPropagation(); localContractStep(-1); return; }
+    if(t.classList.contains("contract-step-tab")){ e.preventDefault(); e.stopPropagation(); window.__cStep=Number(t.getAttribute("data-step")||0); localContractStep(0); return; }
+    if(id==="cFinalizeBtn" || id==="cSaveDraftBtn"){ e.preventDefault(); e.stopPropagation(); localContractFinish(id==="cFinalizeBtn"); return; }
+    if(t.classList.contains("vin-sample-chip")){ e.preventDefault(); e.stopPropagation(); var vin=t.getAttribute("data-vin")||""; if(el("chassisInput")) el("chassisInput").value=vin; localChassis(vin); return; }
+    if(id==="chassisVerifyBtn"){ e.preventDefault(); e.stopPropagation(); localChassis((el("chassisInput")||{}).value||""); return; }
+    if(id==="diagAnalyzeBtn"){ e.preventDefault(); e.stopPropagation(); localDiag(); return; }
     if(id==="hubFinanceAdvisorBanner" || id==="liveFromA" || id==="liveFromB" || id==="liveFromC" || t.classList.contains("opp-chat-cta")){
       e.preventDefault(); e.stopPropagation(); openChat(); return;
     }
