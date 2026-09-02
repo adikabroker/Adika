@@ -308,8 +308,15 @@
     #aiToolsView {
       position: relative; z-index: 1;
       display: flex; flex-direction: column;
-      overflow: hidden !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
     }
+    #opportunityCards {
+      max-height: 34vh !important;
+      overflow-y: auto !important;
+      padding-bottom: 4px;
+    }
+    #hubToolsDock { flex: 0 0 auto; padding-bottom: 8px; }
     .tools-ambient-wrap { position: relative; overflow: hidden; }
     .tools-ambient-blob {
       position: absolute; width: 11rem; height: 11rem; border-radius: 9999px;
@@ -984,8 +991,8 @@
           </div>
         </div>
 
-        <!-- Tools Grid + Finance Banner (no extra bottom pad — banner must stay on-screen) -->
-        <div class="flex-1 flex flex-col min-h-0 justify-between">
+        <!-- Tools Grid + Finance Banner -->
+        <div id="hubToolsDock" class="flex flex-col shrink-0">
           <h4 class="text-[10px] font-extrabold text-white drop-shadow-md mb-1.5 shrink-0">
             <span class="lang-am">ተጨማሪ የፋይናንስና የህግ መሳሪያዎች</span>
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
@@ -6101,6 +6108,21 @@
         .catch(function(){ if(log) log.innerHTML += '<div class="bg-white p-2 rounded-2xl">ተቀብያለሁ። በቅርቡ ዝርዝር መልስ ይደርሳል።</div>'; });
     });
   }
+})();
+</script>
+<script>
+(function(){
+  function fitFeed(){
+    var hdr = document.getElementById("adikaFixedHeader");
+    var main = document.getElementById("adikaMainFeed");
+    if(!hdr || !main) return;
+    var h = Math.ceil(hdr.getBoundingClientRect().height || 0);
+    main.style.paddingTop = (h + 6) + "px";
+  }
+  fitFeed();
+  window.addEventListener("resize", fitFeed);
+  setTimeout(fitFeed, 200);
+  setTimeout(fitFeed, 800);
 })();
 </script>
 <!-- standalone promo rotator -->
