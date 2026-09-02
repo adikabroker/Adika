@@ -200,38 +200,42 @@
 
     /* Glass chat bubbles */
     .chat-bubble-user {
-      margin-left: 1.5rem; padding: 0.7rem 0.85rem; border-radius: 1rem;
-      background: linear-gradient(135deg, #0d9488, #059669);
-      color: #fff; box-shadow: 0 8px 24px rgba(13, 148, 136, 0.25);
-      border: 1px solid rgba(255,255,255,0.15);
-      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      margin-left: 2rem; padding: 0.75rem 0.9rem; border-radius: 1.05rem 1.05rem 0.35rem 1.05rem;
+      background: linear-gradient(135deg, #0e7490, #14b8a6);
+      color: #fff; box-shadow: 0 10px 28px rgba(6,182,212,0.28);
+      border: 1px solid rgba(255,255,255,0.18);
     }
     .chat-bubble-ai {
-      margin-right: 1.5rem; padding: 0.7rem 0.85rem; border-radius: 1rem;
-      background: rgba(255,255,255,0.55);
-      border: 1px solid rgba(255,255,255,0.45);
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      color: #0f172a;
+      margin-right: 2rem; padding: 0.75rem 0.9rem; border-radius: 1.05rem 1.05rem 1.05rem 0.35rem;
+      background: rgba(15,23,42,0.72);
+      border: 1px solid rgba(34,211,238,0.22);
+      box-shadow: 0 10px 28px rgba(2,6,23,0.35);
+      color: #e2e8f0;
     }
     .chat-input-bar {
-      display: flex; align-items: flex-end; gap: 0.4rem;
-      padding: 0.55rem; border-top: 1px solid rgba(226,232,240,0.9);
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      display: flex; align-items: flex-end; gap: 0.55rem;
+      padding: 0.7rem 0.75rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid rgba(34,211,238,0.18);
+      background: rgba(2,6,23,0.88);
+      backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
     }
     .chat-input-bar textarea {
-      flex: 1; min-height: 38px; max-height: 110px; resize: none;
-      border-radius: 0.85rem; padding: 0.55rem 0.75rem;
-      font-size: 12px; line-height: 1.4; border: 1px solid #e2e8f0;
-      background: #f8fafc; outline: none;
+      flex: 1; min-height: 48px; max-height: 130px; resize: none;
+      border-radius: 1rem; padding: 0.7rem 0.9rem;
+      font-size: 13px; line-height: 1.45; border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.08); color: #f8fafc; outline: none;
     }
-    .chat-input-bar textarea:focus { border-color: #14b8a6; box-shadow: 0 0 0 2px rgba(20,184,166,0.2); }
+    .chat-input-bar textarea::placeholder { color: rgba(226,232,240,0.45); }
+    .chat-input-bar textarea:focus { border-color: #22d3ee; box-shadow: 0 0 0 2px rgba(34,211,238,0.25); }
     .chat-send-btn {
-      width: 38px; height: 38px; border-radius: 999px; flex-shrink: 0;
+      width: 48px; height: 48px; border-radius: 999px; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #0d9488, #059669); color: #fff;
-      border: none; box-shadow: 0 4px 12px rgba(13,148,136,0.35);
+      background: linear-gradient(135deg, #22d3ee, #14b8a6); color: #0f172a;
+      border: none; box-shadow: 0 8px 20px rgba(34,211,238,0.35);
+    }
+    #analysisView .chat-input-sticky {
+      position: relative !important; bottom: auto !important; left: auto !important; right: auto !important;
+      max-width: none !important; margin: 0 !important;
     }
     .chat-send-btn:active { transform: scale(0.94); }
 
@@ -470,7 +474,7 @@
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-1.5 pb-32" style="padding-top: 168px; padding-bottom: 140px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-1.5 pb-32" style="padding-top: 126px; padding-bottom: 140px;">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-1 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -478,7 +482,7 @@
     </div>
 
     <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
-    <div id="homeHero" class="mt-1.5 mb-1.5 px-0">
+    <div id="homeHero" class="mt-0 mb-1.5 px-0">
       <div id="adikaPromoBanner" class="relative w-full h-11 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
            style="margin-top:0; background: rgba(15,23,42,0.90); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                   border: 1.5px solid transparent;
@@ -534,14 +538,45 @@
             </div>
             <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
+
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="contract" data-idx="5" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(125,211,252,0.45),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">📄</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">የሽያጭ ውል</p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">ህጋዊ የመኪናና የቤት ውል በሰከንዶች ያዘጋጁ</p>
+            </div>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">አስጀምር ➔</span>
+          </div>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="diag" data-idx="6" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(52,211,153,0.4),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">📋</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">የምርመራ ወረቀት</p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የጋራዥ ምርመራ ወረቀት ወዲያውኑ ይተንትኑ</p>
+            </div>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">አስጀምር ➔</span>
+          </div>
+          <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="cadastral" data-idx="7" style="opacity:0;pointer-events:none">
+            <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(56,189,248,0.4),transparent 70%);"></span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🗺️</span>
+            <div class="flex-1 min-w-0 relative z-[1]">
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">የዲጂታል ካርታ ማጣሪያ</p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የመሬት ካርታ ፎቶ አስገብተው ያረጋግጡ</p>
+            </div>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">አስጀምር ➔</span>
+          </div>
         </div>
 
-        id="promoDots" class="absolute bottom-1 right-2 flex gap-1 z-10">
+        <div id="promoDots" class="absolute bottom-1 right-2 flex gap-1 z-10">
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/90 transition-all" data-i="0"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="1"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="2"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="3"></span>
           <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="4"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="5"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="6"></span>
+          <span class="promo-dot w-1.5 h-1.5 rounded-full bg-white/30 transition-all" data-i="7"></span>
         </div>
       </div>
       <div class="hidden">
@@ -741,35 +776,36 @@
 
 
   <!-- DEDICATED LIVE ADVISOR CHAT (full-screen view state) -->
-  <div id="analysisView" class="fixed inset-0 z-[240] bg-[#b5eff3] hidden flex-col max-w-md mx-auto w-full">
-    <div class="shrink-0 px-3 py-2 bg-[#16acbd] text-white flex items-center justify-between shadow-md">
+  <div id="analysisView" class="fixed inset-0 z-[280] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(165deg,#020617 0%,#0b3a4a 55%,#021016 100%);">
+    <div class="shrink-0 px-3 py-2.5 text-white flex items-center justify-between" style="background:linear-gradient(90deg,#020617,#0e7490,#16acbd);border-bottom:1px solid rgba(255,255,255,0.12);">
       <div class="flex items-center gap-2 min-w-0">
-        <button id="analysisBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-[11px] font-bold">← ተመለስ</button>
+        <button id="analysisBackBtn" type="button" class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[11px] font-bold">← ሀብ</button>
         <div class="min-w-0 flex-1">
-          <div class="font-black text-xs truncate">Adika Senior Financial Advisor</div>
-          <div class="text-[10px] text-white/85 truncate">Live Advisor Chat</div>
+          <div class="font-black text-xs truncate">አዲካ ዲጂታል አማካሪ</div>
+          <div class="text-[10px] text-cyan-100/85 truncate">Adika Digital System · Live Desk</div>
         </div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
-        <span class="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">ዝግጁ</span>
-        <button type="button" onclick="navigateBack('analysisView')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
+        <span class="text-[9px] font-extrabold text-emerald-200 bg-emerald-400/15 px-2 py-0.5 rounded-full border border-emerald-300/30">ዝግጁ</span>
+        <button id="analysisCloseBtn" type="button" class="w-8 h-8 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-bold text-sm">✕</button>
       </div>
     </div>
-    <div class="chat-shell flex-1 flex flex-col min-h-0 bg-slate-50/70">
-      <div class="px-3 pt-2 pb-1 shrink-0">
-        <div class="rounded-xl px-3 py-1.5 bg-slate-900/80 text-white flex items-center justify-between">
-          <div class="text-[11px] font-black flex items-center gap-1.5">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
-            <span>የቀጥታ ውይይት</span>
+    <div class="chat-shell flex-1 flex flex-col min-h-0 relative overflow-hidden">
+      <div class="absolute top-8 left-6 w-40 h-40 rounded-full pointer-events-none" style="background:rgba(34,211,238,0.16);filter:blur(40px);"></div>
+      <div class="absolute bottom-16 right-4 w-36 h-36 rounded-full pointer-events-none" style="background:rgba(99,102,241,0.16);filter:blur(40px);"></div>
+      <div class="px-3 pt-3 pb-1 shrink-0 relative z-10">
+        <div class="rounded-2xl px-3 py-2 flex items-center justify-between" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.22);">
+          <div class="text-[11px] font-black text-white flex items-center gap-1.5">
+            <span>💬</span><span>የቀጥታ የፋይናንስ ውይይት</span>
           </div>
-          <span class="text-[9px] font-bold text-emerald-300">ፈጣን ምላሽ</span>
+          <span class="text-[9px] font-bold text-cyan-300">ፈጣን ምላሽ</span>
         </div>
       </div>
-      <div id="advisorChatLog" class="flex-1 overflow-y-auto px-3 pt-2 space-y-2.5 text-xs scroll-smooth"></div>
-      <div class="chat-input-sticky chat-input-bar">
-        <textarea id="advisorChatInput" rows="1" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር ይጠይቁ..."></textarea>
+      <div id="advisorChatLog" class="flex-1 overflow-y-auto px-3 pt-3 pb-3 space-y-2.5 text-xs scroll-smooth relative z-10"></div>
+      <div class="chat-input-bar relative z-20 shrink-0">
+        <textarea id="advisorChatInput" rows="2" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር በአማርኛ ይጠይቁ..."></textarea>
         <button id="advisorChatSend" type="button" class="chat-send-btn" aria-label="Send">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
         </button>
       </div>
     </div>
@@ -3160,7 +3196,9 @@
       }
     }
     var analysisBackBtn = document.getElementById("analysisBackBtn");
-    if (analysisBackBtn) analysisBackBtn.onclick = function() { showAnalysisView(false); };
+    if (analysisBackBtn) analysisBackBtn.onclick = function(e) { if(e){e.preventDefault();e.stopPropagation();} showAnalysisView(false); if(window.openTools) openTools(); };
+    var analysisCloseBtn = document.getElementById("analysisCloseBtn");
+    if (analysisCloseBtn) analysisCloseBtn.onclick = function(e) { if(e){e.preventDefault();e.stopPropagation();} showAnalysisView(false); if(window.openTools) openTools(); };
 
     var advisorChatHistory = [];
 
@@ -5592,17 +5630,27 @@
     ["aiModal","analysisView","modalOverlay","brokerRegModal","roleSelectModal"].forEach(hide);
     try { document.body.style.overflow = ""; } catch(e){}
   }
+  function seedChat(){
+    var log = el("advisorChatLog");
+    if(!log) return;
+    if(log.dataset.seeded === "1" && log.children.length) return;
+    log.innerHTML = '<div class="chat-bubble-ai"><div class="text-[9px] font-bold text-cyan-300 mb-0.5">አዲካ ዲጂታል አማካሪ</div><div class="text-xs font-medium leading-relaxed">ሰላም። በአዲካ ዲጂታል ሲስተም የፋይናንስ አማካሪ ነኝ። ስለ መኪና፣ ቤት፣ ብድር ወይም ኢንቨስትመንት በአማርኛ ይጠይቁኝ — ዋጋ ከገበያ ዝርዝር ካለ ብቻ እጠቀማለሁ።</div></div>';
+    log.dataset.seeded = "1";
+  }
   function openChat(){
-    hide("aiModal");
+    window.__adikaChatFrom = "hub";
+    var tools = el("aiModal");
+    if(tools){ tools.classList.add("hidden"); tools.classList.remove("flex"); tools.style.display="none"; }
     closeAllTools();
     var n = el("analysisView");
-    if(n){ n.classList.remove("hidden"); n.classList.add("flex"); n.style.display = "flex"; }
+    if(n){ n.classList.remove("hidden"); n.classList.add("flex"); n.style.display="flex"; n.style.zIndex="280"; }
+    seedChat();
   }
   function openTools(){
     hide("analysisView");
     closeAllTools();
     var n = el("aiModal");
-    if(n){ n.classList.remove("hidden"); n.classList.add("flex"); n.style.display = "flex"; }
+    if(n){ n.classList.remove("hidden"); n.classList.add("flex"); n.style.display="flex"; n.style.zIndex="260"; }
   }
   function openHome(){
     closeAll();
@@ -5719,12 +5767,18 @@
     if(el("oppPropBody")) el("oppPropBody").innerHTML = "ሪል እስቴት · ቅድመ ክፍያ<br>"+homeTxt;
     if(el("oppRoiBody")) el("oppRoiBody").innerHTML = "በጀት "+fmt(budget)+" ብር<br>• ROI 15% → "+fmt(budget*0.15)+" ብር/ዓመት<br>• ROI 22% → "+fmt(budget*0.22)+" ብር/ዓመት<br>• ROI 28% → "+fmt(budget*0.28)+" ብር/ዓመት<br>ወርሃዊ ገቢ: "+fmt(income)+" ብር";
     var cards = el("opportunityCards");
-    if(cards){ cards.classList.remove("hidden"); cards.style.display="block"; cards.style.position="relative"; cards.style.zIndex="5"; }
+    if(cards){ cards.classList.remove("hidden"); cards.style.display="block"; cards.style.position="relative"; cards.style.zIndex="8"; cards.style.paddingBottom="8px"; }
     var grid = el("hubToolsGrid");
-    if(grid){ grid.style.maxHeight="160px"; grid.style.overflow="hidden"; }
+    if(grid){ grid.style.display="none"; }
     var ban = el("hubFinanceAdvisorBanner");
-    if(ban){ ban.style.position="relative"; ban.style.zIndex="30"; ban.style.marginTop="10px"; }
-    try{ el("aiToolsView").scrollTop = 0; }catch(e){}
+    if(ban){
+      ban.style.display="flex";
+      ban.style.position="relative";
+      ban.style.zIndex="40";
+      ban.style.marginTop="12px";
+      ban.style.marginBottom="18px";
+    }
+    try{ var wrap=el("aiToolsView"); if(wrap){ wrap.scrollTop = wrap.scrollHeight; } }catch(e){}
   }
   window.genBudget = localOpp;
   window.renderOpportunityCards = window.renderOpportunityCards || localOpp;
@@ -5879,7 +5933,7 @@
     if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
     if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
 
-    if(id==="analysisBackBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openTools(); return; }
+    if(id==="analysisBackBtn" || id==="analysisCloseBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openTools(); return; }
 
     if(id==="aiHubBackBtn" || id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
     if(id==="aiTabTools"){ e.preventDefault(); e.stopPropagation(); if(el("aiToolsView")){ el("aiToolsView").classList.remove("hidden"); el("aiToolsView").style.display=""; } if(el("aiSearchView")){ el("aiSearchView").classList.add("hidden"); el("aiSearchView").style.display="none"; } return; }
@@ -5961,8 +6015,9 @@
     if(id==="dutyCalculateBtn"){ e.preventDefault(); e.stopPropagation(); calcDutyLocal(); return; }
     if(id==="loanCalculateBtn"){ e.preventDefault(); e.stopPropagation(); calcLoanLocal(); return; }
 
-    if(t.classList.contains("btn-back") || t.classList.contains("btn-close") || /ተመለስ|ዋና ገፅ/.test(t.textContent||"")){
+    if(t.classList.contains("btn-back") || t.classList.contains("btn-close") || /ተመለስ|ዋና ገፅ|ሀብ/.test(t.textContent||"")){
       e.preventDefault(); e.stopPropagation();
+      if(el("analysisView") && el("analysisView").style.display==="flex"){ hide("analysisView"); openTools(); return; }
       if(/ዋና ገፅ/.test(t.textContent||"") || /Home/i.test(t.textContent||"")){
         if(mid) hide(mid);
         openHome();
@@ -6013,6 +6068,37 @@
         .catch(function(){ if(log) log.innerHTML += '<div class="bg-white p-2 rounded-2xl">ተቀብያለሁ። በቅርቡ ዝርዝር መልስ ይደርሳል።</div>'; });
     });
   }
+})();
+</script>
+<!-- standalone promo rotator -->
+
+<script>
+(function(){
+  function run(){
+    var slides = document.querySelectorAll("#promoSlides .promo-slide");
+    var dots = document.querySelectorAll("#promoDots .promo-dot");
+    if(!slides.length) return;
+    var i = 0;
+    function paint(n){
+      i = ((n % slides.length)+slides.length)%slides.length;
+      slides.forEach(function(s,k){
+        var on = k===i;
+        s.style.opacity = on ? "1" : "0";
+        s.style.pointerEvents = on ? "auto" : "none";
+        s.style.transform = on ? "translateY(0) scale(1)" : "translateY(10px) scale(0.96)";
+        s.style.transition = "opacity .35s ease, transform .35s cubic-bezier(.16,1,.3,1)";
+        s.classList.toggle("is-active", on);
+      });
+      dots.forEach(function(d,k){
+        d.style.background = k===i ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.28)";
+        d.style.width = k===i ? "10px" : "6px";
+      });
+    }
+    paint(0);
+    setInterval(function(){ paint(i+1); }, 3200);
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", run);
+  else run();
 })();
 </script>
 </body>
