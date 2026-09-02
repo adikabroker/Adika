@@ -86,6 +86,18 @@
       transform: scale(0.98);
     }
 
+    .adika-card .card-title-row { display:flex; align-items:center; justify-content:space-between; gap:4px; min-width:0; }
+    .adika-card .card-title { font-size:10px !important; font-weight:800; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; line-height:1.2; }
+    .adika-card .card-time { font-size:8px !important; color:rgba(148,163,184,0.52) !important; font-weight:600; white-space:nowrap; flex-shrink:0; }
+    .adika-card .card-price {
+      font-size:9px !important; font-weight:800; color:#0e7490;
+      background:rgba(22,172,189,0.10); padding:2px 6px; border-radius:7px;
+      white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis;
+      max-width:78%; line-height:1.2;
+    }
+    #grid { gap: 8px !important; }
+
+
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -458,7 +470,7 @@
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-2.5 pb-32" style="padding-top: 118px; padding-bottom: 140px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-1.5 pb-32" style="padding-top: 168px; padding-bottom: 140px;">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-1 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -466,7 +478,7 @@
     </div>
 
     <!-- Adika Digital System — Auto-Play Slim Promo Banner (h-14, infinite loop) -->
-    <div id="homeHero" class="-mt-2 pt-0 mb-1 px-0">
+    <div id="homeHero" class="mt-1.5 mb-1.5 px-0">
       <div id="adikaPromoBanner" class="relative w-full h-11 rounded-xl overflow-hidden cursor-pointer active:scale-[0.99] transition-transform"
            style="margin-top:0; background: rgba(15,23,42,0.90); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
                   border: 1.5px solid transparent;
@@ -548,7 +560,7 @@
     <div id="status" class="text-center py-2 text-slate-600 font-semibold text-xs" style="display:none;"></div>
 
     <!-- 2-Column Grid — STATIC DEMO CARDS so UI never blank even if JS fails -->
-    <div id="grid" class="grid grid-cols-2 gap-2.5"></div>
+    <div id="grid" class="grid grid-cols-2 gap-2"></div>
     <script>
     (function(){
       function money(v){
@@ -624,13 +636,13 @@
               '<span class="adika-live-dot" style="position:absolute;top:8px;left:8px;z-index:2;"></span>'+
               '<span class="adika-view-chip" style="position:absolute;bottom:8px;left:8px;z-index:2;">👁 '+views+'</span>'+
             '</div>'+
-            '<div style="padding:8px 10px 10px;">'+
-              '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">'+
-                '<div style="font-weight:800;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+titleOf(it)+' <span style="color:#10b981;">✓</span></div>'+
-                '<div style="font-size:10px;color:#94a3b8;font-weight:600;white-space:nowrap;">'+time+'</div>'+
+            '<div style="padding:7px 8px 8px;">'+
+              '<div class="card-title-row">'+
+                '<div class="card-title">'+titleOf(it)+' <span style="color:#10b981;">✓</span></div>'+
+                '<div class="card-time">'+time+'</div>'+
               '</div>'+
-              '<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:6px;">'+
-                '<div style="font-weight:800;font-size:12px;color:#0e7490;background:rgba(22,172,189,0.10);padding:3px 8px;border-radius:8px;">💰 '+money(it.price)+'</div>'+
+              '<div style="margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:4px;">'+
+                '<div class="card-price">💰 '+money(it.price)+'</div>'+
                 '<span class="card-fav-btn" data-id="'+String(it.id||"")+'" style="font-size:16px;line-height:1;">🤍</span>'+
               '</div>'+
             '</div></button>';
@@ -2322,17 +2334,16 @@
         '</div>' +
         '<div class="px-2 py-1.5 flex flex-col gap-1">' +
           /* Top row: Brand-Model left | time right */
-          '<div class="flex items-center justify-between gap-1.5 min-w-0">' +
-            '<div class="font-extrabold text-[11px] text-slate-800 truncate min-w-0 flex items-center gap-0.5">' +
+          '<div class="card-title-row">' +
+            '<div class="card-title flex items-center gap-0.5">' +
               '<span class="truncate lang-am">' + esc(cardTitleAm) + '</span>' +
               '<span class="truncate lang-en">' + esc(cardTitleEn) + '</span>' +
-              '<span class="text-emerald-600 text-[10px] shrink-0">✓</span>' +
+              '<span class="text-emerald-600 text-[9px] shrink-0">✓</span>' +
             '</div>' +
-            (timeLabel ? '<span class="text-[9px] text-slate-400 font-medium whitespace-nowrap shrink-0">' + esc(timeLabel) + '</span>' : '') +
+            (timeLabel ? '<span class="card-time">' + esc(timeLabel) + '</span>' : '') +
           '</div>' +
-          /* Bottom row: Price left | heart right */
-          '<div class="flex items-center justify-between gap-1.5 min-w-0">' +
-            '<div class="inline-block px-1.5 py-0.5 rounded bg-[#16acbd]/10 text-[#0e7490] font-black text-[10px] truncate max-w-[85%]">💰 ' + esc(priceLabel) + '</div>' +
+          '<div class="flex items-center justify-between gap-1 min-w-0 mt-1">' +
+            '<div class="card-price">💰 ' + esc(priceLabel) + '</div>' +
             '<button type="button" class="card-fav-btn text-sm p-0.5 transition-transform active:scale-75 shrink-0 leading-none" data-id="' + esc(item.id) + '">' +
               (isFav ? '❤️' : '🤍') +
             '</button>' +
