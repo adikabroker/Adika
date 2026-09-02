@@ -122,6 +122,159 @@ def explorer_page():
     return r
 
 
+def _ensure_messages_table():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS messages (
+                id SERIAL PRIMARY KEY,
+                listing_id TEXT,
+                sender_id TEXT NOT NULL,
+                receiver_id TEXT NOT NULL,
+                sender_name TEXT,
+                listing_title TEXT,
+                body TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.commit()
+    except Exception:
+        try:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    listing_id TEXT,
+                    sender_id TEXT NOT NULL,
+                    receiver_id TEXT NOT NULL,
+                    sender_name TEXT,
+                    listing_title TEXT,
+                    body TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            conn.commit()
+        except Exception:
+            pass
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@web_app.route("/api/messages", methods=["GET", "OPTIONS"])
+def api_messages():
+    if request.method == "OPTIONS":
+        return ("", 204)
+    try:
+        _ensure_messages_table()
+        user_id = str(request.args.get("user_id") or "").strip()
+        listing_id = str(request.args.get("listing_id") or "").strip()
+        peer_id = str(request.args.get("peer_id") or "").strip()
+        if not user_id:
+            return jsonify({"success": False, "message": "user_id required", "items": []}), 400
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        if listing_id and peer_id:
+            cur.execute(
+                f"""
+                SELECT id, listing_id, sender_id, receiver_id, sender_name, listing_title, body, created_at
+                FROM messages
+                WHERE listing_id = {p}
+                  AND ((sender_id = {p} AND receiver_id = {p}) OR (sender_id = {p} AND receiver_id = {p}))
+                ORDER BY created_at ASC, id ASC
+                LIMIT 200
+                """,
+                (listing_id, user_id, peer_id, peer_id, user_id),
+            )
+            rows = cur.fetchall() or []
+            items = []
+            for r in rows:
+                items.append({
+                    "id": r[0], "listing_id": r[1], "sender_id": str(r[2]), "receiver_id": str(r[3]),
+                    "sender_name": r[4] or "", "listing_title": r[5] or "", "body": r[6] or "",
+                    "created_at": str(r[7] or ""), "mine": str(r[2]) == user_id,
+                })
+            conn.close()
+            return jsonify({"success": True, "items": items})
+        cur.execute(
+            f"""
+            SELECT id, listing_id, sender_id, receiver_id, sender_name, listing_title, body, created_at
+            FROM messages
+            WHERE sender_id = {p} OR receiver_id = {p}
+            ORDER BY created_at DESC, id DESC
+            LIMIT 300
+            """,
+            (user_id, user_id),
+        )
+        rows = cur.fetchall() or []
+        seen = set()
+        threads = []
+        for r in rows:
+            lid = str(r[1] or "")
+            sid, rid = str(r[2]), str(r[3])
+            peer = rid if sid == user_id else sid
+            key = lid + "|" + peer
+            if key in seen:
+                continue
+            seen.add(key)
+            threads.append({
+                "listing_id": lid,
+                "peer_id": peer,
+                "peer_name": (r[4] or "ተጠቃሚ") if sid != user_id else "ውይይት",
+                "listing_title": r[5] or ("#" + lid),
+                "last_message": r[6] or "",
+                "created_at": str(r[7] or ""),
+            })
+        conn.close()
+        return jsonify({"success": True, "items": threads})
+    except Exception as e:
+        logger.exception("api_messages")
+        return jsonify({"success": False, "message": str(e), "items": []}), 200
+
+
+@web_app.route("/api/send_message", methods=["POST", "OPTIONS"])
+def api_send_message():
+    if request.method == "OPTIONS":
+        return ("", 204)
+    try:
+        _ensure_messages_table()
+        data = request.get_json(silent=True) or {}
+        sender_id = str(data.get("user_id") or data.get("sender_id") or "").strip()
+        receiver_id = str(data.get("receiver_id") or "").strip()
+        listing_id = str(data.get("listing_id") or "").strip()
+        body = str(data.get("text") or data.get("body") or "").strip()
+        sender_name = str(data.get("sender_name") or "Adika User").strip()
+        listing_title = str(data.get("listing_title") or "").strip()
+        if not sender_id or not receiver_id or not body:
+            return jsonify({"success": False, "message": "user_id, receiver_id and text are required"}), 400
+        if sender_id == receiver_id:
+            return jsonify({"success": False, "message": "Cannot message yourself"}), 400
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = get_placeholder()
+        cur.execute(
+            f"""
+            INSERT INTO messages (listing_id, sender_id, receiver_id, sender_name, listing_title, body)
+            VALUES ({p}, {p}, {p}, {p}, {p}, {p})
+            """,
+            (listing_id, sender_id, receiver_id, sender_name, listing_title, body),
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.exception("api_send_message")
+        return jsonify({"success": False, "message": str(e)}), 200
+
+
+
 def _send_notification_safe(notification_text: str, req_id: int, buyer_id: int):
     if not bot_app:
         return
