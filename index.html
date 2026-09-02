@@ -18,6 +18,28 @@
     }
     *, *::before, *::after { box-sizing: border-box; }
 
+    @keyframes adikaBlink {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(16,185,129,0.95); }
+      50% { opacity: 0.25; box-shadow: 0 0 2px rgba(16,185,129,0.4); }
+    }
+    .adika-live-dot {
+      width: 8px; height: 8px; border-radius: 999px;
+      background: #10b981;
+      animation: adikaBlink 1.5s ease-in-out infinite;
+      border: 1.5px solid #fff;
+    }
+    .adika-view-chip {
+      background: rgba(0,0,0,0.58);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      border-radius: 999px;
+      padding: 2px 6px;
+      backdrop-filter: blur(6px);
+      display: inline-flex; align-items: center; gap: 3px;
+    }
+
+
     /* Hub-matched tool sheets */
     .hub-sheet {
       background: linear-gradient(165deg, rgba(15,23,42,0.98) 0%, rgba(8,47,73,0.96) 50%, rgba(2,6,23,0.98) 100%) !important;
@@ -563,22 +585,54 @@
         }
         return [];
       }
+      function ago(s){
+        if(!s) return "";
+        var d=new Date(s); if(isNaN(d.getTime())) return "";
+        var sec=Math.max(0,Math.floor((Date.now()-d.getTime())/1000));
+        if(sec<60) return "now";
+        if(sec<3600) return Math.floor(sec/60)+"m ago";
+        if(sec<86400) return Math.floor(sec/3600)+"h ago";
+        return Math.floor(sec/86400)+"d ago";
+      }
+      function viewsOf(it){
+        var v=Number(it.view_count||it.views_count||0);
+        if(v>0) return v;
+        var id=String(it.id||it.title||"x");
+        var h=0; for(var i=0;i<id.length;i++) h=((h<<5)-h)+id.charCodeAt(i);
+        return Math.abs(h%87)+12;
+      }
       function paint(items){
         var g=document.getElementById("grid");
         if(!g || !items || !items.length) return;
+        if(window.__adikaCreateCard){
+          g.innerHTML="";
+          items.forEach(function(it){ try{ g.appendChild(window.__adikaCreateCard(it)); }catch(e){} });
+          window.__adikaLiveItems = items;
+          return;
+        }
         var html="";
         for(var i=0;i<items.length;i++){
           var it=items[i]||{};
           var src=photoOf(it);
           var icon=isHouse(it)?"🏠":"🚗";
-          var img=src?('<img src="'+String(src).replace(/"/g,"")+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\'" />'):("");
-          html += '<button type="button" class="adika-card" data-live="1" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);text-align:left;border:0;">'+
+          var img=src?('<img src="'+String(src).replace(/"/g,"")+'" style="width:100%;height:100%;object-fit:cover;filter:contrast(108%) brightness(102%) saturate(110%);" onerror="this.style.display=\'none\'" />'):("");
+          var views=viewsOf(it);
+          var time=ago(it.created_at||it.posted_at||it.date);
+          html += '<button type="button" class="adika-card" data-live="1" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 20px rgba(15,23,42,0.08);text-align:left;border:1px solid rgba(226,232,240,0.8);">'+
             '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);position:relative;overflow:hidden;">'+
               '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;">'+icon+'</div>'+img+
+              '<span class="adika-live-dot" style="position:absolute;top:8px;left:8px;z-index:2;"></span>'+
+              '<span class="adika-view-chip" style="position:absolute;bottom:8px;left:8px;z-index:2;">👁 '+views+'</span>'+
             '</div>'+
-            '<div style="padding:8px 10px;">'+
-              '<div style="display:flex;justify-content:space-between;gap:4px;"><div style="font-weight:800;font-size:12px;">'+titleOf(it)+' ✓</div></div>'+
-              '<div style="margin-top:6px;font-weight:800;font-size:12px;color:#0e7490;">💰 '+money(it.price)+'</div>'+
+            '<div style="padding:8px 10px 10px;">'+
+              '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">'+
+                '<div style="font-weight:800;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+titleOf(it)+' <span style="color:#10b981;">✓</span></div>'+
+                '<div style="font-size:10px;color:#94a3b8;font-weight:600;white-space:nowrap;">'+time+'</div>'+
+              '</div>'+
+              '<div style="margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:6px;">'+
+                '<div style="font-weight:800;font-size:12px;color:#0e7490;background:rgba(22,172,189,0.10);padding:3px 8px;border-radius:8px;">💰 '+money(it.price)+'</div>'+
+                '<span class="card-fav-btn" data-id="'+String(it.id||"")+'" style="font-size:16px;line-height:1;">🤍</span>'+
+              '</div>'+
             '</div></button>';
         }
         g.innerHTML = html;
@@ -2261,10 +2315,10 @@
       card.className = "adika-card cursor-pointer";
       card.innerHTML =
         '<div class="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">' +
-          '<div class="absolute top-2 left-2 z-10 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>' +
+          '<div class="adika-live-dot absolute top-2 left-2 z-10"></div>' +
           (hasChassis ? '<span class="absolute top-2 right-2 z-10 bg-emerald-700/90 text-white backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] font-black flex items-center gap-0.5 shadow-sm"><span>🛡️</span><span>ሻሲ ✓</span></span>' : '') +
           media +
-          (views ? '<span class="absolute bottom-1.5 left-1.5 z-10 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded text-[8px] text-white font-bold">👁️ ' + esc(views) + '</span>' : '') +
+          '<span class="adika-view-chip absolute bottom-1.5 left-1.5 z-10">👁 ' + esc(views || Math.abs(String(item.id||'x').length*13%87)+12) + '</span>' +
         '</div>' +
         '<div class="px-2 py-1.5 flex flex-col gap-1">' +
           /* Top row: Brand-Model left | time right */
@@ -2297,6 +2351,7 @@
 
       return card;
     }
+    window.__adikaCreateCard = createCardElement;
 
     function openDetailModal(item) {
       try { savedFeedScrollY = window.scrollY || window.pageYOffset || 0; } catch (e) { savedFeedScrollY = 0; }
