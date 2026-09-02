@@ -1065,7 +1065,7 @@
             class="w-full bg-gradient-to-r from-cyan-500/20 via-slate-900/60 to-indigo-500/20 backdrop-blur-2xl border border-cyan-400/50 rounded-2xl p-3 mt-2 flex items-center justify-between shadow-lg shadow-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer relative z-10 shrink-0">
             <div class="min-w-0 text-left pr-2">
               <div class="text-white font-extrabold text-[12px] leading-tight drop-shadow-md">💡 ዲጂታል የፋይናንስ አማካሪ</div>
-              <div class="text-cyan-300 text-[10px] font-semibold drop-shadow-[0_0_8px_rgba(34,211,238,0.45)] mt-0.5">Adika ሲኒዮር ዲጂታል ፋይናንስ አማካሪ</div>
+              <div class="text-cyan-300 text-[10px] font-semibold drop-shadow-[0_0_8px_rgba(34,211,238,0.45)] mt-0.5">Adika Senior Digital Financial Advisor</div>
             </div>
             <span class="bg-cyan-400 text-slate-950 px-3 py-1.5 rounded-xl font-bold text-xs shrink-0 shadow-md shadow-cyan-400/30">አሁኑኑ አማክር →</span>
           </button>
@@ -1649,7 +1649,7 @@
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <div id="poaModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
-    <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3.5 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0 shadow-sm">
         <div class="flex items-center gap-2 min-w-0">
           <div class="w-8 h-8 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-base shadow-inner shrink-0">📄</div>
@@ -1668,23 +1668,16 @@
         </div>
       </div>
 
-      <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs bg-[#f8fafc]">
-        <div class="p-2.5 rounded-2xl bg-white border border-[#16acbd]/25 shadow-xs flex items-start gap-2.5 text-[11px] text-slate-600">
-          <span class="text-base shrink-0 mt-0.5">📱</span>
-          <div class="leading-snug">የውክልና ሰነዱን ፎቶ ይጭኑ። በአዲካ ዲጂታል ሲስተም ይመረመራል። ዲጂታል ምዝገባ የሌለው የቆየ ሰነድ በአካል ቢሮ ማረጋገጥ ያስፈልጋል።</div>
-        </div>
-
-        <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
-          <label class="block cursor-pointer">
-            <div class="rounded-2xl border-2 border-dashed border-[#16acbd]/50 bg-gradient-to-br from-slate-50 to-cyan-50/50 p-6 text-center active:scale-[0.99] transition">
-              <div class="text-3xl mb-2">📷</div>
-              <div class="font-black text-slate-800 text-sm">የውክልናውን ፎቶ ያስገቡ</div>
-              <div class="text-[10px] text-slate-500 mt-1.5 leading-relaxed">ከጋለሪ ይምረጡ ወይም ፎቶ ያንሱ — በ Adika Digital System ይመረመራል</div>
-            </div>
-            <input id="poaImageFile" type="file" accept="image/*,application/pdf" class="hidden" />
-          </label>
-          <p class="text-[10px] text-slate-400 leading-snug text-center">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
-        </div>
+      <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs" style="background:linear-gradient(180deg,#0b3a4a,#021016);">
+        <label class="block cursor-pointer">
+          <div class="rounded-2xl border-2 border-dashed border-cyan-400/40 p-7 text-center active:scale-[0.99] transition" style="background:linear-gradient(180deg,rgba(8,47,73,0.55),rgba(2,6,23,0.75));">
+            <div class="mx-auto w-14 h-14 rounded-2xl bg-cyan-400/15 border border-cyan-300/30 flex items-center justify-center text-2xl mb-3">📷</div>
+            <div class="font-black text-white text-sm drop-shadow-md">የውክልናውን ፎቶ ያስገቡ</div>
+            <div class="text-[10px] text-cyan-100/80 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ከጋለሪ ይምረጡ ወይም ፎቶ ያንሱ</div>
+          </div>
+          <input id="poaImageFile" type="file" accept="image/*,application/pdf" class="hidden" />
+        </label>
+        <p class="text-[10px] text-cyan-100/60 leading-snug text-center">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
 
         <div id="poaScanBusy" class="hidden p-3 text-center text-[11px] text-slate-500 bg-white rounded-xl border border-slate-100">
           ⏳ በአዲካ ዲጂታል ሲስተም እየተመረመረ ነው…
@@ -6031,7 +6024,7 @@
     if(id==="analysisHomeBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openHome(); return; }
     if(id==="analysisBackBtn" || id==="analysisCloseBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openTools(); return; }
 
-    if(id==="aiHubBackBtn"){ e.preventDefault(); e.stopPropagation(); if(document.body.classList.contains("hub-results-open") && window.closeHubResults){ closeHubResults(); } return; }
+    if(id==="aiHubBackBtn"){ e.preventDefault(); e.stopPropagation(); if(document.body.classList.contains("hub-results-open") && window.closeHubResults){ closeHubResults(); return; } openHome(); return; }
     if(id==="aiModalClose"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
     if(id==="aiTabTools"){ e.preventDefault(); e.stopPropagation(); if(el("aiToolsView")){ el("aiToolsView").classList.remove("hidden"); el("aiToolsView").style.display=""; } if(el("aiSearchView")){ el("aiSearchView").classList.add("hidden"); el("aiSearchView").style.display="none"; } return; }
     if(id==="aiTabSearch"){ e.preventDefault(); e.stopPropagation(); if(el("aiSearchView")){ el("aiSearchView").classList.remove("hidden"); el("aiSearchView").classList.add("flex"); el("aiSearchView").style.display="flex"; el("aiSearchView").style.pointerEvents="auto"; } return; }
