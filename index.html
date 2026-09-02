@@ -2338,15 +2338,53 @@
       return "";
     }
 
+    function listingFallbackImage(isCar) {
+      var icon = isCar ? "🚗" : "🏠";
+      var label = isCar ? "Vehicle" : "Property";
+      return "data:image/svg+xml," + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500">' +
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0%" stop-color="#16acbd"/><stop offset="100%" stop-color="#0e7490"/>' +
+        '</linearGradient></defs>' +
+        '<rect fill="url(#g)" width="100%" height="100%"/>' +
+        '<text x="50%" y="46%" text-anchor="middle" font-size="64">' + icon + '</text>' +
+        '<text x="50%" y="62%" text-anchor="middle" fill="#ffffff" font-family="system-ui,sans-serif" font-size="28" font-weight="700">' + label + '</text>' +
+        '</svg>'
+      );
+    }
+
+    function resolveDetailImageSrc(item) {
+      if (!item) return listingFallbackImage(true);
+      var extra = item.extra_data || {};
+      if (typeof extra === "string") {
+        try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+      }
+      var images = item.images || extra.images || [];
+      var firstFromImages = "";
+      if (Array.isArray(images) && images.length) firstFromImages = getImageUrl(images[0]) || "";
+      else if (typeof images === "string") firstFromImages = getImageUrl(images);
+      var src = getImageUrl(item.image_url) || firstFromImages || getImageUrl(item.image) || getImageUrl(item.photo_url) || "";
+      if (!src) {
+        var parsed = parsePhotosList(item);
+        src = parsed[0] || "";
+      }
+      if (!src || src === "null" || src === "undefined") {
+        var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
+        return listingFallbackImage(isCar);
+      }
+      return src;
+    }
+
     function parsePhotosList(item) {
       if (!item) return [];
       var candidates = [
+        item.image_url,
         item.images,
+        item.image,
         item.photos,
         item.photo_urls,
         item.listing_photos,
         item.photo_url,
-        item.image_url,
         item.photo_id
       ];
       var out = [];
@@ -2485,6 +2523,9 @@
       }
       var photos = parsePhotosList(item);
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
+      var detailImgSrc = resolveDetailImageSrc(item);
+      var fallbackSrc = listingFallbackImage(isCar);
+      if (!photos.length && detailImgSrc && detailImgSrc !== fallbackSrc) photos = [detailImgSrc];
 
       var modalTitleText = "";
       if (isCar) {
@@ -2504,12 +2545,11 @@
       modalTime.textContent = relativeTime(item.created_at) ? ("⏱️ " + relativeTime(item.created_at)) : "";
       modalDesc.textContent = item.description || "No further details provided.";
 
-      // Image gallery carousel
-      var fallbackImage = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'%3E%3Crect width='800' height='500' fill='%23e2e8f0'/%3E%3Cpath d='M290 320l75-85 60 65 45-50 105 120H225z' fill='%2394a3b8'/%3E%3Ccircle cx='490' cy='185' r='35' fill='%2394a3b8'/%3E%3Ctext x='400' y='425' text-anchor='middle' font-family='Arial,sans-serif' font-size='28' font-weight='700' fill='%23475569'%3ENo image available%3C/text%3E%3C/svg%3E";
+      // Image gallery carousel — listing.image_url / listing.images[0] with fallback src
       if (photos.length > 0) {
         var slides = photos.map(function(u, i) {
-          var imageUrl = getImageUrl(u) || u || fallbackImage;
-          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img src="' + esc(imageUrl) + '" alt="" class="listing-photo-enhance" loading="' + (i === 0 ? "eager" : "lazy") + '" onerror="this.onerror=null;this.src=\'' + fallbackImage + '\';" /></div>';
+          var src = esc(getImageUrl(u) || u || (i === 0 ? detailImgSrc : "") || fallbackSrc);
+          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img id="' + (i === 0 ? "modalDetailImage" : "") + '" src="' + src + '" alt="" class="listing-photo-enhance" loading="' + (i === 0 ? "eager" : "lazy") + '" onerror="this.onerror=null;this.src=\'' + fallbackSrc.replace(/'/g, "%27") + '\';" /></div>';
         }).join("");
         var dots = photos.length > 1 ? ('<div class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">' +
           photos.map(function(_, i) {
@@ -2536,8 +2576,20 @@
         }
       } else {
         modalMediaContainer.innerHTML =
-          '<img src="' + fallbackImage + '" alt="No image available" class="listing-photo-enhance" />';
+          '<div class="modal-slide w-full h-full">' +
+            '<img id="modalDetailImage" src="' + esc(detailImgSrc || fallbackSrc) + '" alt="" class="listing-photo-enhance" onerror="this.onerror=null;this.src=\'' + fallbackSrc.replace(/'/g, "%27") + '\';" />' +
+          '</div>';
       }
+      try {
+        var detailImgEl = document.getElementById("modalDetailImage");
+        if (detailImgEl) {
+          detailImgEl.src = detailImgSrc || fallbackSrc;
+          detailImgEl.onerror = function() {
+            this.onerror = null;
+            this.src = fallbackSrc;
+          };
+        }
+      } catch (imgErr) {}
 
       var specsHtml = "";
       if (isCar) {
@@ -2555,9 +2607,30 @@
       modalSpecs.innerHTML = specsHtml || '<div>Status: <span class="font-bold text-slate-800">Active & Verified ✔</span></div>';
 
       var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
-      var tUser = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
+      var tUser = String(
+        extra.telegram_username || extra.telegram_user || item.telegram_username || item.telegram_user || ""
+      ).replace(/^@/, "").trim();
       modalCallBtn.href = phone ? ("tel:" + phone) : "#";
-      modalChatBtn.href = tUser ? ("https://t.me/" + tUser) : (item.user_chat_id ? ("tg://user?id=" + item.user_chat_id) : "#");
+      if (modalChatBtn) {
+        modalChatBtn.setAttribute("data-username", tUser);
+        modalChatBtn.setAttribute("data-telegram-id", String(item.telegram_id || extra.telegram_id || item.user_chat_id || ""));
+      }
+      modalChatBtn.onclick = function(ev) {
+        try {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          if (window.openListingMessage) window.openListingMessage(item);
+        } catch (err) {
+          try {
+            var cleanUsername = tUser || "AdikaMarketplace";
+            var url = "https://t.me/" + cleanUsername;
+            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
+              Telegram.WebApp.openTelegramLink(url);
+            } else {
+              window.open(url, "_blank");
+            }
+          } catch (e2) {}
+        }
+      };
 
       modalFavBtn.innerHTML = favorites[item.id] ? "❤️" : "🤍";
       modalFavBtn.onclick = function() {
@@ -6162,7 +6235,30 @@
       closeAll();
       return;
     }
-    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); if(window.openListingMessage) openListingMessage(); return; }
+    if(id==="modalChatBtn"){
+      e.preventDefault(); e.stopPropagation();
+      try {
+        var selected = (window.state && window.state.selectedItem) || {};
+        if(window.openListingMessage) window.openListingMessage(selected);
+      } catch (err) {
+        try {
+          var cleanUsername = "";
+          try {
+            var extra = selected && selected.extra_data;
+            if (typeof extra === "string") extra = JSON.parse(extra);
+            cleanUsername = String((selected && (selected.telegram_username || selected.telegram_user)) || (extra && (extra.telegram_username || extra.telegram_user)) || "").replace(/^@/, "").trim();
+          } catch (e0) { cleanUsername = ""; }
+          if (!cleanUsername) cleanUsername = "AdikaMarketplace";
+          var url = "https://t.me/" + cleanUsername;
+          if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
+            Telegram.WebApp.openTelegramLink(url);
+          } else {
+            window.open(url, "_blank");
+          }
+        } catch (e2) {}
+      }
+      return;
+    }
 
     if(t.getAttribute("data-live")==="1" || t.classList.contains("adika-card")){
       var card = t.closest(".adika-card") || t;
@@ -6171,12 +6267,25 @@
       var it = items[cards.indexOf(card)];
       if(!it) return;
       e.preventDefault(); e.stopPropagation();
+      if (typeof openDetailModal === "function") {
+        try { openDetailModal(it); return; } catch (e0) {}
+      }
       if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
       if(el("modalPrice")){
         var n=Number(String(it.price||"").replace(/[^\d.]/g,""));
         el("modalPrice").textContent = (!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB");
       }
       if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
+      try {
+        var mediaBox = el("modalMediaContainer");
+        if (mediaBox) {
+          var liveSrc = (it.image_url || (Array.isArray(it.images) && it.images[0]) || it.photo_url || "");
+          if (liveSrc && typeof liveSrc === "object") liveSrc = liveSrc.url || liveSrc.src || "";
+          if (liveSrc) {
+            mediaBox.innerHTML = '<img id="modalDetailImage" src="' + String(liveSrc).replace(/"/g, "") + '" alt="" class="listing-photo-enhance" />';
+          }
+        }
+      } catch (e1) {}
       show("modalOverlay");
     }
   }, true);
@@ -6327,38 +6436,74 @@
     listing = listing || {};
     var extra = listing.extra_data || {};
     if(typeof extra === "string"){ try{ extra = JSON.parse(extra); }catch(e){ extra = {}; } }
+    if(!extra || typeof extra !== "object") extra = {};
     var peer = listing.user_chat_id || listing.user_id || listing.seller_id || listing.telegram_id || listing.owner_id || extra.user_id || extra.telegram_id || extra.chat_id || "";
     var uname = listing.telegram_username || listing.telegram_user || listing.user_name || extra.telegram_user || extra.telegram_username || extra.username || "";
     if(!uname){
       var m = String(listing.description||"").match(/@([A-Za-z0-9_]{4,})/);
       if(m) uname = m[1];
     }
-    uname = String(uname||"").replace(/^@/,"");
+    uname = String(uname||"").replace(/^@/,"").trim();
     if(!peer && uname) peer = uname;
-    return { peer: String(peer||""), uname: uname };
+    return { peer: String(peer||""), uname: uname, telegram_id: String(listing.telegram_id || extra.telegram_id || listing.user_chat_id || "") };
   }
   window.openListingMessage = function(listing){
-    try{
-      listing = listing || (window.state && state.selectedItem) || {};
-      var telegramValue = listing.telegram_username || listing.telegram_id || "";
-      var cleanUsername = String(telegramValue).trim()
-        .replace(/^https?:\/\/(?:www\.)?t\.me\//i, "")
-        .replace(/^@+/, "")
-        .split(/[?#/]/)[0]
-        .replace(/[^A-Za-z0-9_]/g, "");
-      if(cleanUsername){
-        var telegramUrl = "https://t.me/" + cleanUsername;
+    try {
+      listing = listing || (window.state && window.state.selectedItem) || {};
+      var s = sellerFromListing(listing);
+      var cleanUsername = String(s.uname || "").replace(/^@/, "").replace(/[^A-Za-z0-9_]/g, "").trim();
+      var telegramId = String(s.telegram_id || s.peer || "").trim();
+
+      if (cleanUsername) {
+        var url = "https://t.me/" + cleanUsername;
         if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
-          Telegram.WebApp.openTelegramLink(telegramUrl);
+          Telegram.WebApp.openTelegramLink(url);
         } else {
-          window.open(telegramUrl, "_blank");
+          window.open(url, "_blank");
         }
         return;
       }
-      var phone = listing.phone_number || listing.phone || "";
-      if(phone) window.location.href = "tel:" + String(phone).replace(/\s+/g, "");
-    }catch(e){
-      return;
+
+      if (telegramId && /^\d+$/.test(telegramId) && String(telegramId) === String(uid())) {
+        alert("የራስዎ ማስታወቂያ ነው");
+        return;
+      }
+
+      if (telegramId && listing && listing.id) {
+        showInbox(true);
+        try{
+          var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
+          var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
+        }catch(e){}
+        openThread(listing.id, telegramId, listing.sub_category || listing.title || listing.brand || "ማስታወቂያ");
+        return;
+      }
+
+      var fallbackUrl = "https://t.me/" + (cleanUsername || "AdikaMarketplace");
+      if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
+        Telegram.WebApp.openTelegramLink(fallbackUrl);
+      } else {
+        window.open(fallbackUrl, "_blank");
+      }
+    } catch (err) {
+      try {
+        var cleanUsername = "AdikaMarketplace";
+        try {
+          var extra = (listing && listing.extra_data) || {};
+          if (typeof extra === "string") extra = JSON.parse(extra);
+          cleanUsername = String(
+            (listing && (listing.telegram_username || listing.telegram_user)) ||
+            (extra && (extra.telegram_username || extra.telegram_user)) ||
+            "AdikaMarketplace"
+          ).replace(/^@/, "").replace(/[^A-Za-z0-9_]/g, "") || "AdikaMarketplace";
+        } catch (e0) {}
+        var url = "https://t.me/" + cleanUsername;
+        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
+          Telegram.WebApp.openTelegramLink(url);
+        } else {
+          window.open(url, "_blank");
+        }
+      } catch (e2) {}
     }
   };
   document.addEventListener("click", function(e){
