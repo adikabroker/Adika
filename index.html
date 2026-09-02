@@ -2129,7 +2129,15 @@
         }
       })
       .catch(function() {
-        renderRecoCards([], "");
+        // Offline / API fail: recommend from currently loaded feed
+        try {
+          var pool = (window.__adikaLiveItems || []).filter(function(x){
+            return x && item && String(x.id) !== String(item.id);
+          }).slice(0, 8);
+          renderRecoCards(pool, "ተመሳሳይ ንብረቶች");
+        } catch (e) {
+          renderRecoCards([], "");
+        }
       });
     }
 
@@ -2483,7 +2491,9 @@
         toggleFav(item.id);
       };
 
-      card.onclick = function () {
+      try { card._adikaItem = item; card.setAttribute("data-id", String(item.id || "")); } catch (e) {}
+      card.onclick = function (ev) {
+        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
         openDetailModal(item);
       };
 
@@ -2492,28 +2502,45 @@
     window.__adikaCreateCard = createCardElement;
 
     function openDetailModal(item) {
-      // exposed below
       try { savedFeedScrollY = window.scrollY || window.pageYOffset || 0; } catch (e) { savedFeedScrollY = 0; }
+      if (!item || typeof item !== "object") return;
       state.selectedItem = item;
-      pushViewHistory(item);
+      try { window.state = state; } catch (e) {}
+      try { pushViewHistory(item); } catch (e) {}
       var extra = item.extra_data || {};
       if (typeof extra === "string") {
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
       }
-      var photos = parsePhotosList(item);
-      var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
+      if (!extra || typeof extra !== "object") extra = {};
+      var photos = [];
+      try { photos = parsePhotosList(item); } catch (e) { photos = []; }
+      // Also pull from card-visible fields
+      if (!photos.length) {
+        var fallbacks = [item.photo_urls, item.photos, item.listing_photos, item.image_url, item.image, item.photo, item.photo_id];
+        for (var fi = 0; fi < fallbacks.length; fi++) {
+          var fv = fallbacks[fi];
+          if (!fv) continue;
+          if (Array.isArray(fv) && fv[0]) { photos = fv.map(function(x){ return typeof x==="string"?x:(x&&(x.url||x.src)||""); }).filter(Boolean); break; }
+          if (typeof fv === "string" && fv.trim()) { photos = [fv.trim()]; break; }
+        }
+      }
+      var catStr = String(item.main_category || item.category || extra.category || "");
+      var isCar = (catStr.indexOf("መኪና") >= 0) || /car|vehicle|auto/i.test(catStr)
+        || Boolean(extra.fuel_type || extra.transmission || extra.mileage || extra.car_model || extra.car_type || item.car_model)
+        || /Model:|Fuel:|Transmission:|Mileage:/i.test(String(item.description || ""));
 
       var modalTitleText = "";
       if (isCar) {
-        var bm = extractBrandModel(item, extra);
-        modalTitleText = bm.display || "መኪና";
-        modalCategoryBadge.textContent = bm.brand || "መኪና";
+        var bm = { display: "", brand: "" };
+        try { bm = extractBrandModel(item, extra) || bm; } catch (e) {}
+        modalTitleText = bm.display || extra.car_model || item.sub_category || item.model || "መኪና";
+        if (modalCategoryBadge) modalCategoryBadge.textContent = bm.brand || "መኪና";
       } else {
-        modalTitleText = item.sub_category || extra.house_type || "ቤት";
-        modalCategoryBadge.textContent = "ቤት";
+        modalTitleText = item.sub_category || extra.house_type || extra.location_area || "ቤት";
+        if (modalCategoryBadge) modalCategoryBadge.textContent = "ቤት";
       }
-      modalIdBadge.textContent = "#ADK-" + (item.id || "001");
-      modalTitle.textContent = modalTitleText;
+      if (modalIdBadge) modalIdBadge.textContent = "#ADK-" + (item.id != null && item.id !== "" ? item.id : "—");
+      if (modalTitle) modalTitle.textContent = modalTitleText;
 
       var isSell = String(item.req_type || item.action_type || "").toUpperCase().indexOf("SELL") >= 0 || String(item.action_type || "") === "መሸጥ";
       var priceTxt = formatListingPrice(item.price);
@@ -2521,84 +2548,179 @@
       modalTime.textContent = relativeTime(item.created_at) ? ("⏱️ " + relativeTime(item.created_at)) : "";
       modalDesc.textContent = item.description || "No further details provided.";
 
-      // Image gallery carousel — always fill container; fallback on broken src
-      if (photos.length > 0) {
-        var slides = photos.map(function(u, i) {
-          var src = esc(getImageUrl(u) || u || "");
-          return '<div class="modal-slide shrink-0 w-full h-full snap-center relative" style="min-width:100%;height:100%;">' +
-            '<img src="' + src + '" alt="" loading="' + (i === 0 ? "eager" : "lazy") + '" ' +
-            'style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;" ' +
-            'onerror="this.style.display=\'none\';var p=this.parentNode;if(p&&!p.querySelector(\'.ph-fallback\')){var f=document.createElement(\'div\');f.className=\'ph-fallback\';f.style.cssText=\'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#16acbd,#0e7490);color:#fff;\';f.innerHTML=\'<span style=font-size:2rem>📷</span><span style=font-size:11px;font-weight:700>Image unavailable</span>\';p.appendChild(f);}" />' +
-            '</div>';
-        }).join("");
-        var dots = photos.length > 1 ? ('<div class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">' +
-          photos.map(function(_, i) {
-            return '<button type="button" class="modal-dot w-1.5 h-1.5 rounded-full ' + (i === 0 ? "bg-white" : "bg-white/50") + '" data-idx="' + i + '"></button>';
-          }).join("") + '</div>') : "";
-        modalMediaContainer.innerHTML =
-          '<div id="modalGalleryTrack" class="flex w-full h-full overflow-x-auto snap-x snap-mandatory no-scrollbar" style="height:100%;">' + slides + '</div>' + dots;
-        var track = document.getElementById("modalGalleryTrack");
-        if (track && photos.length > 1) {
-          track.onscroll = function() {
-            var idx = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
-            var ds = modalMediaContainer.querySelectorAll(".modal-dot");
-            ds.forEach(function(d, i) {
-              d.className = "modal-dot w-1.5 h-1.5 rounded-full " + (i === idx ? "bg-white" : "bg-white/50");
+      // Image gallery carousel
+      try {
+        if (!modalMediaContainer) modalMediaContainer = document.getElementById("modalMediaContainer");
+        if (photos && photos.length > 0) {
+          var slidesHtml = "";
+          for (var pi = 0; pi < photos.length; pi++) {
+            var srcRaw = getImageUrl(photos[pi]) || photos[pi] || "";
+            var src = esc(String(srcRaw));
+            slidesHtml += '<div class="modal-slide" style="flex:0 0 100%;width:100%;height:100%;position:relative;scroll-snap-align:center;">' +
+              '<img src="' + src + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;" ' +
+              'loading="' + (pi === 0 ? "eager" : "lazy") + '" ' +
+              'onerror="this.onerror=null;this.style.display=\'none\';" />' +
+              '</div>';
+          }
+          var dotsHtml = "";
+          if (photos.length > 1) {
+            dotsHtml = '<div style="position:absolute;bottom:8px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:5;">';
+            for (var di = 0; di < photos.length; di++) {
+              dotsHtml += '<button type="button" class="modal-dot" data-idx="' + di + '" style="width:' + (di===0?10:6) + 'px;height:6px;border-radius:99px;border:0;background:' + (di===0?'#fff':'rgba(255,255,255,0.45)') + ';"></button>';
+            }
+            dotsHtml += '</div>';
+          }
+          modalMediaContainer.innerHTML =
+            '<div id="modalGalleryTrack" style="display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;">' +
+            slidesHtml + '</div>' + dotsHtml;
+          var track = document.getElementById("modalGalleryTrack");
+          if (track && photos.length > 1) {
+            track.addEventListener("scroll", function() {
+              var idx = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+              modalMediaContainer.querySelectorAll(".modal-dot").forEach(function(d, i) {
+                d.style.width = (i === idx ? "10px" : "6px");
+                d.style.background = (i === idx ? "#fff" : "rgba(255,255,255,0.45)");
+              });
+            }, { passive: true });
+            modalMediaContainer.querySelectorAll(".modal-dot").forEach(function(d) {
+              d.onclick = function(e) {
+                e.stopPropagation();
+                var i = Number(d.getAttribute("data-idx") || 0);
+                track.scrollTo({ left: i * track.clientWidth, behavior: "smooth" });
+              };
             });
-          };
-          modalMediaContainer.querySelectorAll(".modal-dot").forEach(function(d) {
-            d.onclick = function(e) {
-              e.stopPropagation();
-              var i = Number(d.getAttribute("data-idx") || 0);
-              track.scrollTo({ left: i * track.clientWidth, behavior: "smooth" });
-            };
-          });
+          }
+        } else {
+          modalMediaContainer.innerHTML =
+            '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#16acbd,#0e7490);color:#fff;">' +
+              '<span style="font-size:2.2rem;margin-bottom:4px;">' + (isCar ? "🚗" : "🏠") + '</span>' +
+              '<span style="font-size:12px;font-weight:700;">No Image Available</span>' +
+            '</div>';
         }
-      } else {
-        modalMediaContainer.innerHTML =
-          '<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white" style="min-height:100%;">' +
-            '<span class="text-4xl mb-1">' + (isCar ? '🚗' : '🏠') + '</span>' +
-            '<span class="text-xs font-bold">No Image Available</span>' +
-          '</div>';
+      } catch (mediaErr) {
+        try {
+          modalMediaContainer.innerHTML =
+            '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e2e8f0;color:#64748b;font-size:12px;font-weight:700;">📷 Photo error</div>';
+        } catch (e2) {}
       }
 
       var specsHtml = "";
+      var modelName = extra.car_model || item.car_model || item.sub_category || item.model || "";
       if (isCar) {
+        if (modelName) specsHtml += '<div class="col-span-2">🚗 Model: <span class="font-bold text-slate-800">' + esc(modelName) + '</span></div>';
         if (extra.chassis_number) specsHtml += '<div class="col-span-2">🛡️ VIN: <span class="font-mono font-bold text-emerald-700">' + esc(extra.chassis_number) + ' (Verified ✓)</span></div>';
         if (extra.fuel_type) specsHtml += '<div>⛽ Fuel: <span class="font-bold text-slate-800">' + esc(extra.fuel_type) + '</span></div>';
         if (extra.transmission) specsHtml += '<div>⚙️ Trans: <span class="font-bold text-slate-800">' + esc(extra.transmission) + '</span></div>';
         if (extra.mileage) specsHtml += '<div>🛣️ Mileage: <span class="font-bold text-slate-800">' + esc(extra.mileage) + ' KM</span></div>';
         if (extra.condition) specsHtml += '<div>📊 Condition: <span class="font-bold text-slate-800">' + esc(extra.condition) + '</span></div>';
       } else {
+        if (extra.house_type || item.sub_category) specsHtml += '<div class="col-span-2">🏠 Type: <span class="font-bold text-slate-800">' + esc(extra.house_type || item.sub_category || "") + '</span></div>';
+        if (extra.location_area) specsHtml += '<div class="col-span-2">📍 Area: <span class="font-bold text-slate-800">' + esc(extra.location_area) + '</span></div>';
         if (extra.bedrooms) specsHtml += '<div>🛏️ Beds: <span class="font-bold text-slate-800">' + esc(extra.bedrooms) + '</span></div>';
         if (extra.bathrooms) specsHtml += '<div>🛁 Baths: <span class="font-bold text-slate-800">' + esc(extra.bathrooms) + '</span></div>';
         if (extra.parking) specsHtml += '<div>🚗 Parking: <span class="font-bold text-slate-800">' + esc(extra.parking) + '</span></div>';
-        if (extra.condition) specsHtml += '<div>📊 Condition: <span class="font-bold text-slate-800">' + esc(extra.condition) + '</span></div>';
+        if (extra.condition || extra.house_condition) specsHtml += '<div>📊 Condition: <span class="font-bold text-slate-800">' + esc(extra.condition || extra.house_condition) + '</span></div>';
       }
-      modalSpecs.innerHTML = specsHtml || '<div>Status: <span class="font-bold text-slate-800">Active & Verified ✔</span></div>';
+      if (modalSpecs) modalSpecs.innerHTML = specsHtml || '<div>Status: <span class="font-bold text-slate-800">Active & Verified ✔</span></div>';
 
-      var phone = item.phone ? String(item.phone).replace(/\s+/g, "") : "";
-      var tUser = extra.telegram_user ? String(extra.telegram_user).replace("@", "") : "";
-      modalCallBtn.href = phone ? ("tel:" + phone) : "#";
-      modalChatBtn.href = tUser ? ("https://t.me/" + tUser) : (item.user_chat_id ? ("tg://user?id=" + item.user_chat_id) : "#");
-
-      modalFavBtn.innerHTML = favorites[item.id] ? "❤️" : "🤍";
-      modalFavBtn.onclick = function() {
-        toggleFav(item.id);
-      };
-
-      modalShareBtn.onclick = function() {
-        var shareUrl = window.location.origin + "/explorer?id=" + item.id;
-        var shareText = "Check out " + modalTitle.textContent + " on Adika Marketplace: " + shareUrl;
-        if (navigator.share) {
-          navigator.share({ title: "Adika Marketplace", text: shareText, url: shareUrl }).catch(function(){});
-        } else if (tg && tg.openTelegramLink) {
-          tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareText));
-        } else {
-          navigator.clipboard.writeText(shareText);
-          alert("Link copied!");
+      // --- Contact actions (Call / Message / Share) ---
+      var phone = "";
+      try {
+        phone = String(item.phone || extra.phone || "").replace(/\s+/g, "");
+        if (!phone && item.description) {
+          var pm = String(item.description).match(/0?9\d{8}|0?7\d{8}|\+?251\d{9}/);
+          if (pm) phone = pm[0];
         }
-      };
+      } catch (e) { phone = ""; }
+      var tUser = "";
+      try {
+        tUser = String(extra.telegram_user || extra.telegram_username || item.telegram_username || item.telegram_user || "").replace(/^@/, "");
+        if (!tUser && item.description) {
+          var um = String(item.description).match(/@([A-Za-z0-9_]{4,})/);
+          if (um) tUser = um[1];
+        }
+      } catch (e) { tUser = ""; }
+      var peerId = item.user_chat_id || item.user_id || item.seller_id || item.telegram_id || extra.user_id || extra.chat_id || "";
+
+      if (modalCallBtn) {
+        if (phone) {
+          modalCallBtn.href = "tel:" + phone;
+          modalCallBtn.onclick = function(ev) {
+            // Allow default tel: navigation; also try Telegram openLink
+            try {
+              if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+                // keep default too
+              }
+            } catch (e) {}
+          };
+        } else {
+          modalCallBtn.href = "#";
+          modalCallBtn.onclick = function(ev) {
+            if (ev) ev.preventDefault();
+            alert("ስልክ ቁጥር አልተገኘም");
+          };
+        }
+      }
+
+      if (modalChatBtn) {
+        modalChatBtn.onclick = function(ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          try {
+            if (typeof window.openListingMessage === "function") {
+              window.openListingMessage(item);
+              return;
+            }
+          } catch (e) {}
+          // Fallback: open Telegram chat
+          var url = "";
+          if (tUser) url = "https://t.me/" + tUser;
+          else if (peerId && String(peerId).match(/^\d+$/)) url = "tg://user?id=" + peerId;
+          if (url) {
+            try {
+              if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(url);
+              else window.open(url, "_blank");
+            } catch (e2) { window.open(url, "_blank"); }
+          } else {
+            alert("የሻጭ መልእክት መረጃ አልተገኘም");
+          }
+        };
+      }
+
+      if (modalFavBtn) {
+        modalFavBtn.innerHTML = (favorites && favorites[item.id]) ? "❤️" : "🤍";
+        modalFavBtn.onclick = function(ev) {
+          if (ev) ev.stopPropagation();
+          try { toggleFav(item.id); } catch (e) {}
+        };
+      }
+
+      if (modalShareBtn) {
+        modalShareBtn.onclick = function(ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          var shareUrl = (window.location.origin || "") + "/explorer?id=" + (item.id || "");
+          var titleTxt = (modalTitle && modalTitle.textContent) ? modalTitle.textContent : "Adika";
+          var shareText = titleTxt + " — Adika Marketplace\n" + shareUrl;
+          try {
+            if (navigator.share) {
+              navigator.share({ title: "Adika Marketplace", text: shareText, url: shareUrl }).catch(function(){});
+              return;
+            }
+          } catch (e) {}
+          try {
+            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
+              Telegram.WebApp.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(titleTxt));
+              return;
+            }
+          } catch (e) {}
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(shareText).then(function(){ alert("Link copied!"); }).catch(function(){ prompt("Copy link:", shareUrl); });
+              return;
+            }
+          } catch (e) {}
+          prompt("Copy link:", shareUrl);
+        };
+      }
 
       modalOverlay.classList.remove("hidden");
       modalOverlay.classList.add("flex");
@@ -6189,27 +6311,30 @@
     }
     if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); if(window.openListingMessage) openListingMessage(); return; }
 
-    if(t.getAttribute("data-live")==="1" || t.classList.contains("adika-card")){
-      var card = t.closest(".adika-card") || t;
+    if(t.getAttribute("data-live")==="1" || (t.classList && t.classList.contains("adika-card")) || (t.closest && t.closest(".adika-card"))){
+      var card = (t.closest && t.closest(".adika-card")) || t;
       if(!card) return;
-      // Prefer full detail modal (photos + specs). Fall back only if missing.
       var items = window.__adikaLiveItems || [];
-      var cards = Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card"));
-      var it = items[cards.indexOf(card)];
+      var it = card._adikaItem || null;
       if(!it){
-        // Try matching by data-id if present
-        var did = card.getAttribute("data-id") || (card.querySelector && card.querySelector("[data-id]") && card.querySelector("[data-id]").getAttribute("data-id"));
+        var cards = Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card"));
+        var idx = cards.indexOf(card);
+        if(idx >= 0 && items[idx]) it = items[idx];
+      }
+      if(!it){
+        var did = card.getAttribute("data-id");
         if(did && items.length){
           for(var ii=0;ii<items.length;ii++){ if(String(items[ii].id)===String(did)){ it=items[ii]; break; } }
         }
       }
       if(!it) return;
       e.preventDefault(); e.stopPropagation();
-      if(typeof openDetailModal === "function"){
-        openDetailModal(it);
-      } else if(window.openDetailModal){
-        window.openDetailModal(it);
+      if(window.openDetailModal){
+        try { window.openDetailModal(it); } catch(err){ console.error("openDetailModal", err); }
+      } else if(typeof openDetailModal === "function"){
+        try { openDetailModal(it); } catch(err){ console.error("openDetailModal", err); }
       } else {
+        // last-resort partial fill
         if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
         if(el("modalPrice")){
           var n=Number(String(it.price||"").replace(/[^\d.]/g,""));
@@ -6218,6 +6343,7 @@
         if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
         show("modalOverlay");
       }
+      return;
     }
   }, true);
 
