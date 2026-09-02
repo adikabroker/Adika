@@ -6323,11 +6323,31 @@
       var f=document.getElementById("fabBtn"); if(f) f.style.display="";
     }catch(e){}
   };
+  function sellerFromListing(listing){
+    listing = listing || {};
+    var extra = listing.extra_data || {};
+    if(typeof extra === "string"){ try{ extra = JSON.parse(extra); }catch(e){ extra = {}; } }
+    var peer = listing.user_chat_id || listing.user_id || listing.seller_id || listing.telegram_id || listing.owner_id || extra.user_id || extra.telegram_id || extra.chat_id || "";
+    var uname = listing.telegram_username || listing.telegram_user || listing.user_name || extra.telegram_user || extra.telegram_username || extra.username || "";
+    if(!uname){
+      var m = String(listing.description||"").match(/@([A-Za-z0-9_]{4,})/);
+      if(m) uname = m[1];
+    }
+    uname = String(uname||"").replace(/^@/,"");
+    if(!peer && uname) peer = uname;
+    return { peer: String(peer||""), uname: uname };
+  }
   window.openListingMessage = function(listing){
-    listing = listing || window.state && state.selectedItem || {};
-    var peer = String(listing.user_chat_id || listing.user_id || listing.telegram_id || listing.owner_id || "");
+    listing = listing || (window.state && state.selectedItem) || {};
+    var s = sellerFromListing(listing);
+    var peer = s.peer;
     if(!peer){
-      alert("የሻጩ መለያ አልተገኘም");
+      var fallback = s.uname || "AkremFF";
+      var url = "https://t.me/" + fallback;
+      try{
+        if(window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(url);
+        else window.open(url, "_blank");
+      }catch(e){ window.open(url, "_blank"); }
       return;
     }
     if(String(peer) === uid()){
@@ -6335,6 +6355,10 @@
       return;
     }
     showInbox(true);
+    try{
+      var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
+      var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
+    }catch(e){}
     openThread(listing.id, peer, listing.sub_category || listing.title || listing.brand || "ማስታወቂያ");
   };
   document.addEventListener("click", function(e){
