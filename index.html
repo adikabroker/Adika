@@ -2557,6 +2557,21 @@
         item.photo_urls = photos;
         item._resolved_photos = photos;
       }
+
+      // INSTANT DOM BIND: paint photo into modal BEFORE any other work
+      try {
+        if (!modalMediaContainer) modalMediaContainer = document.getElementById("modalMediaContainer");
+        if (modalMediaContainer && photos && photos.length) {
+          var _src0 = "";
+          try { _src0 = escSrc(String(getImageUrl(photos[0]) || photos[0] || "")); } catch (e) { _src0 = String(photos[0] || ""); }
+          if (_src0) {
+            modalMediaContainer.innerHTML =
+              '<img id="detail-main-image" src="' + _src0 + '" alt="" ' +
+              'style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;background:#e2e8f0;" />';
+          }
+        }
+      } catch (eEarly) {}
+
       var catStr = String(item.main_category || item.category || extra.category || "");
       var isCar = (catStr.indexOf("መኪና") >= 0) || /car|vehicle|auto/i.test(catStr)
         || Boolean(extra.fuel_type || extra.transmission || extra.mileage || extra.car_model || extra.car_type || item.car_model)
@@ -3783,16 +3798,6 @@
       ev.stopPropagation();
       handleStartAiChat({ context: btn.getAttribute("data-context") || "auto" });
     }, true);
-        var input = document.getElementById("advisorChatInput");
-        if (input) {
-          input.value = prompts[ctx] || prompts.auto;
-          if (input.tagName === "TEXTAREA") {
-            input.style.height = "auto";
-            input.style.height = Math.min(input.scrollHeight, 110) + "px";
-          }
-        }
-      };
-    });
 
 
     (function(){
