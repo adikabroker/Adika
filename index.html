@@ -233,6 +233,7 @@
       color: #0f172a;
       display: flex !important;
       flex-direction: column !important;
+      height: 100% !important;
     }
     #modalScrollBody {
       background: transparent;
@@ -403,16 +404,11 @@
       background: #ecfeff; color: #0d9488;
       border: 1px solid rgba(34,211,238,0.45);
     }
-    #modalSpecs .spec-cell {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0.5rem 0.65rem;
-      background: #f8fafc;
-      border-radius: 0.75rem;
-      border: 1px solid #e2e8f0;
+    #modalSpecs p {
+      margin: 0;
+      line-height: 1.45;
     }
-    #modalSpecs .spec-cell .text-slate-400 { color: #64748b !important; }
-    #modalSpecs .spec-cell .text-slate-100,
-    #modalSpecs .spec-cell .font-bold { color: #0f172a !important; }
+    #modalSpecs strong { font-weight: 800; }
     #modalBottomBar {
       background: rgba(255,255,255,0.94) !important;
       backdrop-filter: blur(16px) !important;
@@ -1478,22 +1474,14 @@
           <div id="modalActionButtonsRow" class="grid grid-cols-2 gap-2"></div>
         </div>
 
-        <!-- Specs -->
-        <div class="detail-glass-card p-3 space-y-2">
-          <p class="text-[11px] font-bold text-slate-800 border-b border-slate-100 pb-1.5 m-0">
-            <span class="lang-am">መሰረታዊ መረጃዎች</span>
-            <span class="lang-en">Key Specs</span>
-          </p>
-          <div id="modalSpecs" class="grid grid-cols-2 gap-2 text-xs"></div>
-        </div>
-
-        <!-- Description / seller note -->
-        <div class="detail-glass-card p-3">
-          <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 m-0">
+        <!-- Unified structured details (fills space, no poster card) -->
+        <div class="detail-glass-card p-3.5 space-y-2">
+          <p class="text-[11px] font-black text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-1.5 m-0">
             <span class="lang-am">ዝርዝር መግለጫ</span>
-            <span class="lang-en">Seller Note</span>
-          </h4>
-          <p id="modalDesc" class="text-xs text-slate-300 leading-relaxed whitespace-pre-line m-0"></p>
+            <span class="lang-en">Full Details</span>
+          </p>
+          <div id="modalSpecs" class="space-y-1.5 text-xs text-slate-700 font-medium"></div>
+          <p id="modalDesc" class="hidden text-xs text-slate-600 leading-relaxed whitespace-pre-line m-0"></p>
         </div>
 
 
@@ -2981,31 +2969,83 @@
         } catch (e2) {}
       }
 
+      // Contact fields early (used in structured details)
+      var phone = "";
+      try {
+        phone = String(item.phone || extra.phone || "").replace(/\s+/g, "");
+        if (!phone && item.description) {
+          var pm0 = String(item.description).match(/0?9\d{8}|0?7\d{8}|\+?251\d{9}/);
+          if (pm0) phone = pm0[0];
+        }
+      } catch (ePh0) { phone = ""; }
+
       var specsHtml = "";
       var modelName = extra.car_model || item.car_model || item.sub_category || item.model || "";
-      function specCell(label, value) {
+      function specRow(icon, label, value, extraHtml) {
         if (value == null || value === "") return "";
-        return '<div class="spec-cell"><span class="text-slate-400">' + label + '</span><span class="font-bold text-slate-100">' + esc(String(value)) + '</span></div>';
+        return '<p class="flex items-center gap-1.5 flex-wrap m-0">' +
+          '<span>' + icon + '</span> ' + label + ': <strong class="text-slate-900">' + esc(String(value)) + '</strong>' +
+          (extraHtml || "") + '</p>';
       }
+      var priceLabel = formatListingPrice(item.price);
+      var negHtml = "";
+      try {
+        var negotiable = extra.negotiable || item.negotiable || /negotiable|ይደራደራል|የሚደራደር/i.test(String(item.description || ""));
+        if (negotiable) {
+          negHtml = ' <span class="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-md border border-emerald-200 font-bold">✅ Negotiable / የሚደራደር</span>';
+        }
+      } catch (eN) {}
+      specsHtml += specRow("💰", "Price", priceLabel, negHtml);
       if (isCar) {
-        specsHtml += specCell("🚗 Model", modelName);
-        if (extra.chassis_number) specsHtml += specCell("🛡️ VIN", extra.chassis_number + " ✓");
-        specsHtml += specCell("⛽ Fuel", extra.fuel_type || "");
-        specsHtml += specCell("⚙️ Trans", extra.transmission || "");
-        specsHtml += specCell("🛣️ Mileage", extra.mileage ? (String(extra.mileage) + " KM") : "");
-        specsHtml += specCell("📊 Condition", extra.condition || "");
+        specsHtml += specRow("🚗", "Model", modelName);
+        specsHtml += specRow("⛽", "Fuel", extra.fuel_type || "");
+        specsHtml += specRow("⚙️", "Transmission", extra.transmission || "");
+        specsHtml += specRow("🛣️", "Mileage", extra.mileage ? (String(extra.mileage) + " KM") : "");
+        specsHtml += specRow("📊", "Condition", extra.condition || "");
+        if (extra.chassis_number) specsHtml += specRow("🛡️", "VIN", extra.chassis_number);
       } else {
-        specsHtml += specCell("🏠 Type", extra.house_type || item.sub_category || "");
-        specsHtml += specCell("📍 Area", extra.location_area || "");
-        specsHtml += specCell("🛏️ Beds", extra.bedrooms || "");
-        specsHtml += specCell("🛁 Baths", extra.bathrooms || "");
-        specsHtml += specCell("🚗 Parking", extra.parking || "");
-        specsHtml += specCell("📊 Condition", extra.condition || extra.house_condition || "");
+        specsHtml += specRow("🏠", "Type", extra.house_type || item.sub_category || "");
+        specsHtml += specRow("📍", "Area", extra.location_area || "");
+        specsHtml += specRow("🛏️", "Beds", extra.bedrooms || "");
+        specsHtml += specRow("🛁", "Baths", extra.bathrooms || "");
+        specsHtml += specRow("📊", "Condition", extra.condition || extra.house_condition || "");
       }
-      if (modalSpecs) modalSpecs.innerHTML = specsHtml || '<div class="spec-cell col-span-2"><span class="text-slate-400">Status</span><span class="font-bold text-teal-700">Active & Verified ✔</span></div>';
+      // Details note (cleaned) + phone only (no @AdikaSupport poster)
+      var detailNote = "";
+      try {
+        var rawDesc = String(item.description || "").trim();
+        var lines = rawDesc.split(/\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+        var noteParts = [];
+        for (var li = 0; li < lines.length; li++) {
+          var L = lines[li];
+          if (/^📞\s*Phone:\s*$/i.test(L) || /^Phone:\s*$/i.test(L)) continue;
+          if (/Telegram:\s*@Adika(Support|PLC|admin)/i.test(L)) continue;
+          if (/^@Adika(Support|PLC|admin)$/i.test(L)) continue;
+          if (/^(Price|Model|Fuel|Transmission|Mileage|Condition|Trans)\s*:/i.test(L)) continue;
+          if (/^(💰|🚗|⛽|⚙️|🛣️|📊)/.test(L)) continue;
+          noteParts.push(L);
+        }
+        // Prefer short "Details:" style note
+        for (var nj = 0; nj < noteParts.length; nj++) {
+          if (/^Details\s*:/i.test(noteParts[nj]) || /^📝/.test(noteParts[nj])) {
+            detailNote = noteParts[nj].replace(/^📝\s*/, "").replace(/^Details\s*:\s*/i, "");
+            break;
+          }
+        }
+        if (!detailNote && noteParts.length === 1 && noteParts[0].length < 80) detailNote = noteParts[0];
+      } catch (eNote) {}
+      if (detailNote) specsHtml += specRow("📝", "Details", detailNote);
+      if (phone) specsHtml += specRow("📞", "Phone", phone);
+      if (modalSpecs) modalSpecs.innerHTML = specsHtml || '<p class="m-0 text-slate-500">Active & Verified ✔</p>';
+      try {
+        if (modalDesc) {
+          modalDesc.textContent = "";
+          modalDesc.classList.add("hidden");
+        }
+      } catch (eHide) {}
 
       // --- Contact actions (Call / Message / Share) ---
-      var phone = "";
+      phone = "";
       try {
         phone = String(item.phone || extra.phone || "").replace(/\s+/g, "");
         if (!phone && item.description) {
