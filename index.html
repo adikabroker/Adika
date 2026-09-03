@@ -227,32 +227,61 @@
       transform: scale(1.02);
     }
 
-    /* Detail modal photo — full image, soft neutral letterbox, carousel dots */
+    /* ===== Detail modal — Hub-synced dark glass + smart photo ===== */
+    #modalSheet {
+      background: linear-gradient(180deg, #0b1220 0%, #0f172a 45%, #111827 100%) !important;
+      color: #e2e8f0;
+    }
+    #modalScrollBody {
+      background: transparent;
+    }
     #modalMediaContainer {
       width: 100%;
-      aspect-ratio: 4 / 3;
-      max-height: 40vh;
-      border-radius: 1.15rem;
+      height: 280px;
+      max-height: 42vh;
+      border-radius: 0;
       overflow: hidden;
-      background: linear-gradient(160deg, #e8eef3 0%, #d5dee7 100%);
+      background: #020617;
       position: relative;
-      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.1);
-      border: 1px solid rgba(255,255,255,0.7);
+      box-shadow: none;
+      border: 0;
+      border-bottom: 1px solid rgba(51,65,85,0.8);
     }
-    #modalMediaContainer img,
-    #modalMediaContainer #detail-main-image,
-    #modalMediaContainer .modal-slide img {
-      width: 100% !important;
-      height: 100% !important;
+    #modalMediaContainer .modal-photo-blur {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center;
+      filter: blur(18px) saturate(1.1);
+      -webkit-filter: blur(18px) saturate(1.1);
+      opacity: 0.35;
+      transform: scale(1.08);
+      z-index: 0;
+      pointer-events: none;
+    }
+    #modalMediaContainer .modal-photo-main,
+    #modalMediaContainer #detail-main-image {
+      position: relative !important;
+      z-index: 2 !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+      width: auto !important;
+      height: auto !important;
       object-fit: contain !important;
       object-position: center !important;
       display: block !important;
+      margin: 0 auto !important;
+      inset: auto !important;
       background: transparent !important;
-      position: absolute !important;
-      inset: 0 !important;
       filter: none !important;
       -webkit-filter: none !important;
       transform: none !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    }
+    #modalMediaContainer .modal-photo-wrap {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2;
     }
     #modalGalleryTrack {
       display: flex;
@@ -262,6 +291,8 @@
       scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
+      position: relative;
+      z-index: 1;
     }
     #modalGalleryTrack::-webkit-scrollbar { display: none; }
     #modalMediaContainer .modal-slide {
@@ -270,92 +301,137 @@
       height: 100%;
       position: relative;
       scroll-snap-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: transparent;
+      overflow: hidden;
+    }
+    #modalMediaContainer .modal-slide img.modal-photo-main {
+      max-height: 100%;
+      max-width: 100%;
     }
     #modalMediaContainer .modal-dots {
-      position: absolute; bottom: 10px; left: 0; right: 0;
+      position: absolute; bottom: 12px; left: 0; right: 0;
       display: flex; justify-content: center; gap: 6px; z-index: 6;
       pointer-events: none;
     }
     #modalMediaContainer .modal-dot {
       pointer-events: auto;
       width: 6px; height: 6px; border-radius: 99px; border: 0;
-      background: rgba(15,23,42,0.28);
+      background: rgba(255,255,255,0.35);
       transition: width .2s, background .2s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
     }
     #modalMediaContainer .modal-dot.is-active {
-      width: 16px; background: #0e7490;
+      width: 16px; background: #2dd4bf;
+    }
+    #modalMediaContainer .modal-photo-count {
+      position: absolute; bottom: 12px; right: 12px; z-index: 6;
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #fff; font-size: 10px; font-weight: 800;
+      padding: 3px 10px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.15);
     }
 
-    /* Detail modal glass system */
-    #modalSheet {
-      background: linear-gradient(180deg, #eef8fa 0%, #f7fbfc 40%, #f3fbfc 100%) !important;
-    }
-    #modalScrollBody {
-      background: transparent;
-    }
     .detail-glass-card {
-      background: rgba(255,255,255,0.55);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255,255,255,0.75);
+      background: rgba(30, 41, 59, 0.55);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(51, 65, 85, 0.7);
       border-radius: 1rem;
-      box-shadow: 0 4px 16px rgba(15,23,42,0.05);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.2);
+      color: #e2e8f0;
     }
-    .detail-service-chip {
-      background: rgba(255,255,255,0.65);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(14,116,144,0.18);
-      color: #0e7490;
-      border-radius: 999px;
-      font-weight: 800;
-      font-size: 10px;
-      padding: 0.4rem 0.7rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      white-space: nowrap;
-      transition: transform .15s, background .15s;
+    .detail-hub-services {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(51, 65, 85, 0.65);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-radius: 1rem;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04);
     }
-    .detail-service-chip:active { transform: scale(0.96); background: rgba(22,172,189,0.12); }
+    .detail-hub-svc {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.55rem 0.6rem;
+      border-radius: 0.75rem;
+      background: rgba(2, 6, 23, 0.55);
+      border: 1px solid rgba(51, 65, 85, 0.55);
+      text-align: left;
+      transition: background .15s, border-color .15s, transform .12s;
+      width: 100%;
+      color: #f1f5f9;
+    }
+    .detail-hub-svc:active {
+      transform: scale(0.97);
+      background: rgba(15, 23, 42, 0.9);
+      border-color: rgba(45, 212, 191, 0.35);
+    }
+    .detail-hub-svc .svc-icon {
+      font-size: 14px;
+      padding: 0.35rem;
+      border-radius: 0.5rem;
+      background: rgba(45, 212, 191, 0.1);
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .detail-hub-svc .svc-title {
+      font-size: 11px; font-weight: 800; color: #f8fafc; line-height: 1.2;
+    }
+    .detail-hub-svc .svc-sub {
+      font-size: 8px; color: #94a3b8; font-weight: 600; line-height: 1.2;
+    }
     .detail-badge {
       display: inline-flex; align-items: center; gap: 0.25rem;
       padding: 0.2rem 0.55rem; border-radius: 999px;
       font-size: 10px; font-weight: 800; line-height: 1.2;
     }
     .detail-badge-urgent {
-      background: rgba(239,68,68,0.12); color: #b91c1c;
-      border: 1px solid rgba(239,68,68,0.25);
+      background: rgba(239,68,68,0.15); color: #fca5a5;
+      border: 1px solid rgba(239,68,68,0.3);
     }
     .detail-badge-exchange {
-      background: rgba(14,116,144,0.1); color: #0e7490;
-      border: 1px solid rgba(14,116,144,0.22);
+      background: rgba(45,212,191,0.12); color: #5eead4;
+      border: 1px solid rgba(45,212,191,0.28);
     }
     .detail-badge-negotiable {
-      background: rgba(16,185,129,0.12); color: #047857;
-      border: 1px solid rgba(16,185,129,0.25);
+      background: rgba(51,65,85,0.8); color: #cbd5e1;
+      border: 1px solid rgba(71,85,105,0.8);
     }
     .detail-badge-verified {
-      background: rgba(16,185,129,0.1); color: #059669;
-      border: 1px solid rgba(16,185,129,0.2);
+      background: rgba(45,212,191,0.12); color: #2dd4bf;
+      border: 1px solid rgba(45,212,191,0.28);
+    }
+    #modalSpecs .spec-cell {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.5rem 0.6rem;
+      background: rgba(2,6,23,0.4);
+      border-radius: 0.6rem;
+      border: 1px solid rgba(51,65,85,0.45);
     }
     #modalBottomBar {
-      background: rgba(255,255,255,0.42) !important;
-      backdrop-filter: blur(22px) saturate(1.4) !important;
-      -webkit-backdrop-filter: blur(22px) saturate(1.4) !important;
-      border-top: 1px solid rgba(255,255,255,0.55) !important;
-      box-shadow: 0 -8px 28px rgba(15,23,42,0.08) !important;
+      background: rgba(15, 23, 42, 0.82) !important;
+      backdrop-filter: blur(22px) saturate(1.3) !important;
+      -webkit-backdrop-filter: blur(22px) saturate(1.3) !important;
+      border-top: 1px solid rgba(51, 65, 85, 0.75) !important;
+      box-shadow: 0 -8px 28px rgba(0,0,0,0.35) !important;
     }
     #modalAlertCard.detail-alert-compact {
-      padding: 0.65rem 0.85rem !important;
+      padding: 0.7rem 0.85rem !important;
       border-radius: 0.9rem !important;
-      background: rgba(255,251,235,0.75) !important;
+      background: linear-gradient(135deg, rgba(19,78,74,0.45), rgba(30,41,59,0.8)) !important;
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(251,191,36,0.35) !important;
+      border: 1px solid rgba(45,212,191,0.3) !important;
     }
+    #modalTitle { color: #f8fafc !important; }
+    #modalPrice {
+      background: rgba(45,212,191,0.15) !important;
+      color: #5eead4 !important;
+      border: 1px solid rgba(45,212,191,0.28);
+    }
+    #modalTime { color: #94a3b8 !important; }
+    #modalDesc { color: #cbd5e1 !important; }
 
 
     /* Glass chat bubbles */
@@ -1357,45 +1433,61 @@
         </div>
       </div>
 
-      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3 space-y-2.5 pb-28">
+      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3 space-y-2.5 pb-24">
         <!-- Photo gallery -->
         <div id="modalMediaContainer" class="w-full rounded-2xl overflow-hidden relative"></div>
 
         <!-- Title + price + status badges -->
         <div class="detail-glass-card p-3 space-y-2">
-          <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center justify-between gap-2">
             <div class="min-w-0 flex items-center gap-1.5">
-              <h2 id="modalTitle" class="text-[15px] font-extrabold text-slate-900 leading-tight truncate"></h2>
+              <h2 id="modalTitle" class="text-[16px] font-black text-white leading-tight truncate"></h2>
               <span class="detail-badge detail-badge-verified shrink-0">✔ Verified</span>
             </div>
+            <span id="modalTime" class="text-[11px] text-slate-400 font-medium shrink-0"></span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
-            <span id="modalPrice" class="px-2.5 py-0.5 rounded-full bg-[#16acbd]/15 text-[#0e7490] font-black text-xs"></span>
-            <span id="modalTime" class="text-[11px] text-slate-400 font-medium"></span>
+            <span id="modalPrice" class="px-3 py-1 rounded-xl font-extrabold text-sm"></span>
+            <div id="modalStatusBadges" class="flex flex-wrap gap-1.5"></div>
           </div>
-          <div id="modalStatusBadges" class="flex flex-wrap gap-1.5"></div>
         </div>
 
-        <!-- Adika digital services — glass chips -->
-        <div id="modalDynamicActions" class="detail-glass-card p-2.5 space-y-1.5">
-          <div class="text-[10px] font-extrabold text-[#0e7490] tracking-wide flex items-center gap-1">
+        <!-- Adika Digital Hub services — dark glass 2x2 (synced with Hub) -->
+        <div id="modalDynamicActions" class="detail-hub-services mx-0 p-3 space-y-2">
+          <div class="text-[10px] font-extrabold text-teal-400 tracking-wider flex items-center gap-1 uppercase">
             <span>✨</span>
-            <span class="lang-am">የአዲካ ዲጂታል & ፋይናንስ አገልግሎቶች</span>
-            <span class="lang-en">Adika Digital & Finance</span>
+            <span class="lang-am">የአዲካ ዲጂታልና ፋይናንስ አገልግሎቶች</span>
+            <span class="lang-en">Adika Digital & Finance Services</span>
           </div>
-          <div id="modalActionButtonsRow" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5"></div>
+          <div id="modalActionButtonsRow" class="grid grid-cols-2 gap-2"></div>
         </div>
 
-        <!-- Specs glass grid -->
-        <div id="modalSpecs" class="detail-glass-card grid grid-cols-2 gap-2 text-xs font-medium text-slate-600 p-3"></div>
+        <!-- Specs -->
+        <div class="detail-glass-card p-3 space-y-2">
+          <p class="text-[11px] font-bold text-slate-300 border-b border-slate-700/60 pb-1.5 m-0">
+            <span class="lang-am">መሰረታዊ መረጃዎች</span>
+            <span class="lang-en">Key Specs</span>
+          </p>
+          <div id="modalSpecs" class="grid grid-cols-2 gap-2 text-xs"></div>
+        </div>
 
-        <!-- Description -->
+        <!-- Description / seller note -->
         <div class="detail-glass-card p-3">
-          <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+          <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 m-0">
             <span class="lang-am">ዝርዝር መግለጫ</span>
-            <span class="lang-en">Full Description</span>
+            <span class="lang-en">Seller Note</span>
           </h4>
-          <p id="modalDesc" class="text-xs text-slate-700 leading-relaxed whitespace-pre-line"></p>
+          <p id="modalDesc" class="text-xs text-slate-300 leading-relaxed whitespace-pre-line m-0"></p>
+        </div>
+
+        <!-- Seller contact strip -->
+        <div id="modalSellerCard" class="detail-glass-card p-3 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-teal-500/15 border border-teal-400/30 flex items-center justify-center text-lg shrink-0">👤</div>
+          <div class="min-w-0 flex-1">
+            <div id="modalSellerName" class="text-xs font-extrabold text-slate-100 truncate">ሻጭ</div>
+            <div id="modalSellerMeta" class="text-[10px] text-slate-400 truncate"></div>
+          </div>
+          <span class="detail-badge detail-badge-verified shrink-0">✔ Adika</span>
         </div>
 
         <!-- Behavioral recommendations + Smart Alert -->
@@ -1405,33 +1497,36 @@
             <div id="modalRecoIntent" class="text-[9px] font-bold text-[#0e7490] bg-[#16acbd]/10 px-2 py-0.5 rounded-full truncate max-w-[45%]"></div>
           </div>
           <div id="modalRecoScroll" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-0.5 px-0.5"></div>
-          <div id="modalAlertCard" class="hidden detail-alert-compact space-y-1.5">
-            <p id="modalAlertText" class="text-[11px] text-slate-700 font-semibold leading-snug m-0"></p>
-            <button type="button" id="modalAlertBtn" class="w-full py-2 rounded-xl bg-slate-900/90 hover:bg-slate-900 text-white font-bold text-[11px] active:scale-[0.98]">
-              🔔 በቴሌግራም አሳውቀኝ
-            </button>
-            <div id="modalAlertStatus" class="text-[10px] font-bold text-emerald-700 hidden"></div>
+          <div id="modalAlertCard" class="hidden detail-alert-compact">
+            <div class="flex items-center gap-2">
+              <span class="text-base shrink-0">🔔</span>
+              <p id="modalAlertText" class="text-[10px] text-slate-300 font-medium leading-snug m-0 flex-1"></p>
+              <button type="button" id="modalAlertBtn" class="shrink-0 bg-teal-500 text-slate-950 text-[10px] font-black px-3 py-1.5 rounded-xl shadow-lg active:scale-95">
+                አሳውቀኝ
+              </button>
+            </div>
+            <div id="modalAlertStatus" class="text-[10px] font-bold text-teal-300 hidden mt-1.5"></div>
           </div>
         </div>
       </div>
 
-      <!-- Glass sticky bottom action bar -->
-      <div id="modalBottomBar" class="p-2.5 shrink-0 grid grid-cols-3 gap-2 sticky bottom-0 z-10"
-           style="padding-bottom:calc(0.65rem + env(safe-area-inset-bottom,0px));">
+      <!-- Dark glass sticky bottom bar (Hub-synced) -->
+      <div id="modalBottomBar" class="p-3 shrink-0 grid grid-cols-3 gap-2 sticky bottom-0 z-10"
+           style="padding-bottom:calc(0.75rem + env(safe-area-inset-bottom,0px));">
         <a id="modalCallBtn" href="tel:"
-          class="flex items-center justify-center gap-1 py-2.5 rounded-2xl bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 active:scale-95 transition-all border border-white/25">
+          class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs shadow-lg shadow-teal-500/25 active:scale-95 transition-all">
           <span>📞</span>
           <span class="lang-am">ደውል</span>
           <span class="lang-en">Call</span>
         </a>
         <button id="modalChatBtn" type="button"
-          class="flex items-center justify-center gap-1 py-2.5 rounded-2xl bg-[#16acbd]/90 hover:bg-[#16acbd] text-white font-bold text-xs shadow-lg shadow-cyan-600/20 active:scale-95 transition-all border border-white/25">
+          class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 font-bold text-xs border border-teal-500/30 active:scale-95 transition-all">
           <span>💬</span>
           <span class="lang-am">መልእክት</span>
           <span class="lang-en">Message</span>
         </button>
         <button id="modalShareBtn" type="button"
-          class="flex items-center justify-center gap-1 py-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-800 text-white font-bold text-xs shadow-lg shadow-slate-900/20 active:scale-95 transition-all border border-white/20">
+          class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 active:scale-95 transition-all">
           <span>🔗</span>
           <span class="lang-am">አጋራ</span>
           <span class="lang-en">Share</span>
@@ -2752,8 +2847,11 @@
           try { _src0 = escSrc(String(getImageUrl(photos[0]) || photos[0] || "")); } catch (e) { _src0 = String(photos[0] || ""); }
           if (_src0) {
             modalMediaContainer.innerHTML =
-              '<img id="detail-main-image" src="' + _src0 + '" alt="" ' +
-              'style="width:100%;height:100%;object-fit:contain;object-position:center;display:block;position:absolute;inset:0;background:transparent;" />';
+              '<img class="modal-photo-blur" src="' + _src0 + '" alt="" aria-hidden="true" />' +
+              '<div class="modal-photo-wrap">' +
+                '<img id="detail-main-image" class="modal-photo-main" src="' + _src0 + '" alt="" />' +
+              '</div>' +
+              '<span class="modal-photo-count">1/1</span>';
           }
         }
       } catch (eEarly) {}
@@ -2808,9 +2906,11 @@
             // Use escSrc (NOT esc) — esc() breaks data:image base64 via &amp;
             var src = escSrc(String(srcRaw));
             slidesHtml += '<div class="modal-slide">' +
-              '<img src="' + src + '" alt="" loading="' + (pi === 0 ? "eager" : "lazy") + '" ' +
-              'onerror="this.onerror=null;this.style.opacity=0.35;" />' +
-              '</div>';
+              '<img class="modal-photo-blur" src="' + src + '" alt="" aria-hidden="true" loading="' + (pi === 0 ? "eager" : "lazy") + '" />' +
+              '<div class="modal-photo-wrap">' +
+                '<img class="modal-photo-main" src="' + src + '" alt="" loading="' + (pi === 0 ? "eager" : "lazy") + '" ' +
+                'onerror="this.onerror=null;this.style.opacity=0.4;" />' +
+              '</div></div>';
           }
           var dotsHtml = "";
           if (photos.length > 1) {
@@ -2820,8 +2920,11 @@
             }
             dotsHtml += '</div>';
           }
+          var countHtml = photos.length > 1
+            ? '<span class="modal-photo-count">1/' + photos.length + '</span>'
+            : '<span class="modal-photo-count">1/1</span>';
           modalMediaContainer.innerHTML =
-            '<div id="modalGalleryTrack">' + slidesHtml + '</div>' + dotsHtml;
+            '<div id="modalGalleryTrack">' + slidesHtml + '</div>' + dotsHtml + countHtml;
           var track = document.getElementById("modalGalleryTrack");
           if (track && photos.length > 1) {
             track.addEventListener("scroll", function() {
@@ -2830,6 +2933,8 @@
                 if (i === idx) d.classList.add("is-active");
                 else d.classList.remove("is-active");
               });
+              var cnt = modalMediaContainer.querySelector(".modal-photo-count");
+              if (cnt) cnt.textContent = (idx + 1) + "/" + photos.length;
             }, { passive: true });
             modalMediaContainer.querySelectorAll(".modal-dot").forEach(function(d) {
               d.onclick = function(e) {
@@ -2855,22 +2960,26 @@
 
       var specsHtml = "";
       var modelName = extra.car_model || item.car_model || item.sub_category || item.model || "";
-      if (isCar) {
-        if (modelName) specsHtml += '<div class="col-span-2">🚗 Model: <span class="font-bold text-slate-800">' + esc(modelName) + '</span></div>';
-        if (extra.chassis_number) specsHtml += '<div class="col-span-2">🛡️ VIN: <span class="font-mono font-bold text-emerald-700">' + esc(extra.chassis_number) + ' (Verified ✓)</span></div>';
-        if (extra.fuel_type) specsHtml += '<div>⛽ Fuel: <span class="font-bold text-slate-800">' + esc(extra.fuel_type) + '</span></div>';
-        if (extra.transmission) specsHtml += '<div>⚙️ Trans: <span class="font-bold text-slate-800">' + esc(extra.transmission) + '</span></div>';
-        if (extra.mileage) specsHtml += '<div>🛣️ Mileage: <span class="font-bold text-slate-800">' + esc(extra.mileage) + ' KM</span></div>';
-        if (extra.condition) specsHtml += '<div>📊 Condition: <span class="font-bold text-slate-800">' + esc(extra.condition) + '</span></div>';
-      } else {
-        if (extra.house_type || item.sub_category) specsHtml += '<div class="col-span-2">🏠 Type: <span class="font-bold text-slate-800">' + esc(extra.house_type || item.sub_category || "") + '</span></div>';
-        if (extra.location_area) specsHtml += '<div class="col-span-2">📍 Area: <span class="font-bold text-slate-800">' + esc(extra.location_area) + '</span></div>';
-        if (extra.bedrooms) specsHtml += '<div>🛏️ Beds: <span class="font-bold text-slate-800">' + esc(extra.bedrooms) + '</span></div>';
-        if (extra.bathrooms) specsHtml += '<div>🛁 Baths: <span class="font-bold text-slate-800">' + esc(extra.bathrooms) + '</span></div>';
-        if (extra.parking) specsHtml += '<div>🚗 Parking: <span class="font-bold text-slate-800">' + esc(extra.parking) + '</span></div>';
-        if (extra.condition || extra.house_condition) specsHtml += '<div>📊 Condition: <span class="font-bold text-slate-800">' + esc(extra.condition || extra.house_condition) + '</span></div>';
+      function specCell(label, value) {
+        if (value == null || value === "") return "";
+        return '<div class="spec-cell"><span class="text-slate-400">' + label + '</span><span class="font-bold text-slate-100">' + esc(String(value)) + '</span></div>';
       }
-      if (modalSpecs) modalSpecs.innerHTML = specsHtml || '<div>Status: <span class="font-bold text-slate-800">Active & Verified ✔</span></div>';
+      if (isCar) {
+        specsHtml += specCell("🚗 Model", modelName);
+        if (extra.chassis_number) specsHtml += specCell("🛡️ VIN", extra.chassis_number + " ✓");
+        specsHtml += specCell("⛽ Fuel", extra.fuel_type || "");
+        specsHtml += specCell("⚙️ Trans", extra.transmission || "");
+        specsHtml += specCell("🛣️ Mileage", extra.mileage ? (String(extra.mileage) + " KM") : "");
+        specsHtml += specCell("📊 Condition", extra.condition || "");
+      } else {
+        specsHtml += specCell("🏠 Type", extra.house_type || item.sub_category || "");
+        specsHtml += specCell("📍 Area", extra.location_area || "");
+        specsHtml += specCell("🛏️ Beds", extra.bedrooms || "");
+        specsHtml += specCell("🛁 Baths", extra.bathrooms || "");
+        specsHtml += specCell("🚗 Parking", extra.parking || "");
+        specsHtml += specCell("📊 Condition", extra.condition || extra.house_condition || "");
+      }
+      if (modalSpecs) modalSpecs.innerHTML = specsHtml || '<div class="spec-cell col-span-2"><span class="text-slate-400">Status</span><span class="font-bold text-teal-300">Active & Verified ✔</span></div>';
 
       // --- Contact actions (Call / Message / Share) ---
       var phone = "";
@@ -2994,38 +3103,73 @@
         var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
       }catch(e){}
 
-      // Populate dynamic category action buttons
+      // Hub-synced dark glass services (2x2)
       var actionsRow = document.getElementById("modalActionButtonsRow");
       if (actionsRow) {
-        actionsRow.className = "flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5";
-        var chip = function(id, icon, label) {
-          return '<button id="' + id + '" type="button" class="detail-service-chip shrink-0">' +
-            '<span>' + icon + '</span><span>' + label + '</span></button>';
+        actionsRow.className = "grid grid-cols-2 gap-2";
+        var svc = function(id, icon, titleAm, subEn) {
+          return '<button id="' + id + '" type="button" class="detail-hub-svc">' +
+            '<span class="svc-icon">' + icon + '</span>' +
+            '<span class="min-w-0"><span class="svc-title block">' + titleAm + '</span>' +
+            '<span class="svc-sub block">' + subEn + '</span></span></button>';
         };
         if (isCar) {
-          actionsRow.innerHTML = chip("actCarDuty","🧮","የቀረጥ ስሌት") + chip("actCarCompare","⚖️","ንጽጽር") + chip("actCarDiag","🛠️","ምርመራ");
-          document.getElementById("actCarDuty").onclick = function() {
-            openToolModal('dutyModal');
-            if (extra.cif_price) document.getElementById("dutyCif").value = extra.cif_price;
+          actionsRow.innerHTML =
+            svc("actChassis","🛡️","የሻንሲ ማጣሪያ","Chassis / VIN Specs") +
+            svc("actCompare","📊","የመኪና ንፅፅር","Vehicle Comparison") +
+            svc("actPoa","📜","የውክልና ማጣሪያ","Verify Attorney") +
+            svc("actDiag","⚙️","የምርመራ ወረቀት","Garage Diagnostic");
+          var elCh = document.getElementById("actChassis");
+          if (elCh) elCh.onclick = function() { try { openToolModal("chassisModal"); } catch(e){} };
+          var elCmp = document.getElementById("actCompare");
+          if (elCmp) elCmp.onclick = function() {
+            try {
+              openToolModal("compareModal");
+              var c1 = document.getElementById("compareCar1");
+              if (c1) c1.value = modalTitleText;
+            } catch(e){}
           };
-          document.getElementById("actCarCompare").onclick = function() {
-            openToolModal('compareModal');
-            var c1 = document.getElementById("compareCar1");
-            if (c1) c1.value = modalTitleText;
-          };
-          document.getElementById("actCarDiag").onclick = function() { openToolModal('diagModal'); };
+          var elPoa = document.getElementById("actPoa");
+          if (elPoa) elPoa.onclick = function() { try { openToolModal("poaModal"); } catch(e){} };
+          var elDiag = document.getElementById("actDiag");
+          if (elDiag) elDiag.onclick = function() { try { openToolModal("diagModal"); } catch(e){} };
         } else {
-          actionsRow.innerHTML = chip("actPropLoan","🏦","የባንክ ብድር") + chip("actPropPoa","🔍","ውክልና") + chip("actPropContract","📜","ውል");
-          document.getElementById("actPropLoan").onclick = function() { openToolModal('loanModal'); };
-          document.getElementById("actPropPoa").onclick = function() { openToolModal('poaModal'); };
-          document.getElementById("actPropContract").onclick = function() {
-            openToolModal('contractModal');
-            var rawPrice = parseInt(String(item.price || "").replace(/[^0-9]/g, "")) || "";
-            var cp = document.getElementById("contractPrice");
-            if (cp) cp.value = rawPrice;
+          actionsRow.innerHTML =
+            svc("actLoan","🏦","የባንክ ብድር","Mortgage & Loan") +
+            svc("actPoa2","📜","የውክልና ማጣሪያ","Verify Attorney") +
+            svc("actContract","📄","የሽያጭ ውል","Legal Sales Contract") +
+            svc("actLand","🗺️","የካርታ ማጣሪያ","Cadastral Map");
+          var elL = document.getElementById("actLoan");
+          if (elL) elL.onclick = function() { try { openToolModal("loanModal"); } catch(e){} };
+          var elP2 = document.getElementById("actPoa2");
+          if (elP2) elP2.onclick = function() { try { openToolModal("poaModal"); } catch(e){} };
+          var elCt = document.getElementById("actContract");
+          if (elCt) elCt.onclick = function() {
+            try {
+              openToolModal("contractModal");
+              var rawPrice = parseInt(String(item.price || "").replace(/[^0-9]/g, "")) || "";
+              var cp = document.getElementById("contractPrice");
+              if (cp) cp.value = rawPrice;
+            } catch(e){}
           };
+          var elLand = document.getElementById("actLand");
+          if (elLand) elLand.onclick = function() { try { openToolModal("landMapModal"); } catch(e){} };
         }
       }
+
+      // Seller card
+      try {
+        var sName = document.getElementById("modalSellerName");
+        var sMeta = document.getElementById("modalSellerMeta");
+        var sellerLabel = tUser ? ("@" + tUser) : (phone || "Adika Seller");
+        if (sName) sName.textContent = sellerLabel;
+        if (sMeta) {
+          var bits = [];
+          if (phone) bits.push("📞 " + phone);
+          if (tUser) bits.push("✈️ @" + tUser);
+          sMeta.textContent = bits.join(" · ") || "Verified listing contact";
+        }
+      } catch (eS) {}
 
       if (item.id) {
         try { fetch("/api/views/" + item.id, { method: "POST" }).catch(function(){}); } catch(e){}
