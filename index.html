@@ -2876,10 +2876,10 @@
       modalOverlay.classList.remove("hidden");
       modalOverlay.classList.add("flex");
       modalOverlay.style.display = "flex";
+      // Only hide bottom nav + FAB (header stays — modal z-index covers it; avoids "header gone" bug on back)
       try{
         var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
         var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
-        var h=document.getElementById("adikaFixedHeader"); if(h) h.style.visibility="hidden";
       }catch(e){}
 
       // Populate dynamic category action buttons
@@ -2923,6 +2923,39 @@
 
     window.openDetailModal = openDetailModal;
 
+    function restoreHomeChrome() {
+      try {
+        var n = document.getElementById("adikaBottomNav");
+        var f = document.getElementById("fabBtn");
+        var h = document.getElementById("adikaFixedHeader");
+        var hero = document.getElementById("homeHero");
+        if (n) {
+          n.style.removeProperty("display");
+          n.style.display = "";
+          n.classList.remove("hidden");
+        }
+        if (f) {
+          f.style.removeProperty("display");
+          f.style.display = "";
+          f.classList.remove("hidden");
+        }
+        if (h) {
+          h.style.removeProperty("visibility");
+          h.style.removeProperty("display");
+          h.style.visibility = "visible";
+          h.style.display = "";
+          h.classList.remove("hidden");
+        }
+        if (hero) {
+          hero.style.removeProperty("display");
+          hero.style.display = "";
+          hero.classList.remove("hidden");
+        }
+        document.body.style.overflow = "";
+      } catch (e) {}
+    }
+    window.restoreHomeChrome = restoreHomeChrome;
+
     function closeDetailModalPreserve() {
       try {
         if (modalOverlay) {
@@ -2931,28 +2964,22 @@
           modalOverlay.style.display = "none";
         }
       } catch (e) {}
-      // Restore Home chrome (header + nav + FAB) — critical after detail close
-      try {
-        var n = document.getElementById("adikaBottomNav");
-        var f = document.getElementById("fabBtn");
-        var h = document.getElementById("adikaFixedHeader");
-        var hero = document.getElementById("homeHero");
-        if (n) { n.style.display = ""; n.classList.remove("hidden"); }
-        if (f) { f.style.display = ""; f.classList.remove("hidden"); }
-        if (h) {
-          h.style.visibility = "visible";
-          h.style.display = "";
-          h.classList.remove("hidden");
-        }
-        if (hero) { hero.style.display = ""; hero.classList.remove("hidden"); }
-        document.body.style.overflow = "";
-      } catch (e) {}
+      restoreHomeChrome();
       try { state.selectedItem = null; } catch (e) {}
       try {
         window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
       } catch (e) {
         try { window.scrollTo(0, savedFeedScrollY || 0); } catch (e2) {}
       }
+      // Re-fit feed padding after header is visible again
+      try {
+        var hdr = document.getElementById("adikaFixedHeader");
+        var main = document.getElementById("adikaMainFeed");
+        if (hdr && main) {
+          var hh = Math.ceil(hdr.getBoundingClientRect().height || 0);
+          if (hh > 40) main.style.paddingTop = (hh + 6) + "px";
+        }
+      } catch (e3) {}
     }
     window.closeDetailModalPreserve = closeDetailModalPreserve;
     modalClose.onclick = closeDetailModalPreserve;
@@ -6071,6 +6098,7 @@
   }
   function openHome(){
     closeAll();
+    try { if (window.restoreHomeChrome) window.restoreHomeChrome(); } catch(e){}
     try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){ window.scrollTo(0,0); }
   }
 
@@ -6477,7 +6505,7 @@
       }
       return;
     }
-    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); if(window.openListingMessage) openListingMessage(); return; }
+    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); if(window.closeDetailModalPreserve) window.closeDetailModalPreserve(); else hide("modalOverlay"); if(window.openListingMessage) openListingMessage(); return; }
 
     if(t.getAttribute("data-live")==="1" || (t.classList && t.classList.contains("adika-card")) || (t.closest && t.closest(".adika-card"))){
       var card = (t.closest && t.closest(".adika-card")) || t;
