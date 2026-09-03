@@ -254,36 +254,21 @@
     #modalAlertCard.detail-alert-compact {
       margin-bottom: 0 !important;
     }
-    /* Instagram-style fixed square frame (stable in Telegram WebView) */
+    /* Detail hero photo — fixed height (no aspect-ratio collapse in Telegram WebView) */
     #modalMediaContainer {
-      width: 100%;
-      height: 0;
-      padding-bottom: 100%; /* true square without aspect-ratio bugs */
-      max-height: none;
-      border-radius: 0;
-      overflow: hidden;
-      background: #e2e8f0;
-      position: relative;
-      box-shadow: none;
-      border: 0;
-      border-bottom: 1px solid rgba(226,232,240,0.95);
-    }
-    @supports (aspect-ratio: 1 / 1) {
-      #modalMediaContainer {
-        height: auto;
-        padding-bottom: 0;
-        aspect-ratio: 1 / 1;
-        max-height: min(320px, 48vh);
-      }
-    }
-    /* Soft white frame around hero photo */
-    #modalMediaContainer {
-      margin: 0.65rem 0.75rem 0.35rem;
-      width: calc(100% - 1.5rem);
-      border-radius: 0.9rem;
-      border: 1px solid rgba(226,232,240,0.95);
-      box-shadow: 0 2px 10px rgba(15,23,42,0.06);
-      background: #f8fafc;
+      position: relative !important;
+      width: calc(100% - 1.5rem) !important;
+      margin: 0.65rem 0.75rem 0.4rem !important;
+      height: 260px !important;
+      min-height: 260px !important;
+      max-height: 260px !important;
+      border-radius: 0.9rem !important;
+      overflow: hidden !important;
+      background: #e2e8f0 !important;
+      border: 1px solid rgba(226,232,240,0.95) !important;
+      box-shadow: 0 2px 10px rgba(15,23,42,0.06) !important;
+      flex-shrink: 0 !important;
+      display: block !important;
     }
     #modalMediaContainer .modal-photo-blur {
       position: absolute; inset: 0;
@@ -292,13 +277,14 @@
       object-position: center;
       filter: blur(14px) saturate(1.05);
       -webkit-filter: blur(14px) saturate(1.05);
-      opacity: 0.22;
+      opacity: 0.25;
       transform: scale(1.06);
       z-index: 0;
       pointer-events: none;
     }
     #modalMediaContainer .modal-photo-main,
-    #modalMediaContainer #detail-main-image {
+    #modalMediaContainer #detail-main-image,
+    #modalMediaContainer #mainDetailImage {
       position: absolute !important;
       inset: 0 !important;
       z-index: 2 !important;
@@ -315,6 +301,7 @@
       -webkit-filter: none !important;
       transform: none !important;
       box-shadow: none;
+      opacity: 1 !important;
     }
     #modalMediaContainer .modal-photo-wrap {
       position: absolute; inset: 0;
@@ -363,6 +350,14 @@
       padding: 3px 10px; border-radius: 999px;
       border: 0;
       box-shadow: 0 2px 8px rgba(15,23,42,0.2);
+    }
+    #modalMediaContainer .modal-photo-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 6px;
+      background: linear-gradient(160deg, #e8eef3, #d5dee7);
+      color: #64748b; z-index: 1;
+      font-size: 12px; font-weight: 700;
     }
 
     .detail-glass-card {
@@ -3072,37 +3067,67 @@
       }
       if (!extra || typeof extra !== "object") extra = {};
 
-      // DATA PIPELINE: robust photo_urls (string|array|JSON) → URL list
+      // DATA PIPELINE: robust photo_urls (string|array|JSON) + card DOM fallback
       var photos = [];
+      function _pushPhoto(u) {
+        u = getValidImageUrl(u) || (u ? String(u).trim() : "");
+        if (!u) return;
+        if (photos.indexOf(u) < 0) photos.push(u);
+      }
       if (Array.isArray(preloadPhotos) && preloadPhotos.length) {
-        photos = preloadPhotos.map(function(x){ return getValidImageUrl(x) || ""; }).filter(Boolean);
+        preloadPhotos.forEach(_pushPhoto);
       }
+      try {
+        var collected = collectPhotoUrls(item) || [];
+        collected.forEach(_pushPhoto);
+      } catch (eC) {}
       if (!photos.length) {
-        try { photos = collectPhotoUrls(item); } catch (eC) { photos = []; }
+        try {
+          (parsePhotosList(item) || []).forEach(_pushPhoto);
+        } catch (e) {}
       }
-      if (!photos.length) {
-        try { photos = parsePhotosList(item); } catch (e) { photos = []; }
-        photos = (photos || []).map(function(x){ return getValidImageUrl(x) || String(x || ""); }).filter(Boolean);
+      // Last resort: pull visible <img> from the home feed card for this id
+      if (!photos.length && item && item.id != null) {
+        try {
+          var cardEl = document.querySelector('#grid .adika-card[data-id="' + String(item.id).replace(/"/g, "") + '"]')
+            || Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card")).find(function(c) {
+              return String(c.getAttribute("data-id") || "") === String(item.id);
+            });
+          if (cardEl) {
+            if (cardEl._adikaPhotos && cardEl._adikaPhotos.length) {
+              cardEl._adikaPhotos.forEach(_pushPhoto);
+            }
+            var dimg = cardEl.querySelector("img");
+            if (dimg && dimg.src && dimg.src.indexOf("data:image/svg") < 0) _pushPhoto(dimg.src);
+          }
+        } catch (eDom) {}
       }
       if (photos.length) {
-        item.photos = photos;
-        item.photo_urls = photos;
-        item._resolved_photos = photos;
+        item.photos = photos.slice();
+        item.photo_urls = photos.slice();
+        item._resolved_photos = photos.slice();
       }
 
-      // INSTANT DOM BIND: paint photo into modal BEFORE any other work
+      // INSTANT DOM BIND — always paint frame (photo or placeholder)
       try {
         if (!modalMediaContainer) modalMediaContainer = document.getElementById("modalMediaContainer");
-        if (modalMediaContainer && photos && photos.length) {
-          var _src0 = "";
-          try { _src0 = escSrc(String(getImageUrl(photos[0]) || photos[0] || "")); } catch (e) { _src0 = String(photos[0] || ""); }
+        if (modalMediaContainer) {
+          modalMediaContainer.style.minHeight = "260px";
+          modalMediaContainer.style.height = "260px";
+          modalMediaContainer.style.display = "block";
+          var _src0 = photos.length ? (getValidImageUrl(photos[0]) || photos[0] || "") : "";
+          try { _src0 = _src0 ? escSrc(String(_src0)) : ""; } catch (e) {}
           if (_src0) {
             modalMediaContainer.innerHTML =
               '<img class="modal-photo-blur" src="' + _src0 + '" alt="" aria-hidden="true" />' +
               '<div class="modal-photo-wrap">' +
-                '<img id="detail-main-image" class="modal-photo-main" src="' + _src0 + '" alt="" onerror="this.onerror=null;this.style.opacity=0.35;" />' +
+                '<img id="detail-main-image" class="modal-photo-main" src="' + _src0 + '" alt="Listing photo" ' +
+                'onerror="this.onerror=null;this.style.opacity=0.3;" />' +
               '</div>' +
-              '<span class="modal-photo-count">1/1</span>';
+              '<span class="modal-photo-count">1/' + photos.length + '</span>';
+          } else {
+            modalMediaContainer.innerHTML =
+              '<div class="modal-photo-placeholder"><span style="font-size:2rem">📷</span><span>ፎቶ አልተገኘም</span></div>';
           }
         }
       } catch (eEarly) {}
