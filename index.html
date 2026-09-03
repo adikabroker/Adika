@@ -3948,21 +3948,21 @@
         var h = document.getElementById("adikaFixedHeader");
         var hero = document.getElementById("homeHero");
         if (n) {
-          n.style.removeProperty("display");
-          n.style.display = "";
           n.classList.remove("hidden");
+          n.style.removeProperty("visibility");
+          n.style.setProperty("display", "flex", "important");
         }
         if (f) {
+          f.classList.remove("hidden");
           f.style.removeProperty("display");
           f.style.display = "";
-          f.classList.remove("hidden");
         }
         if (h) {
+          h.classList.remove("hidden");
           h.style.removeProperty("visibility");
           h.style.removeProperty("display");
           h.style.visibility = "visible";
           h.style.display = "";
-          h.classList.remove("hidden");
         }
         if (hero) {
           hero.style.removeProperty("display");
@@ -3983,6 +3983,13 @@
         }
       } catch (e) {}
       restoreHomeChrome();
+      try {
+        var nav = document.getElementById("adikaBottomNav");
+        if (nav) {
+          nav.classList.remove("hidden");
+          nav.style.setProperty("display", "flex", "important");
+        }
+      } catch (eNav) {}
       try { state.selectedItem = null; } catch (e) {}
       try {
         window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
@@ -4306,12 +4313,60 @@
       load(false);
     };
 
+
+    // FYP tab gate: force onboarding if not completed
+    function isAdikaOnboarded() {
+      try { if (localStorage.getItem("adika_onboarded") === "true") return true; } catch (e) {}
+      try { if (typeof _lsGet === "function" && _lsGet("adika_onboarded") === "true") return true; } catch (e2) {}
+      return false;
+    }
+    function requireOnboardingForFyp() {
+      if (isAdikaOnboarded()) return false;
+      try {
+        if (typeof window.__adikaShowOnboarding === "function") {
+          window.__adikaShowOnboarding();
+          return true;
+        }
+      } catch (e) {}
+      try {
+        var m = document.getElementById("unifiedOnboardingModal");
+        if (m) {
+          m.classList.remove("hidden");
+          m.classList.add("flex");
+          m.style.display = "flex";
+          document.body.style.overflow = "hidden";
+          return true;
+        }
+      } catch (e2) {}
+      return false;
+    }
+    window.requireOnboardingForFyp = requireOnboardingForFyp;
+    window.isAdikaOnboarded = isAdikaOnboarded;
+
     function selectCategory(catId) {
       // Always unlock UI when user taps a category
       try { state.loading = false; } catch (e) {}
 
       catId = (catId || "").trim();
-      if (catId === "foryou" || catId === "ለእርስዎ") {
+      if (catId === "foryou" || catId === "ለእርስዎ" || catId === "✨ ለእርስዎ") {
+        if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) {
+          // Show onboarding; still mark tab active but block personalized load until done
+          state.feedMode = "foryou";
+          state.category = "";
+          // Update pills without loading FYP yet
+          try {
+            var buttons = catsEl.querySelectorAll("button");
+            buttons.forEach(function(b) {
+              if (b.getAttribute("data-filter") === "chassis") return;
+              var bId = b.getAttribute("data-id") || "";
+              var on = (bId === "foryou");
+              b.className = on
+                ? "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm"
+                : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
+            });
+          } catch (eP) {}
+          return;
+        }
         state.feedMode = "foryou";
         state.category = "";
       } else if (!catId || catId === "all" || catId === "null" || catId === "undefined" || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም" || catId === "🌐 ሁሉም") {
@@ -6810,8 +6865,15 @@
             : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
           b.textContent = m.label;
           b.onclick = function() {
-            if (m.id === "foryou") { state.feedMode = "foryou"; state.category = ""; }
-            else if (m.id === "all") { state.feedMode = "all"; state.category = ""; }
+            if (m.id === "foryou") {
+              state.feedMode = "foryou";
+              state.category = "";
+              paintFeedModes();
+              if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) return;
+              load(false);
+              return;
+            }
+            if (m.id === "all") { state.feedMode = "all"; state.category = ""; }
             else { state.feedMode = "cat"; state.category = m.id; }
             paintFeedModes();
             load(false);
@@ -7463,6 +7525,8 @@
         var cid = pill.getAttribute("data-id") || "all";
         markCats(cid);
         if(cid==="foryou"){
+          if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) return;
+          if (typeof load === "function") { try { state.feedMode = "foryou"; state.category = ""; load(false); return; } catch (eL) {} }
           fetch("/api/feed/for-you",{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
             var items=(d&& (d.items||d.listings||d.results))||[];
             if(Array.isArray(items) && items.length) paintLive(items);
@@ -7600,7 +7664,7 @@
         try {
           var h=document.getElementById("adikaFixedHeader");
           if(h){ h.style.visibility="visible"; h.style.display=""; h.classList.remove("hidden"); }
-          var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="";
+          var n=document.getElementById("adikaBottomNav"); if(n){ n.classList.remove("hidden"); n.style.setProperty("display","flex","important"); }
           var f=document.getElementById("fabBtn"); if(f) f.style.display="";
         } catch(e2){}
       }
@@ -7794,7 +7858,7 @@
   window.closeInbox = function(){
     showInbox(false);
     try{
-      var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="";
+      var n=document.getElementById("adikaBottomNav"); if(n){ n.classList.remove("hidden"); n.style.setProperty("display","flex","important"); }
       var f=document.getElementById("fabBtn"); if(f) f.style.display="";
     }catch(e){}
   };
