@@ -1094,17 +1094,21 @@
           })
           .catch(function(){ tryFetch(urls, i+1); });
       }
-      var qs="page=1&limit=40&order=DESC&active_only=1&type=SELL";
+      var qs="page=1&limit=10&order=DESC&active_only=1&type=SELL";
       tryFetch(["/api/listings?"+qs, "/api/explorer/listings?"+qs], 0);
     })();
     </script>
 
-        <!-- Load More -->
-    <div class="text-center mt-2 mb-1">
+        <!-- Load More / Infinite Scroll trigger -->
+    <div id="loadMoreWrap" class="flex justify-center items-center mt-2 mb-1 pb-4">
       <button id="more" type="button"
-        class="hidden px-5 py-2 rounded-full bg-white text-[#16acbd] font-extrabold text-xs shadow-md border border-white/60 active:scale-95 transition-all">
-        <span class="lang-am">ተጨማሪ ↓</span>
-        <span class="lang-en">Load More ↓</span>
+        class="hidden flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-teal-700 font-extrabold text-xs shadow-md border border-teal-200 active:scale-95 transition-all">
+        <span id="btnText" class="lang-am">ተጨማሪ ↓</span>
+        <span class="lang-en" id="btnTextEn">Load More ↓</span>
+        <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
       </button>
     </div>
   </main>
@@ -2343,8 +2347,9 @@
       category: "",
       q: "",
       page: 1,
-      hasMore: false,
+      hasMore: true,
       loading: false,
+      itemsPerPage: 10,
       items: [],
       selectedItem: null
     };
@@ -3685,6 +3690,7 @@
     function finishLoading(items, append, hasMore) {
       // ALWAYS unlock UI — finally semantics
       try { state.loading = false; } catch (e) {}
+      try { showLoadMoreSpinner(false); } catch (e) {}
       try { if (grid) grid.style.opacity = "1"; } catch (e) {}
       try {
         if (statusEl) {
@@ -3773,16 +3779,36 @@
       } catch (e) { console.error(e); }
     };
 
+    var itemsPerPage = 10;
+    function showLoadMoreSpinner(on) {
+      try {
+        var spin = document.getElementById("btnSpinner");
+        var txt = document.getElementById("btnText");
+        var txtEn = document.getElementById("btnTextEn");
+        if (spin) spin.classList.toggle("hidden", !on);
+        if (txt) txt.style.opacity = on ? "0.55" : "1";
+        if (txtEn) txtEn.style.opacity = on ? "0.55" : "1";
+        if (moreBtn) moreBtn.disabled = !!on;
+      } catch (e) {}
+    }
+    function loadMoreVehicles() {
+      if (state.loading || state.hasMore === false) return;
+      load(true);
+    }
+    window.loadMoreVehicles = loadMoreVehicles;
+
     function load(append) {
       // Simple, reliable loader — never discard successful API data
+      if (append && (state.loading || state.hasMore === false)) return;
       try { state.loading = true; } catch (e) {}
-      try { if (grid) grid.style.opacity = "0.7"; } catch (e) {}
+      try { if (append) showLoadMoreSpinner(true); } catch (e) {}
+      try { if (grid && !append) grid.style.opacity = "0.7"; } catch (e) {}
 
       var page = append ? (state.page + 1) : 1;
       var isBuy = state.tab !== "marketplace";
       // Prefer explorer (known-good) unless user explicitly chose For You
       var useForYou = (!isBuy && state.feedMode === "foryou" && !state.q);
-      var qs = "page=" + page + "&limit=24&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
+      var qs = "page=" + page + "&limit=" + itemsPerPage + "&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
       var cat = (state.category || "").trim();
       if (!useForYou && cat && !/^(all|ሁሉም|✨|foryou)/i.test(cat)) {
         qs += "&category=" + encodeURIComponent(cat);
@@ -3794,7 +3820,7 @@
       urls.push("/api/listings?" + qs);
       urls.push("/api/explorer/listings?" + qs);
       if (useForYou) {
-        urls.push("/api/feed/for-you?page=" + page + "&limit=24&user_id=" + encodeURIComponent(state.userId || "0"));
+        urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + encodeURIComponent(state.userId || "0"));
       }
 
       var done = false;
@@ -3802,6 +3828,7 @@
         if (done && !(items && items.length)) return;
         done = true;
         try { state.loading = false; } catch (e) {}
+        try { showLoadMoreSpinner(false); } catch (e) {}
         try { state.page = page; state.hasMore = !!hasMore; } catch (e) {}
         try { finishLoading(items || [], append, !!hasMore); } catch (e) {
           console.error("[Adika] applyItems", e);
@@ -3831,7 +3858,10 @@
             var items = (r.data.items || r.data.listings || r.data.results || (r.data.data && (r.data.data.items || r.data.data.listings)) || r.data.data || []);
             if (!Array.isArray(items)) items = [];
             if (items.length > 0) {
-              applyItems(items, !!(r.data.has_more || r.data.hasMore));
+              var moreFlag = (r.data.has_more != null || r.data.hasMore != null)
+                ? !!(r.data.has_more || r.data.hasMore)
+                : items.length >= itemsPerPage;
+              applyItems(items, moreFlag);
             } else {
               tryUrl(i + 1);
             }
@@ -3928,7 +3958,32 @@
       selectCategory(catId);
     };
 
-    moreBtn.onclick = function () { load(true); };
+    moreBtn.onclick = function () { loadMoreVehicles(); };
+
+    (function bindInfiniteScroll() {
+      var ticking = false;
+      function nearBottom() {
+        var el = document.documentElement;
+        return (el.scrollTop + el.clientHeight >= el.scrollHeight - 100);
+      }
+      window.addEventListener("scroll", function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () {
+          ticking = false;
+          if (nearBottom()) loadMoreVehicles();
+        });
+      }, { passive: true });
+      var wrap = document.getElementById("loadMoreWrap");
+      if (wrap && "IntersectionObserver" in window) {
+        try {
+          var io = new IntersectionObserver(function (entries) {
+            if (entries[0] && entries[0].isIntersecting) loadMoreVehicles();
+          }, { rootMargin: "120px 0px" });
+          io.observe(wrap);
+        } catch (e) {}
+      }
+    })();
 
     var deb = null;
     qInput.oninput = function () {
