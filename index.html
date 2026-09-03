@@ -237,7 +237,7 @@
     #modalScrollBody {
       background: transparent;
       flex: 1 1 auto !important;
-      padding-bottom: 4.75rem !important;
+      padding-bottom: 4.25rem !important;
       min-height: 0;
     }
     /* Instagram-style fixed square frame */
@@ -434,8 +434,6 @@
     }
     #modalTime { color: #94a3b8 !important; }
     #modalDesc { color: #334155 !important; }
-    #modalSellerName { color: #0f172a !important; }
-    #modalSellerMeta { color: #64748b !important; }
     #modalRecoTitle { color: #0f172a !important; }
     #modalRecoIntent { color: #0e7490 !important; background: rgba(236,254,255,0.9) !important; }
     #modalDynamicActions .text-teal-400,
@@ -1451,7 +1449,7 @@
         </div>
       </div>
 
-      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3 space-y-2.5 pb-16">
+      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3 space-y-2 pb-14">
         <!-- Photo gallery -->
         <div id="modalMediaContainer" class="w-full rounded-2xl overflow-hidden relative"></div>
 
@@ -1498,15 +1496,7 @@
           <p id="modalDesc" class="text-xs text-slate-300 leading-relaxed whitespace-pre-line m-0"></p>
         </div>
 
-        <!-- Seller contact strip -->
-        <div id="modalSellerCard" class="detail-glass-card p-3 flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-lg shrink-0">👤</div>
-          <div class="min-w-0 flex-1">
-            <div id="modalSellerName" class="text-xs font-extrabold text-slate-100 truncate">ሻጭ</div>
-            <div id="modalSellerMeta" class="text-[10px] text-slate-400 truncate"></div>
-          </div>
-          <span class="detail-badge detail-badge-verified shrink-0">✔ Adika</span>
-        </div>
+
 
         <!-- Behavioral recommendations + Smart Alert -->
         <div id="modalRecoSection" class="space-y-2.5 pt-1">
@@ -2896,7 +2886,22 @@
       var priceTxt = formatListingPrice(item.price);
       modalPrice.textContent = priceTxt;
       modalTime.textContent = relativeTime(item.created_at) ? ("⏱️ " + relativeTime(item.created_at)) : "";
-      modalDesc.textContent = item.description || "No further details provided.";
+      try {
+        var rawDesc = String(item.description || "").trim();
+        // Remove poster-only noise lines (platform accounts / empty phone)
+        rawDesc = rawDesc.split(/\n/).filter(function(line) {
+          var L = line.trim();
+          if (!L) return false;
+          if (/^📞\s*Phone:\s*$/i.test(L)) return false;
+          if (/^Phone:\s*$/i.test(L)) return false;
+          if (/Telegram:\s*@Adika(Support|PLC|admin)/i.test(L)) return false;
+          if (/^@Adika(Support|PLC|admin)$/i.test(L)) return false;
+          return true;
+        }).join("\n").trim();
+        modalDesc.textContent = rawDesc || "No further details provided.";
+      } catch (eD) {
+        modalDesc.textContent = item.description || "No further details provided.";
+      }
 
       // Status badges (Urgent / Exchange / Negotiable)
       try {
@@ -3174,20 +3179,6 @@
           if (elLand) elLand.onclick = function() { try { openToolModal("landMapModal"); } catch(e){} };
         }
       }
-
-      // Seller card
-      try {
-        var sName = document.getElementById("modalSellerName");
-        var sMeta = document.getElementById("modalSellerMeta");
-        var sellerLabel = tUser ? ("@" + tUser) : (phone || "Adika Seller");
-        if (sName) sName.textContent = sellerLabel;
-        if (sMeta) {
-          var bits = [];
-          if (phone) bits.push("📞 " + phone);
-          if (tUser) bits.push("✈️ @" + tUser);
-          sMeta.textContent = bits.join(" · ") || "Verified listing contact";
-        }
-      } catch (eS) {}
 
       if (item.id) {
         try { fetch("/api/views/" + item.id, { method: "POST" }).catch(function(){}); } catch(e){}
