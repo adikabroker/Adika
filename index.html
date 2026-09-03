@@ -2319,33 +2319,28 @@
     function getImageUrl(photoUrls) {
       if (!photoUrls) return "";
       if (Array.isArray(photoUrls)) {
-        var first = photoUrls[0];
-        if (!first) return "";
-        if (typeof first === "string") return first;
-        if (first && typeof first === "object") {
-          return first.url || first.src || first.photo_url || first.photo_id || "";
+        for (var i = 0; i < photoUrls.length; i++) {
+          var u = getImageUrl(photoUrls[i]);
+          if (u) return u;
         }
-        return String(first);
-      }
-      if (typeof photoUrls === "string") {
-        var s = photoUrls.trim();
-        if (!s) return "";
-        if (s.charAt(0) === "[") {
-          try {
-            var parsed = JSON.parse(s);
-            return getImageUrl(parsed);
-          } catch (e) {
-            return s;
-          }
-        }
-        return s;
+        return "";
       }
       if (typeof photoUrls === "object") {
-        return photoUrls.url || photoUrls.src || photoUrls.photo_url || photoUrls.photo_id || "";
+        return String(photoUrls.url || photoUrls.src || photoUrls.photo_url || photoUrls.photo_id || photoUrls.image || "").trim();
       }
-      return "";
+      var s = String(photoUrls).trim();
+      if (!s || s === "null" || s === "undefined") return "";
+      if (s.charAt(0) === "[") {
+        try {
+          return getImageUrl(JSON.parse(s));
+        } catch (e) {
+          return s;
+        }
+      }
+      return s;
     }
 
+    // Same field order as Home card photoOf — keep pipeline identical
     function parsePhotosList(item) {
       if (!item) return [];
       var extra = item.extra_data || {};
@@ -2353,6 +2348,7 @@
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
       }
       if (!extra || typeof extra !== "object") extra = {};
+
       var candidates = [
         item.photos,
         item.photo_urls,
@@ -2370,8 +2366,10 @@
         extra.image_url,
         extra.images,
         extra.photo_id,
-        extra.photo
+        extra.photo,
+        extra.image
       ];
+
       var out = [];
       function pushOne(val) {
         if (val == null || val === "") return;
@@ -2389,18 +2387,17 @@
         if (s.charAt(0) === "[") {
           try {
             var arr = JSON.parse(s);
-            if (Array.isArray(arr)) { for (var k = 0; k < arr.length; k++) pushOne(arr[k]); return; }
+            if (Array.isArray(arr)) {
+              for (var k = 0; k < arr.length; k++) pushOne(arr[k]);
+              return;
+            }
           } catch (e) {}
         }
-        // Skip pure Telegram file_ids that are not usable as <img src>
-        if (/^[A-Za-z0-9_-]{20,}$/.test(s) && s.indexOf("http") !== 0 && s.indexOf("data:") !== 0 && s.indexOf("/") !== 0) {
-          // Still keep — some deployments proxy via /api/photo/
-          out.push(s.indexOf("/api/") === 0 ? s : ("/api/photo/" + encodeURIComponent(s)));
-          return;
-        }
+        // Keep raw URL / data-URI / path exactly as Home cards use it
         out.push(s);
       }
       for (var i = 0; i < candidates.length; i++) pushOne(candidates[i]);
+
       var seen = {};
       var uniq = [];
       for (var x = 0; x < out.length; x++) {
@@ -2410,6 +2407,11 @@
         uniq.push(key);
       }
       return uniq;
+    }
+
+    // Attribute-safe src (do NOT break data: base64 with &amp;)
+    function escSrc(s) {
+      return String(s == null ? "" : s).replace(/"/g, "%22").replace(/'/g, "%27");
     }
 
     function createCardElement(item) {
@@ -2440,10 +2442,11 @@
         if (extra.location_area) subBadge2 = extra.location_area;
       }
 
+      var primarySrc = photos.length ? (getImageUrl(photos[0]) || photos[0] || "") : "";
       var media;
-      if (photos.length > 0) {
+      if (primarySrc) {
         media = '<div class="listing-photo-frame">' +
-          '<img src="' + esc(getImageUrl(photos[0]) || photos[0] || "") + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.style.display=\'none\'" />' +
+          '<img src="' + escSrc(primarySrc) + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.style.display=\'none\'" data-adika-photo="1" />' +
           '</div>';
       } else {
         media = '<div class="listing-photo-frame flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white p-2">' +
@@ -2491,17 +2494,32 @@
         toggleFav(item.id);
       };
 
-      try { card._adikaItem = item; card.setAttribute("data-id", String(item.id || "")); } catch (e) {}
+      try {
+        // Freeze photo list on the card so Detail can reuse the exact Home src
+        item._resolved_photos = photos.slice();
+        if (primarySrc && (!item.photos || !item.photos.length)) {
+          item.photos = photos.slice();
+          item.photo_urls = photos.slice();
+        }
+        card._adikaItem = item;
+        card._adikaPhotos = photos.slice();
+        card.setAttribute("data-id", String(item.id || ""));
+        // Only store short http(s)/path srcs on attribute; keep full list on card._adikaPhotos
+        if (primarySrc && primarySrc.indexOf("data:") !== 0 && primarySrc.length < 1800) {
+          card.setAttribute("data-photo-src", primarySrc);
+        }
+      } catch (e) {}
       card.onclick = function (ev) {
         if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-        openDetailModal(item);
+        // Pass card-resolved photos immediately (no wait for re-parse)
+        openDetailModal(item, photos);
       };
 
       return card;
     }
     window.__adikaCreateCard = createCardElement;
 
-    function openDetailModal(item) {
+    function openDetailModal(item, preloadPhotos) {
       try { savedFeedScrollY = window.scrollY || window.pageYOffset || 0; } catch (e) { savedFeedScrollY = 0; }
       if (!item || typeof item !== "object") return;
       state.selectedItem = item;
@@ -2512,17 +2530,32 @@
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
       }
       if (!extra || typeof extra !== "object") extra = {};
+
+      // DATA PIPELINE: Home-card photos first (identical field mapping)
       var photos = [];
-      try { photos = parsePhotosList(item); } catch (e) { photos = []; }
-      // Also pull from card-visible fields
+      if (Array.isArray(preloadPhotos) && preloadPhotos.length) {
+        photos = preloadPhotos.slice();
+      } else if (Array.isArray(item._resolved_photos) && item._resolved_photos.length) {
+        photos = item._resolved_photos.slice();
+      } else {
+        try { photos = parsePhotosList(item); } catch (e) { photos = []; }
+      }
       if (!photos.length) {
-        var fallbacks = [item.photo_urls, item.photos, item.listing_photos, item.image_url, item.image, item.photo, item.photo_id];
+        var fallbacks = [item.photos, item.photo_urls, item.listing_photos, item.photo_url, item.image_url, item.image, item.photo, item.photo_id];
         for (var fi = 0; fi < fallbacks.length; fi++) {
           var fv = fallbacks[fi];
           if (!fv) continue;
-          if (Array.isArray(fv) && fv[0]) { photos = fv.map(function(x){ return typeof x==="string"?x:(x&&(x.url||x.src)||""); }).filter(Boolean); break; }
+          if (Array.isArray(fv) && fv.length) {
+            photos = fv.map(function(x){ return getImageUrl(x) || (typeof x==="string"?x:""); }).filter(Boolean);
+            if (photos.length) break;
+          }
           if (typeof fv === "string" && fv.trim()) { photos = [fv.trim()]; break; }
         }
+      }
+      if (photos.length) {
+        item.photos = photos;
+        item.photo_urls = photos;
+        item._resolved_photos = photos;
       }
       var catStr = String(item.main_category || item.category || extra.category || "");
       var isCar = (catStr.indexOf("መኪና") >= 0) || /car|vehicle|auto/i.test(catStr)
@@ -2555,11 +2588,12 @@
           var slidesHtml = "";
           for (var pi = 0; pi < photos.length; pi++) {
             var srcRaw = getImageUrl(photos[pi]) || photos[pi] || "";
-            var src = esc(String(srcRaw));
+            // Use escSrc (NOT esc) — esc() breaks data:image base64 via &amp;
+            var src = escSrc(String(srcRaw));
             slidesHtml += '<div class="modal-slide" style="flex:0 0 100%;width:100%;height:100%;position:relative;scroll-snap-align:center;">' +
-              '<img src="' + src + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;" ' +
+              '<img src="' + src + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;background:#e2e8f0;" ' +
               'loading="' + (pi === 0 ? "eager" : "lazy") + '" ' +
-              'onerror="this.onerror=null;this.style.display=\'none\';" />' +
+              'onerror="this.onerror=null;this.style.opacity=0.3;" />' +
               '</div>';
           }
           var dotsHtml = "";
@@ -6329,10 +6363,22 @@
       }
       if(!it) return;
       e.preventDefault(); e.stopPropagation();
+      var prePhotos = null;
+      try {
+        prePhotos = card._adikaPhotos || it._resolved_photos || null;
+        if ((!prePhotos || !prePhotos.length) && card.getAttribute("data-photo-src")) {
+          prePhotos = [card.getAttribute("data-photo-src")];
+        }
+        // If card DOM still has a visible img, use its current src (exact Home feed image)
+        if ((!prePhotos || !prePhotos.length) && card.querySelector) {
+          var imgEl = card.querySelector("img[data-adika-photo], .listing-photo-enhance, img");
+          if (imgEl && imgEl.getAttribute("src")) prePhotos = [imgEl.getAttribute("src")];
+        }
+      } catch (e) { prePhotos = null; }
       if(window.openDetailModal){
-        try { window.openDetailModal(it); } catch(err){ console.error("openDetailModal", err); }
+        try { window.openDetailModal(it, prePhotos); } catch(err){ console.error("openDetailModal", err); }
       } else if(typeof openDetailModal === "function"){
-        try { openDetailModal(it); } catch(err){ console.error("openDetailModal", err); }
+        try { openDetailModal(it, prePhotos); } catch(err){ console.error("openDetailModal", err); }
       } else {
         // last-resort partial fill
         if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
