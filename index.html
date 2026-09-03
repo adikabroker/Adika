@@ -8,6 +8,27 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Optional: set window.__ADIKA_SUPABASE = { url: "...", anonKey: "..." } before this runs
+    (function () {
+      try {
+        var lib = window.supabase || (typeof supabase !== "undefined" ? supabase : null);
+        window.__supabaseLib = lib;
+        var cfg = window.__ADIKA_SUPABASE || {};
+        var url = cfg.url || window.SUPABASE_URL || "";
+        var key = cfg.anonKey || cfg.key || window.SUPABASE_ANON_KEY || "";
+        if (url && key && lib && typeof lib.createClient === "function") {
+          window.supabase = lib.createClient(url, key);
+          window.__adikaSbReady = true;
+        } else {
+          window.__adikaSbReady = false;
+        }
+      } catch (e) {
+        window.__adikaSbReady = false;
+      }
+    })();
+  </script>
   <style>
     html, body {
       margin: 0; padding: 0; width: 100%; max-width: 100vw;
@@ -2228,6 +2249,48 @@
   <!-- 6. APPLICATION LOGIC & CSS CLASS TOGGLE                           -->
   <!-- ================================================================= -->
   
+<!-- Onboarding: categories + budget (FYP prefs) -->
+  <div id="onboardingModal" class="fixed inset-0 z-[10000] bg-slate-950/70 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden border border-white/40">
+      <div class="px-5 pt-5 pb-2 flex items-start justify-between gap-2">
+        <div>
+          <div class="text-[11px] font-extrabold text-[#0e7490] tracking-wide">ADIKA · FOR YOU</div>
+          <h2 class="text-base font-black text-slate-900 mt-0.5">ምርጫዎን ያዘጋጁ</h2>
+          <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">ለእርስዎ የተመረጡ ማስታወቂያዎችን ለማሳየት</p>
+        </div>
+        <button type="button" id="onboardSkipBtn" class="text-[11px] font-bold text-slate-400 hover:text-slate-600 shrink-0 px-2 py-1">ዝለል</button>
+      </div>
+      <div class="px-5 pb-2">
+        <div class="flex gap-1.5 mb-3">
+          <div id="onboardDot1" class="h-1 flex-1 rounded-full bg-[#16acbd]"></div>
+          <div id="onboardDot2" class="h-1 flex-1 rounded-full bg-slate-200"></div>
+        </div>
+        <div id="onboardStep1" class="space-y-3">
+          <div class="text-xs font-extrabold text-slate-700">1. ምድብ ይምረጡ</div>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" data-ob-cat="መኪና" class="ob-cat py-3 rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm text-slate-800 active:scale-95">🚗 መኪና</button>
+            <button type="button" data-ob-cat="ቤት" class="ob-cat py-3 rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm text-slate-800 active:scale-95">🏠 ቤት</button>
+          </div>
+          <button type="button" id="onboardNextBtn" class="w-full mt-1 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-extrabold text-sm disabled:opacity-40" disabled>ቀጣይ →</button>
+        </div>
+        <div id="onboardStep2" class="space-y-3 hidden">
+          <div class="text-xs font-extrabold text-slate-700">2. የበጀት ክልል (ETB)</div>
+          <div class="grid grid-cols-1 gap-2">
+            <button type="button" data-ob-budget="0-1500000" class="ob-budget w-full text-left px-3 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-xs font-bold text-slate-800">&lt; 1.5 ሚሊዮን</button>
+            <button type="button" data-ob-budget="1500000-4000000" class="ob-budget w-full text-left px-3 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-xs font-bold text-slate-800">1.5M – 4M</button>
+            <button type="button" data-ob-budget="4000000-10000000" class="ob-budget w-full text-left px-3 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-xs font-bold text-slate-800">4M – 10M</button>
+            <button type="button" data-ob-budget="10000000-999999999" class="ob-budget w-full text-left px-3 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-xs font-bold text-slate-800">10M+</button>
+          </div>
+          <div class="flex gap-2 pt-1">
+            <button type="button" id="onboardBackBtn" class="w-1/3 py-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">ተመለስ</button>
+            <button type="button" id="onboardSubmitBtn" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-extrabold text-sm disabled:opacity-40" disabled>ጨርስ ✓</button>
+          </div>
+        </div>
+      </div>
+      <div class="px-5 pb-4 text-[10px] text-slate-400 text-center">Telegram ID ይገናኛል · user_preferences</div>
+    </div>
+  </div>
+
 <!-- Role selection (first launch) -->
   <div id="roleSelectModal" class="fixed inset-0 z-[180] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl">
@@ -2310,6 +2373,182 @@
     if (tg) {
       try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
     }
+
+    function getTelegramUserId() {
+      try {
+        var u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+        if (u && u.id) return Number(u.id);
+      } catch (e) {}
+      try {
+        if (window.state && state.userId) return Number(state.userId);
+      } catch (e2) {}
+      return 0;
+    }
+
+    function ensureSupabaseClient() {
+      try {
+        if (window.supabase && typeof window.supabase.from === "function" && typeof window.supabase.rpc === "function") {
+          return window.supabase;
+        }
+        var cfg = window.__ADIKA_SUPABASE || {};
+        var url = cfg.url || window.SUPABASE_URL || "";
+        var key = cfg.anonKey || cfg.key || window.SUPABASE_ANON_KEY || "";
+        var lib = window.__supabaseLib || window.supabase || (typeof supabase !== "undefined" ? supabase : null);
+        if (url && key && lib && typeof lib.createClient === "function") {
+          window.supabase = lib.createClient(url, key);
+          return window.supabase;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    // ---- Onboarding (categories + budget → user_preferences) ----
+    (function initOnboarding() {
+      var KEY = "adika_onboarded";
+      function isOnboarded() {
+        try {
+          if (localStorage.getItem(KEY) === "true") return true;
+        } catch (e) {}
+        try {
+          if (_lsGet(KEY) === "true") return true;
+        } catch (e2) {}
+        return false;
+      }
+      function markOnboarded() {
+        try { localStorage.setItem(KEY, "true"); } catch (e) {}
+        try { _lsSet(KEY, "true"); } catch (e2) {}
+      }
+      function showOb(on) {
+        var m = document.getElementById("onboardingModal");
+        if (!m) return;
+        if (on) {
+          m.classList.remove("hidden");
+          m.classList.add("flex");
+          m.style.display = "flex";
+          document.body.style.overflow = "hidden";
+        } else {
+          m.classList.add("hidden");
+          m.classList.remove("flex");
+          m.style.display = "none";
+          document.body.style.overflow = "";
+        }
+      }
+      var prefs = { categories: [], budget_min: 0, budget_max: 999999999 };
+      function setStep(n) {
+        var s1 = document.getElementById("onboardStep1");
+        var s2 = document.getElementById("onboardStep2");
+        var d1 = document.getElementById("onboardDot1");
+        var d2 = document.getElementById("onboardDot2");
+        if (s1) s1.classList.toggle("hidden", n !== 1);
+        if (s2) s2.classList.toggle("hidden", n !== 2);
+        if (d1) d1.className = "h-1 flex-1 rounded-full " + (n === 1 ? "bg-[#16acbd]" : "bg-[#16acbd]/40");
+        if (d2) d2.className = "h-1 flex-1 rounded-full " + (n === 2 ? "bg-[#16acbd]" : "bg-slate-200");
+      }
+      function paintCats() {
+        document.querySelectorAll(".ob-cat").forEach(function (b) {
+          var on = prefs.categories.indexOf(b.getAttribute("data-ob-cat")) >= 0;
+          b.className = on
+            ? "ob-cat py-3 rounded-2xl border-2 border-[#16acbd] bg-[#16acbd]/10 font-bold text-sm text-[#0e7490] active:scale-95"
+            : "ob-cat py-3 rounded-2xl border-2 border-slate-200 bg-slate-50 font-bold text-sm text-slate-800 active:scale-95";
+        });
+        var next = document.getElementById("onboardNextBtn");
+        if (next) next.disabled = prefs.categories.length === 0;
+      }
+      function paintBudget() {
+        document.querySelectorAll(".ob-budget").forEach(function (b) {
+          var key = b.getAttribute("data-ob-budget") || "";
+          var parts = key.split("-");
+          var on = String(prefs.budget_min) === String(parts[0]) && String(prefs.budget_max) === String(parts[1]);
+          b.className = on
+            ? "ob-budget w-full text-left px-3 py-2.5 rounded-xl border-2 border-[#16acbd] bg-[#16acbd]/10 text-xs font-bold text-[#0e7490]"
+            : "ob-budget w-full text-left px-3 py-2.5 rounded-xl border-2 border-slate-200 bg-slate-50 text-xs font-bold text-slate-800";
+        });
+        var sub = document.getElementById("onboardSubmitBtn");
+        if (sub) sub.disabled = !(prefs.budget_max > 0);
+      }
+      document.querySelectorAll(".ob-cat").forEach(function (b) {
+        b.onclick = function () {
+          var c = b.getAttribute("data-ob-cat");
+          var i = prefs.categories.indexOf(c);
+          if (i >= 0) prefs.categories.splice(i, 1);
+          else prefs.categories.push(c);
+          paintCats();
+        };
+      });
+      document.querySelectorAll(".ob-budget").forEach(function (b) {
+        b.onclick = function () {
+          var parts = (b.getAttribute("data-ob-budget") || "0-999999999").split("-");
+          prefs.budget_min = parseInt(parts[0], 10) || 0;
+          prefs.budget_max = parseInt(parts[1], 10) || 999999999;
+          paintBudget();
+        };
+      });
+      var nextBtn = document.getElementById("onboardNextBtn");
+      if (nextBtn) nextBtn.onclick = function () {
+        if (!prefs.categories.length) return;
+        setStep(2);
+      };
+      var backBtn = document.getElementById("onboardBackBtn");
+      if (backBtn) backBtn.onclick = function () { setStep(1); };
+      function finishSkipOrSave(doSave) {
+        markOnboarded();
+        showOb(false);
+        try {
+          state.feedMode = "foryou";
+          state.category = "";
+          if (typeof paintFeedModes === "function") paintFeedModes();
+        } catch (e) {}
+        try { load(false); } catch (e2) {}
+      }
+      var skipBtn = document.getElementById("onboardSkipBtn");
+      if (skipBtn) skipBtn.onclick = function () { finishSkipOrSave(false); };
+      var submitBtn = document.getElementById("onboardSubmitBtn");
+      if (submitBtn) submitBtn.onclick = function () {
+        if (submitBtn.disabled) return;
+        submitBtn.disabled = true;
+        var tid = getTelegramUserId();
+        var payload = {
+          telegram_id: tid || null,
+          user_id: tid || null,
+          categories: prefs.categories,
+          budget_min: prefs.budget_min,
+          budget_max: prefs.budget_max,
+          onboarding_done: true,
+          updated_at: new Date().toISOString()
+        };
+        var sb = ensureSupabaseClient();
+        var savePromise = Promise.resolve();
+        if (sb && tid) {
+          savePromise = sb.from("user_preferences").upsert(payload, { onConflict: "user_id" }).then(function () {
+            return true;
+          }).catch(function () {
+            // try telegram_id conflict
+            return sb.from("user_preferences").upsert(payload, { onConflict: "telegram_id" }).catch(function () { return false; });
+          });
+        } else {
+          // Flask fallback
+          savePromise = fetch("/api/user/preferences", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }).catch(function () { return null; });
+        }
+        savePromise.then(function () {
+          finishSkipOrSave(true);
+        }).catch(function () {
+          finishSkipOrSave(true);
+        });
+      };
+      window.__adikaShowOnboarding = function () { setStep(1); paintCats(); paintBudget(); showOb(true); };
+      if (!isOnboarded()) {
+        setTimeout(function () {
+          setStep(1);
+          paintCats();
+          paintBudget();
+          showOb(true);
+        }, 400);
+      }
+    })();
 
     var favorites = {};
     try {
@@ -3817,10 +4056,13 @@
       if (state.chassisOnly) qs += "&chassis_only=1";
 
       var urls = [];
-      urls.push("/api/listings?" + qs);
-      urls.push("/api/explorer/listings?" + qs);
+      if (!useForYou) {
+        urls.push("/api/listings?" + qs);
+        urls.push("/api/explorer/listings?" + qs);
+      }
       if (useForYou) {
-        urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + encodeURIComponent(state.userId || "0"));
+        urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + encodeURIComponent(state.userId || getTelegramUserId() || "0"));
+        urls.push("/api/listings?" + qs);
       }
 
       var done = false;
@@ -3834,6 +4076,34 @@
           console.error("[Adika] applyItems", e);
           try { if (items && items.length) renderFallbackCards(items); } catch (e2) {}
         }
+      }
+
+      // FYP path: Supabase RPC get_fyp_feed first
+      if (useForYou) {
+        var sb = ensureSupabaseClient();
+        var tid = getTelegramUserId() || Number(state.userId || 0);
+        var offset = Math.max(0, (page - 1) * itemsPerPage);
+        if (sb && typeof sb.rpc === "function" && tid) {
+          sb.rpc("get_fyp_feed", {
+            p_telegram_id: tid,
+            p_limit: itemsPerPage,
+            p_offset: offset
+          }).then(function (res) {
+            var rows = (res && res.data) || [];
+            if (!Array.isArray(rows)) rows = [];
+            if (rows.length > 0) {
+              applyItems(rows, rows.length >= itemsPerPage);
+              return;
+            }
+            tryUrl(0);
+          }).catch(function () {
+            tryUrl(0);
+          });
+        } else {
+          tryUrl(0);
+        }
+      } else {
+        tryUrl(0);
       }
 
       function tryUrl(i) {
@@ -3872,8 +4142,6 @@
             tryUrl(i + 1);
           });
       }
-
-      tryUrl(0);
     }
 
     // Dynamic Central FAB
