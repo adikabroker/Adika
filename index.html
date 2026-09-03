@@ -254,12 +254,12 @@
     #modalAlertCard.detail-alert-compact {
       margin-bottom: 0 !important;
     }
-    /* Instagram-style fixed square frame */
+    /* Instagram-style fixed square frame (stable in Telegram WebView) */
     #modalMediaContainer {
       width: 100%;
-      aspect-ratio: 1 / 1;
-      max-height: min(380px, 48vh);
-      height: auto;
+      height: 0;
+      padding-bottom: 100%; /* true square without aspect-ratio bugs */
+      max-height: none;
       border-radius: 0;
       overflow: hidden;
       background: #e2e8f0;
@@ -267,6 +267,14 @@
       box-shadow: none;
       border: 0;
       border-bottom: 1px solid rgba(226,232,240,0.95);
+    }
+    @supports (aspect-ratio: 1 / 1) {
+      #modalMediaContainer {
+        height: auto;
+        padding-bottom: 0;
+        aspect-ratio: 1 / 1;
+        max-height: min(360px, 52vh);
+      }
     }
     #modalMediaContainer .modal-photo-blur {
       position: absolute; inset: 0;
@@ -311,7 +319,8 @@
       scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none;
-      position: relative;
+      position: absolute;
+      inset: 0;
       z-index: 1;
     }
     #modalGalleryTrack::-webkit-scrollbar { display: none; }
@@ -451,7 +460,59 @@
     }
     /* Tighter reco section — less bottom dead space */
     #modalRecoScroll {
-      max-height: 120px;
+      max-height: none;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    .reco-card {
+      flex: 0 0 135px;
+      width: 135px;
+      max-width: 135px;
+      display: flex !important;
+      flex-direction: column !important;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+    }
+    .reco-card .reco-img-wrap {
+      width: 100%;
+      height: 96px;
+      flex-shrink: 0;
+      background: #f1f5f9;
+      overflow: hidden;
+    }
+    .reco-card .reco-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .reco-card .reco-body {
+      padding: 0.5rem 0.55rem 0.55rem;
+      background: #fff;
+      flex: 1 1 auto;
+      min-height: 2.6rem;
+    }
+    .reco-card .reco-name {
+      font-size: 11px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 0 0 2px;
+    }
+    .reco-card .reco-price {
+      font-size: 11px;
+      font-weight: 900;
+      color: #0d9488;
+      line-height: 1.2;
+      margin: 0;
+      display: block;
     }
 
 
@@ -2348,21 +2409,29 @@
         return;
       }
       sc.innerHTML = items.map(function(it) {
-        var extra = it.extra_data || {};
-        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
         var photos = [];
         try { photos = parsePhotosList(it); } catch (e) {}
-        var img = getImageUrl(photos[0] || it.photo_urls || it.listing_photos || "") || "";
+        if (!photos.length) {
+          try {
+            var pu = it.photo_urls || it.photos || it.listing_photos || it.photo_url || it.image_url;
+            if (Array.isArray(pu) && pu[0]) photos = [pu[0]];
+            else if (typeof pu === "string" && pu) photos = [pu];
+          } catch (e2) {}
+        }
+        var img = "";
+        try { img = getImageUrl(photos[0]) || (photos[0] ? String(photos[0]) : "") || ""; } catch (e3) {}
         var price = formatListingPrice(it.price);
-        var name = it.title || it.sub_category || it.main_category || "ንብረት";
+        var name = it.title || it.sub_category || it.model || it.main_category || "ንብረት";
         return (
-          '<button type="button" class="reco-card shrink-0 w-[138px] text-left rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden active:scale-[0.98]" data-id="' + esc(String(it.id || "")) + '">' +
-            '<div class="aspect-[4/3] bg-slate-100">' +
-              (img ? '<img src="' + esc(img) + '" class="listing-photo-enhance" loading="lazy" />' : '<div class="w-full h-full flex items-center justify-center text-2xl">🚗</div>') +
+          '<button type="button" class="reco-card shrink-0 text-left active:scale-95 transition-all" data-id="' + esc(String(it.id || "")) + '">' +
+            '<div class="reco-img-wrap">' +
+              (img
+                ? '<img src="' + escSrc(String(img)) + '" alt="" loading="lazy" onerror="this.onerror=null;this.style.display=\'none\';" />'
+                : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">🚗</div>') +
             '</div>' +
-            '<div class="p-1.5 space-y-0.5">' +
-              '<div class="text-[10px] font-extrabold text-slate-800 truncate">' + esc(name) + '</div>' +
-              '<div class="text-[9px] font-black text-[#0e7490]">💰 ' + esc(price) + '</div>' +
+            '<div class="reco-body">' +
+              '<p class="reco-name">' + esc(name) + '</p>' +
+              '<p class="reco-price">💰 ' + esc(price) + '</p>' +
             '</div>' +
           '</button>'
         );
@@ -2720,7 +2789,7 @@
         return "";
       }
       if (typeof photoUrls === "object") {
-        return String(photoUrls.url || photoUrls.src || photoUrls.photo_url || photoUrls.photo_id || photoUrls.image || "").trim();
+        return getImageUrl(photoUrls.url || photoUrls.src || photoUrls.photo_url || photoUrls.photo_id || photoUrls.image || photoUrls.path || "");
       }
       var s = String(photoUrls).trim();
       if (!s || s === "null" || s === "undefined") return "";
@@ -2728,8 +2797,19 @@
         try {
           return getImageUrl(JSON.parse(s));
         } catch (e) {
-          return s;
+          /* keep raw */
         }
+      }
+      // Absolute / data / blob stay as-is
+      if (/^(https?:|data:|blob:|tg:|\/\/)/i.test(s)) return s;
+      // Telegram file_id style (no slash) — leave for backend proxy if any
+      if (s.indexOf("/") === -1 && s.indexOf(".") === -1 && s.length > 20) {
+        return "/api/photo/" + encodeURIComponent(s);
+      }
+      // Relative upload paths
+      if (s.charAt(0) !== "/") {
+        if (/^(uploads|static|media|photos)\//i.test(s)) s = "/" + s;
+        else if (/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(s)) s = "/static/uploads/" + s.replace(/^\.?\//, "");
       }
       return s;
     }
@@ -2962,7 +3042,7 @@
             modalMediaContainer.innerHTML =
               '<img class="modal-photo-blur" src="' + _src0 + '" alt="" aria-hidden="true" />' +
               '<div class="modal-photo-wrap">' +
-                '<img id="detail-main-image" class="modal-photo-main" src="' + _src0 + '" alt="" />' +
+                '<img id="detail-main-image" class="modal-photo-main" src="' + _src0 + '" alt="" onerror="this.onerror=null;this.style.opacity=0.35;" />' +
               '</div>' +
               '<span class="modal-photo-count">1/1</span>';
           }
