@@ -2551,6 +2551,9 @@
           if (typeof paintFeedModes === "function") paintFeedModes();
         } catch (e) {}
         try {
+          if (typeof window.loadFYPFeed === "function") { window.loadFYPFeed(); return; }
+        } catch (eL) {}
+        try {
           if (typeof load === "function") load(false);
         } catch (e2) {
           try {
@@ -2619,11 +2622,11 @@
         savePromise.then(function () {
           markOnboarded();
           showOb(false);
-          triggerFypFeed();
+          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); else triggerFypFeed(); } catch (eF) { triggerFypFeed(); }
         }).catch(function () {
           markOnboarded();
           showOb(false);
-          triggerFypFeed();
+          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); else triggerFypFeed(); } catch (eF2) { triggerFypFeed(); }
         }).finally(function () {
           if (btn) { btn.disabled = false; btn.textContent = "✅ መዝግብ / Submit"; }
         });
@@ -2670,15 +2673,33 @@
         showOb(true);
       };
 
+      window.openFYPWithOnboarding = function () {
+        try { bind(); } catch (e) {}
+        showOb(true);
+        try {
+          if (window.state) { state.feedMode = "foryou"; state.category = ""; }
+        } catch (e2) {}
+        return true;
+      };
+
+      function forceOpenOnboardingForTest() {
+        bind();
+        var m = document.getElementById("unifiedOnboardingModal");
+        if (!m) return;
+        m.classList.remove("hidden");
+        m.classList.add("flex");
+        m.style.setProperty("display", "flex", "important");
+        m.style.zIndex = "10000";
+        document.body.style.overflow = "hidden";
+      }
+
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function () {
-          bind();
-          // Show once until user completes/skips — FYP personalization requires prefs
-          if (!isOnboarded()) setTimeout(function () { showOb(true); }, 500);
+          // TESTING: show onboarding on every Mini App open
+          forceOpenOnboardingForTest();
         });
       } else {
-        bind();
-        if (!isOnboarded()) setTimeout(function () { showOb(true); }, 500);
+        forceOpenOnboardingForTest();
       }
       // Also when FYP tab is already selected without onboard
       setTimeout(function () {
@@ -4007,6 +4028,14 @@
       } catch (e) {}
       restoreHomeChrome();
       try { window.__adikaChromeHiddenByDetail = false; } catch (eF) {}
+      try {
+        var navEl = document.getElementById("adikaBottomNav");
+        if (navEl) {
+          navEl.classList.remove("hidden");
+          navEl.style.display = "flex";
+          navEl.style.setProperty("display", "flex", "important");
+        }
+      } catch (eNav0) {}
       try { forceShowBottomNav(); } catch (eNav) {}
       try { setTimeout(forceShowBottomNav, 80); } catch (eNav2) {}
       try { setTimeout(forceShowBottomNav, 400); } catch (eNav3) {}
@@ -4397,12 +4426,54 @@
     window.requireOnboardingForFyp = requireOnboardingForFyp;
     window.isAdikaOnboarded = isAdikaOnboarded;
 
+    window.openFYPWithOnboarding = window.openFYPWithOnboarding || function () {
+      try {
+        if (typeof window.__adikaShowOnboarding === "function") window.__adikaShowOnboarding();
+        else requireOnboardingForFyp();
+      } catch (e) {
+        requireOnboardingForFyp();
+      }
+      try { state.feedMode = "foryou"; state.category = ""; } catch (e2) {}
+      return true;
+    };
+
+    window.loadFYPFeed = function () {
+      try {
+        state.feedMode = "foryou";
+        state.category = "";
+        state.page = 1;
+        state.hasMore = true;
+        state.loading = false;
+      } catch (e) {}
+      try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
+      try {
+        if (typeof load === "function") {
+          load(false);
+          return;
+        }
+      } catch (e3) {}
+      try {
+        var sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : (window.supabase || null);
+        var tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : 0;
+        if (sb && tid && typeof sb.rpc === "function") {
+          sb.rpc("get_fyp_feed", { p_telegram_id: tid, p_limit: 10, p_offset: 0 }).then(function (res) {
+            var rows = (res && res.data) || [];
+            if (Array.isArray(rows) && rows.length) {
+              if (typeof finishLoading === "function") finishLoading(rows, false, rows.length >= 10);
+              else if (window.__adikaPaintListings) window.__adikaPaintListings(rows);
+            }
+          }).catch(function () {});
+        }
+      } catch (e4) {}
+    };
+
     function selectCategory(catId) {
       // Always unlock UI when user taps a category
       try { state.loading = false; } catch (e) {}
 
       catId = (catId || "").trim();
       if (catId === "foryou" || catId === "ለእርስዎ" || catId === "✨ ለእርስዎ") {
+        try { if (typeof window.openFYPWithOnboarding === "function") window.openFYPWithOnboarding(); } catch (eOb) {}
         if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) {
           // Show onboarding; still mark tab active but block personalized load until done
           state.feedMode = "foryou";
