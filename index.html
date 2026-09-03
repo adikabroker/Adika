@@ -2459,20 +2459,52 @@
       var alertText = document.getElementById("modalAlertText");
       if (sc) sc.innerHTML = '<div class="text-[10px] text-slate-400 py-2">⏳ በመፈለግ ላይ...</div>';
 
-      // FYP params from current listing
+      // ---- Normalize category bucket: car | house | other ----
+      function categoryBucket(raw) {
+        var s = String(raw || "").toLowerCase().trim();
+        if (!s) return "other";
+        if (/ቤት|house|home|apartment|real.?estate|property|ቪላ|አፓርታ|መሬት|land|condo/.test(s)) return "house";
+        if (/መኪና|car|vehicle|auto|truck|ቶዮታ|toyota|hyundai/.test(s)) return "car";
+        return "other";
+      }
+      function parsePriceNum(raw) {
+        try {
+          var n = parseFloat(String(raw == null ? "" : raw).replace(/[^0-9.]/g, ""));
+          return (isFinite(n) && n > 0) ? n : 0;
+        } catch (e) { return 0; }
+      }
+      function sameBucket(a, b) {
+        var ba = categoryBucket(a), bb = categoryBucket(b);
+        if (ba === "other" || bb === "other") {
+          // strict: only exact string match when unknown
+          return String(a || "").trim() === String(b || "").trim() && String(a || "").trim() !== "";
+        }
+        return ba === bb;
+      }
+
       var curId = item && item.id != null ? item.id : null;
-      var curCat = (item && (item.main_category || item.category)) || "";
+      var curCatRaw = (item && (item.main_category || item.category)) || "";
+      var curCat = curCatRaw;
+      var curBucket = categoryBucket(curCatRaw);
+      // Explicit English token for Supabase RPC
+      var curCatRpc = curBucket === "house" ? "House" : (curBucket === "car" ? "Car" : String(curCatRaw || "Car"));
       var curSub = (item && (item.sub_category || item.model || item.car_model)) || "";
-      var curPrice = 0;
-      try { curPrice = parseFloat(String(item && item.price != null ? item.price : "").replace(/[^0-9.]/g, "")) || 0; } catch (eP) { curPrice = 0; }
+      var curPrice = parsePriceNum(item && item.price);
+
+      var priceLo = curPrice > 0 ? curPrice * 0.65 : 0;
+      var priceHi = curPrice > 0 ? curPrice * 1.35 : 0;
 
       var payload = {
         viewHistory: hist,
         exclude_id: curId,
         current_id: curId,
-        current_category: curCat,
+        current_category: curCatRpc,
+        current_category_raw: curCat,
+        current_bucket: curBucket,
         current_sub_category: curSub,
-        current_price: curPrice
+        current_price: curPrice,
+        min_price: priceLo,
+        max_price: priceHi
       };
 
       function applyAlert(it) {
@@ -2482,7 +2514,7 @@
           if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
           var bm = {};
           try { bm = extractBrandModel(it, extra) || {}; } catch (e) {}
-          var priceNum = Number(String(it.price || "").replace(/[^0-9.]/g, "")) || 0;
+          var priceNum = parsePriceNum(it.price);
           var lo = priceNum ? Math.round(priceNum * 0.85) : 0;
           var hi = priceNum ? Math.round(priceNum * 1.15) : 0;
           var modelName = bm.display || it.sub_category || "ንብረት";
@@ -2492,46 +2524,65 @@
           alertCard.dataset.minPrice = String(lo || 0);
           alertCard.dataset.maxPrice = String(hi || 999999999);
           alertCard.dataset.model = modelName;
-          alertCard.dataset.category = it.main_category || it.category || "መኪና";
+          alertCard.dataset.category = it.main_category || it.category || curCatRpc;
         } catch (eA) {}
       }
 
-      // Client-side FYP scoring fallback (same-category + price band + history boost)
+      // HARD filter: same category bucket + price within ±35%
+      function strictFilterList(list) {
+        if (!Array.isArray(list)) return [];
+        return list.filter(function(x) {
+          if (!x) return false;
+          if (curId != null && String(x.id) === String(curId)) return false;
+          var cat = x.main_category || x.category || "";
+          if (!sameBucket(cat, curCatRaw) && categoryBucket(cat) !== curBucket) return false;
+          // Never mix car ↔ house
+          if (curBucket === "car" && categoryBucket(cat) === "house") return false;
+          if (curBucket === "house" && categoryBucket(cat) === "car") return false;
+          var pr = parsePriceNum(x.price);
+          if (curPrice > 0 && pr > 0) {
+            if (pr < priceLo || pr > priceHi) return false;
+          }
+          return true;
+        });
+      }
+
       function clientFypFallback() {
         try {
           var pool = (window.__adikaLiveItems || state.items || []).filter(function(x) {
-            return x && curId != null && String(x.id) !== String(curId);
+            return x && (curId == null || String(x.id) !== String(curId));
           });
+          pool = strictFilterList(pool);
           pool = pool.map(function(x) {
             var score = 0;
             var cat = x.main_category || x.category || "";
-            var sub = x.sub_category || x.model || "";
-            var pr = 0;
-            try { pr = parseFloat(String(x.price || "").replace(/[^0-9.]/g, "")) || 0; } catch (e) {}
-            if (curCat && cat && String(cat) === String(curCat)) score += 40;
-            if (curSub && sub && String(sub).toLowerCase().indexOf(String(curSub).toLowerCase().slice(0, 4)) >= 0) score += 25;
+            var sub = String(x.sub_category || x.model || "");
+            var pr = parsePriceNum(x.price);
+            if (curBucket !== "other" && categoryBucket(cat) === curBucket) score += 50;
+            if (curSub && sub && sub.toLowerCase().indexOf(String(curSub).toLowerCase().slice(0, 4)) >= 0) score += 25;
             if (curPrice > 0 && pr > 0) {
               var ratio = pr / curPrice;
-              if (ratio >= 0.7 && ratio <= 1.3) score += 30;
-              else if (ratio >= 0.5 && ratio <= 1.5) score += 12;
+              if (ratio >= 0.85 && ratio <= 1.15) score += 35;
+              else if (ratio >= 0.65 && ratio <= 1.35) score += 20;
             }
             try {
               hist.forEach(function(h) {
-                if (h && h.category && cat && String(h.category) === String(cat)) score += 6;
-                if (h && h.model && sub && String(sub).toLowerCase().indexOf(String(h.model).toLowerCase().slice(0, 3)) >= 0) score += 8;
+                if (!h) return;
+                if (categoryBucket(h.category) === curBucket) score += 6;
+                if (h.model && sub && sub.toLowerCase().indexOf(String(h.model).toLowerCase().slice(0, 3)) >= 0) score += 8;
               });
             } catch (eH) {}
             return { item: x, score: score };
           }).sort(function(a, b) { return b.score - a.score; });
           var top = pool.slice(0, 10).map(function(r) { return r.item; });
-          renderRecoCards(top, "በተመሳሳይ ምድብ");
+          renderRecoCards(top, curBucket === "house" ? "ተመሳሳይ ቤቶች" : "በተመሳሳይ ምድብ");
         } catch (e) {
           renderRecoCards([], "");
         }
         applyAlert(item);
       }
 
-      // Path A: Flask /api/recommendations (primary for this Mini App)
+      // Path A: Flask API
       var apiPromise = fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2541,6 +2592,7 @@
         return r.json();
       }).then(function(data) {
         var list = (data && (data.items || data.recommendations || data.data)) || [];
+        list = strictFilterList(list);
         if (list && list.length) {
           renderRecoCards(list, (data && data.intent_label) || "ለእርስዎ የተመረጡ");
           applyAlert(item);
@@ -2549,18 +2601,20 @@
         return false;
       });
 
-      // Path B: Supabase RPC get_recommended_vehicles (if client is injected)
+      // Path B: Supabase RPC get_recommended_vehicles (strict inputs)
       var sbPromise = Promise.resolve(false);
       try {
         if (window.supabase && typeof window.supabase.rpc === "function") {
           sbPromise = window.supabase.rpc("get_recommended_vehicles", {
             current_id: curId,
-            current_category: curCat,
+            current_category: curCatRpc,
             current_sub_category: curSub,
             current_price: curPrice
           }).then(function(res) {
             var list = (res && (res.data || res)) || [];
-            if (Array.isArray(list) && list.length) {
+            if (!Array.isArray(list)) list = [];
+            list = strictFilterList(list);
+            if (list.length) {
               renderRecoCards(list, "FYP · ተመሳሳይ");
               applyAlert(item);
               return true;
@@ -2577,6 +2631,7 @@
         })
         .catch(function() { clientFypFallback(); });
     }
+
 
     // Alias for external callers / deep links
     window.openVehicleDetail = function(idOrItem) {
