@@ -10,6 +10,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // Optional: set window.__ADIKA_SUPABASE = { url: "...", anonKey: "..." } before this runs
     (function () {
       try {
         var lib = window.supabase || (typeof supabase !== "undefined" ? supabase : null);
@@ -66,8 +67,8 @@
       50% { transform: scale(1.05); box-shadow: 0 4px 14px rgba(14,165,233,0.55); }
     }
     @keyframes adikaWipe {
-      0% { clip-path: inset(0 100% 0 0); opacity: 0.4; }
-      100% { clip-path: inset(0 0 0 0); opacity: 1; }
+      0% { opacity: 0.15; transform: translateX(12px); }
+      100% { opacity: 1; transform: translateX(0); }
     }
     .promo-slide.is-active .promo-title { animation: adikaWipe .45s cubic-bezier(.16,1,.3,1) both; }
     .promo-slide.is-active .promo-letter {
@@ -245,6 +246,299 @@
     }
     .adika-card:active .listing-photo-enhance {
       transform: scale(1.02);
+    }
+
+    /* ===== Detail modal — Light + Cyan services + Instagram photo ===== */
+    #modalSheet {
+      background: linear-gradient(180deg, #f0fdfa 0%, #f8fafc 45%, #f1f5f9 100%) !important;
+      color: #0f172a;
+      display: flex !important;
+      flex-direction: column !important;
+      height: 100% !important;
+    }
+    #modalScrollBody {
+      background: transparent;
+      flex: 1 1 auto !important;
+      min-height: 0;
+      display: flex !important;
+      flex-direction: column !important;
+      padding-bottom: 0.5rem !important;
+      gap: 0.5rem;
+    }
+    /* Push reco+alert block to bottom of available space — kills empty gap above bottom bar */
+    #modalRecoSection {
+      margin-top: auto !important;
+      margin-bottom: 0 !important;
+      padding-top: 0.35rem !important;
+      padding-bottom: 0.15rem !important;
+    }
+    #modalAlertCard.detail-alert-compact {
+      margin-bottom: 0 !important;
+    }
+    /* Detail hero photo — landscape frame (wider), crop top/bottom not sides */
+    #modalMediaContainer {
+      position: relative !important;
+      width: calc(100% - 0.75rem) !important;
+      margin: 0.5rem 0.35rem 0.35rem !important;
+      height: 230px !important;
+      min-height: 230px !important;
+      max-height: 42vh !important;
+      border-radius: 1rem !important;
+      overflow: hidden !important;
+      background: #0f172a !important;
+      border: 1px solid rgba(226,232,240,0.95) !important;
+      box-shadow: 0 2px 10px rgba(15,23,42,0.06) !important;
+      flex-shrink: 0 !important;
+      display: block !important;
+    }
+    #modalMediaContainer .modal-photo-blur {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center 35%;
+      filter: blur(14px) saturate(1.05);
+      -webkit-filter: blur(14px) saturate(1.05);
+      opacity: 0.25;
+      transform: scale(1.06);
+      z-index: 0;
+      pointer-events: none;
+    }
+    #modalMediaContainer .modal-photo-main,
+    #modalMediaContainer #detail-main-image,
+    #modalMediaContainer #mainDetailImage {
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 2 !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
+      /* landscape frame: keep subject; crop top/bottom rather than sides */
+      object-fit: cover !important;
+      object-position: center 35% !important;
+      display: block !important;
+      margin: 0 !important;
+      background: transparent !important;
+      filter: none !important;
+      -webkit-filter: none !important;
+      transform: none !important;
+      box-shadow: none;
+      opacity: 1 !important;
+    }
+    #modalMediaContainer .modal-photo-wrap {
+      position: absolute; inset: 0;
+      z-index: 2;
+    }
+    #modalGalleryTrack {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+    #modalGalleryTrack::-webkit-scrollbar { display: none; }
+    #modalMediaContainer .modal-slide {
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      scroll-snap-align: center;
+      overflow: hidden;
+      background: #e2e8f0;
+    }
+    #modalMediaContainer .modal-dots {
+      position: absolute; bottom: 12px; left: 0; right: 0;
+      display: flex; justify-content: center; gap: 6px; z-index: 6;
+      pointer-events: none;
+    }
+    #modalMediaContainer .modal-dot {
+      pointer-events: auto;
+      width: 6px; height: 6px; border-radius: 99px; border: 0;
+      background: rgba(15,23,42,0.28);
+      transition: width .2s, background .2s;
+    }
+    #modalMediaContainer .modal-dot.is-active {
+      width: 16px; background: #0891b2;
+    }
+    #modalMediaContainer .modal-photo-count {
+      position: absolute; bottom: 12px; right: 12px; z-index: 6;
+      background: rgba(0,0,0,0.55);
+      color: #fff; font-size: 10px; font-weight: 800;
+      padding: 3px 10px; border-radius: 999px;
+      border: 0;
+      box-shadow: 0 2px 8px rgba(15,23,42,0.2);
+    }
+    #modalMediaContainer .modal-photo-placeholder {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 6px;
+      background: linear-gradient(160deg, #e8eef3, #d5dee7);
+      color: #64748b; z-index: 1;
+      font-size: 12px; font-weight: 700;
+    }
+
+    .detail-glass-card {
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(226,232,240,0.85);
+      border-radius: 1rem;
+      box-shadow: 0 2px 10px rgba(15,23,42,0.04);
+      color: #0f172a;
+    }
+    /* Cyan/blue bordered digital services card */
+    .detail-hub-services {
+      background: linear-gradient(135deg, rgba(236,254,255,0.95) 0%, rgba(239,246,255,0.9) 100%) !important;
+      border: 2px solid rgba(34,211,238,0.75) !important;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 1rem;
+      box-shadow: 0 4px 14px rgba(6,182,212,0.1);
+    }
+    .detail-hub-svc {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.55rem 0.6rem;
+      border-radius: 0.75rem;
+      background: #fff;
+      border: 1px solid rgba(165,243,252,0.9);
+      text-align: left;
+      transition: background .15s, border-color .15s, transform .12s;
+      width: 100%;
+      color: #0f172a;
+      box-shadow: 0 1px 2px rgba(15,23,42,0.03);
+    }
+    .detail-hub-svc:active {
+      transform: scale(0.97);
+      background: #ecfeff;
+      border-color: rgba(34,211,238,0.8);
+    }
+    .detail-hub-svc .svc-icon {
+      font-size: 14px;
+      padding: 0.35rem;
+      border-radius: 0.5rem;
+      background: rgba(207,250,254,0.7);
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .detail-hub-svc .svc-title {
+      font-size: 11px; font-weight: 800; color: #0f172a; line-height: 1.2;
+    }
+    .detail-hub-svc .svc-sub {
+      font-size: 8px; color: #94a3b8; font-weight: 600; line-height: 1.2;
+    }
+    .detail-badge {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.2rem 0.55rem; border-radius: 999px;
+      font-size: 10px; font-weight: 800; line-height: 1.2;
+    }
+    .detail-badge-urgent {
+      background: rgba(254,226,226,0.95); color: #b91c1c;
+      border: 1px solid rgba(252,165,165,0.6);
+    }
+    .detail-badge-exchange {
+      background: #ecfeff; color: #0e7490;
+      border: 1px solid rgba(34,211,238,0.4);
+    }
+    .detail-badge-negotiable {
+      background: #f1f5f9; color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+    .detail-badge-verified {
+      background: #ecfeff; color: #0d9488;
+      border: 1px solid rgba(34,211,238,0.45);
+    }
+    #modalSpecs p {
+      margin: 0;
+      line-height: 1.45;
+    }
+    #modalSpecs strong { font-weight: 800; }
+    #modalBottomBar {
+      background: rgba(255,255,255,0.94) !important;
+      backdrop-filter: blur(16px) !important;
+      -webkit-backdrop-filter: blur(16px) !important;
+      border-top: 1px solid rgba(226,232,240,0.95) !important;
+      box-shadow: 0 -4px 18px rgba(15,23,42,0.06) !important;
+    }
+    #modalAlertCard.detail-alert-compact {
+      padding: 0.65rem 0.85rem !important;
+      border-radius: 0.9rem !important;
+      background: linear-gradient(135deg, rgba(236,254,255,0.95), rgba(255,255,255,0.95)) !important;
+      border: 1px solid rgba(34,211,238,0.4) !important;
+    }
+    #modalTitle { color: #0f172a !important; }
+    #modalPrice {
+      background: rgba(13,148,136,0.1) !important;
+      color: #0f766e !important;
+      border: 1px solid rgba(13,148,136,0.22);
+    }
+    #modalTime { color: #94a3b8 !important; }
+    #modalDesc { color: #334155 !important; }
+    #modalRecoTitle { color: #0f172a !important; }
+    #modalRecoIntent { color: #0e7490 !important; background: rgba(236,254,255,0.9) !important; }
+    #modalDynamicActions .text-teal-400,
+    #modalDynamicActions .uppercase {
+      color: #0f172a !important;
+    }
+    /* Tighter reco section — less bottom dead space */
+    #modalRecoScroll {
+      max-height: none;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    .reco-card {
+      flex: 0 0 135px;
+      width: 135px;
+      max-width: 135px;
+      display: flex !important;
+      flex-direction: column !important;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+    }
+    .reco-card .reco-img-wrap {
+      width: 100%;
+      height: 96px;
+      flex-shrink: 0;
+      background: #f1f5f9;
+      overflow: hidden;
+    }
+    .reco-card .reco-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .reco-card .reco-body {
+      padding: 0.5rem 0.55rem 0.55rem;
+      background: #fff;
+      flex: 1 1 auto;
+      min-height: 2.6rem;
+    }
+    .reco-card .reco-name {
+      font-size: 11px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 0 0 2px;
+    }
+    .reco-card .reco-price {
+      font-size: 11px;
+      font-weight: 900;
+      color: #0d9488;
+      line-height: 1.2;
+      margin: 0;
+      display: block;
     }
 
 
@@ -446,6 +740,52 @@
   <!-- EMERGENCY: never leave infinite loading spinner -->
   <script>
   (function(){
+    /* Remove accidental CSS text nodes leaked into body (WebView parse edge-cases) */
+    function scrubCssTextLeak(){
+      try {
+        var body = document.body;
+        if (!body) return;
+        var kids = Array.prototype.slice.call(body.childNodes || []);
+        for (var i = 0; i < kids.length; i++) {
+          var n = kids[i];
+          if (n.nodeType === 3) {
+            var t = String(n.textContent || "");
+            if (t.length > 40 && (/hub-sheet|backdrop-filter|border-radius:\s*999px/.test(t))) {
+              try { body.removeChild(n); } catch (e) {}
+            }
+          }
+        }
+        /* Also scrub plain text blobs inside main feed area */
+        var main = document.getElementById("adikaMainFeed") || document.getElementById("grid");
+        if (main) {
+          var walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, null);
+          var drop = [];
+          while (walker.nextNode()) {
+            var tx = String(walker.currentNode.textContent || "");
+            if (tx.length > 60 && (/hub-sheet\s*\{|backdrop-filter:\s*blur|linear-gradient\(165deg/.test(tx))) {
+              drop.push(walker.currentNode);
+            }
+          }
+          drop.forEach(function(node){
+            try {
+              if (node.parentNode && node.parentNode !== main && node.parentNode.childNodes.length === 1) {
+                node.parentNode.parentNode && node.parentNode.parentNode.removeChild(node.parentNode);
+              } else {
+                node.textContent = "";
+              }
+            } catch (e) {}
+          });
+        }
+      } catch (e) {}
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", scrubCssTextLeak);
+    } else {
+      scrubCssTextLeak();
+    }
+    setTimeout(scrubCssTextLeak, 50);
+    setTimeout(scrubCssTextLeak, 400);
+
     function killSpinner(){
       try {
         var s = document.getElementById("status");
@@ -538,7 +878,7 @@
   <!-- ================================================================= -->
   <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
   <!-- ================================================================= -->
-  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-1.5 pb-32" style="padding-top: 108px; padding-bottom: 140px;">
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-1.5 pb-20" style="padding-top: 108px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));">
     <!-- Active Filter Banner -->
     <div id="filterBanner" class="hidden mb-1 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
@@ -775,17 +1115,21 @@
           })
           .catch(function(){ tryFetch(urls, i+1); });
       }
-      var qs="page=1&limit=40&order=DESC&active_only=1&type=SELL";
+      var qs="page=1&limit=10&order=DESC&active_only=1&type=SELL";
       tryFetch(["/api/listings?"+qs, "/api/explorer/listings?"+qs], 0);
     })();
     </script>
 
-        <!-- Load More -->
-    <div class="text-center mt-3.5 mb-2">
+        <!-- Load More / Infinite Scroll trigger -->
+    <div id="loadMoreWrap" class="flex justify-center items-center mt-2 mb-1 pb-4">
       <button id="more" type="button"
-        class="hidden px-5 py-2 rounded-full bg-white text-[#16acbd] font-extrabold text-xs shadow-md border border-white/60 active:scale-95 transition-all">
-        <span class="lang-am">ተጨማሪ ↓</span>
-        <span class="lang-en">Load More ↓</span>
+        class="hidden flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-teal-700 font-extrabold text-xs shadow-md border border-teal-200 active:scale-95 transition-all">
+        <span id="btnText" class="lang-am">ተጨማሪ ↓</span>
+        <span class="lang-en" id="btnTextEn">Load More ↓</span>
+        <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
       </button>
     </div>
   </main>
@@ -1183,89 +1527,102 @@
   <!-- ================================================================= -->
   <!-- 5. BOTTOM-SHEET DETAIL MODAL WITH DYNAMIC ACTION BUTTONS          -->
   <!-- ================================================================= -->
-  <div id="modalOverlay" class="fixed inset-0 z-[270] bg-slate-950/70 backdrop-blur-md hidden items-stretch justify-center">
+  <div id="modalOverlay" class="fixed inset-0 z-[270] bg-slate-950/55 backdrop-blur-md hidden items-stretch justify-center">
     <div id="modalSheet"
-      class="w-full max-w-md h-full bg-[#f3fbfc] flex flex-col shadow-2xl overflow-hidden">
+      class="w-full max-w-md h-full flex flex-col shadow-2xl overflow-hidden">
 
-      <div class="px-3 py-2.5 text-white flex items-center justify-between shrink-0 gap-2" style="background:linear-gradient(90deg,#0e7490,#16acbd);">
+      <!-- Glass header -->
+      <div class="px-3 py-2.5 text-white flex items-center justify-between shrink-0 gap-2"
+           style="background:linear-gradient(105deg,rgba(14,116,144,0.92),rgba(22,172,189,0.9));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
         <div class="flex items-center gap-1.5 min-w-0">
-          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] shrink-0">← ተመለስ</button>
-          <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-bold truncate">Property</span>
-          <span id="modalIdBadge" class="text-[10px] text-cyan-100 font-semibold shrink-0">#ADK-</span>
+          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] shrink-0 border border-white/25">← ተመለስ</button>
+          <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-bold truncate border border-white/20">መኪና</span>
+          <span id="modalIdBadge" class="text-[10px] text-cyan-50 font-semibold shrink-0 opacity-90">#ADK-</span>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
-          <button id="modalFavBtn" type="button" class="w-8 h-8 rounded-full bg-white/15 text-white font-bold flex items-center justify-center text-sm">♡</button>
-          <button id="modalClose" type="button" class="w-8 h-8 rounded-full bg-slate-900/80 text-white font-bold flex items-center justify-center text-sm" aria-label="Close">✕</button>
+          <button id="modalFavBtn" type="button" class="w-8 h-8 rounded-full bg-white/15 text-white font-bold flex items-center justify-center text-sm border border-white/20">♡</button>
+          <button id="modalClose" type="button" class="w-8 h-8 rounded-full bg-slate-900/70 text-white font-bold flex items-center justify-center text-sm border border-white/15" aria-label="Close">✕</button>
         </div>
       </div>
 
-      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3 space-y-3 pb-24">
-        <div id="modalMediaContainer" class="w-full aspect-[16/10] rounded-2xl overflow-hidden bg-slate-200 relative shadow-sm"></div>
+      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3">
+        <!-- Photo gallery -->
+        <div id="modalMediaContainer" class="w-full rounded-2xl overflow-hidden relative"></div>
 
-        <div>
-          <div class="flex items-center gap-1">
-            <h2 id="modalTitle" class="text-sm font-extrabold text-slate-900 leading-tight"></h2>
-            <span class="text-emerald-600 text-xs font-black">✔</span>
+        <!-- Title + price + status badges -->
+        <div class="detail-glass-card p-3 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0 flex items-center gap-1.5">
+              <h2 id="modalTitle" class="text-[16px] font-black text-slate-900 leading-tight truncate"></h2>
+              <span class="detail-badge detail-badge-verified shrink-0">✔ Verified</span>
+            </div>
+            <span id="modalTime" class="text-[11px] text-slate-400 font-medium shrink-0"></span>
           </div>
-          <div class="mt-1.5 flex items-center gap-2">
-            <span id="modalPrice" class="px-2.5 py-0.5 rounded-full bg-[#16acbd]/15 text-[#0e7490] font-black text-xs"></span>
-            <span id="modalTime" class="text-[11px] text-slate-400 font-medium"></span>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span id="modalPrice" class="px-3 py-1 rounded-xl font-extrabold text-sm"></span>
+            <div id="modalStatusBadges" class="flex flex-wrap gap-1.5"></div>
           </div>
         </div>
 
-        <!-- Category-Specific Dynamic Action Buttons Bar -->
-        <div id="modalDynamicActions" class="p-2.5 bg-[#b5eff3]/30 rounded-2xl border border-[#16acbd]/30 space-y-1.5">
-          <div class="text-[10px] font-extrabold text-[#0e7490] uppercase tracking-wider flex items-center gap-1">
+        <!-- Adika Digital Hub services — dark glass 2x2 (synced with Hub) -->
+        <div id="modalDynamicActions" class="detail-hub-services mx-0 p-3 space-y-2">
+          <div class="text-[11px] font-black text-slate-800 tracking-wide flex items-center gap-1">
             <span>✨</span>
-            <span class="lang-am">ተዛማጅ የአዲካ ዲጂታል እና የፋይናንስ አገልግሎቶች</span>
-            <span class="lang-en">Adika Digital & Financial Utilities</span>
+            <span class="lang-am">የአዲካ ዲጂታልና ፋይናንስ አገልግሎቶች</span>
+            <span class="lang-en">Adika Digital & Finance Services</span>
           </div>
-          <div id="modalActionButtonsRow" class="flex gap-1.5 overflow-x-auto no-scrollbar"></div>
+          <div id="modalActionButtonsRow" class="grid grid-cols-2 gap-2"></div>
         </div>
 
-        <div id="modalSpecs" class="grid grid-cols-2 gap-2 text-xs font-medium text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100"></div>
-
-        <div>
-          <h4 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+        <!-- Unified structured details (fills space, no poster card) -->
+        <div class="detail-glass-card p-3.5 space-y-2">
+          <p class="text-[11px] font-black text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-1.5 m-0">
             <span class="lang-am">ዝርዝር መግለጫ</span>
-            <span class="lang-en">Full Description</span>
-          </h4>
-          <p id="modalDesc" class="text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50/50 p-2.5 rounded-xl border border-slate-100"></p>
+            <span class="lang-en">Full Details</span>
+          </p>
+          <div id="modalSpecs" class="space-y-1.5 text-xs text-slate-700 font-medium"></div>
+          <p id="modalDesc" class="hidden text-xs text-slate-600 leading-relaxed whitespace-pre-line m-0"></p>
         </div>
+
+
 
         <!-- Behavioral recommendations + Smart Alert -->
-        <div id="modalRecoSection" class="space-y-2.5 pt-1">
+        <div id="modalRecoSection" class="space-y-2">
           <div class="flex items-center justify-between gap-2">
             <div id="modalRecoTitle" class="text-[11px] font-extrabold text-slate-800">🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች</div>
             <div id="modalRecoIntent" class="text-[9px] font-bold text-[#0e7490] bg-[#16acbd]/10 px-2 py-0.5 rounded-full truncate max-w-[45%]"></div>
           </div>
-          <div id="modalRecoScroll" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-0.5 px-0.5"></div>
-          <div id="modalAlertCard" class="hidden p-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 space-y-2 shadow-sm">
-            <p id="modalAlertText" class="text-[11px] text-slate-700 font-medium leading-relaxed"></p>
-            <button type="button" id="modalAlertBtn" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] active:scale-[0.98]">
-              🔔 አዎ! በቴሌግራም አሳውቀኝ (Subscribe to Alerts)
-            </button>
-            <div id="modalAlertStatus" class="text-[10px] font-bold text-emerald-700 hidden"></div>
+          <div id="modalRecoScroll" data-role="recommendationsContainer" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-0.5 px-0.5 recommendations-container"></div>
+          <div id="modalAlertCard" class="hidden detail-alert-compact">
+            <div class="flex items-center gap-2">
+              <span class="text-base shrink-0">🔔</span>
+              <p id="modalAlertText" class="text-[10px] text-slate-700 font-semibold leading-snug m-0 flex-1"></p>
+              <button type="button" id="modalAlertBtn" class="shrink-0 bg-teal-500 text-white text-[10px] font-black px-3 py-1.5 rounded-xl shadow-md active:scale-95">
+                አሳውቀኝ
+              </button>
+            </div>
+            <div id="modalAlertStatus" class="text-[10px] font-bold text-teal-700 hidden mt-1.5"></div>
           </div>
         </div>
       </div>
 
-      <!-- Sticky bottom action bar -->
-      <div class="p-2.5 bg-white/95 backdrop-blur-md border-t border-slate-100 shrink-0 grid grid-cols-3 gap-2 sticky bottom-0 z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
-        <a id="modalCallBtn" href="#"
-          class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
+      <!-- Light glass sticky bottom bar -->
+      <div id="modalBottomBar" class="p-2.5 shrink-0 grid grid-cols-3 gap-2 sticky bottom-0 z-10"
+           style="padding-top:0.5rem;padding-bottom:calc(0.5rem + env(safe-area-inset-bottom,0px));">
+        <a id="modalCallBtn" href="tel:"
+          class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-black text-xs shadow-md active:scale-95 transition-all">
           <span>📞</span>
           <span class="lang-am">ደውል</span>
           <span class="lang-en">Call</span>
         </a>
         <button id="modalChatBtn" type="button"
-          class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
+          class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-200 active:scale-95 transition-all">
           <span>💬</span>
           <span class="lang-am">መልእክት</span>
           <span class="lang-en">Message</span>
         </button>
         <button id="modalShareBtn" type="button"
-          class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-sm active:scale-95 transition-all">
+          class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-md active:scale-95 transition-all">
           <span>🔗</span>
           <span class="lang-am">አጋራ</span>
           <span class="lang-en">Share</span>
@@ -1279,7 +1636,7 @@
   <!-- ================================================================= -->
 
   <!-- Modal: Customs Duty Calculator -->
-  <div id="dutyModal" class="fixed inset-0 z-[260] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
+  <div id="dutyModal" class="fixed inset-0 z-[9999] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
     <div class="hub-sheet w-full max-w-md rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden">
       <div class="hub-header px-4 py-3 text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🧮 የኢትዮጵያ ጉምሩክ የቀረጥ ስሌት (Duty Calculator)</h3>
@@ -1315,7 +1672,7 @@
   </div>
 
   <!-- Modal: Bank Loan & Mortgage -->
-  <div id="loanModal" class="fixed inset-0 z-[260] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
+  <div id="loanModal" class="fixed inset-0 z-[9999] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
     <div class="hub-sheet w-full max-w-md rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden">
       <div class="hub-header px-4 py-3 text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🏦 የባንክ ብድርና ወርሃዊ ክፍያ (Bank Loan)</h3>
@@ -1347,7 +1704,7 @@
   </div>
 
   <!-- Modal: Executive Institutional Comparison Dashboard -->
-  <div id="compareModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="compareModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-3 py-2.5 bg-gradient-to-r from-slate-950 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="min-w-0">
@@ -1451,7 +1808,7 @@
   </div>
 
   <!-- Modal: Legal Contract Generator -->
-  <div id="contractModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="contractModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ ውል ማዘጋጃ (Contract Wizard)</h3>
@@ -1688,7 +2045,7 @@
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
   <!-- Modal: Power of Attorney Verification (Adika Digital) -->
-  <div id="poaModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="poaModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3.5 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0 shadow-sm">
         <div class="flex items-center gap-2 min-w-0">
@@ -1730,7 +2087,7 @@
   <!-- Modal: Diagnostic Sheet Analyzer -->
 
   <!-- Modal: Digital Cadastral Map Verifier (Adika Digital System) -->
-  <div id="landMapModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="landMapModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="min-w-0">
@@ -1805,7 +2162,7 @@
     </div>
   </div>
 
-  <div id="diagModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="diagModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <h3 class="font-extrabold text-xs tracking-wide">🛠️ የምርመራ ወረቀት ተንታኝ (Diagnostic Analyzer)</h3>
@@ -1833,7 +2190,7 @@
   </div>
 
   <!-- Modal: Chassis & VIN Verification Tool -->
-  <div id="chassisModal" class="fixed inset-0 z-[260] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
+  <div id="chassisModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="flex items-center gap-1.5">
@@ -1892,53 +2249,43 @@
   <!-- 6. APPLICATION LOGIC & CSS CLASS TOGGLE                           -->
   <!-- ================================================================= -->
   
-  <!-- Unified Onboarding Modal (Glassmorphism) -->
-  <div id="unifiedOnboardingModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md hidden items-center justify-center p-4 z-[10000] overflow-y-auto" onclick="if(event.target===this)closeOnboarding()">
+<!-- Onboarding: unified single-page glassmorphism (FYP prefs) -->
+  <div id="unifiedOnboardingModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-md hidden items-center justify-center p-4 z-[10000] overflow-y-auto">
     <div class="bg-slate-900/80 backdrop-blur-xl border border-white/10 w-full max-w-md rounded-3xl p-5 text-white shadow-2xl my-auto">
-      
-      <!-- Top Header -->
       <div class="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
         <h3 class="text-base font-bold text-teal-400 flex items-center gap-2">
           <span>✨</span> የባህሪ እና ፍላጎት መመዝገቢያ
         </h3>
-        <button type="button" onclick="closeOnboarding()" class="text-white/60 hover:text-white text-xs bg-white/10 px-2.5 py-1 rounded-full">✕ Back</button>
+        <button type="button" id="onboardSkipBtn" onclick="closeOnboarding(true)" class="text-white/60 hover:text-white text-xs bg-white/10 px-2.5 py-1 rounded-full">✕ ዝለል</button>
       </div>
-
-      <form id="onboardingForm" onsubmit="handleOnboardingSubmit(event)" class="space-y-3.5 text-left">
-        
-        <!-- 1. Basic Info -->
+      <form id="onboardingForm" class="space-y-3.5 text-left">
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">ሙሉ ስም</label>
-          <input type="text" id="fullName" required placeholder="ስም" class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400">
+          <input type="text" id="fullName" name="fullName" required placeholder="ስም" autocomplete="name" class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400">
         </div>
-
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-[11px] font-medium text-slate-300 mb-1">ስልክ ቁጥር</label>
-            <input type="tel" id="phoneNum" required placeholder="09xxxxxxxx" class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400">
+            <input type="tel" id="phoneNum" name="phoneNum" required placeholder="09xxxxxxxx" inputmode="tel" class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400">
           </div>
           <div>
             <label class="block text-[11px] font-medium text-slate-300 mb-1">Telegram username</label>
-            <input type="text" id="tgUsername" placeholder="@username" class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400">
+            <input type="text" id="tgUsername" name="tgUsername" placeholder="@username" autocomplete="username" class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400">
           </div>
         </div>
-
-        <!-- 2. Role / Category Chips -->
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">የሚሰሩበት / የሚፈልጉት ምድብ</label>
           <div class="flex flex-wrap gap-2">
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
-              <input type="radio" name="mainCat" value="Car" checked onchange="toggleSpecFields('Car')" class="accent-teal-400">
+              <input type="radio" name="mainCat" value="Car" checked class="accent-teal-400">
               <span>🚗 መኪና</span>
             </label>
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
-              <input type="radio" name="mainCat" value="House" onchange="toggleSpecFields('House')" class="accent-teal-400">
+              <input type="radio" name="mainCat" value="House" class="accent-teal-400">
               <span>🏠 ቤት</span>
             </label>
           </div>
         </div>
-
-        <!-- 3. Dynamic Spec Fields (Car vs House) -->
         <div id="carSpecs" class="space-y-2 bg-white/5 p-2.5 rounded-2xl border border-white/10">
           <div class="grid grid-cols-2 gap-2">
             <select id="carTrans" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
@@ -1952,15 +2299,12 @@
             </select>
           </div>
         </div>
-
         <div id="houseSpecs" class="space-y-2 bg-white/5 p-2.5 rounded-2xl border border-white/10 hidden">
           <div class="grid grid-cols-2 gap-2">
-            <input type="text" id="houseType" placeholder="አፓርታማ / ቪላ / ኮንዶ" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
-            <input type="text" id="houseLoc" placeholder="አካባቢ (ቦሌ፣ አያት...)" class="bg-slate-800 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white">
+            <input type="text" id="houseType" placeholder="አፓርታማ / ቪላ / ኮንዶ" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-500">
+            <input type="text" id="houseLoc" placeholder="አካባቢ (ቦሌ፣ አያት...)" class="bg-slate-800 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500">
           </div>
         </div>
-
-        <!-- 4. Budget Range -->
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">የቦጀት መጠን (ETB)</label>
           <select id="budgetRange" class="w-full bg-slate-800 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:border-teal-400">
@@ -1970,19 +2314,15 @@
             <option value="10000000-999999999">ከ 10 ሚሊዮን ETB በላይ</option>
           </select>
         </div>
-
-        <!-- 5. Broker Checkbox -->
         <div class="flex items-center gap-2 pt-1">
           <input type="checkbox" id="isBroker" class="w-4 h-4 accent-teal-400 rounded">
           <label for="isBroker" class="text-xs text-slate-200">እንደ ፕሮፌሽናል ደላላ/ኤጀንሲ መመዝገብ እፈልጋለሁ</label>
         </div>
-
-        <!-- Submit Button -->
-        <button type="submit" class="w-full bg-teal-400 hover:bg-teal-300 text-slate-950 font-black py-3 rounded-2xl text-xs shadow-lg shadow-teal-400/20 active:scale-95 transition-all mt-2">
+        <button type="submit" id="onboardSubmitBtn" class="w-full bg-teal-400 hover:bg-teal-300 text-slate-950 font-black py-3 rounded-2xl text-xs shadow-lg shadow-teal-400/20 active:scale-95 transition-all mt-2">
           ✅ መዝግብ / Submit
         </button>
-
       </form>
+      <p class="mt-3 text-[10px] text-slate-500 text-center">Telegram ID ይገናኛል · user_preferences · FYP</p>
     </div>
   </div>
 
@@ -2069,273 +2409,277 @@
       try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
     }
 
-    // =========================================================================
-    // Unified Glassmorphism Onboarding Modal Logic
-    // =========================================================================
+    function getTelegramUserId() {
+      try {
+        var u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+        if (u && u.id) return Number(u.id);
+      } catch (e) {}
+      try {
+        if (window.state && state.userId) return Number(state.userId);
+      } catch (e2) {}
+      return 0;
+    }
+
     function ensureSupabaseClient() {
       try {
-        if (window.supabase && typeof window.supabase.from === "function") {
+        if (window.supabase && typeof window.supabase.from === "function" && typeof window.supabase.rpc === "function") {
           return window.supabase;
         }
-        var lib = window.__supabaseLib || (typeof supabase !== "undefined" ? supabase : null);
         var cfg = window.__ADIKA_SUPABASE || {};
         var url = cfg.url || window.SUPABASE_URL || "";
         var key = cfg.anonKey || cfg.key || window.SUPABASE_ANON_KEY || "";
+        var lib = window.__supabaseLib || window.supabase || (typeof supabase !== "undefined" ? supabase : null);
         if (url && key && lib && typeof lib.createClient === "function") {
           window.supabase = lib.createClient(url, key);
-          window.__adikaSbReady = true;
           return window.supabase;
         }
       } catch (e) {}
       return null;
     }
 
-    function getTelegramUserId() {
-      try {
-        var app = window.Telegram && window.Telegram.WebApp;
-        if (app && app.initDataUnsafe && app.initDataUnsafe.user && app.initDataUnsafe.user.id) {
-          return Number(app.initDataUnsafe.user.id);
-        }
-      } catch (e) {}
-      try {
-        if (window.state && state.userId) return Number(state.userId);
-      } catch (e) {}
-      try {
-        var stored = localStorage.getItem("adika_user_id");
-        if (stored) return Number(stored);
-        var newId = Math.floor(100000000 + Math.random() * 900000000);
-        localStorage.setItem("adika_user_id", String(newId));
-        return newId;
-      } catch (e) {
-        return 123456789;
+    // ---- Onboarding (unified glass form → user_preferences + FYP) ----
+    (function initOnboarding() {
+      var KEY = "adika_onboarded";
+      var PREF_KEY = "adika_user_prefs";
+
+      function isOnboarded() {
+        try { if (localStorage.getItem(KEY) === "true") return true; } catch (e) {}
+        try { if (typeof _lsGet === "function" && _lsGet(KEY) === "true") return true; } catch (e2) {}
+        return false;
       }
-    }
-
-    window.toggleSpecFields = function(cat) {
-      var carSpecs = document.getElementById("carSpecs");
-      var houseSpecs = document.getElementById("houseSpecs");
-      if (cat === "Car") {
-        if (carSpecs) carSpecs.classList.remove("hidden");
-        if (houseSpecs) houseSpecs.classList.add("hidden");
-      } else if (cat === "House") {
-        if (carSpecs) carSpecs.classList.add("hidden");
-        if (houseSpecs) houseSpecs.classList.remove("hidden");
+      function markOnboarded() {
+        try { localStorage.setItem(KEY, "true"); } catch (e) {}
+        try { if (typeof _lsSet === "function") _lsSet(KEY, "true"); } catch (e2) {}
       }
-    };
-
-    window.closeOnboarding = function() {
-      var m = document.getElementById("unifiedOnboardingModal") || document.getElementById("onboardingModal");
-      if (m) {
-        m.classList.add("hidden");
-        m.classList.remove("flex");
-        m.style.display = "none";
-        document.body.style.overflow = "";
+      function saveLocalPrefs(obj) {
+        try { localStorage.setItem(PREF_KEY, JSON.stringify(obj)); } catch (e) {}
+        try { if (typeof _lsSet === "function") _lsSet(PREF_KEY, JSON.stringify(obj)); } catch (e2) {}
       }
-    };
-
-    window.openOnboarding = function() {
-      var m = document.getElementById("unifiedOnboardingModal") || document.getElementById("onboardingModal");
-      if (!m) return;
-      try {
-        var app = window.Telegram && window.Telegram.WebApp;
-        var u = app && app.initDataUnsafe && app.initDataUnsafe.user;
-        if (u) {
-          var fnInput = document.getElementById("fullName");
-          if (fnInput && !fnInput.value) {
-            fnInput.value = [u.first_name, u.last_name].filter(Boolean).join(" ");
-          }
-          var tgInput = document.getElementById("tgUsername");
-          if (tgInput && !tgInput.value && u.username) {
-            tgInput.value = "@" + u.username;
-          }
-        }
-      } catch (e) {}
-      m.classList.remove("hidden");
-      m.classList.add("flex");
-      m.style.display = "flex";
-      document.body.style.overflow = "hidden";
-    };
-    window.__adikaShowOnboarding = window.openOnboarding;
-
-    window.triggerFypFeed = function(params) {
-      params = params || {};
-      var tid = params.telegram_id || params.user_id || getTelegramUserId();
-      var cat = params.category || "Car";
-      var catAm = cat === "House" ? "ቤት" : "መኪና";
-      var bMin = params.budget_min != null ? params.budget_min : 0;
-      var bMax = params.budget_max != null ? params.budget_max : 999999999;
-
-      if (window.state) {
-        state.feedMode = "foryou";
-        state.category = catAm;
-        state.page = 1;
-        state.hasMore = false;
-      }
-      if (typeof paintFeedModes === "function") paintFeedModes();
-
-      var sb = ensureSupabaseClient();
-      if (sb && typeof sb.rpc === "function") {
-        sb.rpc("get_fyp_feed", {
-          p_telegram_id: tid || null,
-          p_category: cat,
-          p_budget_min: bMin,
-          p_budget_max: bMax,
-          p_limit: 24,
-          p_offset: 0
-        }).then(function (res) {
-          var rows = (res && res.data) || [];
-          if (Array.isArray(rows) && rows.length > 0) {
-            if (typeof finishLoading === "function") {
-              finishLoading(rows, false, rows.length >= 24);
-            } else if (window.__adikaPaintListings) {
-              window.__adikaPaintListings(rows);
-            }
-            return;
-          }
-          fallbackFetch();
-        }).catch(function (err) {
-          console.warn("[get_fyp_feed RPC]", err);
-          fallbackFetch();
-        });
-      } else {
-        fallbackFetch();
+      function readLocalPrefs() {
+        try {
+          var raw = localStorage.getItem(PREF_KEY) || (typeof _lsGet === "function" ? _lsGet(PREF_KEY) : null);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
       }
 
-      function fallbackFetch() {
-        if (typeof load === "function") {
-          load(false);
+      function showOb(on) {
+        var m = document.getElementById("unifiedOnboardingModal") || document.getElementById("onboardingModal");
+        if (!m) return;
+        if (on) {
+          m.classList.remove("hidden");
+          m.classList.add("flex");
+          m.style.display = "flex";
+          document.body.style.overflow = "hidden";
         } else {
-          fetch("/api/feed/for-you?category=" + encodeURIComponent(catAm) + "&min_price=" + bMin + "&max_price=" + bMax + "&user_id=" + encodeURIComponent(tid || 0))
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
-              var items = (d && (d.items || d.recommendations || d.listings)) || [];
-              if (Array.isArray(items) && items.length > 0 && window.__adikaPaintListings) {
-                window.__adikaPaintListings(items);
-              }
-            }).catch(function() {});
+          m.classList.add("hidden");
+          m.classList.remove("flex");
+          m.style.display = "none";
+          document.body.style.overflow = "";
         }
       }
-    };
-    window.get_fyp_feed = window.triggerFypFeed;
 
-    window.handleOnboardingSubmit = function(event) {
-      if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-
-      var fullName = (document.getElementById("fullName")?.value || "").trim();
-      var phoneNum = (document.getElementById("phoneNum")?.value || "").trim();
-      var tgUsername = (document.getElementById("tgUsername")?.value || "").trim().replace(/^@+/, "");
-
-      var catRadio = document.querySelector('input[name="mainCat"]:checked');
-      var mainCat = catRadio ? catRadio.value : "Car";
-
-      var carTrans = (document.getElementById("carTrans")?.value || "Automatic");
-      var carFuel = (document.getElementById("carFuel")?.value || "Fuel");
-      var houseType = (document.getElementById("houseType")?.value || "").trim();
-      var houseLoc = (document.getElementById("houseLoc")?.value || "").trim();
-
-      var bRangeStr = (document.getElementById("budgetRange")?.value || "1500000-4000000");
-      var bParts = bRangeStr.split("-");
-      var budgetMin = parseInt(bParts[0], 10) || 0;
-      var budgetMax = parseInt(bParts[1], 10) || 4000000;
-
-      var isBroker = !!(document.getElementById("isBroker")?.checked);
-      var catAm = mainCat === "Car" ? "መኪና" : "ቤት";
-      var tid = getTelegramUserId();
-
-      var payload = {
-        user_id: tid,
-        telegram_id: tid,
-        full_name: fullName,
-        phone_number: phoneNum,
-        phone: phoneNum,
-        telegram_username: tgUsername,
-        username: tgUsername,
-        category: mainCat,
-        categories: [catAm],
-        transmission: mainCat === "Car" ? carTrans : null,
-        fuel_type: mainCat === "Car" ? carFuel : null,
-        property_type: mainCat === "House" ? houseType : null,
-        house_type: mainCat === "House" ? houseType : null,
-        location: mainCat === "House" ? houseLoc : null,
-        location_area: mainCat === "House" ? houseLoc : null,
-        budget_min: budgetMin,
-        budget_max: budgetMax,
-        budget_range: bRangeStr,
-        is_broker: isBroker,
-        onboarding_done: true,
-        updated_at: new Date().toISOString()
+      window.closeOnboarding = function (skip) {
+        markOnboarded();
+        showOb(false);
+        try {
+          state.feedMode = "foryou";
+          state.category = "";
+          if (typeof paintFeedModes === "function") paintFeedModes();
+        } catch (e) {}
+        try { if (typeof load === "function") load(false); } catch (e2) {}
       };
 
-      // 1. Supabase upsert
-      var sb = ensureSupabaseClient();
-      if (sb && typeof sb.from === "function") {
-        sb.from("user_preferences").upsert(payload, { onConflict: "user_id" })
-          .then(function (res) {
-            if (res && res.error) {
-              return sb.from("user_preferences").upsert(payload, { onConflict: "telegram_id" });
-            }
-            return res;
-          })
-          .catch(function (err) {
-            console.warn("[user_preferences Supabase error]", err);
-          });
+      window.toggleSpecFields = function (cat) {
+        var car = document.getElementById("carSpecs");
+        var house = document.getElementById("houseSpecs");
+        var isHouse = String(cat || "") === "House";
+        if (car) car.classList.toggle("hidden", isHouse);
+        if (house) house.classList.toggle("hidden", !isHouse);
+      };
+
+      function parseBudgetRange(val) {
+        var parts = String(val || "0-999999999").split("-");
+        var min = parseFloat(String(parts[0] || "0").replace(/[^0-9.]/g, "")) || 0;
+        var max = parseFloat(String(parts[1] || "999999999").replace(/[^0-9.]/g, "")) || 999999999;
+        if (max < min) { var t = min; min = max; max = t; }
+        return { budget_min: min, budget_max: max };
       }
 
-      // 2. Server-side API persistence
-      fetch("/api/user/preferences", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      }).catch(function() {});
+      function collectForm() {
+        var fullName = (document.getElementById("fullName") || {}).value || "";
+        var phone = (document.getElementById("phoneNum") || {}).value || "";
+        var tg = (document.getElementById("tgUsername") || {}).value || "";
+        tg = String(tg).replace(/^@/, "").trim();
+        var catEl = document.querySelector('input[name="mainCat"]:checked');
+        var mainCat = catEl ? catEl.value : "Car";
+        var budget = parseBudgetRange((document.getElementById("budgetRange") || {}).value);
+        var isBroker = !!(document.getElementById("isBroker") || {}).checked;
+        var specs = {};
+        if (mainCat === "House") {
+          specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
+          specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
+        } else {
+          specs.transmission = ((document.getElementById("carTrans") || {}).value || "").trim();
+          specs.fuel = ((document.getElementById("carFuel") || {}).value || "").trim();
+        }
+        var categories = mainCat === "House" ? ["ቤት", "House"] : ["መኪና", "Car"];
+        return {
+          full_name: String(fullName).trim(),
+          phone: String(phone).trim(),
+          telegram_username: tg,
+          main_category: mainCat,
+          categories: categories,
+          budget_min: budget.budget_min,
+          budget_max: budget.budget_max,
+          budget_range: (document.getElementById("budgetRange") || {}).value || "",
+          is_broker: isBroker,
+          specs: specs,
+          transmission: specs.transmission || null,
+          fuel: specs.fuel || null,
+          property_type: specs.property_type || null,
+          location_area: specs.location || null,
+          onboarding_done: true,
+          updated_at: new Date().toISOString()
+        };
+      }
 
-      // 3. If broker requested, register broker role
-      if (isBroker) {
+      function triggerFypFeed() {
         try {
-          localStorage.setItem("adika_role_v1", "broker");
-          fetch("/api/brokers/register", {
+          state.feedMode = "foryou";
+          state.category = "";
+          state.page = 1;
+          if (typeof paintFeedModes === "function") paintFeedModes();
+        } catch (e) {}
+        try {
+          if (typeof load === "function") load(false);
+        } catch (e2) {
+          try {
+            var sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : null;
+            var tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : null;
+            if (sb && tid && typeof sb.rpc === "function") {
+              sb.rpc("get_fyp_feed", {
+                p_telegram_id: tid,
+                p_limit: 20,
+                p_offset: 0
+              }).then(function (res) {
+                var rows = (res && res.data) || [];
+                if (Array.isArray(rows) && rows.length && typeof finishLoading === "function") {
+                  finishLoading(rows, false, rows.length >= 20);
+                }
+              }).catch(function () {});
+            }
+          } catch (e3) {}
+        }
+      }
+
+      window.handleOnboardingSubmit = function (ev) {
+        if (ev) { try { ev.preventDefault(); } catch (e0) {} }
+        var form = document.getElementById("onboardingForm");
+        var btn = document.getElementById("onboardSubmitBtn");
+        if (form && typeof form.reportValidity === "function" && !form.reportValidity()) return false;
+        if (btn) { btn.disabled = true; btn.textContent = "⏳ በመመዝገብ ላይ..."; }
+
+        var data = collectForm();
+        var tid = null;
+        try { tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : null; } catch (e) {}
+        // Prefill telegram username from WebApp if empty
+        if (!data.telegram_username) {
+          try {
+            var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+            if (u && u.username) data.telegram_username = String(u.username);
+            if (!data.full_name && u) {
+              data.full_name = [u.first_name, u.last_name].filter(Boolean).join(" ");
+            }
+          } catch (eU) {}
+        }
+        data.telegram_id = tid || null;
+        data.user_id = tid || null;
+
+        saveLocalPrefs(data);
+
+        var sb = null;
+        try { sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : (window.supabase || null); } catch (eS) {}
+        var savePromise = Promise.resolve(false);
+        if (sb && tid) {
+          savePromise = sb.from("user_preferences").upsert(data, { onConflict: "user_id" })
+            .then(function () { return true; })
+            .catch(function () {
+              return sb.from("user_preferences").upsert(data, { onConflict: "telegram_id" })
+                .then(function () { return true; })
+                .catch(function () { return false; });
+            });
+        } else {
+          savePromise = fetch("/api/user/preferences", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              telegram_id: tid,
-              name: fullName,
-              phone: phoneNum,
-              username: tgUsername,
-              categories: [catAm]
-            })
-          }).catch(function() {});
-        } catch(e) {}
+            body: JSON.stringify(data)
+          }).then(function () { return true; }).catch(function () { return false; });
+        }
+
+        savePromise.then(function () {
+          markOnboarded();
+          showOb(false);
+          triggerFypFeed();
+        }).catch(function () {
+          markOnboarded();
+          showOb(false);
+          triggerFypFeed();
+        }).finally(function () {
+          if (btn) { btn.disabled = false; btn.textContent = "✅ መዝግብ / Submit"; }
+        });
+        return false;
+      };
+
+      // Wire form + category radios
+      function bind() {
+        var form = document.getElementById("onboardingForm");
+        if (form && !form.__adikaBound) {
+          form.__adikaBound = true;
+          form.addEventListener("submit", function (e) {
+            handleOnboardingSubmit(e);
+          });
+        }
+        document.querySelectorAll('input[name="mainCat"]').forEach(function (r) {
+          r.addEventListener("change", function () {
+            toggleSpecFields(r.value);
+          });
+        });
+        var skip = document.getElementById("onboardSkipBtn");
+        if (skip && !skip.__adikaBound) {
+          skip.__adikaBound = true;
+          skip.addEventListener("click", function (e) {
+            e.preventDefault();
+            closeOnboarding(true);
+          });
+        }
+        // Prefill TG user
+        try {
+          var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+          if (u) {
+            var fn = document.getElementById("fullName");
+            var tg = document.getElementById("tgUsername");
+            if (fn && !fn.value) fn.value = [u.first_name, u.last_name].filter(Boolean).join(" ");
+            if (tg && !tg.value && u.username) tg.value = "@" + u.username;
+          }
+        } catch (eP) {}
+        toggleSpecFields("Car");
       }
 
-      // 4. Mark onboarded
-      try { localStorage.setItem("adika_onboarded", "true"); } catch (e) {}
-      try { _lsSet("adika_onboarded", "true"); } catch (e) {}
+      window.__adikaShowOnboarding = function () {
+        bind();
+        showOb(true);
+      };
 
-      // 5. Close modal
-      closeOnboarding();
-
-      // 6. Trigger get_fyp_feed with saved parameters
-      triggerFypFeed(payload);
-    };
-
-    function isOnboarded() {
-      try {
-        if (localStorage.getItem("adika_onboarded") === "true") return true;
-      } catch (e) {}
-      try {
-        if (_lsGet("adika_onboarded") === "true") return true;
-      } catch (e2) {}
-      return false;
-    }
-
-    // Auto prompt on first launch if not yet onboarded
-    if (!isOnboarded()) {
-      setTimeout(function () {
-        openOnboarding();
-      }, 500);
-    }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          bind();
+          if (!isOnboarded()) setTimeout(function () { showOb(true); }, 450);
+        });
+      } else {
+        bind();
+        if (!isOnboarded()) setTimeout(function () { showOb(true); }, 450);
+      }
+    })();
 
     var favorites = {};
     try {
@@ -2373,8 +2717,9 @@
       category: "",
       q: "",
       page: 1,
-      hasMore: false,
+      hasMore: true,
       loading: false,
+      itemsPerPage: 10,
       items: [],
       selectedItem: null
     };
@@ -2444,76 +2789,249 @@
         return;
       }
       sc.innerHTML = items.map(function(it) {
-        var extra = it.extra_data || {};
-        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-        var photos = [];
-        try { photos = parsePhotosList(it); } catch (e) {}
-        var img = getImageUrl(photos[0] || it.photo_urls || it.listing_photos || "") || "";
+        var img = "";
+        try {
+          var list = collectPhotoUrls(it);
+          img = (list && list[0]) || getValidImageUrl(it.photo_urls) || getValidImageUrl(it.photos) || "";
+        } catch (e3) { img = ""; }
         var price = formatListingPrice(it.price);
-        var name = it.title || it.sub_category || it.main_category || "ንብረት";
+        var name = it.title || it.sub_category || it.model || it.main_category || "ንብረት";
         return (
-          '<button type="button" class="reco-card shrink-0 w-[138px] text-left rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden active:scale-[0.98]" data-id="' + esc(String(it.id || "")) + '">' +
-            '<div class="aspect-[4/3] bg-slate-100">' +
-              (img ? '<img src="' + esc(img) + '" class="listing-photo-enhance" loading="lazy" />' : '<div class="w-full h-full flex items-center justify-center text-2xl">🚗</div>') +
+          '<button type="button" class="reco-card shrink-0 text-left active:scale-95 transition-all" data-id="' + esc(String(it.id || "")) + '">' +
+            '<div class="reco-img-wrap">' +
+              (img
+                ? '<img src="' + escSrc(String(img)) + '" alt="" loading="lazy" onerror="this.onerror=null;this.style.display=\'none\';" />'
+                : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">🚗</div>') +
             '</div>' +
-            '<div class="p-1.5 space-y-0.5">' +
-              '<div class="text-[10px] font-extrabold text-slate-800 truncate">' + esc(name) + '</div>' +
-              '<div class="text-[9px] font-black text-[#0e7490]">💰 ' + esc(price) + '</div>' +
+            '<div class="reco-body">' +
+              '<p class="reco-name">' + esc(name) + '</p>' +
+              '<p class="reco-price">💰 ' + esc(price) + '</p>' +
             '</div>' +
           '</button>'
         );
       }).join("");
       sc.querySelectorAll(".reco-card").forEach(function(btn) {
-        btn.onclick = function() {
+        btn.onclick = function(ev) {
+          try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e0) {}
           var id = btn.getAttribute("data-id");
           var found = (items || []).find(function(x) { return String(x.id) === String(id); });
-          if (found) openDetailModal(found);
-          else {
-            // try from current feed state.items
-            var f2 = (state.items || []).find(function(x) { return String(x.id) === String(id); });
-            if (f2) openDetailModal(f2);
+          if (found) {
+            if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(found);
+            else openDetailModal(found);
+            return;
           }
+          var f2 = (state.items || window.__adikaLiveItems || []).find(function(x) { return String(x.id) === String(id); });
+          if (f2) openDetailModal(f2);
+          else if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(id);
         };
       });
     }
 
     function loadRecommendations(item) {
       var hist = getViewHistory();
-      var sc = document.getElementById("modalRecoScroll");
+      var sc = document.getElementById("modalRecoScroll") || document.getElementById("recommendationsContainer");
       var alertCard = document.getElementById("modalAlertCard");
       var alertText = document.getElementById("modalAlertText");
       if (sc) sc.innerHTML = '<div class="text-[10px] text-slate-400 py-2">⏳ በመፈለግ ላይ...</div>';
-      fetch("/api/recommendations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ viewHistory: hist, exclude_id: item && item.id })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        renderRecoCards(data.items || [], data.intent_label || "");
-        // Smart alert card
-        if (alertCard && alertText && item) {
-          var extra = item.extra_data || {};
+
+      // ---- Normalize category bucket: car | house | other ----
+      function categoryBucket(raw) {
+        var s = String(raw || "").toLowerCase().trim();
+        if (!s) return "other";
+        if (/ቤት|house|home|apartment|real.?estate|property|ቪላ|አፓርታ|መሬት|land|condo/.test(s)) return "house";
+        if (/መኪና|car|vehicle|auto|truck|ቶዮታ|toyota|hyundai/.test(s)) return "car";
+        return "other";
+      }
+      function parsePriceNum(raw) {
+        try {
+          var n = parseFloat(String(raw == null ? "" : raw).replace(/[^0-9.]/g, ""));
+          return (isFinite(n) && n > 0) ? n : 0;
+        } catch (e) { return 0; }
+      }
+      function sameBucket(a, b) {
+        var ba = categoryBucket(a), bb = categoryBucket(b);
+        if (ba === "other" || bb === "other") {
+          // strict: only exact string match when unknown
+          return String(a || "").trim() === String(b || "").trim() && String(a || "").trim() !== "";
+        }
+        return ba === bb;
+      }
+
+      var curId = item && item.id != null ? item.id : null;
+      var curCatRaw = (item && (item.main_category || item.category)) || "";
+      var curCat = curCatRaw;
+      var curBucket = categoryBucket(curCatRaw);
+      // Explicit English token for Supabase RPC
+      var curCatRpc = curBucket === "house" ? "House" : (curBucket === "car" ? "Car" : String(curCatRaw || "Car"));
+      var curSub = (item && (item.sub_category || item.model || item.car_model)) || "";
+      var curPrice = parsePriceNum(item && item.price);
+
+      var priceLo = curPrice > 0 ? curPrice * 0.65 : 0;
+      var priceHi = curPrice > 0 ? curPrice * 1.35 : 0;
+
+      var payload = {
+        viewHistory: hist,
+        exclude_id: curId,
+        current_id: curId,
+        current_category: curCatRpc,
+        current_category_raw: curCat,
+        current_bucket: curBucket,
+        current_sub_category: curSub,
+        current_price: curPrice,
+        min_price: priceLo,
+        max_price: priceHi
+      };
+
+      function applyAlert(it) {
+        if (!(alertCard && alertText && it)) return;
+        try {
+          var extra = it.extra_data || {};
           if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
           var bm = {};
-          try { bm = extractBrandModel(item, extra) || {}; } catch (e) {}
-          var priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0;
+          try { bm = extractBrandModel(it, extra) || {}; } catch (e) {}
+          var priceNum = parsePriceNum(it.price);
           var lo = priceNum ? Math.round(priceNum * 0.85) : 0;
           var hi = priceNum ? Math.round(priceNum * 1.15) : 0;
-          var modelName = bm.display || item.sub_category || "ንብረት";
+          var modelName = bm.display || it.sub_category || "ንብረት";
           var rangeTxt = (lo && hi) ? (lo.toLocaleString() + " – " + hi.toLocaleString() + " ETB") : modelName;
           alertText.textContent = "💡 ከ " + rangeTxt + " / " + modelName + " ጋር ተመሳሳይ አዳዲስ ንብረቶች ሲለቀቁ በቴሌግራም እንዲደርስዎ ይፈልጋሉ?";
           alertCard.classList.remove("hidden");
           alertCard.dataset.minPrice = String(lo || 0);
           alertCard.dataset.maxPrice = String(hi || 999999999);
           alertCard.dataset.model = modelName;
-          alertCard.dataset.category = item.main_category || item.category || "መኪና";
+          alertCard.dataset.category = it.main_category || it.category || curCatRpc;
+        } catch (eA) {}
+      }
+
+      // HARD filter: same category bucket + price within ±35%
+      function strictFilterList(list) {
+        if (!Array.isArray(list)) return [];
+        return list.filter(function(x) {
+          if (!x) return false;
+          if (curId != null && String(x.id) === String(curId)) return false;
+          var cat = x.main_category || x.category || "";
+          if (!sameBucket(cat, curCatRaw) && categoryBucket(cat) !== curBucket) return false;
+          // Never mix car ↔ house
+          if (curBucket === "car" && categoryBucket(cat) === "house") return false;
+          if (curBucket === "house" && categoryBucket(cat) === "car") return false;
+          var pr = parsePriceNum(x.price);
+          if (curPrice > 0 && pr > 0) {
+            if (pr < priceLo || pr > priceHi) return false;
+          }
+          return true;
+        });
+      }
+
+      function clientFypFallback() {
+        try {
+          var pool = (window.__adikaLiveItems || state.items || []).filter(function(x) {
+            return x && (curId == null || String(x.id) !== String(curId));
+          });
+          pool = strictFilterList(pool);
+          pool = pool.map(function(x) {
+            var score = 0;
+            var cat = x.main_category || x.category || "";
+            var sub = String(x.sub_category || x.model || "");
+            var pr = parsePriceNum(x.price);
+            if (curBucket !== "other" && categoryBucket(cat) === curBucket) score += 50;
+            if (curSub && sub && sub.toLowerCase().indexOf(String(curSub).toLowerCase().slice(0, 4)) >= 0) score += 25;
+            if (curPrice > 0 && pr > 0) {
+              var ratio = pr / curPrice;
+              if (ratio >= 0.85 && ratio <= 1.15) score += 35;
+              else if (ratio >= 0.65 && ratio <= 1.35) score += 20;
+            }
+            try {
+              hist.forEach(function(h) {
+                if (!h) return;
+                if (categoryBucket(h.category) === curBucket) score += 6;
+                if (h.model && sub && sub.toLowerCase().indexOf(String(h.model).toLowerCase().slice(0, 3)) >= 0) score += 8;
+              });
+            } catch (eH) {}
+            return { item: x, score: score };
+          }).sort(function(a, b) { return b.score - a.score; });
+          var top = pool.slice(0, 10).map(function(r) { return r.item; });
+          renderRecoCards(top, curBucket === "house" ? "ተመሳሳይ ቤቶች" : "በተመሳሳይ ምድብ");
+        } catch (e) {
+          renderRecoCards([], "");
         }
-      })
-      .catch(function() {
-        renderRecoCards([], "");
+        applyAlert(item);
+      }
+
+      // Path A: Flask API
+      var apiPromise = fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).then(function(r) {
+        if (!r.ok) throw new Error("api " + r.status);
+        return r.json();
+      }).then(function(data) {
+        var list = (data && (data.items || data.recommendations || data.data)) || [];
+        list = strictFilterList(list);
+        if (list && list.length) {
+          renderRecoCards(list, (data && data.intent_label) || "ለእርስዎ የተመረጡ");
+          applyAlert(item);
+          return true;
+        }
+        return false;
       });
+
+      // Path B: Supabase RPC get_recommended_vehicles (strict inputs)
+      var sbPromise = Promise.resolve(false);
+      try {
+        if (window.supabase && typeof window.supabase.rpc === "function") {
+          sbPromise = window.supabase.rpc("get_recommended_vehicles", {
+            current_id: curId,
+            current_category: curCatRpc,
+            current_sub_category: curSub,
+            current_price: curPrice
+          }).then(function(res) {
+            var list = (res && (res.data || res)) || [];
+            if (!Array.isArray(list)) list = [];
+            list = strictFilterList(list);
+            if (list.length) {
+              renderRecoCards(list, "FYP · ተመሳሳይ");
+              applyAlert(item);
+              return true;
+            }
+            return false;
+          }).catch(function() { return false; });
+        }
+      } catch (eSb) { sbPromise = Promise.resolve(false); }
+
+      Promise.all([apiPromise.catch(function() { return false; }), sbPromise])
+        .then(function(results) {
+          if (results[0] || results[1]) return;
+          clientFypFallback();
+        })
+        .catch(function() { clientFypFallback(); });
     }
+
+
+    // Alias for external callers / deep links
+    window.openVehicleDetail = function(idOrItem) {
+      try {
+        if (idOrItem && typeof idOrItem === "object") {
+          openDetailModal(idOrItem);
+          return;
+        }
+        var id = idOrItem;
+        var found = (window.__adikaLiveItems || []).find(function(x) { return String(x.id) === String(id); })
+          || (state.items || []).find(function(x) { return String(x.id) === String(id); });
+        if (found) openDetailModal(found);
+        else {
+          // Soft fetch single listing if endpoint exists
+          fetch("/api/listing/" + encodeURIComponent(String(id)))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              var it = data.item || data.listing || data;
+              if (it && it.id) openDetailModal(it);
+            })
+            .catch(function() {});
+        }
+      } catch (e) {}
+    };
+
 
     var grid = document.getElementById("grid");
     var statusEl = document.getElementById("status");
@@ -2690,83 +3208,177 @@
       }
     }
 
-    function getImageUrl(photoUrls) {
-      if (!photoUrls) return "";
-      if (Array.isArray(photoUrls)) {
-        var first = photoUrls[0];
-        if (!first) return "";
-        if (typeof first === "string") return first;
-        if (first && typeof first === "object") {
-          return first.url || first.src || first.photo_url || first.photo_id || "";
-        }
-        return String(first);
-      }
-      if (typeof photoUrls === "string") {
-        var s = photoUrls.trim();
-        if (!s) return "";
-        if (s.charAt(0) === "[") {
-          try {
-            var parsed = JSON.parse(s);
-            return getImageUrl(parsed);
-          } catch (e) {
-            return s;
+    // Robust photo URL parser — String | Array | JSON | object | relative path
+    function getValidImageUrl(photoData) {
+      if (photoData == null || photoData === "") return null;
+      try {
+        // Direct array
+        if (Array.isArray(photoData)) {
+          for (var i = 0; i < photoData.length; i++) {
+            var u = getValidImageUrl(photoData[i]);
+            if (u) return u;
           }
+          return null;
+        }
+        // Object with url fields
+        if (typeof photoData === "object") {
+          return getValidImageUrl(
+            photoData.url || photoData.src || photoData.photo_url ||
+            photoData.photo_id || photoData.image || photoData.path || photoData.publicUrl || null
+          );
+        }
+        var s = String(photoData).trim();
+        if (!s || s === "null" || s === "undefined") return null;
+        // JSON string array / object
+        if ((s.charAt(0) === "[" || s.charAt(0) === "{") && s.length > 2) {
+          try {
+            return getValidImageUrl(JSON.parse(s));
+          } catch (eJ) { /* fall through */ }
+        }
+        // Absolute / data / blob
+        if (/^(https?:|data:|blob:|tg:|\/\/)/i.test(s)) return s;
+        // Telegram-style file id
+        if (s.indexOf("/") === -1 && s.indexOf(".") === -1 && s.length > 20) {
+          return "/api/photo/" + encodeURIComponent(s);
+        }
+        // Relative paths
+        if (s.charAt(0) !== "/") {
+          if (/^(uploads|static|media|photos)\//i.test(s)) s = "/" + s;
+          else if (/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(s)) s = "/static/uploads/" + s.replace(/^\.\//, "");
         }
         return s;
+      } catch (e) {
+        if (typeof photoData === "string" && /^(https?:|data:)/i.test(photoData.trim())) {
+          return photoData.trim();
+        }
+        return null;
       }
-      if (typeof photoUrls === "object") {
-        return photoUrls.url || photoUrls.src || photoUrls.photo_url || photoUrls.photo_id || "";
-      }
-      return "";
+    }
+    window.getValidImageUrl = getValidImageUrl;
+
+    function getImageUrl(photoUrls) {
+      return getValidImageUrl(photoUrls) || "";
     }
 
+    // Collect ALL photo URLs from a listing item (for gallery)
+    function collectPhotoUrls(item) {
+      if (!item) return [];
+      var out = [];
+      var seen = {};
+      function pushOne(v) {
+        var u = getValidImageUrl(v);
+        if (u && !seen[u]) { seen[u] = 1; out.push(u); }
+      }
+      function pushMany(v) {
+        if (!v) return;
+        if (Array.isArray(v)) { v.forEach(pushOne); return; }
+        if (typeof v === "string") {
+          var t = v.trim();
+          if ((t.charAt(0) === "[" || t.charAt(0) === "{") && t.length > 2) {
+            try { pushMany(JSON.parse(t)); return; } catch (e) {}
+          }
+          // comma-separated
+          if (t.indexOf(",") > -1 && t.indexOf("http") >= 0) {
+            t.split(",").forEach(function(p){ pushOne(p.trim()); });
+            return;
+          }
+          pushOne(t);
+          return;
+        }
+        if (typeof v === "object") pushOne(v);
+      }
+      pushMany(item._resolved_photos);
+      pushMany(item.photos);
+      pushMany(item.photo_urls);
+      pushMany(item.listing_photos);
+      pushMany(item.photo_url);
+      pushMany(item.image_url);
+      pushMany(item.image);
+      pushMany(item.photo);
+      try {
+        var extra = item.extra_data || {};
+        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        pushMany(extra.photos);
+        pushMany(extra.photo_urls);
+        pushMany(extra.images);
+      } catch (eE) {}
+      return out;
+    }
+    window.collectPhotoUrls = collectPhotoUrls;
+
+
+    // Same field order as Home card photoOf — keep pipeline identical
     function parsePhotosList(item) {
       if (!item) return [];
+      var extra = item.extra_data || {};
+      if (typeof extra === "string") {
+        try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+      }
+      if (!extra || typeof extra !== "object") extra = {};
+
       var candidates = [
         item.photos,
         item.photo_urls,
         item.listing_photos,
         item.photo_url,
         item.image_url,
-        item.photo_id
+        item.images,
+        item.photo_id,
+        item.photo,
+        item.image,
+        extra.photos,
+        extra.photo_urls,
+        extra.listing_photos,
+        extra.photo_url,
+        extra.image_url,
+        extra.images,
+        extra.photo_id,
+        extra.photo,
+        extra.image
       ];
+
       var out = [];
-      for (var i = 0; i < candidates.length; i++) {
-        var raw = candidates[i];
-        if (raw == null || raw === "") continue;
-        if (Array.isArray(raw)) {
-          for (var j = 0; j < raw.length; j++) {
-            var u = getImageUrl(raw[j]);
-            if (u) out.push(u);
-          }
-        } else if (typeof raw === "string") {
-          var s = raw.trim();
-          if (s.charAt(0) === "[") {
-            try {
-              var arr = JSON.parse(s);
-              if (Array.isArray(arr)) {
-                for (var k = 0; k < arr.length; k++) {
-                  var u2 = getImageUrl(arr[k]);
-                  if (u2) out.push(u2);
-                }
-              }
-            } catch (e) {
-              if (s) out.push(s);
-            }
-          } else if (s) {
-            out.push(s);
-          }
-        } else {
-          var u3 = getImageUrl(raw);
-          if (u3) out.push(u3);
+      function pushOne(val) {
+        if (val == null || val === "") return;
+        if (Array.isArray(val)) {
+          for (var j = 0; j < val.length; j++) pushOne(val[j]);
+          return;
         }
+        if (typeof val === "object") {
+          var ou = getImageUrl(val);
+          if (ou) out.push(ou);
+          return;
+        }
+        var s = String(val).trim();
+        if (!s || s === "null" || s === "undefined") return;
+        if (s.charAt(0) === "[") {
+          try {
+            var arr = JSON.parse(s);
+            if (Array.isArray(arr)) {
+              for (var k = 0; k < arr.length; k++) pushOne(arr[k]);
+              return;
+            }
+          } catch (e) {}
+        }
+        // Keep raw URL / data-URI / path exactly as Home cards use it
+        out.push(s);
       }
+      for (var i = 0; i < candidates.length; i++) pushOne(candidates[i]);
+
       var seen = {};
       var uniq = [];
       for (var x = 0; x < out.length; x++) {
-        if (!seen[out[x]]) { seen[out[x]] = 1; uniq.push(out[x]); }
+        var key = out[x];
+        if (!key || seen[key]) continue;
+        seen[key] = 1;
+        uniq.push(key);
       }
       return uniq;
+    }
+
+    // Attribute-safe src (do NOT break data: base64 with &amp;)
+    function escSrc(s) {
+      return String(s == null ? "" : s).replace(/"/g, "%22").replace(/'/g, "%27");
     }
 
     function createCardElement(item) {
@@ -2797,10 +3409,11 @@
         if (extra.location_area) subBadge2 = extra.location_area;
       }
 
+      var primarySrc = photos.length ? (getImageUrl(photos[0]) || photos[0] || "") : "";
       var media;
-      if (photos.length > 0) {
+      if (primarySrc) {
         media = '<div class="listing-photo-frame">' +
-          '<img src="' + esc(getImageUrl(photos[0]) || photos[0] || "") + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.style.display=\'none\'" />' +
+          '<img src="' + escSrc(primarySrc) + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.style.display=\'none\'" data-adika-photo="1" />' +
           '</div>';
       } else {
         media = '<div class="listing-photo-frame flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white p-2">' +
@@ -2848,210 +3461,475 @@
         toggleFav(item.id);
       };
 
-      card.onclick = function () {
-        openDetailModal(item);
+      try {
+        // Freeze photo list on the card so Detail can reuse the exact Home src
+        item._resolved_photos = photos.slice();
+        if (primarySrc && (!item.photos || !item.photos.length)) {
+          item.photos = photos.slice();
+          item.photo_urls = photos.slice();
+        }
+        card._adikaItem = item;
+        card._adikaPhotos = photos.slice();
+        card.setAttribute("data-id", String(item.id || ""));
+        // Only store short http(s)/path srcs on attribute; keep full list on card._adikaPhotos
+        if (primarySrc && primarySrc.indexOf("data:") !== 0 && primarySrc.length < 1800) {
+          card.setAttribute("data-photo-src", primarySrc);
+        }
+      } catch (e) {}
+      card.onclick = function (ev) {
+        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+        // Pass card-resolved photos immediately (no wait for re-parse)
+        openDetailModal(item, photos);
       };
 
       return card;
     }
     window.__adikaCreateCard = createCardElement;
 
-    function openDetailModal(item) {
+    function openDetailModal(item, preloadPhotos) {
       try { savedFeedScrollY = window.scrollY || window.pageYOffset || 0; } catch (e) { savedFeedScrollY = 0; }
+      if (!item || typeof item !== "object") return;
       state.selectedItem = item;
-      pushViewHistory(item);
+      try { window.state = state; } catch (e) {}
+      try { pushViewHistory(item); } catch (e) {}
       var extra = item.extra_data || {};
       if (typeof extra === "string") {
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
       }
-      var photos = parsePhotosList(item);
-      var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
+      if (!extra || typeof extra !== "object") extra = {};
+
+      // DATA PIPELINE: robust photo_urls (string|array|JSON) + card DOM fallback
+      var photos = [];
+      function _pushPhoto(u) {
+        u = getValidImageUrl(u) || (u ? String(u).trim() : "");
+        if (!u) return;
+        if (photos.indexOf(u) < 0) photos.push(u);
+      }
+      if (Array.isArray(preloadPhotos) && preloadPhotos.length) {
+        preloadPhotos.forEach(_pushPhoto);
+      }
+      try {
+        var collected = collectPhotoUrls(item) || [];
+        collected.forEach(_pushPhoto);
+      } catch (eC) {}
+      if (!photos.length) {
+        try {
+          (parsePhotosList(item) || []).forEach(_pushPhoto);
+        } catch (e) {}
+      }
+      // Last resort: pull visible <img> from the home feed card for this id
+      if (!photos.length && item && item.id != null) {
+        try {
+          var cardEl = document.querySelector('#grid .adika-card[data-id="' + String(item.id).replace(/"/g, "") + '"]')
+            || Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card")).find(function(c) {
+              return String(c.getAttribute("data-id") || "") === String(item.id);
+            });
+          if (cardEl) {
+            if (cardEl._adikaPhotos && cardEl._adikaPhotos.length) {
+              cardEl._adikaPhotos.forEach(_pushPhoto);
+            }
+            var dimg = cardEl.querySelector("img");
+            if (dimg && dimg.src && dimg.src.indexOf("data:image/svg") < 0) _pushPhoto(dimg.src);
+          }
+        } catch (eDom) {}
+      }
+      if (photos.length) {
+        item.photos = photos.slice();
+        item.photo_urls = photos.slice();
+        item._resolved_photos = photos.slice();
+      }
+
+      // INSTANT DOM BIND — always paint frame (photo or placeholder)
+      try {
+        if (!modalMediaContainer) modalMediaContainer = document.getElementById("modalMediaContainer");
+        if (modalMediaContainer) {
+          modalMediaContainer.style.minHeight = "230px";
+          modalMediaContainer.style.height = "230px";
+          modalMediaContainer.style.display = "block";
+          var _src0 = photos.length ? (getValidImageUrl(photos[0]) || photos[0] || "") : "";
+          try { _src0 = _src0 ? escSrc(String(_src0)) : ""; } catch (e) {}
+          if (_src0) {
+            modalMediaContainer.innerHTML =
+              '<img class="modal-photo-blur" src="' + _src0 + '" alt="" aria-hidden="true" />' +
+              '<div class="modal-photo-wrap">' +
+                '<img id="detail-main-image" class="modal-photo-main" src="' + _src0 + '" alt="Listing photo" ' +
+                'onerror="this.onerror=null;this.style.opacity=0.3;" />' +
+              '</div>' +
+              '<span class="modal-photo-count">1/' + photos.length + '</span>';
+          } else {
+            modalMediaContainer.innerHTML =
+              '<div class="modal-photo-placeholder"><span style="font-size:2rem">📷</span><span>ፎቶ አልተገኘም</span></div>';
+          }
+        }
+      } catch (eEarly) {}
+
+      var catStr = String(item.main_category || item.category || extra.category || "");
+      var isCar = (catStr.indexOf("መኪና") >= 0) || /car|vehicle|auto/i.test(catStr)
+        || Boolean(extra.fuel_type || extra.transmission || extra.mileage || extra.car_model || extra.car_type || item.car_model)
+        || /Model:|Fuel:|Transmission:|Mileage:/i.test(String(item.description || ""));
 
       var modalTitleText = "";
       if (isCar) {
-        var bm = extractBrandModel(item, extra);
-        modalTitleText = bm.display || "መኪና";
-        modalCategoryBadge.textContent = bm.brand || "መኪና";
+        var bm = { display: "", brand: "" };
+        try { bm = extractBrandModel(item, extra) || bm; } catch (e) {}
+        modalTitleText = bm.display || extra.car_model || item.sub_category || item.model || "መኪና";
+        if (modalCategoryBadge) modalCategoryBadge.textContent = bm.brand || "መኪና";
       } else {
-        modalTitleText = item.sub_category || extra.house_type || "ቤት";
-        modalCategoryBadge.textContent = "ቤት";
+        modalTitleText = item.sub_category || extra.house_type || extra.location_area || "ቤት";
+        if (modalCategoryBadge) modalCategoryBadge.textContent = "ቤት";
       }
-      modalIdBadge.textContent = "#ADK-" + (item.id || "001");
-      modalTitle.textContent = modalTitleText;
+      if (modalIdBadge) modalIdBadge.textContent = "#ADK-" + (item.id != null && item.id !== "" ? item.id : "—");
+      if (modalTitle) modalTitle.textContent = modalTitleText;
 
       var isSell = String(item.req_type || item.action_type || "").toUpperCase().indexOf("SELL") >= 0 || String(item.action_type || "") === "መሸጥ";
       var priceTxt = formatListingPrice(item.price);
       modalPrice.textContent = priceTxt;
       modalTime.textContent = relativeTime(item.created_at) ? ("⏱️ " + relativeTime(item.created_at)) : "";
-      modalDesc.textContent = item.description || "No further details provided.";
+      try {
+        var rawDesc = String(item.description || "").trim();
+        // Remove poster-only noise lines (platform accounts / empty phone)
+        rawDesc = rawDesc.split(/\n/).filter(function(line) {
+          var L = line.trim();
+          if (!L) return false;
+          if (/^📞\s*Phone:\s*$/i.test(L)) return false;
+          if (/^Phone:\s*$/i.test(L)) return false;
+          if (/Telegram:\s*@Adika(Support|PLC|admin)/i.test(L)) return false;
+          if (/^@Adika(Support|PLC|admin)$/i.test(L)) return false;
+          return true;
+        }).join("\n").trim();
+        modalDesc.textContent = rawDesc || "No further details provided.";
+      } catch (eD) {
+        modalDesc.textContent = item.description || "No further details provided.";
+      }
+
+      // Status badges (Urgent / Exchange / Negotiable)
+      try {
+        var badgeHost = document.getElementById("modalStatusBadges");
+        if (badgeHost) {
+          var badges = [];
+          var urgent = extra.urgent || extra.is_urgent || item.urgent || /urgent|አስቸኳይ|🚨/i.test(String(item.description || ""));
+          var exchange = extra.exchange || extra.exchange_possible || item.exchange || /exchange|ልውውጥ|🔄/i.test(String(item.description || ""));
+          var negotiable = extra.negotiable || item.negotiable || /negotiable|ይደራደራል|የሚደራደር/i.test(String(item.description || ""));
+          if (urgent) badges.push('<span class="detail-badge detail-badge-urgent">🚨 Very Urgent</span>');
+          if (exchange) badges.push('<span class="detail-badge detail-badge-exchange">🔄 Exchange Possible</span>');
+          if (negotiable) badges.push('<span class="detail-badge detail-badge-negotiable">💬 Negotiable</span>');
+          badgeHost.innerHTML = badges.join("");
+          badgeHost.style.display = badges.length ? "flex" : "none";
+        }
+      } catch (eBadge) {}
 
       // Image gallery carousel
-      if (photos.length > 0) {
-        var slides = photos.map(function(u, i) {
-          return '<div class="modal-slide shrink-0 w-full h-full snap-center"><img src="' + esc(getImageUrl(u) || u || "") + '" alt="" class="listing-photo-enhance" loading="' + (i === 0 ? "eager" : "lazy") + '" /></div>';
-        }).join("");
-        var dots = photos.length > 1 ? ('<div class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">' +
-          photos.map(function(_, i) {
-            return '<button type="button" class="modal-dot w-1.5 h-1.5 rounded-full ' + (i === 0 ? "bg-white" : "bg-white/50") + '" data-idx="' + i + '"></button>';
-          }).join("") + '</div>') : "";
-        modalMediaContainer.innerHTML =
-          '<div id="modalGalleryTrack" class="flex w-full h-full overflow-x-auto snap-x snap-mandatory no-scrollbar">' + slides + '</div>' + dots;
-        var track = document.getElementById("modalGalleryTrack");
-        if (track && photos.length > 1) {
-          track.onscroll = function() {
-            var idx = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
-            var ds = modalMediaContainer.querySelectorAll(".modal-dot");
-            ds.forEach(function(d, i) {
-              d.className = "modal-dot w-1.5 h-1.5 rounded-full " + (i === idx ? "bg-white" : "bg-white/50");
+      try {
+        if (!modalMediaContainer) modalMediaContainer = document.getElementById("modalMediaContainer");
+        if (photos && photos.length > 0) {
+          var slidesHtml = "";
+          for (var pi = 0; pi < photos.length; pi++) {
+            var srcRaw = getImageUrl(photos[pi]) || photos[pi] || "";
+            // Use escSrc (NOT esc) — esc() breaks data:image base64 via &amp;
+            var src = escSrc(String(srcRaw));
+            slidesHtml += '<div class="modal-slide">' +
+              '<img class="modal-photo-blur" src="' + src + '" alt="" aria-hidden="true" loading="' + (pi === 0 ? "eager" : "lazy") + '" />' +
+              '<div class="modal-photo-wrap">' +
+                '<img class="modal-photo-main" src="' + src + '" alt="" loading="' + (pi === 0 ? "eager" : "lazy") + '" ' +
+                'onerror="this.onerror=null;this.style.opacity=0.4;" />' +
+              '</div></div>';
+          }
+          var dotsHtml = "";
+          if (photos.length > 1) {
+            dotsHtml = '<div class="modal-dots">';
+            for (var di = 0; di < photos.length; di++) {
+              dotsHtml += '<button type="button" class="modal-dot' + (di===0 ? ' is-active' : '') + '" data-idx="' + di + '" aria-label="photo ' + (di+1) + '"></button>';
+            }
+            dotsHtml += '</div>';
+          }
+          var countHtml = photos.length > 1
+            ? '<span class="modal-photo-count">1/' + photos.length + '</span>'
+            : '<span class="modal-photo-count">1/1</span>';
+          modalMediaContainer.innerHTML =
+            '<div id="modalGalleryTrack">' + slidesHtml + '</div>' + dotsHtml + countHtml;
+          var track = document.getElementById("modalGalleryTrack");
+          if (track && photos.length > 1) {
+            track.addEventListener("scroll", function() {
+              var idx = Math.round(track.scrollLeft / Math.max(track.clientWidth, 1));
+              modalMediaContainer.querySelectorAll(".modal-dot").forEach(function(d, i) {
+                if (i === idx) d.classList.add("is-active");
+                else d.classList.remove("is-active");
+              });
+              var cnt = modalMediaContainer.querySelector(".modal-photo-count");
+              if (cnt) cnt.textContent = (idx + 1) + "/" + photos.length;
+            }, { passive: true });
+            modalMediaContainer.querySelectorAll(".modal-dot").forEach(function(d) {
+              d.onclick = function(e) {
+                e.stopPropagation();
+                var i = Number(d.getAttribute("data-idx") || 0);
+                track.scrollTo({ left: i * track.clientWidth, behavior: "smooth" });
+              };
             });
-          };
-          modalMediaContainer.querySelectorAll(".modal-dot").forEach(function(d) {
-            d.onclick = function(e) {
-              e.stopPropagation();
-              var i = Number(d.getAttribute("data-idx") || 0);
-              track.scrollTo({ left: i * track.clientWidth, behavior: "smooth" });
-            };
-          });
+          }
+        } else {
+          modalMediaContainer.innerHTML =
+            '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#e8eef3,#d5dee7);color:#64748b;">' +
+              '<span style="font-size:2.2rem;margin-bottom:4px;">' + (isCar ? "🚗" : "🏠") + '</span>' +
+              '<span style="font-size:12px;font-weight:700;">No Image</span>' +
+            '</div>';
         }
-      } else {
-        modalMediaContainer.innerHTML =
-          '<div class="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white">' +
-            '<span class="text-4xl mb-1">' + (isCar ? '🚗' : '🏠') + '</span>' +
-            '<span class="text-xs font-bold">No Image Available</span>' +
-          '</div>';
+      } catch (mediaErr) {
+        try {
+          modalMediaContainer.innerHTML =
+            '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e2e8f0;color:#64748b;font-size:12px;font-weight:700;">📷 Photo error</div>';
+        } catch (e2) {}
       }
+
+      // Contact fields early (used in structured details)
+      var phone = "";
+      try {
+        phone = String(item.phone || extra.phone || "").replace(/\s+/g, "");
+        if (!phone && item.description) {
+          var pm0 = String(item.description).match(/0?9\d{8}|0?7\d{8}|\+?251\d{9}/);
+          if (pm0) phone = pm0[0];
+        }
+      } catch (ePh0) { phone = ""; }
 
       var specsHtml = "";
+      var modelName = extra.car_model || item.car_model || item.sub_category || item.model || "";
+      function specRow(icon, label, value, extraHtml) {
+        if (value == null || value === "") return "";
+        return '<p class="flex items-center gap-1.5 flex-wrap m-0">' +
+          '<span>' + icon + '</span> ' + label + ': <strong class="text-slate-900">' + esc(String(value)) + '</strong>' +
+          (extraHtml || "") + '</p>';
+      }
+      var priceLabel = formatListingPrice(item.price);
+      var negHtml = "";
+      try {
+        var negotiable = extra.negotiable || item.negotiable || /negotiable|ይደራደራል|የሚደራደር/i.test(String(item.description || ""));
+        if (negotiable) {
+          negHtml = ' <span class="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-md border border-emerald-200 font-bold">✅ Negotiable / የሚደራደር</span>';
+        }
+      } catch (eN) {}
+      specsHtml += specRow("💰", "Price", priceLabel, negHtml);
       if (isCar) {
-        if (extra.chassis_number) specsHtml += '<div class="col-span-2">🛡️ VIN: <span class="font-mono font-bold text-emerald-700">' + esc(extra.chassis_number) + ' (Verified ✓)</span></div>';
-        if (extra.fuel_type) specsHtml += '<div>⛽ Fuel: <span class="font-bold text-slate-800">' + esc(extra.fuel_type) + '</span></div>';
-        if (extra.transmission) specsHtml += '<div>⚙️ Trans: <span class="font-bold text-slate-800">' + esc(extra.transmission) + '</span></div>';
-        if (extra.mileage) specsHtml += '<div>🛣️ Mileage: <span class="font-bold text-slate-800">' + esc(extra.mileage) + ' KM</span></div>';
-        if (extra.condition) specsHtml += '<div>📊 Condition: <span class="font-bold text-slate-800">' + esc(extra.condition) + '</span></div>';
+        specsHtml += specRow("🚗", "Model", modelName);
+        specsHtml += specRow("⛽", "Fuel", extra.fuel_type || "");
+        specsHtml += specRow("⚙️", "Transmission", extra.transmission || "");
+        specsHtml += specRow("🛣️", "Mileage", extra.mileage ? (String(extra.mileage) + " KM") : "");
+        specsHtml += specRow("📊", "Condition", extra.condition || "");
+        if (extra.chassis_number) specsHtml += specRow("🛡️", "VIN", extra.chassis_number);
       } else {
-        if (extra.bedrooms) specsHtml += '<div>🛏️ Beds: <span class="font-bold text-slate-800">' + esc(extra.bedrooms) + '</span></div>';
-        if (extra.bathrooms) specsHtml += '<div>🛁 Baths: <span class="font-bold text-slate-800">' + esc(extra.bathrooms) + '</span></div>';
-        if (extra.parking) specsHtml += '<div>🚗 Parking: <span class="font-bold text-slate-800">' + esc(extra.parking) + '</span></div>';
-        if (extra.condition) specsHtml += '<div>📊 Condition: <span class="font-bold text-slate-800">' + esc(extra.condition) + '</span></div>';
+        specsHtml += specRow("🏠", "Type", extra.house_type || item.sub_category || "");
+        specsHtml += specRow("📍", "Area", extra.location_area || "");
+        specsHtml += specRow("🛏️", "Beds", extra.bedrooms || "");
+        specsHtml += specRow("🛁", "Baths", extra.bathrooms || "");
+        specsHtml += specRow("📊", "Condition", extra.condition || extra.house_condition || "");
       }
-      modalSpecs.innerHTML = specsHtml || '<div>Status: <span class="font-bold text-slate-800">Active & Verified ✔</span></div>';
+      // Details note (cleaned) + phone only (no @AdikaSupport poster)
+      var detailNote = "";
+      try {
+        var rawDesc = String(item.description || "").trim();
+        var lines = rawDesc.split(/\n/).map(function(l){ return l.trim(); }).filter(Boolean);
+        var noteParts = [];
+        for (var li = 0; li < lines.length; li++) {
+          var L = lines[li];
+          if (/^📞\s*Phone:\s*$/i.test(L) || /^Phone:\s*$/i.test(L)) continue;
+          if (/Telegram:\s*@Adika(Support|PLC|admin)/i.test(L)) continue;
+          if (/^@Adika(Support|PLC|admin)$/i.test(L)) continue;
+          if (/^(Price|Model|Fuel|Transmission|Mileage|Condition|Trans)\s*:/i.test(L)) continue;
+          if (/^(💰|🚗|⛽|⚙️|🛣️|📊)/.test(L)) continue;
+          noteParts.push(L);
+        }
+        // Prefer short "Details:" style note
+        for (var nj = 0; nj < noteParts.length; nj++) {
+          if (/^Details\s*:/i.test(noteParts[nj]) || /^📝/.test(noteParts[nj])) {
+            detailNote = noteParts[nj].replace(/^📝\s*/, "").replace(/^Details\s*:\s*/i, "");
+            break;
+          }
+        }
+        if (!detailNote && noteParts.length === 1 && noteParts[0].length < 80) detailNote = noteParts[0];
+      } catch (eNote) {}
+      if (detailNote) specsHtml += specRow("📝", "Details", detailNote);
+      if (phone) specsHtml += specRow("📞", "Phone", phone);
+      if (modalSpecs) modalSpecs.innerHTML = specsHtml || '<p class="m-0 text-slate-500">Active & Verified ✔</p>';
+      try {
+        if (modalDesc) {
+          modalDesc.textContent = "";
+          modalDesc.classList.add("hidden");
+        }
+      } catch (eHide) {}
 
-      var phone = (item.phone_number || item.phone || (extra && (extra.phone_number || extra.phone)) || "").toString().replace(/\s+/g, "");
-      if (!phone) {
-        var mPhone = String(item.description || "").match(/(?:09\d{8}|07\d{8}|\+?2519\d{8}|\+?2517\d{8})/);
-        if (mPhone) phone = mPhone[0];
+      // --- Contact actions (Call / Message / Share) ---
+      phone = "";
+      try {
+        phone = String(item.phone || extra.phone || "").replace(/\s+/g, "");
+        if (!phone && item.description) {
+          var pm = String(item.description).match(/0?9\d{8}|0?7\d{8}|\+?251\d{9}/);
+          if (pm) phone = pm[0];
+        }
+      } catch (e) { phone = ""; }
+      var tUser = "";
+      try {
+        tUser = String(extra.telegram_user || extra.telegram_username || item.telegram_username || item.telegram_user || "").replace(/^@/, "");
+        if (!tUser && item.description) {
+          var um = String(item.description).match(/@([A-Za-z0-9_]{4,})/);
+          if (um) tUser = um[1];
+        }
+      } catch (e) { tUser = ""; }
+      var peerId = item.user_chat_id || item.user_id || item.seller_id || item.telegram_id || extra.user_id || extra.chat_id || "";
+
+      if (modalCallBtn) {
+        if (phone) {
+          modalCallBtn.href = "tel:" + phone;
+          modalCallBtn.onclick = function(ev) {
+            // Allow default tel: navigation; also try Telegram openLink
+            try {
+              if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+                // keep default too
+              }
+            } catch (e) {}
+          };
+        } else {
+          modalCallBtn.href = "#";
+          modalCallBtn.onclick = function(ev) {
+            if (ev) ev.preventDefault();
+            alert("ስልክ ቁጥር አልተገኘም");
+          };
+        }
       }
-      modalCallBtn.href = phone ? ("tel:" + phone) : "#";
-      modalCallBtn.onclick = function(e) {
-        if (!phone) {
-          if (e) e.preventDefault();
-          alert("የስልክ ቁጥር አልተገኘም (Phone number not available)");
-        }
-      };
 
-      modalChatBtn.onclick = function(e) {
-        if (e) e.preventDefault();
-
-        // Extract telegram_username or telegram_id from active listing item
-        var rawUsername = item.telegram_username || (extra && (extra.telegram_username || extra.telegram_user)) || item.telegram_user || item.user_name || "";
-        if (!rawUsername) {
-          var mUser = String(item.description || "").match(/@([A-Za-z0-9_]{4,})/);
-          if (mUser) rawUsername = mUser[1];
-        }
-
-        // Strip any leading '@'
-        var cleanUsername = rawUsername ? String(rawUsername).trim().replace(/^@+/, '') : '';
-
-        // Extract telegram_id
-        var tgId = item.telegram_id || item.user_chat_id || (extra && (extra.telegram_id || extra.chat_id)) || '';
-
-        var webApp = (window.Telegram && window.Telegram.WebApp) || window.tg || null;
-
-        if (cleanUsername) {
-          var tgUrl = 'https://t.me/' + cleanUsername;
-          if (webApp && typeof webApp.openTelegramLink === 'function') {
-            webApp.openTelegramLink(tgUrl);
+      if (modalChatBtn) {
+        modalChatBtn.onclick = function(ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          try {
+            if (typeof window.openListingMessage === "function") {
+              window.openListingMessage(item);
+              return;
+            }
+          } catch (e) {}
+          // Fallback: open Telegram chat
+          var url = "";
+          if (tUser) url = "https://t.me/" + tUser;
+          else if (peerId && String(peerId).match(/^\d+$/)) url = "tg://user?id=" + peerId;
+          if (url) {
+            try {
+              if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(url);
+              else window.open(url, "_blank");
+            } catch (e2) { window.open(url, "_blank"); }
           } else {
-            window.open(tgUrl, '_blank');
+            alert("የሻጭ መልእክት መረጃ አልተገኘም");
           }
-        } else if (tgId) {
-          var tgIdUrl = 'https://t.me/user?id=' + tgId;
-          if (webApp && typeof webApp.openTelegramLink === 'function') {
-            webApp.openTelegramLink(tgIdUrl);
-          } else {
-            window.open(tgIdUrl, '_blank');
-          }
-        } else if (phone) {
-          // Fallback gracefully to initiating a phone call via tel: link
-          window.location.href = 'tel:' + phone;
-        } else {
-          var fallbackPhone = item.phone_number || item.phone || (extra && (extra.phone_number || extra.phone));
-          if (fallbackPhone) {
-            alert("የቴሌግራም አድራሻ አልተገኘም። እባክዎ በ " + fallbackPhone + " ይደውሉልን።");
-            window.location.href = 'tel:' + fallbackPhone;
-          } else {
-            alert("የቴሌግራም አድራሻ ወይም ስልክ ቁጥር አልተገኘም (No Telegram username or phone number available)");
-          }
-        }
-      };
+        };
+      }
 
-      modalFavBtn.innerHTML = favorites[item.id] ? "❤️" : "🤍";
-      modalFavBtn.onclick = function() {
-        toggleFav(item.id);
-      };
+      if (modalFavBtn) {
+        modalFavBtn.innerHTML = (favorites && favorites[item.id]) ? "❤️" : "🤍";
+        modalFavBtn.onclick = function(ev) {
+          if (ev) ev.stopPropagation();
+          try { toggleFav(item.id); } catch (e) {}
+        };
+      }
 
-      modalShareBtn.onclick = function() {
-        var shareUrl = window.location.origin + "/explorer?id=" + item.id;
-        var shareText = "Check out " + modalTitle.textContent + " on Adika Marketplace: " + shareUrl;
-        if (navigator.share) {
-          navigator.share({ title: "Adika Marketplace", text: shareText, url: shareUrl }).catch(function(){});
-        } else if (tg && tg.openTelegramLink) {
-          tg.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareText));
-        } else {
-          navigator.clipboard.writeText(shareText);
-          alert("Link copied!");
-        }
-      };
+      if (modalShareBtn) {
+        modalShareBtn.onclick = function(ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          var shareUrl = (window.location.origin || "") + "/explorer?id=" + (item.id || "");
+          var titleTxt = (modalTitle && modalTitle.textContent) ? modalTitle.textContent : "Adika";
+          var priceTxt2 = (modalPrice && modalPrice.textContent) ? modalPrice.textContent : "";
+          var shareText = "🚗 " + titleTxt + (priceTxt2 ? (" — " + priceTxt2) : "") + "\n📦 #ADK-" + (item.id || "") + "\n🔗 Adika Marketplace\n" + shareUrl;
+          // 1) Native Web Share API (Android/iOS)
+          try {
+            if (navigator.share) {
+              navigator.share({ title: titleTxt + " | Adika", text: shareText, url: shareUrl }).catch(function(){});
+              return;
+            }
+          } catch (e) {}
+          // 2) Telegram Mini App share
+          try {
+            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
+              Telegram.WebApp.openTelegramLink("https://t.me/share/url?url=" + encodeURIComponent(shareUrl) + "&text=" + encodeURIComponent(shareText));
+              return;
+            }
+          } catch (e) {}
+          // 3) WhatsApp fallback
+          try {
+            var wa = "https://wa.me/?text=" + encodeURIComponent(shareText);
+            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+              Telegram.WebApp.openLink(wa);
+              return;
+            }
+            window.open(wa, "_blank");
+            return;
+          } catch (e) {}
+          // 4) Clipboard
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(shareText).then(function(){ alert("Link copied!"); }).catch(function(){ prompt("Copy link:", shareUrl); });
+              return;
+            }
+          } catch (e) {}
+          prompt("Copy link:", shareUrl);
+        };
+      }
 
       modalOverlay.classList.remove("hidden");
       modalOverlay.classList.add("flex");
       modalOverlay.style.display = "flex";
+      // Only hide bottom nav + FAB (header stays — modal z-index covers it; avoids "header gone" bug on back)
       try{
         var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
         var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
-        var h=document.getElementById("adikaFixedHeader"); if(h) h.style.visibility="hidden";
       }catch(e){}
 
-      // Populate dynamic category action buttons
+      // Hub-synced dark glass services (2x2)
       var actionsRow = document.getElementById("modalActionButtonsRow");
       if (actionsRow) {
-        actionsRow.className = "flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5";
-        var chip = function(id, icon, label) {
-          return '<button id="' + id + '" type="button" class="shrink-0 px-2.5 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-[#0e7490] font-bold text-[10px] flex items-center gap-1 active:scale-95 whitespace-nowrap">' +
-            '<span>' + icon + '</span><span>' + label + '</span></button>';
+        actionsRow.className = "grid grid-cols-2 gap-2";
+        var svc = function(id, icon, titleAm, subEn) {
+          return '<button id="' + id + '" type="button" class="detail-hub-svc">' +
+            '<span class="svc-icon">' + icon + '</span>' +
+            '<span class="min-w-0"><span class="svc-title block">' + titleAm + '</span>' +
+            '<span class="svc-sub block">' + subEn + '</span></span></button>';
         };
         if (isCar) {
-          actionsRow.innerHTML = chip("actCarDuty","🧮","የቀረጥ ስሌት") + chip("actCarCompare","⚖️","ንጽጽር") + chip("actCarDiag","🛠️","ምርመራ");
-          document.getElementById("actCarDuty").onclick = function() {
-            openToolModal('dutyModal');
-            if (extra.cif_price) document.getElementById("dutyCif").value = extra.cif_price;
+          actionsRow.innerHTML =
+            svc("actChassis","🛡️","የሻንሲ ማጣሪያ","Chassis / VIN Specs") +
+            svc("actCompare","📊","የመኪና ንፅፅር","Vehicle Comparison") +
+            svc("actPoa","📜","የውክልና ማጣሪያ","Verify Attorney") +
+            svc("actDiag","⚙️","የምርመራ ወረቀት","Garage Diagnostic");
+          var elCh = document.getElementById("actChassis");
+          if (elCh) elCh.onclick = function(ev) { try { if(ev){ev.preventDefault();ev.stopPropagation();} openToolModal("chassisModal", ev); } catch(e){} };
+          var elCmp = document.getElementById("actCompare");
+          if (elCmp) elCmp.onclick = function(ev) {
+            try {
+              if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+              openToolModal("compareModal", ev);
+              var c1 = document.getElementById("compareCar1");
+              if (c1) c1.value = modalTitleText;
+            } catch(e){}
           };
-          document.getElementById("actCarCompare").onclick = function() {
-            openToolModal('compareModal');
-            var c1 = document.getElementById("compareCar1");
-            if (c1) c1.value = modalTitleText;
-          };
-          document.getElementById("actCarDiag").onclick = function() { openToolModal('diagModal'); };
+          var elPoa = document.getElementById("actPoa");
+          if (elPoa) elPoa.onclick = function(ev) { try { if(ev){ev.preventDefault();ev.stopPropagation();} openToolModal("poaModal", ev); } catch(e){} };
+          var elDiag = document.getElementById("actDiag");
+          if (elDiag) elDiag.onclick = function(ev) { try { if(ev){ev.preventDefault();ev.stopPropagation();} openToolModal("diagModal", ev); } catch(e){} };
         } else {
-          actionsRow.innerHTML = chip("actPropLoan","🏦","የባንክ ብድር") + chip("actPropPoa","🔍","ውክልና") + chip("actPropContract","📜","ውል");
-          document.getElementById("actPropLoan").onclick = function() { openToolModal('loanModal'); };
-          document.getElementById("actPropPoa").onclick = function() { openToolModal('poaModal'); };
-          document.getElementById("actPropContract").onclick = function() {
-            openToolModal('contractModal');
-            var rawPrice = parseInt(String(item.price || "").replace(/[^0-9]/g, "")) || "";
-            var cp = document.getElementById("contractPrice");
-            if (cp) cp.value = rawPrice;
+          actionsRow.innerHTML =
+            svc("actLoan","🏦","የባንክ ብድር","Mortgage & Loan") +
+            svc("actPoa2","📜","የውክልና ማጣሪያ","Verify Attorney") +
+            svc("actContract","📄","የሽያጭ ውል","Legal Sales Contract") +
+            svc("actLand","🗺️","የካርታ ማጣሪያ","Cadastral Map");
+          var elL = document.getElementById("actLoan");
+          if (elL) elL.onclick = function(ev) { try { if(ev){ev.preventDefault();ev.stopPropagation();} openToolModal("loanModal", ev); } catch(e){} };
+          var elP2 = document.getElementById("actPoa2");
+          if (elP2) elP2.onclick = function(ev) { try { if(ev){ev.preventDefault();ev.stopPropagation();} openToolModal("poaModal", ev); } catch(e){} };
+          var elCt = document.getElementById("actContract");
+          if (elCt) elCt.onclick = function(ev) {
+            try {
+              if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+              openToolModal("contractModal", ev);
+              var rawPrice = parseInt(String(item.price || "").replace(/[^0-9]/g, "")) || "";
+              var cp = document.getElementById("contractPrice");
+              if (cp) cp.value = rawPrice;
+            } catch(e){}
           };
+          var elLand = document.getElementById("actLand");
+          if (elLand) elLand.onclick = function(ev) { try { if(ev){ev.preventDefault();ev.stopPropagation();} openToolModal("landMapModal", ev); } catch(e){} };
         }
       }
 
@@ -3061,22 +3939,67 @@
       loadRecommendations(item);
     }
 
+    window.openDetailModal = openDetailModal;
+
+    function restoreHomeChrome() {
+      try {
+        var n = document.getElementById("adikaBottomNav");
+        var f = document.getElementById("fabBtn");
+        var h = document.getElementById("adikaFixedHeader");
+        var hero = document.getElementById("homeHero");
+        if (n) {
+          n.style.removeProperty("display");
+          n.style.display = "";
+          n.classList.remove("hidden");
+        }
+        if (f) {
+          f.style.removeProperty("display");
+          f.style.display = "";
+          f.classList.remove("hidden");
+        }
+        if (h) {
+          h.style.removeProperty("visibility");
+          h.style.removeProperty("display");
+          h.style.visibility = "visible";
+          h.style.display = "";
+          h.classList.remove("hidden");
+        }
+        if (hero) {
+          hero.style.removeProperty("display");
+          hero.style.display = "";
+          hero.classList.remove("hidden");
+        }
+        document.body.style.overflow = "";
+      } catch (e) {}
+    }
+    window.restoreHomeChrome = restoreHomeChrome;
+
     function closeDetailModalPreserve() {
-      modalOverlay.classList.add("hidden");
-      modalOverlay.classList.remove("flex");
-      modalOverlay.style.display = "none";
-      try{
-        var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="";
-        var f=document.getElementById("fabBtn"); if(f) f.style.display="";
-        var h=document.getElementById("adikaFixedHeader"); if(h) h.style.visibility="";
-      }catch(e){}
-      state.selectedItem = null;
+      try {
+        if (modalOverlay) {
+          modalOverlay.classList.add("hidden");
+          modalOverlay.classList.remove("flex");
+          modalOverlay.style.display = "none";
+        }
+      } catch (e) {}
+      restoreHomeChrome();
+      try { state.selectedItem = null; } catch (e) {}
       try {
         window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
       } catch (e) {
         try { window.scrollTo(0, savedFeedScrollY || 0); } catch (e2) {}
       }
+      // Re-fit feed padding after header is visible again
+      try {
+        var hdr = document.getElementById("adikaFixedHeader");
+        var main = document.getElementById("adikaMainFeed");
+        if (hdr && main) {
+          var hh = Math.ceil(hdr.getBoundingClientRect().height || 0);
+          if (hh > 40) main.style.paddingTop = (hh + 6) + "px";
+        }
+      } catch (e3) {}
     }
+    window.closeDetailModalPreserve = closeDetailModalPreserve;
     modalClose.onclick = closeDetailModalPreserve;
     var modalBackBtn = document.getElementById("modalBackBtn");
     if (modalBackBtn) {
@@ -3137,6 +4060,7 @@
     function finishLoading(items, append, hasMore) {
       // ALWAYS unlock UI — finally semantics
       try { state.loading = false; } catch (e) {}
+      try { showLoadMoreSpinner(false); } catch (e) {}
       try { if (grid) grid.style.opacity = "1"; } catch (e) {}
       try {
         if (statusEl) {
@@ -3225,16 +4149,36 @@
       } catch (e) { console.error(e); }
     };
 
+    var itemsPerPage = 10;
+    function showLoadMoreSpinner(on) {
+      try {
+        var spin = document.getElementById("btnSpinner");
+        var txt = document.getElementById("btnText");
+        var txtEn = document.getElementById("btnTextEn");
+        if (spin) spin.classList.toggle("hidden", !on);
+        if (txt) txt.style.opacity = on ? "0.55" : "1";
+        if (txtEn) txtEn.style.opacity = on ? "0.55" : "1";
+        if (moreBtn) moreBtn.disabled = !!on;
+      } catch (e) {}
+    }
+    function loadMoreVehicles() {
+      if (state.loading || state.hasMore === false) return;
+      load(true);
+    }
+    window.loadMoreVehicles = loadMoreVehicles;
+
     function load(append) {
       // Simple, reliable loader — never discard successful API data
+      if (append && (state.loading || state.hasMore === false)) return;
       try { state.loading = true; } catch (e) {}
-      try { if (grid) grid.style.opacity = "0.7"; } catch (e) {}
+      try { if (append) showLoadMoreSpinner(true); } catch (e) {}
+      try { if (grid && !append) grid.style.opacity = "0.7"; } catch (e) {}
 
       var page = append ? (state.page + 1) : 1;
       var isBuy = state.tab !== "marketplace";
       // Prefer explorer (known-good) unless user explicitly chose For You
       var useForYou = (!isBuy && state.feedMode === "foryou" && !state.q);
-      var qs = "page=" + page + "&limit=24&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
+      var qs = "page=" + page + "&limit=" + itemsPerPage + "&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
       var cat = (state.category || "").trim();
       if (!useForYou && cat && !/^(all|ሁሉም|✨|foryou)/i.test(cat)) {
         qs += "&category=" + encodeURIComponent(cat);
@@ -3243,10 +4187,13 @@
       if (state.chassisOnly) qs += "&chassis_only=1";
 
       var urls = [];
-      urls.push("/api/listings?" + qs);
-      urls.push("/api/explorer/listings?" + qs);
+      if (!useForYou) {
+        urls.push("/api/listings?" + qs);
+        urls.push("/api/explorer/listings?" + qs);
+      }
       if (useForYou) {
-        urls.push("/api/feed/for-you?page=" + page + "&limit=24&user_id=" + encodeURIComponent(state.userId || "0"));
+        urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + encodeURIComponent(state.userId || getTelegramUserId() || "0"));
+        urls.push("/api/listings?" + qs);
       }
 
       var done = false;
@@ -3254,11 +4201,40 @@
         if (done && !(items && items.length)) return;
         done = true;
         try { state.loading = false; } catch (e) {}
+        try { showLoadMoreSpinner(false); } catch (e) {}
         try { state.page = page; state.hasMore = !!hasMore; } catch (e) {}
         try { finishLoading(items || [], append, !!hasMore); } catch (e) {
           console.error("[Adika] applyItems", e);
           try { if (items && items.length) renderFallbackCards(items); } catch (e2) {}
         }
+      }
+
+      // FYP path: Supabase RPC get_fyp_feed first
+      if (useForYou) {
+        var sb = ensureSupabaseClient();
+        var tid = getTelegramUserId() || Number(state.userId || 0);
+        var offset = Math.max(0, (page - 1) * itemsPerPage);
+        if (sb && typeof sb.rpc === "function" && tid) {
+          sb.rpc("get_fyp_feed", {
+            p_telegram_id: tid,
+            p_limit: itemsPerPage,
+            p_offset: offset
+          }).then(function (res) {
+            var rows = (res && res.data) || [];
+            if (!Array.isArray(rows)) rows = [];
+            if (rows.length > 0) {
+              applyItems(rows, rows.length >= itemsPerPage);
+              return;
+            }
+            tryUrl(0);
+          }).catch(function () {
+            tryUrl(0);
+          });
+        } else {
+          tryUrl(0);
+        }
+      } else {
+        tryUrl(0);
       }
 
       function tryUrl(i) {
@@ -3283,7 +4259,10 @@
             var items = (r.data.items || r.data.listings || r.data.results || (r.data.data && (r.data.data.items || r.data.data.listings)) || r.data.data || []);
             if (!Array.isArray(items)) items = [];
             if (items.length > 0) {
-              applyItems(items, !!(r.data.has_more || r.data.hasMore));
+              var moreFlag = (r.data.has_more != null || r.data.hasMore != null)
+                ? !!(r.data.has_more || r.data.hasMore)
+                : items.length >= itemsPerPage;
+              applyItems(items, moreFlag);
             } else {
               tryUrl(i + 1);
             }
@@ -3294,8 +4273,6 @@
             tryUrl(i + 1);
           });
       }
-
-      tryUrl(0);
     }
 
     // Dynamic Central FAB
@@ -3380,7 +4357,32 @@
       selectCategory(catId);
     };
 
-    moreBtn.onclick = function () { load(true); };
+    moreBtn.onclick = function () { loadMoreVehicles(); };
+
+    (function bindInfiniteScroll() {
+      var ticking = false;
+      function nearBottom() {
+        var el = document.documentElement;
+        return (el.scrollTop + el.clientHeight >= el.scrollHeight - 100);
+      }
+      window.addEventListener("scroll", function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () {
+          ticking = false;
+          if (nearBottom()) loadMoreVehicles();
+        });
+      }, { passive: true });
+      var wrap = document.getElementById("loadMoreWrap");
+      if (wrap && "IntersectionObserver" in window) {
+        try {
+          var io = new IntersectionObserver(function (entries) {
+            if (entries[0] && entries[0].isIntersecting) loadMoreVehicles();
+          }, { rootMargin: "120px 0px" });
+          io.observe(wrap);
+        } catch (e) {}
+      }
+    })();
 
     var deb = null;
     qInput.oninput = function () {
@@ -3499,12 +4501,16 @@
       openToolModal(modalId);
     };
 
-    window.openToolModal = function(id) {
+    window.openToolModal = function(id, ev) {
+      try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e0) {}
       var m = document.getElementById(id);
       if (m) {
         m.classList.remove("hidden");
         m.classList.add("flex");
-        try { m.style.display = "flex"; } catch (e) {}
+        try {
+          m.style.display = "flex";
+          m.style.zIndex = "9999";
+        } catch (e) {}
       }
       if (id === "aiModal") {
         try {
@@ -6193,6 +7199,7 @@
   }
   function openHome(){
     closeAll();
+    try { if (window.restoreHomeChrome) window.restoreHomeChrome(); } catch(e){}
     try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){ window.scrollTo(0,0); }
   }
 
@@ -6456,14 +7463,6 @@
         var cid = pill.getAttribute("data-id") || "all";
         markCats(cid);
         if(cid==="foryou"){
-          if(typeof isOnboarded === "function" && !isOnboarded()){
-            openOnboarding();
-            return;
-          }
-          if(typeof triggerFypFeed === "function"){
-            triggerFypFeed();
-            return;
-          }
           fetch("/api/feed/for-you",{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
             var items=(d&& (d.items||d.listings||d.results))||[];
             if(Array.isArray(items) && items.length) paintLive(items);
@@ -6593,25 +7592,67 @@
     if(id==="modalClose" || id==="modalBackBtn" || id==="aiSearchBackBtn" || id==="aiSearchCloseBtn"){
       e.preventDefault(); e.stopPropagation();
       if(id.indexOf("Search")>=0){ if(el("aiSearchView")) { el("aiSearchView").classList.add("hidden"); el("aiSearchView").style.display="none"; } if(el("aiToolsView")) el("aiToolsView").classList.remove("hidden"); return; }
-      closeAll();
+      // Must restore header/nav — do NOT use closeAll() alone
+      if(window.closeDetailModalPreserve) window.closeDetailModalPreserve();
+      else if(typeof closeDetailModalPreserve === "function") closeDetailModalPreserve();
+      else {
+        closeAll();
+        try {
+          var h=document.getElementById("adikaFixedHeader");
+          if(h){ h.style.visibility="visible"; h.style.display=""; h.classList.remove("hidden"); }
+          var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="";
+          var f=document.getElementById("fabBtn"); if(f) f.style.display="";
+        } catch(e2){}
+      }
       return;
     }
-    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); hide("modalOverlay"); if(window.openListingMessage) openListingMessage(); return; }
+    if(id==="modalChatBtn"){ e.preventDefault(); e.stopPropagation(); if(window.closeDetailModalPreserve) window.closeDetailModalPreserve(); else hide("modalOverlay"); if(window.openListingMessage) openListingMessage(); return; }
 
-    if(t.getAttribute("data-live")==="1" || t.classList.contains("adika-card")){
-      var card = t.closest(".adika-card") || t;
+    if(t.getAttribute("data-live")==="1" || (t.classList && t.classList.contains("adika-card")) || (t.closest && t.closest(".adika-card"))){
+      var card = (t.closest && t.closest(".adika-card")) || t;
+      if(!card) return;
       var items = window.__adikaLiveItems || [];
-      var cards = Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card"));
-      var it = items[cards.indexOf(card)];
+      var it = card._adikaItem || null;
+      if(!it){
+        var cards = Array.prototype.slice.call(document.querySelectorAll("#grid .adika-card"));
+        var idx = cards.indexOf(card);
+        if(idx >= 0 && items[idx]) it = items[idx];
+      }
+      if(!it){
+        var did = card.getAttribute("data-id");
+        if(did && items.length){
+          for(var ii=0;ii<items.length;ii++){ if(String(items[ii].id)===String(did)){ it=items[ii]; break; } }
+        }
+      }
       if(!it) return;
       e.preventDefault(); e.stopPropagation();
-      if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
-      if(el("modalPrice")){
-        var n=Number(String(it.price||"").replace(/[^\d.]/g,""));
-        el("modalPrice").textContent = (!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB");
+      var prePhotos = null;
+      try {
+        prePhotos = card._adikaPhotos || it._resolved_photos || null;
+        if ((!prePhotos || !prePhotos.length) && card.getAttribute("data-photo-src")) {
+          prePhotos = [card.getAttribute("data-photo-src")];
+        }
+        // If card DOM still has a visible img, use its current src (exact Home feed image)
+        if ((!prePhotos || !prePhotos.length) && card.querySelector) {
+          var imgEl = card.querySelector("img[data-adika-photo], .listing-photo-enhance, img");
+          if (imgEl && imgEl.getAttribute("src")) prePhotos = [imgEl.getAttribute("src")];
+        }
+      } catch (e) { prePhotos = null; }
+      if(window.openDetailModal){
+        try { window.openDetailModal(it, prePhotos); } catch(err){ console.error("openDetailModal", err); }
+      } else if(typeof openDetailModal === "function"){
+        try { openDetailModal(it, prePhotos); } catch(err){ console.error("openDetailModal", err); }
+      } else {
+        // last-resort partial fill
+        if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
+        if(el("modalPrice")){
+          var n=Number(String(it.price||"").replace(/[^\d.]/g,""));
+          el("modalPrice").textContent = (!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB");
+        }
+        if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
+        show("modalOverlay");
       }
-      if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
-      show("modalOverlay");
+      return;
     }
   }, true);
 
