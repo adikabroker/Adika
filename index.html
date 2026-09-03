@@ -2673,12 +2673,19 @@
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function () {
           bind();
-          if (!isOnboarded()) setTimeout(function () { showOb(true); }, 450);
+          // Show once until user completes/skips — FYP personalization requires prefs
+          if (!isOnboarded()) setTimeout(function () { showOb(true); }, 500);
         });
       } else {
         bind();
-        if (!isOnboarded()) setTimeout(function () { showOb(true); }, 450);
+        if (!isOnboarded()) setTimeout(function () { showOb(true); }, 500);
       }
+      // Also when FYP tab is already selected without onboard
+      setTimeout(function () {
+        try {
+          if (!isOnboarded() && state && state.feedMode === "foryou") showOb(true);
+        } catch (e) {}
+      }, 900);
     })();
 
     var favorites = {};
@@ -3871,9 +3878,10 @@
       modalOverlay.classList.remove("hidden");
       modalOverlay.classList.add("flex");
       modalOverlay.style.display = "flex";
-      // Only hide bottom nav + FAB (header stays — modal z-index covers it; avoids "header gone" bug on back)
+      // Only hide bottom nav + FAB (header stays — modal z-index covers it)
       try{
-        var n=document.getElementById("adikaBottomNav"); if(n) n.style.display="none";
+        window.__adikaChromeHiddenByDetail = true;
+        var n=document.getElementById("adikaBottomNav"); if(n) n.style.setProperty("display","none","important");
         var f=document.getElementById("fabBtn"); if(f) f.style.display="none";
       }catch(e){}
 
@@ -3941,35 +3949,50 @@
 
     window.openDetailModal = openDetailModal;
 
-    function restoreHomeChrome() {
+    function forceShowBottomNav() {
       try {
         var n = document.getElementById("adikaBottomNav");
+        if (!n) return;
+        n.classList.remove("hidden");
+        // Clear any inline hide
+        try { n.style.removeProperty("display"); } catch (e0) {}
+        try { n.style.removeProperty("visibility"); } catch (e1) {}
+        try { n.style.removeProperty("opacity"); } catch (e2) {}
+        n.style.setProperty("display", "flex", "important");
+        n.style.setProperty("visibility", "visible", "important");
+        n.style.setProperty("opacity", "1", "important");
+        n.style.setProperty("pointer-events", "auto", "important");
+        n.style.setProperty("z-index", "100", "important");
+      } catch (e) {}
+    }
+    window.forceShowBottomNav = forceShowBottomNav;
+
+    function restoreHomeChrome() {
+      try {
+        forceShowBottomNav();
         var f = document.getElementById("fabBtn");
         var h = document.getElementById("adikaFixedHeader");
         var hero = document.getElementById("homeHero");
-        if (n) {
-          n.classList.remove("hidden");
-          n.style.removeProperty("visibility");
-          n.style.setProperty("display", "flex", "important");
-        }
         if (f) {
           f.classList.remove("hidden");
-          f.style.removeProperty("display");
+          try { f.style.removeProperty("display"); } catch (e) {}
           f.style.display = "";
         }
         if (h) {
           h.classList.remove("hidden");
-          h.style.removeProperty("visibility");
-          h.style.removeProperty("display");
+          try { h.style.removeProperty("visibility"); h.style.removeProperty("display"); } catch (e) {}
           h.style.visibility = "visible";
           h.style.display = "";
         }
         if (hero) {
-          hero.style.removeProperty("display");
+          try { hero.style.removeProperty("display"); } catch (e) {}
           hero.style.display = "";
           hero.classList.remove("hidden");
         }
         document.body.style.overflow = "";
+        // Second pass — Telegram WebView sometimes reverts first paint
+        setTimeout(forceShowBottomNav, 50);
+        setTimeout(forceShowBottomNav, 300);
       } catch (e) {}
     }
     window.restoreHomeChrome = restoreHomeChrome;
@@ -3983,13 +4006,10 @@
         }
       } catch (e) {}
       restoreHomeChrome();
-      try {
-        var nav = document.getElementById("adikaBottomNav");
-        if (nav) {
-          nav.classList.remove("hidden");
-          nav.style.setProperty("display", "flex", "important");
-        }
-      } catch (eNav) {}
+      try { window.__adikaChromeHiddenByDetail = false; } catch (eF) {}
+      try { forceShowBottomNav(); } catch (eNav) {}
+      try { setTimeout(forceShowBottomNav, 80); } catch (eNav2) {}
+      try { setTimeout(forceShowBottomNav, 400); } catch (eNav3) {}
       try { state.selectedItem = null; } catch (e) {}
       try {
         window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
@@ -4007,6 +4027,39 @@
       } catch (e3) {}
     }
     window.closeDetailModalPreserve = closeDetailModalPreserve;
+
+    // Recover bottom nav if stuck hidden after detail / tool sheets
+    (function adikaNavWatchdog() {
+      function recover() {
+        try {
+          var overlay = document.getElementById("modalOverlay");
+          var detailOpen = overlay && !overlay.classList.contains("hidden") && overlay.style.display !== "none";
+          if (detailOpen) return;
+          var toolsOpen = false;
+          ["aiModal","analysisView","dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","inboxView"].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el && !el.classList.contains("hidden") && el.style.display !== "none" && (el.classList.contains("flex") || el.style.display === "flex")) toolsOpen = true;
+          });
+          if (toolsOpen) return;
+          if (typeof forceShowBottomNav === "function") forceShowBottomNav();
+        } catch (e) {}
+      }
+      document.addEventListener("visibilitychange", function() { if (!document.hidden) setTimeout(recover, 100); });
+      setInterval(recover, 1200);
+      try {
+        if (window.Telegram && Telegram.WebApp && Telegram.WebApp.onEvent) {
+          Telegram.WebApp.onEvent("backButtonClicked", function() {
+            try {
+              if (window.closeDetailModalPreserve) window.closeDetailModalPreserve();
+              else if (typeof restoreHomeChrome === "function") restoreHomeChrome();
+              setTimeout(recover, 50);
+            } catch (e) {}
+          });
+        }
+      } catch (eTg) {}
+    })();
+
+
     modalClose.onclick = closeDetailModalPreserve;
     var modalBackBtn = document.getElementById("modalBackBtn");
     if (modalBackBtn) {
@@ -4333,7 +4386,8 @@
         if (m) {
           m.classList.remove("hidden");
           m.classList.add("flex");
-          m.style.display = "flex";
+          m.style.setProperty("display", "flex", "important");
+          m.style.zIndex = "10000";
           document.body.style.overflow = "hidden";
           return true;
         }
@@ -6997,7 +7051,7 @@
           var nav = document.getElementById("adikaBottomNav");
           var fab = document.getElementById("fabBtn");
           var hero = document.getElementById("homeHero");
-          if (nav) nav.style.display = visible ? "" : "none";
+          if (nav) { if (visible) { nav.classList.remove("hidden"); nav.style.setProperty("display","flex","important"); } else { nav.style.display = "none"; } }
           if (fab) fab.style.display = visible ? "" : "none";
           if (hero) hero.style.display = visible ? "" : "none";
         } catch (e) {}
