@@ -273,8 +273,17 @@
         height: auto;
         padding-bottom: 0;
         aspect-ratio: 1 / 1;
-        max-height: min(360px, 52vh);
+        max-height: min(320px, 48vh);
       }
+    }
+    /* Soft white frame around hero photo */
+    #modalMediaContainer {
+      margin: 0.65rem 0.75rem 0.35rem;
+      width: calc(100% - 1.5rem);
+      border-radius: 0.9rem;
+      border: 1px solid rgba(226,232,240,0.95);
+      box-shadow: 0 2px 10px rgba(15,23,42,0.06);
+      background: #f8fafc;
     }
     #modalMediaContainer .modal-photo-blur {
       position: absolute; inset: 0;
@@ -2409,17 +2418,11 @@
         return;
       }
       sc.innerHTML = items.map(function(it) {
-        var photos = [];
-        try { photos = parsePhotosList(it); } catch (e) {}
-        if (!photos.length) {
-          try {
-            var pu = it.photo_urls || it.photos || it.listing_photos || it.photo_url || it.image_url;
-            if (Array.isArray(pu) && pu[0]) photos = [pu[0]];
-            else if (typeof pu === "string" && pu) photos = [pu];
-          } catch (e2) {}
-        }
         var img = "";
-        try { img = getImageUrl(photos[0]) || (photos[0] ? String(photos[0]) : "") || ""; } catch (e3) {}
+        try {
+          var list = collectPhotoUrls(it);
+          img = (list && list[0]) || getValidImageUrl(it.photo_urls) || getValidImageUrl(it.photos) || "";
+        } catch (e3) { img = ""; }
         var price = formatListingPrice(it.price);
         var name = it.title || it.sub_category || it.model || it.main_category || "ንብረት";
         return (
@@ -2779,40 +2782,104 @@
       }
     }
 
-    function getImageUrl(photoUrls) {
-      if (!photoUrls) return "";
-      if (Array.isArray(photoUrls)) {
-        for (var i = 0; i < photoUrls.length; i++) {
-          var u = getImageUrl(photoUrls[i]);
-          if (u) return u;
+    // Robust photo URL parser — String | Array | JSON | object | relative path
+    function getValidImageUrl(photoData) {
+      if (photoData == null || photoData === "") return null;
+      try {
+        // Direct array
+        if (Array.isArray(photoData)) {
+          for (var i = 0; i < photoData.length; i++) {
+            var u = getValidImageUrl(photoData[i]);
+            if (u) return u;
+          }
+          return null;
         }
-        return "";
-      }
-      if (typeof photoUrls === "object") {
-        return getImageUrl(photoUrls.url || photoUrls.src || photoUrls.photo_url || photoUrls.photo_id || photoUrls.image || photoUrls.path || "");
-      }
-      var s = String(photoUrls).trim();
-      if (!s || s === "null" || s === "undefined") return "";
-      if (s.charAt(0) === "[") {
-        try {
-          return getImageUrl(JSON.parse(s));
-        } catch (e) {
-          /* keep raw */
+        // Object with url fields
+        if (typeof photoData === "object") {
+          return getValidImageUrl(
+            photoData.url || photoData.src || photoData.photo_url ||
+            photoData.photo_id || photoData.image || photoData.path || photoData.publicUrl || null
+          );
         }
+        var s = String(photoData).trim();
+        if (!s || s === "null" || s === "undefined") return null;
+        // JSON string array / object
+        if ((s.charAt(0) === "[" || s.charAt(0) === "{") && s.length > 2) {
+          try {
+            return getValidImageUrl(JSON.parse(s));
+          } catch (eJ) { /* fall through */ }
+        }
+        // Absolute / data / blob
+        if (/^(https?:|data:|blob:|tg:|\/\/)/i.test(s)) return s;
+        // Telegram-style file id
+        if (s.indexOf("/") === -1 && s.indexOf(".") === -1 && s.length > 20) {
+          return "/api/photo/" + encodeURIComponent(s);
+        }
+        // Relative paths
+        if (s.charAt(0) !== "/") {
+          if (/^(uploads|static|media|photos)\//i.test(s)) s = "/" + s;
+          else if (/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(s)) s = "/static/uploads/" + s.replace(/^\.\//, "");
+        }
+        return s;
+      } catch (e) {
+        if (typeof photoData === "string" && /^(https?:|data:)/i.test(photoData.trim())) {
+          return photoData.trim();
+        }
+        return null;
       }
-      // Absolute / data / blob stay as-is
-      if (/^(https?:|data:|blob:|tg:|\/\/)/i.test(s)) return s;
-      // Telegram file_id style (no slash) — leave for backend proxy if any
-      if (s.indexOf("/") === -1 && s.indexOf(".") === -1 && s.length > 20) {
-        return "/api/photo/" + encodeURIComponent(s);
-      }
-      // Relative upload paths
-      if (s.charAt(0) !== "/") {
-        if (/^(uploads|static|media|photos)\//i.test(s)) s = "/" + s;
-        else if (/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(s)) s = "/static/uploads/" + s.replace(/^\.?\//, "");
-      }
-      return s;
     }
+    window.getValidImageUrl = getValidImageUrl;
+
+    function getImageUrl(photoUrls) {
+      return getValidImageUrl(photoUrls) || "";
+    }
+
+    // Collect ALL photo URLs from a listing item (for gallery)
+    function collectPhotoUrls(item) {
+      if (!item) return [];
+      var out = [];
+      var seen = {};
+      function pushOne(v) {
+        var u = getValidImageUrl(v);
+        if (u && !seen[u]) { seen[u] = 1; out.push(u); }
+      }
+      function pushMany(v) {
+        if (!v) return;
+        if (Array.isArray(v)) { v.forEach(pushOne); return; }
+        if (typeof v === "string") {
+          var t = v.trim();
+          if ((t.charAt(0) === "[" || t.charAt(0) === "{") && t.length > 2) {
+            try { pushMany(JSON.parse(t)); return; } catch (e) {}
+          }
+          // comma-separated
+          if (t.indexOf(",") > -1 && t.indexOf("http") >= 0) {
+            t.split(",").forEach(function(p){ pushOne(p.trim()); });
+            return;
+          }
+          pushOne(t);
+          return;
+        }
+        if (typeof v === "object") pushOne(v);
+      }
+      pushMany(item._resolved_photos);
+      pushMany(item.photos);
+      pushMany(item.photo_urls);
+      pushMany(item.listing_photos);
+      pushMany(item.photo_url);
+      pushMany(item.image_url);
+      pushMany(item.image);
+      pushMany(item.photo);
+      try {
+        var extra = item.extra_data || {};
+        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        pushMany(extra.photos);
+        pushMany(extra.photo_urls);
+        pushMany(extra.images);
+      } catch (eE) {}
+      return out;
+    }
+    window.collectPhotoUrls = collectPhotoUrls;
+
 
     // Same field order as Home card photoOf — keep pipeline identical
     function parsePhotosList(item) {
@@ -3005,26 +3072,17 @@
       }
       if (!extra || typeof extra !== "object") extra = {};
 
-      // DATA PIPELINE: Home-card photos first (identical field mapping)
+      // DATA PIPELINE: robust photo_urls (string|array|JSON) → URL list
       var photos = [];
       if (Array.isArray(preloadPhotos) && preloadPhotos.length) {
-        photos = preloadPhotos.slice();
-      } else if (Array.isArray(item._resolved_photos) && item._resolved_photos.length) {
-        photos = item._resolved_photos.slice();
-      } else {
-        try { photos = parsePhotosList(item); } catch (e) { photos = []; }
+        photos = preloadPhotos.map(function(x){ return getValidImageUrl(x) || ""; }).filter(Boolean);
       }
       if (!photos.length) {
-        var fallbacks = [item.photos, item.photo_urls, item.listing_photos, item.photo_url, item.image_url, item.image, item.photo, item.photo_id];
-        for (var fi = 0; fi < fallbacks.length; fi++) {
-          var fv = fallbacks[fi];
-          if (!fv) continue;
-          if (Array.isArray(fv) && fv.length) {
-            photos = fv.map(function(x){ return getImageUrl(x) || (typeof x==="string"?x:""); }).filter(Boolean);
-            if (photos.length) break;
-          }
-          if (typeof fv === "string" && fv.trim()) { photos = [fv.trim()]; break; }
-        }
+        try { photos = collectPhotoUrls(item); } catch (eC) { photos = []; }
+      }
+      if (!photos.length) {
+        try { photos = parsePhotosList(item); } catch (e) { photos = []; }
+        photos = (photos || []).map(function(x){ return getValidImageUrl(x) || String(x || ""); }).filter(Boolean);
       }
       if (photos.length) {
         item.photos = photos;
