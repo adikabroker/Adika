@@ -238,8 +238,21 @@
     #modalScrollBody {
       background: transparent;
       flex: 1 1 auto !important;
-      padding-bottom: 4.25rem !important;
       min-height: 0;
+      display: flex !important;
+      flex-direction: column !important;
+      padding-bottom: 0.5rem !important;
+      gap: 0.5rem;
+    }
+    /* Push reco+alert block to bottom of available space — kills empty gap above bottom bar */
+    #modalRecoSection {
+      margin-top: auto !important;
+      margin-bottom: 0 !important;
+      padding-top: 0.35rem !important;
+      padding-bottom: 0.15rem !important;
+    }
+    #modalAlertCard.detail-alert-compact {
+      margin-bottom: 0 !important;
     }
     /* Instagram-style fixed square frame */
     #modalMediaContainer {
@@ -437,12 +450,8 @@
       color: #0f172a !important;
     }
     /* Tighter reco section — less bottom dead space */
-    #modalRecoSection {
-      margin-bottom: 0.25rem !important;
-      padding-bottom: 0 !important;
-    }
     #modalRecoScroll {
-      max-height: 140px;
+      max-height: 120px;
     }
 
 
@@ -1445,7 +1454,7 @@
         </div>
       </div>
 
-      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3 space-y-2 pb-14">
+      <div id="modalScrollBody" class="overflow-y-auto flex-1 p-3">
         <!-- Photo gallery -->
         <div id="modalMediaContainer" class="w-full rounded-2xl overflow-hidden relative"></div>
 
@@ -1487,12 +1496,12 @@
 
 
         <!-- Behavioral recommendations + Smart Alert -->
-        <div id="modalRecoSection" class="space-y-2.5 pt-1">
+        <div id="modalRecoSection" class="space-y-2">
           <div class="flex items-center justify-between gap-2">
             <div id="modalRecoTitle" class="text-[11px] font-extrabold text-slate-800">🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች</div>
             <div id="modalRecoIntent" class="text-[9px] font-bold text-[#0e7490] bg-[#16acbd]/10 px-2 py-0.5 rounded-full truncate max-w-[45%]"></div>
           </div>
-          <div id="modalRecoScroll" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-0.5 px-0.5"></div>
+          <div id="modalRecoScroll" data-role="recommendationsContainer" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-0.5 px-0.5 recommendations-container"></div>
           <div id="modalAlertCard" class="hidden detail-alert-compact">
             <div class="flex items-center gap-2">
               <span class="text-base shrink-0">🔔</span>
@@ -1508,7 +1517,7 @@
 
       <!-- Light glass sticky bottom bar -->
       <div id="modalBottomBar" class="p-2.5 shrink-0 grid grid-cols-3 gap-2 sticky bottom-0 z-10"
-           style="padding-bottom:calc(0.45rem + env(safe-area-inset-bottom,0px));">
+           style="padding-top:0.5rem;padding-bottom:calc(0.5rem + env(safe-area-inset-bottom,0px));">
         <a id="modalCallBtn" href="tel:"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-black text-xs shadow-md active:scale-95 transition-all">
           <span>📞</span>
@@ -2359,64 +2368,172 @@
         );
       }).join("");
       sc.querySelectorAll(".reco-card").forEach(function(btn) {
-        btn.onclick = function() {
+        btn.onclick = function(ev) {
+          try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e0) {}
           var id = btn.getAttribute("data-id");
           var found = (items || []).find(function(x) { return String(x.id) === String(id); });
-          if (found) openDetailModal(found);
-          else {
-            // try from current feed state.items
-            var f2 = (state.items || []).find(function(x) { return String(x.id) === String(id); });
-            if (f2) openDetailModal(f2);
+          if (found) {
+            if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(found);
+            else openDetailModal(found);
+            return;
           }
+          var f2 = (state.items || window.__adikaLiveItems || []).find(function(x) { return String(x.id) === String(id); });
+          if (f2) openDetailModal(f2);
+          else if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(id);
         };
       });
     }
 
     function loadRecommendations(item) {
       var hist = getViewHistory();
-      var sc = document.getElementById("modalRecoScroll");
+      var sc = document.getElementById("modalRecoScroll") || document.getElementById("recommendationsContainer");
       var alertCard = document.getElementById("modalAlertCard");
       var alertText = document.getElementById("modalAlertText");
       if (sc) sc.innerHTML = '<div class="text-[10px] text-slate-400 py-2">⏳ በመፈለግ ላይ...</div>';
-      fetch("/api/recommendations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ viewHistory: hist, exclude_id: item && item.id })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-        renderRecoCards(data.items || [], data.intent_label || "");
-        // Smart alert card
-        if (alertCard && alertText && item) {
-          var extra = item.extra_data || {};
+
+      // FYP params from current listing
+      var curId = item && item.id != null ? item.id : null;
+      var curCat = (item && (item.main_category || item.category)) || "";
+      var curSub = (item && (item.sub_category || item.model || item.car_model)) || "";
+      var curPrice = 0;
+      try { curPrice = parseFloat(String(item && item.price != null ? item.price : "").replace(/[^0-9.]/g, "")) || 0; } catch (eP) { curPrice = 0; }
+
+      var payload = {
+        viewHistory: hist,
+        exclude_id: curId,
+        current_id: curId,
+        current_category: curCat,
+        current_sub_category: curSub,
+        current_price: curPrice
+      };
+
+      function applyAlert(it) {
+        if (!(alertCard && alertText && it)) return;
+        try {
+          var extra = it.extra_data || {};
           if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
           var bm = {};
-          try { bm = extractBrandModel(item, extra) || {}; } catch (e) {}
-          var priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0;
+          try { bm = extractBrandModel(it, extra) || {}; } catch (e) {}
+          var priceNum = Number(String(it.price || "").replace(/[^0-9.]/g, "")) || 0;
           var lo = priceNum ? Math.round(priceNum * 0.85) : 0;
           var hi = priceNum ? Math.round(priceNum * 1.15) : 0;
-          var modelName = bm.display || item.sub_category || "ንብረት";
+          var modelName = bm.display || it.sub_category || "ንብረት";
           var rangeTxt = (lo && hi) ? (lo.toLocaleString() + " – " + hi.toLocaleString() + " ETB") : modelName;
           alertText.textContent = "💡 ከ " + rangeTxt + " / " + modelName + " ጋር ተመሳሳይ አዳዲስ ንብረቶች ሲለቀቁ በቴሌግራም እንዲደርስዎ ይፈልጋሉ?";
           alertCard.classList.remove("hidden");
           alertCard.dataset.minPrice = String(lo || 0);
           alertCard.dataset.maxPrice = String(hi || 999999999);
           alertCard.dataset.model = modelName;
-          alertCard.dataset.category = item.main_category || item.category || "መኪና";
-        }
-      })
-      .catch(function() {
-        // Offline / API fail: recommend from currently loaded feed
+          alertCard.dataset.category = it.main_category || it.category || "መኪና";
+        } catch (eA) {}
+      }
+
+      // Client-side FYP scoring fallback (same-category + price band + history boost)
+      function clientFypFallback() {
         try {
-          var pool = (window.__adikaLiveItems || []).filter(function(x){
-            return x && item && String(x.id) !== String(item.id);
-          }).slice(0, 8);
-          renderRecoCards(pool, "ተመሳሳይ ንብረቶች");
+          var pool = (window.__adikaLiveItems || state.items || []).filter(function(x) {
+            return x && curId != null && String(x.id) !== String(curId);
+          });
+          pool = pool.map(function(x) {
+            var score = 0;
+            var cat = x.main_category || x.category || "";
+            var sub = x.sub_category || x.model || "";
+            var pr = 0;
+            try { pr = parseFloat(String(x.price || "").replace(/[^0-9.]/g, "")) || 0; } catch (e) {}
+            if (curCat && cat && String(cat) === String(curCat)) score += 40;
+            if (curSub && sub && String(sub).toLowerCase().indexOf(String(curSub).toLowerCase().slice(0, 4)) >= 0) score += 25;
+            if (curPrice > 0 && pr > 0) {
+              var ratio = pr / curPrice;
+              if (ratio >= 0.7 && ratio <= 1.3) score += 30;
+              else if (ratio >= 0.5 && ratio <= 1.5) score += 12;
+            }
+            try {
+              hist.forEach(function(h) {
+                if (h && h.category && cat && String(h.category) === String(cat)) score += 6;
+                if (h && h.model && sub && String(sub).toLowerCase().indexOf(String(h.model).toLowerCase().slice(0, 3)) >= 0) score += 8;
+              });
+            } catch (eH) {}
+            return { item: x, score: score };
+          }).sort(function(a, b) { return b.score - a.score; });
+          var top = pool.slice(0, 10).map(function(r) { return r.item; });
+          renderRecoCards(top, "በተመሳሳይ ምድብ");
         } catch (e) {
           renderRecoCards([], "");
         }
+        applyAlert(item);
+      }
+
+      // Path A: Flask /api/recommendations (primary for this Mini App)
+      var apiPromise = fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).then(function(r) {
+        if (!r.ok) throw new Error("api " + r.status);
+        return r.json();
+      }).then(function(data) {
+        var list = (data && (data.items || data.recommendations || data.data)) || [];
+        if (list && list.length) {
+          renderRecoCards(list, (data && data.intent_label) || "ለእርስዎ የተመረጡ");
+          applyAlert(item);
+          return true;
+        }
+        return false;
       });
+
+      // Path B: Supabase RPC get_recommended_vehicles (if client is injected)
+      var sbPromise = Promise.resolve(false);
+      try {
+        if (window.supabase && typeof window.supabase.rpc === "function") {
+          sbPromise = window.supabase.rpc("get_recommended_vehicles", {
+            current_id: curId,
+            current_category: curCat,
+            current_sub_category: curSub,
+            current_price: curPrice
+          }).then(function(res) {
+            var list = (res && (res.data || res)) || [];
+            if (Array.isArray(list) && list.length) {
+              renderRecoCards(list, "FYP · ተመሳሳይ");
+              applyAlert(item);
+              return true;
+            }
+            return false;
+          }).catch(function() { return false; });
+        }
+      } catch (eSb) { sbPromise = Promise.resolve(false); }
+
+      Promise.all([apiPromise.catch(function() { return false; }), sbPromise])
+        .then(function(results) {
+          if (results[0] || results[1]) return;
+          clientFypFallback();
+        })
+        .catch(function() { clientFypFallback(); });
     }
+
+    // Alias for external callers / deep links
+    window.openVehicleDetail = function(idOrItem) {
+      try {
+        if (idOrItem && typeof idOrItem === "object") {
+          openDetailModal(idOrItem);
+          return;
+        }
+        var id = idOrItem;
+        var found = (window.__adikaLiveItems || []).find(function(x) { return String(x.id) === String(id); })
+          || (state.items || []).find(function(x) { return String(x.id) === String(id); });
+        if (found) openDetailModal(found);
+        else {
+          // Soft fetch single listing if endpoint exists
+          fetch("/api/listing/" + encodeURIComponent(String(id)))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+              var it = data.item || data.listing || data;
+              if (it && it.id) openDetailModal(it);
+            })
+            .catch(function() {});
+        }
+      } catch (e) {}
+    };
+
 
     var grid = document.getElementById("grid");
     var statusEl = document.getElementById("status");
