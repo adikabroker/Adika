@@ -3971,7 +3971,11 @@ function shareContract() {{
 
     @web_app.route('/api/items/<listing_id>', methods=['DELETE'])
     def api_delete_item(listing_id):
-        """Delete listing. Prefer hard DELETE; soft-delete if needed. Return clear JSON."""
+        """
+        HARD delete from the same table the feed uses: `listings`.
+        Also cleans `listing_photos` and optionally `adika_clean_market`.
+        Returns success ONLY when at least one row was actually removed/updated.
+        """
         try:
             raw = str(listing_id or "")
             digits = "".join(ch for ch in raw if ch.isdigit())
@@ -3985,30 +3989,75 @@ function shareContract() {{
                 data = request.get_json(silent=True) or {}
             except Exception:
                 data = {}
-            user_id = data.get('user_id') or data.get('telegram_id') or data.get('chat_id')
+            user_id = data.get("user_id") or data.get("telegram_id") or data.get("chat_id")
 
-            # --- Supabase hard delete first ---
+            deleted_rows = 0
+            deleted_via = []
+            errors = []
+
+            def _sb_delete(table, id_val):
+                nonlocal deleted_rows
+                if supabase is None:
+                    return 0
+                try:
+                    res = supabase.table(table).delete().eq("id", id_val).execute()
+                    rows = getattr(res, "data", None) or []
+                    n = len(rows) if isinstance(rows, list) else 0
+                    if n:
+                        deleted_rows += n
+                        deleted_via.append(f"supabase:{table}:{id_val}")
+                    return n
+                except Exception as e:
+                    errors.append(f"supabase {table}: {e}")
+                    return 0
+
+            def _sb_delete_photos(listing_id_val):
+                nonlocal deleted_rows
+                if supabase is None:
+                    return 0
+                n_total = 0
+                for col in ("listing_id", "item_id", "ad_id"):
+                    try:
+                        res = supabase.table("listing_photos").delete().eq(col, listing_id_val).execute()
+                        rows = getattr(res, "data", None) or []
+                        n = len(rows) if isinstance(rows, list) else 0
+                        if n:
+                            n_total += n
+                            deleted_via.append(f"supabase:listing_photos.{col}")
+                    except Exception as e:
+                        errors.append(f"listing_photos.{col}: {e}")
+                deleted_rows += n_total
+                return n_total
+
+            # --- 1) Supabase hard delete on PRIMARY feed table: listings ---
+            n = _sb_delete("listings", clean_id)
+            if not n:
+                n = _sb_delete("listings", str(clean_id))
+            # Optional mirror table (if user has it)
             try:
-                if supabase is not None:
-                    res = supabase.table('listings').delete().eq('id', clean_id).execute()
-                    return jsonify({
-                        "status": "success",
-                        "message": "Deleted successfully",
-                        "via": "supabase",
-                        "id": clean_id,
-                        "data": getattr(res, "data", None)
-                    }), 200
-            except Exception as sb_err:
-                print("DELETE ITEM supabase ERROR:", str(sb_err))
+                _sb_delete("adika_clean_market", clean_id)
+                _sb_delete("adika_clean_market", str(clean_id))
+            except Exception:
+                pass
+            _sb_delete_photos(clean_id)
 
-            # --- SQL path ---
+            if deleted_rows > 0:
+                return jsonify({
+                    "status": "success",
+                    "message": "Record permanently deleted",
+                    "via": deleted_via,
+                    "id": clean_id,
+                    "rows": deleted_rows
+                }), 200
+
+            # --- 2) SQL hard delete (same DB the Flask feed reads) ---
             conn = None
             try:
                 conn = get_db_connection()
                 cur = conn.cursor()
                 p = get_placeholder()
 
-                # Optional ownership (do not block if columns/ids mismatch)
+                # Ownership (soft gate)
                 owner_id = None
                 try:
                     for col in ("user_chat_id", "telegram_id", "user_id"):
@@ -4024,7 +4073,7 @@ function shareContract() {{
                             except Exception:
                                 pass
                 except Exception:
-                    owner_id = None
+                    pass
 
                 try:
                     from config import ADMIN_CHAT_ID_INT as _admin
@@ -4047,56 +4096,94 @@ function shareContract() {{
                             "caller": str(user_id)
                         }), 403
 
-                deleted_via = None
-                last_err = None
+                # Cascade photos first
+                try:
+                    for col in ("listing_id", "item_id"):
+                        try:
+                            cur.execute(f"DELETE FROM listing_photos WHERE {col} = {p}", (clean_id,))
+                            rc = cur.rowcount if hasattr(cur, "rowcount") else 0
+                            if rc and rc > 0:
+                                deleted_rows += rc
+                                deleted_via.append(f"sql:listing_photos.{col}")
+                        except Exception:
+                            try:
+                                conn.rollback()
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
 
-                # Hard delete first
+                # Hard delete listing
                 try:
                     cur.execute(f"DELETE FROM listings WHERE id = {p}", (clean_id,))
-                    deleted_via = "hard"
+                    rc = cur.rowcount if hasattr(cur, "rowcount") else -1
+                    if rc is None or rc < 0:
+                        # some drivers don't report rowcount — verify
+                        cur.execute(f"SELECT id FROM listings WHERE id = {p}", (clean_id,))
+                        still = cur.fetchone()
+                        if still is None:
+                            deleted_rows += 1
+                            deleted_via.append("sql:listings:hard")
+                    elif rc > 0:
+                        deleted_rows += rc
+                        deleted_via.append("sql:listings:hard")
                 except Exception as hard_err:
-                    last_err = hard_err
+                    errors.append(f"sql hard: {hard_err}")
                     try:
                         conn.rollback()
                     except Exception:
                         pass
-                    # Soft delete fallback
+                    # Soft delete last resort
                     try:
                         cur.execute(
                             f"UPDATE listings SET status = {p} WHERE id = {p}",
                             ("deleted", clean_id)
                         )
-                        deleted_via = "soft"
+                        rc = cur.rowcount if hasattr(cur, "rowcount") else 1
+                        if rc and rc != 0:
+                            deleted_rows += 1
+                            deleted_via.append("sql:listings:soft")
                     except Exception as soft_err:
-                        last_err = soft_err
-                        try:
-                            conn.rollback()
-                        except Exception:
-                            pass
-                        try:
-                            conn.close()
-                        except Exception:
-                            pass
-                        return jsonify({
-                            "status": "error",
-                            "message": str(last_err)
-                        }), 500
+                        errors.append(f"sql soft: {soft_err}")
+
+                # Optional mirror table
+                try:
+                    cur.execute(f"DELETE FROM adika_clean_market WHERE id = {p}", (clean_id,))
+                    rc = cur.rowcount if hasattr(cur, "rowcount") else 0
+                    if rc and rc > 0:
+                        deleted_rows += rc
+                        deleted_via.append("sql:adika_clean_market")
+                except Exception:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
 
                 try:
                     conn.commit()
-                except Exception:
-                    pass
+                except Exception as ce:
+                    errors.append(f"commit: {ce}")
                 try:
                     conn.close()
                 except Exception:
                     pass
 
+                if deleted_rows > 0:
+                    return jsonify({
+                        "status": "success",
+                        "message": "Record permanently deleted",
+                        "via": deleted_via,
+                        "id": clean_id,
+                        "rows": deleted_rows
+                    }), 200
+
                 return jsonify({
-                    "status": "success",
-                    "message": "Deleted successfully",
-                    "via": deleted_via,
-                    "id": clean_id
-                }), 200
+                    "status": "error",
+                    "message": "No matching row deleted (wrong id/table or RLS blocked)",
+                    "id": clean_id,
+                    "errors": errors[:5]
+                }), 404
+
             except Exception as sql_e:
                 print("DELETE ITEM SQL ERROR:", str(sql_e))
                 try:
