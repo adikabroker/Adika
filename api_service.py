@@ -1639,7 +1639,7 @@ def register_api_routes(web_app):
             urgent_sale = data.get('urgent_sale', False)
             description = data.get('description', '')
             phone = data.get('phone', '')
-            telegram_user = data.get('telegram_user', '')
+            telegram_user = data.get('telegram_user') or data.get('telegram_username') or ''
             fuel_type = data.get('fuel_type', '')
             transmission = data.get('transmission', '')
             mileage = data.get('mileage', '')
@@ -1651,7 +1651,18 @@ def register_api_routes(web_app):
             house_condition = data.get('condition', '')
             house_type = data.get('house_type', '')
             chassis_number = (data.get('chassis_number') or data.get('vin') or '').strip().upper()
-            photos = data.get('photos', [])
+            photos = data.get('photos') or data.get('photo_urls') or data.get('images') or []
+            if isinstance(photos, str):
+                try:
+                    import json as _json
+                    photos = _json.loads(photos)
+                except Exception:
+                    photos = [photos] if photos.startswith("http") or photos.startswith("data:") else []
+            if not isinstance(photos, list):
+                photos = []
+            # Also accept single image_url
+            if not photos and data.get("image_url"):
+                photos = [data.get("image_url")]
             logger.info(f"📥 Seller WebApp data: {data}")
             uid = 0
             if user_id and str(user_id).isdigit() and int(user_id) > 0:
