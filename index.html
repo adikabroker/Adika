@@ -4498,6 +4498,49 @@
     }
     window.restoreHomeChrome = restoreHomeChrome;
 
+    function instantShowHomeChrome() {
+      // Synchronous — no animation delay
+      try {
+        var bottomNav = document.getElementById("adikaBottomNav") || document.getElementById("bottom-nav") || document.querySelector(".bottom-nav");
+        if (bottomNav) {
+          bottomNav.classList.remove("hidden");
+          bottomNav.style.setProperty("display", "flex", "important");
+          bottomNav.style.setProperty("visibility", "visible", "important");
+          bottomNav.style.setProperty("opacity", "1", "important");
+          bottomNav.style.setProperty("pointer-events", "auto", "important");
+          bottomNav.style.setProperty("z-index", "100", "important");
+        }
+      } catch (e1) {}
+      try {
+        var fabBtn = document.getElementById("fabBtn") || document.getElementById("fab-add-btn") || document.querySelector(".floating-btn");
+        if (fabBtn) {
+          fabBtn.classList.remove("hidden");
+          fabBtn.style.setProperty("display", "flex", "important");
+          fabBtn.style.setProperty("visibility", "visible", "important");
+          fabBtn.style.setProperty("opacity", "1", "important");
+          fabBtn.style.setProperty("pointer-events", "auto", "important");
+          fabBtn.style.setProperty("z-index", "90", "important");
+        }
+      } catch (e2) {}
+      try {
+        var h = document.getElementById("adikaFixedHeader");
+        if (h) {
+          h.classList.remove("hidden");
+          h.style.setProperty("display", "", "important");
+          h.style.setProperty("visibility", "visible", "important");
+        }
+      } catch (e3) {}
+      try {
+        var hero = document.getElementById("homeHero");
+        if (hero) {
+          hero.classList.remove("hidden");
+          hero.style.removeProperty("display");
+        }
+      } catch (e4) {}
+      try { document.body.style.overflow = ""; } catch (e5) {}
+    }
+    window.instantShowHomeChrome = instantShowHomeChrome;
+
     function closeDetailModalPreserve() {
       try {
         if (modalOverlay) {
@@ -4506,29 +4549,18 @@
           modalOverlay.style.display = "none";
         }
       } catch (e) {}
-      restoreHomeChrome();
-      try { window.__adikaChromeHiddenByDetail = false; } catch (eF) {}
-      try {
-        var navEl = document.getElementById("adikaBottomNav");
-        if (navEl) {
-          navEl.classList.remove("hidden");
-          navEl.style.display = "flex";
-          navEl.style.setProperty("display", "flex", "important");
-        }
-      } catch (eNav0) {}
-      try { forceShowBottomNav(); } catch (eNav) {}
-      try { if (window.forceShowFab) forceShowFab(); } catch (eFab) {}
-      try { setTimeout(forceShowBottomNav, 80); } catch (eNav2) {}
-      try { setTimeout(function(){ if (window.forceShowFab) forceShowFab(); }, 80); } catch (eFab2) {}
-      try { setTimeout(forceShowBottomNav, 400); } catch (eNav3) {}
-      try { setTimeout(function(){ if (window.forceShowFab) forceShowFab(); }, 400); } catch (eFab3) {}
+      // INSTANT restore (primary path — no lag)
+      instantShowHomeChrome();
+      try { forceShowBottomNav(); } catch (eN) {}
+      try { forceShowFab(); } catch (eF) {}
+      try { restoreHomeChrome(); } catch (eR) {}
+      try { window.__adikaChromeHiddenByDetail = false; } catch (eF2) {}
       try { state.selectedItem = null; } catch (e) {}
       try {
         window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
       } catch (e) {
         try { window.scrollTo(0, savedFeedScrollY || 0); } catch (e2) {}
       }
-      // Re-fit feed padding after header is visible again
       try {
         var hdr = document.getElementById("adikaFixedHeader");
         var main = document.getElementById("adikaMainFeed");
@@ -4537,6 +4569,10 @@
           if (hh > 40) main.style.paddingTop = (hh + 6) + "px";
         }
       } catch (e3) {}
+      // Safety re-assert once after paint (WebView quirk) — still near-instant
+      try { requestAnimationFrame(function () { instantShowHomeChrome(); }); } catch (e4) {
+        try { instantShowHomeChrome(); } catch (e5) {}
+      }
     }
     window.closeDetailModalPreserve = closeDetailModalPreserve;
 
@@ -8576,7 +8612,6 @@
       v.classList.remove("flex");
       v.style.display = "none";
     }
-    // Restore main feed chrome
     try{
       var main = el("adikaMainFeed") || el("mainFeed") || document.querySelector("main");
       if(main){
@@ -8585,17 +8620,8 @@
       }
     }catch(eM){}
     try{
+      if(window.instantShowHomeChrome) instantShowHomeChrome();
       if(window.forceShowBottomNav) forceShowBottomNav();
-      else {
-        var n = el("adikaBottomNav");
-        if(n){ n.classList.remove("hidden"); n.style.setProperty("display","flex","important"); }
-      }
-      var f = el("fabBtn") || el("fab-add-btn");
-      if(f){
-        f.classList.remove("hidden");
-        f.style.setProperty("display","flex","important");
-        f.style.setProperty("visibility","visible","important");
-      }
       if(window.forceShowFab) forceShowFab();
       if(window.restoreHomeChrome) restoreHomeChrome();
     }catch(e2){}
@@ -8606,9 +8632,10 @@
     try {
       var detail = document.getElementById("modalOverlay");
       if (detail && !detail.classList.contains("hidden") && detail.style.display !== "none") {
-        if (window.closeDetailModalPreserve) { closeDetailModalPreserve(); }
-        try { if (window.forceShowFab) forceShowFab(); } catch (eF0) {}
-        try { if (window.restoreHomeChrome) restoreHomeChrome(); } catch (eR0) {}
+        if (window.closeDetailModalPreserve) closeDetailModalPreserve();
+        if (window.instantShowHomeChrome) instantShowHomeChrome();
+        if (window.forceShowFab) forceShowFab();
+        if (window.forceShowBottomNav) forceShowBottomNav();
         return;
       }
     } catch (e) {}
@@ -8616,7 +8643,9 @@
       var mine = document.getElementById("myListingsView");
       if (mine && !mine.classList.contains("hidden") && mine.style.display !== "none") {
         hideMyListingsView();
-        try { if (window.forceShowFab) forceShowFab(); } catch (eF1) {}
+        if (window.instantShowHomeChrome) instantShowHomeChrome();
+        if (window.forceShowFab) forceShowFab();
+        if (window.forceShowBottomNav) forceShowBottomNav();
         return;
       }
     } catch (e2) {}
@@ -8624,13 +8653,10 @@
       if (window.closeInbox) closeInbox();
     } catch (e3) {}
     try {
+      if (window.instantShowHomeChrome) instantShowHomeChrome();
       if (window.restoreHomeChrome) restoreHomeChrome();
       if (window.forceShowBottomNav) forceShowBottomNav();
       if (window.forceShowFab) forceShowFab();
-      else {
-        var fabBtn = document.getElementById("fabBtn") || document.getElementById("fab-add-btn") || document.querySelector(".floating-btn");
-        if (fabBtn) fabBtn.style.setProperty("display", "flex", "important");
-      }
     } catch (e4) {}
   };
 
@@ -8844,8 +8870,16 @@
     if(empty) empty.classList.add("hidden");
     if(grid) grid.innerHTML = "";
 
-    var uid = tgId();
-    var uidN = tgIdNum();
+    var uidRaw = tgId();
+    var uid = uidRaw != null ? String(uidRaw) : "";
+    var uidN = null;
+    try {
+      if (typeof tgIdNum === "function") uidN = tgIdNum();
+      else {
+        var n = Number(uid);
+        uidN = isFinite(n) && n > 0 ? n : null;
+      }
+    } catch (e) { uidN = null; }
     if(!uid){
       if(status) status.textContent = "Telegram መለያ አልተገኘም — Mini App ከቴሌግራም ይክፈቱ";
       return;
@@ -8884,16 +8918,17 @@
     if(client && typeof client.from === "function"){
       // Try numeric telegram_id first, then string
       var attempts = [];
+      // String match first (matches submitListing String ids)
+      attempts.push(function(){ return client.from("listings").select("*").eq("telegram_id", uid).order("created_at", { ascending: false }); });
+      attempts.push(function(){ return client.from("listings").select("*").eq("user_id", uid).order("created_at", { ascending: false }); });
+      attempts.push(function(){ return client.from("listings").select("*").eq("user_chat_id", uid).order("created_at", { ascending: false }); });
       if(uidN != null){
         attempts.push(function(){ return client.from("listings").select("*").eq("telegram_id", uidN).order("created_at", { ascending: false }); });
         attempts.push(function(){ return client.from("listings").select("*").eq("user_id", uidN).order("created_at", { ascending: false }); });
         attempts.push(function(){ return client.from("listings").select("*").eq("user_chat_id", uidN).order("created_at", { ascending: false }); });
       }
-      attempts.push(function(){ return client.from("listings").select("*").eq("telegram_id", uid).order("created_at", { ascending: false }); });
-      attempts.push(function(){ return client.from("listings").select("*").eq("user_id", uid).order("created_at", { ascending: false }); });
-      attempts.push(function(){ return client.from("listings").select("*").eq("user_chat_id", uid).order("created_at", { ascending: false }); });
-      // Broad fetch then client filter (handles type mismatch)
-      attempts.push(function(){ return client.from("listings").select("*").order("created_at", { ascending: false }).limit(80); });
+      // Broad fetch then client-side String filter
+      attempts.push(function(){ return client.from("listings").select("*").order("created_at", { ascending: false }).limit(100); });
 
       function run(i){
         if(i >= attempts.length){ return fetchApi(); }
@@ -9202,9 +9237,10 @@
       urgent: !!(el("listUrgent") || {}).checked,
       phone: (el("listPhone") || {}).value || "",
       telegram_username: String((el("listTg") || {}).value || "").replace(/^@/, ""),
-      telegram_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : (tid != null ? String(tid) : null),
-      user_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : (tid != null ? String(tid) : null),
-      user_chat_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : (tid != null ? String(tid) : null),
+      // Always String so My Listings .eq() matches reliably
+      telegram_id: tid != null ? String(tid) : "",
+      user_id: tid != null ? String(tid) : "",
+      user_chat_id: tid != null ? String(tid) : "",
       telegram_id_str: tid != null ? String(tid) : "",
       // Multi-column photo fields so feed + my-listings always find an image
       photos: imgs.slice(),
