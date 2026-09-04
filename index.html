@@ -1217,9 +1217,9 @@
   <!-- MY LISTINGS management view -->
   <div id="myListingsView" class="fixed inset-0 z-[275] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
     <div class="shrink-0 px-3 py-2.5 flex items-center justify-between gap-2 bg-gradient-to-r from-[#0e7490] to-[#16acbd] text-white shadow-md">
-      <button type="button" id="myListingsBackBtn" onclick="window.hideMyListingsView && window.hideMyListingsView()" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">← ተመለስ</button>
+      <button type="button" id="myListingsBackBtn" onclick="event.preventDefault();event.stopPropagation();(window.goBack||window.hideMyListingsView||function(){})();" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">← ተመለስ</button>
       <div class="font-black text-sm truncate flex items-center gap-1">📋 <span class="lang-am">የእኔ ማስታወቂያዎች</span><span class="lang-en">My Listings</span></div>
-      <button type="button" id="myListingsCloseBtn" onclick="window.hideMyListingsView && window.hideMyListingsView()" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
+      <button type="button" id="myListingsCloseBtn" onclick="event.preventDefault();event.stopPropagation();(window.goBack||window.hideMyListingsView||function(){})();" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
     </div>
     <div id="myListingsBody" class="flex-1 overflow-y-auto p-3 pb-24">
       <div id="myListingsStatus" class="text-center text-xs text-slate-500 py-4">እየጫነ ነው...</div>
@@ -3606,7 +3606,10 @@
       var admin = String(window.ADMIN_TELEGRAM_ID || "");
       if (admin && me === admin) return true;
       var own = listingOwnerId(item);
-      return !!(own && own === me);
+      if (own && own === me) return true;
+      // If listing has no owner metadata, allow delete attempt (backend/RLS still enforces)
+      if (!own || own === "" || own === "undefined" || own === "null") return true;
+      return false;
     }
     function showAdikaToast(msg) {
       try {
@@ -3625,69 +3628,133 @@
     }
     window.showAdikaToast = showAdikaToast;
     function deleteListingById(listing, onDone) {
-      listing = listing || {};
-      var lid = listing.id;
-      if (!lid) return;
-      if (!canManageListing(listing)) {
-        showAdikaToast("ይህን ማስታወቂያ ማጥፋት አይችሉም");
+      // Accept full item OR raw id string/number
+      var lid = null;
+      var itemObj = null;
+      if (listing && typeof listing === "object") {
+        itemObj = listing;
+        lid = listing.id;
+      } else {
+        lid = listing;
+      }
+      if (lid == null || lid === "") {
+        showAdikaToast("ማጥፋት አልተቻለም: ID የለም");
         return;
       }
-      if (!confirm("ማስታወቂያው ይጥፋ?")) return;
+      lid = String(lid).trim();
+      if (!lid || lid === "undefined" || lid === "null") {
+        showAdikaToast("ማጥፋት አልተቻለም: ID የለም");
+        return;
+      }
+      // Ownership check (soft): still try delete if item missing owner fields
+      if (itemObj && typeof canManageListing === "function" && !canManageListing(itemObj)) {
+        var admin = String(window.ADMIN_TELEGRAM_ID || "");
+        var me = currentTelegramId();
+        if (!(admin && me && admin === me)) {
+          showAdikaToast("ይህን ማስታወቂያ ማጥፋት አይችሉም");
+          return;
+        }
+      }
+      if (!confirm("እርግጠኛ ነዎት ማስታወቂያው ይጥፋ?")) return;
+
       function finishOk() {
         try {
-          document.querySelectorAll('#grid .adika-card[data-id="' + String(lid) + '"]').forEach(function (c) {
+          document.querySelectorAll('#grid .adika-card[data-id="' + lid + '"]').forEach(function (c) {
+            if (c && c.parentNode) c.parentNode.removeChild(c);
+          });
+          document.querySelectorAll('[data-listing-id="' + lid + '"]').forEach(function (c) {
             if (c && c.parentNode) c.parentNode.removeChild(c);
           });
         } catch (e) {}
         try {
           if (window.__adikaLiveItems) {
-            window.__adikaLiveItems = window.__adikaLiveItems.filter(function (it) { return String(it.id) !== String(lid); });
+            window.__adikaLiveItems = window.__adikaLiveItems.filter(function (it) { return String(it.id) !== lid; });
           }
           if (state && Array.isArray(state.items)) {
-            state.items = state.items.filter(function (it) { return String(it.id) !== String(lid); });
+            state.items = state.items.filter(function (it) { return String(it.id) !== lid; });
           }
         } catch (e2) {}
         try { if (typeof closeDetailModalPreserve === "function") closeDetailModalPreserve(); } catch (e3) {}
+        try { if (typeof hideMyListingsView === "function") hideMyListingsView(); } catch (e4) {}
         showAdikaToast("ማስታወቂያው ተሰርዟል");
+        try { if (typeof load === "function") load(false); } catch (e5) {}
         if (typeof onDone === "function") onDone(true);
       }
+
+      function finishFail(msg) {
+        console.error("[Adika] delete fail", msg);
+        showAdikaToast(msg || "ማጥፋት አልተቻለም");
+        if (typeof onDone === "function") onDone(false);
+      }
+
       var sb = null;
       try { sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : (window.supabase || null); } catch (e) {}
-      if (sb && typeof sb.from === "function") {
-        var tid = null;
-        try { tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : null; } catch (eT) {}
-        var delQ = sb.from("listings").delete().eq("id", lid);
-        if (tid != null && tid !== "") {
-          try { delQ = delQ.eq("telegram_id", Number(tid) || tid); } catch (eQ) {}
-        }
-        delQ.then(function (res) {
-          if (res && res.error) {
-            // retry id-only
-            return sb.from("listings").delete().eq("id", String(lid)).then(function (r2) {
-              if (r2 && r2.error) throw r2.error;
-              finishOk();
-            });
-          }
-          finishOk();
-        }).catch(function () {
-          fetch("/api/listings/" + encodeURIComponent(lid), {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ telegram_id: tid, user_id: tid })
-          }).then(function (r) {
-            if (r.ok) finishOk();
-            else showAdikaToast("ማጥፋት አልተሳካም");
-          }).catch(function () {
-            showAdikaToast("ማጥፋት አልተሳካም");
+      var tid = currentTelegramId();
+      var tidNum = Number(tid);
+
+      function apiDelete() {
+        return fetch("/api/listings/" + encodeURIComponent(lid), {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: lid, telegram_id: tid, user_id: tid })
+        }).then(function (r) {
+          if (r.ok) { finishOk(); return; }
+          return r.text().then(function (t) {
+            finishFail("ማጥፋት አልተቻለም (" + r.status + ")");
           });
+        }).catch(function () { finishFail("ማጥፋት አልተቻለም: network"); });
+      }
+
+      if (sb && typeof sb.from === "function") {
+        // Strategy chain: id as-is → numeric id → id+telegram_id → string id
+        var strategies = [];
+        strategies.push(function () {
+          return sb.from("listings").delete().eq("id", lid).select("id");
         });
+        var asNum = Number(lid);
+        if (isFinite(asNum) && String(asNum) === lid) {
+          strategies.push(function () {
+            return sb.from("listings").delete().eq("id", asNum).select("id");
+          });
+        }
+        if (tid) {
+          strategies.push(function () {
+            var q = sb.from("listings").delete().eq("id", lid);
+            if (isFinite(tidNum) && tidNum > 0) q = q.eq("telegram_id", tidNum);
+            else q = q.eq("telegram_id", tid);
+            return q.select("id");
+          });
+        }
+        strategies.push(function () {
+          return sb.from("listings").delete().eq("id", String(lid)).select("id");
+        });
+
+        function run(i) {
+          if (i >= strategies.length) return apiDelete();
+          return strategies[i]().then(function (res) {
+            if (res && res.error) {
+              console.warn("[Adika] delete strategy", i, res.error);
+              return run(i + 1);
+            }
+            // Success if no error — even 0 rows may mean RLS swallowed it
+            var rows = (res && res.data) || [];
+            if (Array.isArray(rows) && rows.length > 0) {
+              finishOk();
+              return;
+            }
+            // 0 rows: try next strategy, else still optimistic remove + warn
+            if (i < strategies.length - 1) return run(i + 1);
+            // Last strategy returned empty — try API then optimistic UI update
+            return apiDelete();
+          }).catch(function (err) {
+            console.warn("[Adika] delete exception", i, err);
+            return run(i + 1);
+          });
+        }
+        run(0);
       } else {
-        fetch("/api/listings/" + encodeURIComponent(lid), { method: "DELETE" }).then(function (r) {
-          if (r.ok) finishOk();
-          else showAdikaToast("ማጥፋት አልተሳካም");
-        }).catch(function () {
-          showAdikaToast("ማጥፋት አልተሳካም");
-        });
+        apiDelete();
       }
     }
     window.deleteListingById = deleteListingById;
@@ -3725,7 +3792,7 @@
       var media;
       if (primarySrc) {
         media = '<div class="listing-photo-frame">' +
-          '<img src="' + escSrc(primarySrc) + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.style.display=\'none\'" data-adika-photo="1" />' +
+          '<img src="' + escSrc(primarySrc) + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.onerror=null;this.src=\'https://placehold.co/400x300/e2e8f0/64748b?text=No+Image\';" data-adika-photo="1" />' +
           '</div>';
       } else {
         media = '<div class="listing-photo-frame flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white p-2">' +
@@ -7990,6 +8057,7 @@
     if(id==="navHome"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
     if(id==="inboxBackBtn"){ e.preventDefault(); e.stopPropagation(); var pane=document.getElementById("inboxThreadPane"); if(pane && !pane.classList.contains("hidden")){ if(window.openInbox) openInbox(); return; } if(window.closeInbox) closeInbox(); return; }
     if(id==="inboxCloseBtn"){ e.preventDefault(); e.stopPropagation(); if(window.closeInbox) closeInbox(); return; }
+    if(id==="myListingsBackBtn"||id==="myListingsCloseBtn"){ e.preventDefault(); e.stopPropagation(); if(window.goBack) goBack(); else if(window.hideMyListingsView) hideMyListingsView(); return; }
     if(id==="navMyListings"||id==="navMessages"){ e.preventDefault(); e.stopPropagation(); if(window.openMyListings) openMyListings(); else if(window.openInbox) openInbox(); return; }
     if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
     if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); if(window.openIntentModal){ window.openIntentModal(); return; } location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
@@ -8416,6 +8484,29 @@
     try{ document.body.style.overflow = ""; }catch(e3){}
   }
   window.hideMyListingsView = hideMyListingsView;
+  window.goBack = function () {
+    try {
+      var detail = document.getElementById("modalOverlay");
+      if (detail && !detail.classList.contains("hidden") && detail.style.display !== "none") {
+        if (window.closeDetailModalPreserve) { closeDetailModalPreserve(); return; }
+      }
+    } catch (e) {}
+    try {
+      var mine = document.getElementById("myListingsView");
+      if (mine && !mine.classList.contains("hidden") && mine.style.display !== "none") {
+        hideMyListingsView();
+        return;
+      }
+    } catch (e2) {}
+    try {
+      if (window.closeInbox) closeInbox();
+    } catch (e3) {}
+    try {
+      if (window.restoreHomeChrome) restoreHomeChrome();
+      if (window.forceShowBottomNav) forceShowBottomNav();
+    } catch (e4) {}
+  };
+
   window.closeMyListings = hideMyListingsView;
 
   function showMyListingsView(){
@@ -8885,6 +8976,12 @@
       photo_urls: imgs.slice(),
       images: imgs.slice(),
       image_url: imgs[0] || "",
+      extra_data: {
+        photos: imgs.slice(),
+        photo_urls: imgs.slice(),
+        images: imgs.slice(),
+        image_url: imgs[0] || ""
+      },
       transmission: (el("listTrans") || {}).value || "",
       fuel: (el("listFuel") || {}).value || "",
       condition: (el("listCond") || {}).value || "",
