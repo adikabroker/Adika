@@ -2,6 +2,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  window.ADMIN_IDS = window.ADMIN_IDS || [7030641737];
+  if (window.ADMIN_IDS.indexOf(7030641737) < 0) window.ADMIN_IDS.push(7030641737);
+  window.ADMIN_TELEGRAM_ID = window.ADMIN_TELEGRAM_ID || 7030641737;
+  window.__ADIKA_ADMIN_ID = window.__ADIKA_ADMIN_ID || 7030641737;
+</script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Adika Marketplace</title>
@@ -3585,7 +3592,21 @@
       return String(s == null ? "" : s).replace(/"/g, "%22").replace(/'/g, "%27");
     }
 
-    window.ADMIN_TELEGRAM_ID = window.ADMIN_TELEGRAM_ID || window.__ADIKA_ADMIN_ID || null;
+    // Designated admin Telegram IDs — can delete ANY listing
+    window.ADMIN_IDS = window.ADMIN_IDS || window.__ADIKA_ADMIN_IDS || [];
+    // Primary admin (user-specified)
+    if (window.ADMIN_IDS.indexOf(7030641737) < 0 && window.ADMIN_IDS.indexOf("7030641737") < 0) {
+      window.ADMIN_IDS.push(7030641737);
+    }
+    window.__ADIKA_ADMIN_ID = window.__ADIKA_ADMIN_ID || 7030641737;
+    // Support single-id legacy config + multi-id list
+    window.ADMIN_TELEGRAM_ID = window.ADMIN_TELEGRAM_ID || window.__ADIKA_ADMIN_ID || 7030641737 || (window.ADMIN_IDS[0] || null);
+    try {
+      if (window.ADMIN_TELEGRAM_ID && window.ADMIN_IDS.indexOf(Number(window.ADMIN_TELEGRAM_ID)) < 0
+          && window.ADMIN_IDS.indexOf(String(window.ADMIN_TELEGRAM_ID)) < 0) {
+        window.ADMIN_IDS.push(window.ADMIN_TELEGRAM_ID);
+      }
+    } catch (eA) {}
     function currentTelegramId() {
       try {
         var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
@@ -3594,20 +3615,32 @@
       try { if (state && state.userId) return String(state.userId); } catch (e2) {}
       return "";
     }
+    function isAdikaAdmin(uid) {
+      var me = String(uid != null ? uid : currentTelegramId() || "");
+      if (!me) return false;
+      var list = window.ADMIN_IDS || [];
+      for (var i = 0; i < list.length; i++) {
+        if (String(list[i]) === me) return true;
+      }
+      var single = String(window.ADMIN_TELEGRAM_ID || window.__ADIKA_ADMIN_ID || "");
+      if (single && single === me) return true;
+      return false;
+    }
+    window.isAdikaAdmin = isAdikaAdmin;
     function listingOwnerId(item) {
       item = item || {};
       var extra = item.extra_data || {};
       if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-      return String(item.telegram_id || item.user_id || item.seller_id || item.owner_id || extra.telegram_id || extra.user_id || "");
+      return String(item.telegram_id || item.user_id || item.seller_id || item.owner_id || item.user_chat_id || extra.telegram_id || extra.user_id || "");
     }
     function canManageListing(item) {
       var me = currentTelegramId();
       if (!me) return false;
-      var admin = String(window.ADMIN_TELEGRAM_ID || "");
-      if (admin && me === admin) return true;
+      // Admins can manage / delete ANY listing
+      if (isAdikaAdmin(me)) return true;
       var own = listingOwnerId(item);
       if (own && own === me) return true;
-      // If listing has no owner metadata, allow delete attempt (backend/RLS still enforces)
+      // If listing has no owner metadata, allow delete attempt (backend still enforces)
       if (!own || own === "" || own === "undefined" || own === "null") return true;
       return false;
     }
@@ -3738,7 +3771,8 @@
           body: JSON.stringify({
             user_id: tid ? (Number(tid) || tid) : null,
             telegram_id: tid ? (Number(tid) || tid) : null,
-            id: numericId
+            id: numericId,
+            is_admin: (typeof isAdikaAdmin === "function" ? isAdikaAdmin(tid) : false)
           })
         }).then(function (r) {
           return r.json().catch(function () { return {}; }).then(function (data) {
@@ -4415,16 +4449,33 @@
     }
     window.forceShowBottomNav = forceShowBottomNav;
 
+    function forceShowFab() {
+      try {
+        var f = document.getElementById("fabBtn") || document.getElementById("fab-add-btn") || document.querySelector(".floating-btn");
+        if (!f) return;
+        f.classList.remove("hidden");
+        try { f.style.removeProperty("display"); } catch (e0) {}
+        f.style.setProperty("display", "flex", "important");
+        f.style.setProperty("visibility", "visible", "important");
+        f.style.setProperty("opacity", "1", "important");
+        f.style.setProperty("pointer-events", "auto", "important");
+        f.style.setProperty("z-index", "90", "important");
+      } catch (e) {}
+    }
+    window.forceShowFab = forceShowFab;
+
     function restoreHomeChrome() {
       try {
         forceShowBottomNav();
+        forceShowFab();
         var f = document.getElementById("fabBtn");
         var h = document.getElementById("adikaFixedHeader");
         var hero = document.getElementById("homeHero");
         if (f) {
           f.classList.remove("hidden");
           try { f.style.removeProperty("display"); } catch (e) {}
-          f.style.display = "";
+          f.style.setProperty("display", "flex", "important");
+          f.style.setProperty("visibility", "visible", "important");
         }
         if (h) {
           h.classList.remove("hidden");
@@ -4440,7 +4491,9 @@
         document.body.style.overflow = "";
         // Second pass — Telegram WebView sometimes reverts first paint
         setTimeout(forceShowBottomNav, 50);
+        setTimeout(forceShowFab, 50);
         setTimeout(forceShowBottomNav, 300);
+        setTimeout(forceShowFab, 300);
       } catch (e) {}
     }
     window.restoreHomeChrome = restoreHomeChrome;
@@ -8534,8 +8587,13 @@
         var n = el("adikaBottomNav");
         if(n){ n.classList.remove("hidden"); n.style.setProperty("display","flex","important"); }
       }
-      var f = el("fabBtn");
-      if(f){ f.style.removeProperty("display"); f.style.display = ""; }
+      var f = el("fabBtn") || el("fab-add-btn");
+      if(f){
+        f.classList.remove("hidden");
+        f.style.setProperty("display","flex","important");
+        f.style.setProperty("visibility","visible","important");
+      }
+      if(window.forceShowFab) forceShowFab();
       if(window.restoreHomeChrome) restoreHomeChrome();
     }catch(e2){}
     try{ document.body.style.overflow = ""; }catch(e3){}
@@ -8545,13 +8603,17 @@
     try {
       var detail = document.getElementById("modalOverlay");
       if (detail && !detail.classList.contains("hidden") && detail.style.display !== "none") {
-        if (window.closeDetailModalPreserve) { closeDetailModalPreserve(); return; }
+        if (window.closeDetailModalPreserve) { closeDetailModalPreserve(); }
+        try { if (window.forceShowFab) forceShowFab(); } catch (eF0) {}
+        try { if (window.restoreHomeChrome) restoreHomeChrome(); } catch (eR0) {}
+        return;
       }
     } catch (e) {}
     try {
       var mine = document.getElementById("myListingsView");
       if (mine && !mine.classList.contains("hidden") && mine.style.display !== "none") {
         hideMyListingsView();
+        try { if (window.forceShowFab) forceShowFab(); } catch (eF1) {}
         return;
       }
     } catch (e2) {}
@@ -8561,6 +8623,11 @@
     try {
       if (window.restoreHomeChrome) restoreHomeChrome();
       if (window.forceShowBottomNav) forceShowBottomNav();
+      if (window.forceShowFab) forceShowFab();
+      else {
+        var fabBtn = document.getElementById("fabBtn") || document.getElementById("fab-add-btn") || document.querySelector(".floating-btn");
+        if (fabBtn) fabBtn.style.setProperty("display", "flex", "important");
+      }
     } catch (e4) {}
   };
 
@@ -9021,7 +9088,10 @@
     var u = tgUser();
     var tid = tgId();
     var tidNum = Number(tid);
-    var imgs = (photoDataUrls || []).filter(function(x){ return !!x; });
+    var uploaded = (photoDataUrls || []).filter(function(x){ return !!x; });
+    // Allow posting without photo — inject default placeholder
+    var DEFAULT_LISTING_IMG = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&auto=format&fit=crop&q=60";
+    var imgs = uploaded.length > 0 ? uploaded : [DEFAULT_LISTING_IMG];
     return {
       title: (el("listTitle") || {}).value || "",
       main_category: cat === "House" ? "ቤት" : "መኪና",
@@ -9039,12 +9109,13 @@
       photos: imgs.slice(),
       photo_urls: imgs.slice(),
       images: imgs.slice(),
-      image_url: imgs[0] || "",
+      image_url: imgs[0] || DEFAULT_LISTING_IMG,
       extra_data: {
         photos: imgs.slice(),
         photo_urls: imgs.slice(),
         images: imgs.slice(),
-        image_url: imgs[0] || ""
+        image_url: imgs[0] || DEFAULT_LISTING_IMG,
+        placeholder_photo: uploaded.length === 0
       },
       transmission: (el("listTrans") || {}).value || "",
       fuel: (el("listFuel") || {}).value || "",
