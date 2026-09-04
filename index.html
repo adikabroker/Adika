@@ -1627,6 +1627,12 @@
           <span class="lang-am">አጋራ</span>
           <span class="lang-en">Share</span>
         </button>
+        <button id="modalDeleteBtn" type="button"
+          class="hidden col-span-3 flex items-center justify-center gap-1 py-2 rounded-xl bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200 active:scale-95 transition-all">
+          <span>🗑️</span>
+          <span class="lang-am">ማስታወቂያ አጥፋ</span>
+          <span class="lang-en">Delete listing</span>
+        </button>
       </div>
     </div>
   </div>
@@ -2440,8 +2446,16 @@
         </div>
         <label class="block text-[11px] font-bold text-white mb-1">ዝርዝር / ማስታወሻ</label>
         <textarea id="reqNotes" rows="3" placeholder="ምን እንደሚፈልጉ ይጻፉ..." class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);"></textarea>
-        <label class="block text-[11px] font-bold text-white mb-1">ስልክ</label>
-        <input id="reqPhone" type="tel" required placeholder="09xxxxxxxx" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-bold text-white mb-1">ስልክ</label>
+            <input id="reqPhone" type="tel" required placeholder="09xxxxxxxx" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-white mb-1">Telegram Username</label>
+            <input id="reqTg" placeholder="@username" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+          </div>
+        </div>
         <button type="submit" id="requestSubmitBtn" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">ጥያቄ ላክ → ደላሎች</button>
       </form>
     </div>
@@ -2455,6 +2469,17 @@
       <button type="button" id="requestSuccessOk" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">እሺ</button>
     </div>
   </div>
+
+  <div id="listingSuccessModal" class="fixed inset-0 z-[330] hidden items-center justify-center p-4" style="background:rgba(15,23,42,0.42);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);">
+    <div class="w-full max-w-sm rounded-3xl p-5 text-center" style="background:rgba(30,41,59,0.92);backdrop-filter:blur(24px);border:1px solid rgba(34,211,238,0.28);">
+      <div class="text-2xl mb-2">🎉</div>
+      <h3 class="text-white font-black text-sm mb-2">ማስታወቂያዎ በተሳካ ሁኔታ ተለጥፏል!</h3>
+      <p class="text-[11px] leading-relaxed mb-4" style="color:#94A3B8;">ንብረትዎ በገበያው ላይ ለሁሉም ፈላጊዎች ይታያል። ማስታወቂያውን ማጥፋት ከፈለጉ በ "የእኔ ማስታወቂያዎች" (My Listings) ገጽ ላይ በመግባት ማጥፋት ይችላሉ።</p>
+      <button type="button" id="listingSuccessOk" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">እሺ</button>
+    </div>
+  </div>
+
+  <div id="adikaToast" class="fixed left-1/2 -translate-x-1/2 bottom-24 z-[400] hidden px-4 py-2 rounded-full text-[11px] font-bold text-white shadow-lg" style="background:rgba(15,23,42,0.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.16);"></div>
 
 <!-- Role selection (first launch) -->
   <div id="roleSelectModal" class="fixed inset-0 z-[180] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
@@ -3270,6 +3295,7 @@
     var modalCallBtn = document.getElementById("modalCallBtn");
     var modalChatBtn = document.getElementById("modalChatBtn");
     var modalShareBtn = document.getElementById("modalShareBtn");
+    var modalDeleteBtn = document.getElementById("modalDeleteBtn");
     var modalFavBtn = document.getElementById("modalFavBtn");
 
     // AI Modal elements
@@ -3539,6 +3565,92 @@
       return String(s == null ? "" : s).replace(/"/g, "%22").replace(/'/g, "%27");
     }
 
+    window.ADMIN_TELEGRAM_ID = window.ADMIN_TELEGRAM_ID || window.__ADIKA_ADMIN_ID || null;
+    function currentTelegramId() {
+      try {
+        var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+        if (u && u.id) return String(u.id);
+      } catch (e) {}
+      try { if (state && state.userId) return String(state.userId); } catch (e2) {}
+      return "";
+    }
+    function listingOwnerId(item) {
+      item = item || {};
+      var extra = item.extra_data || {};
+      if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+      return String(item.telegram_id || item.user_id || item.seller_id || item.owner_id || extra.telegram_id || extra.user_id || "");
+    }
+    function canManageListing(item) {
+      var me = currentTelegramId();
+      if (!me) return false;
+      var admin = String(window.ADMIN_TELEGRAM_ID || "");
+      if (admin && me === admin) return true;
+      var own = listingOwnerId(item);
+      return !!(own && own === me);
+    }
+    function showAdikaToast(msg) {
+      try {
+        if (typeof window.showAdikaToast === "function") { window.showAdikaToast(msg); return; }
+      } catch (e) {}
+      var t = document.getElementById("adikaToast");
+      if (!t) { try { alert(msg); } catch (e2) {} return; }
+      t.textContent = msg;
+      t.classList.remove("hidden");
+      t.style.display = "block";
+      clearTimeout(window.__adikaToastTimer);
+      window.__adikaToastTimer = setTimeout(function () {
+        t.classList.add("hidden");
+        t.style.display = "none";
+      }, 2600);
+    }
+    window.showAdikaToast = showAdikaToast;
+    function deleteListingById(listing, onDone) {
+      listing = listing || {};
+      var lid = listing.id;
+      if (!lid) return;
+      if (!canManageListing(listing)) {
+        showAdikaToast("ይህን ማስታወቂያ ማጥፋት አይችሉም");
+        return;
+      }
+      if (!confirm("ማስታወቂያው ይጥፋ?")) return;
+      function finishOk() {
+        try {
+          document.querySelectorAll('#grid .adika-card[data-id="' + String(lid) + '"]').forEach(function (c) {
+            if (c && c.parentNode) c.parentNode.removeChild(c);
+          });
+        } catch (e) {}
+        try {
+          if (window.__adikaLiveItems) {
+            window.__adikaLiveItems = window.__adikaLiveItems.filter(function (it) { return String(it.id) !== String(lid); });
+          }
+          if (state && Array.isArray(state.items)) {
+            state.items = state.items.filter(function (it) { return String(it.id) !== String(lid); });
+          }
+        } catch (e2) {}
+        try { if (typeof closeDetailModalPreserve === "function") closeDetailModalPreserve(); } catch (e3) {}
+        showAdikaToast("ማስታወቂያው ተሰርዟል");
+        if (typeof onDone === "function") onDone(true);
+      }
+      var sb = null;
+      try { sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : (window.supabase || null); } catch (e) {}
+      if (sb && typeof sb.from === "function") {
+        sb.from("listings").delete().eq("id", lid).then(function (res) {
+          if (res && res.error) throw res.error;
+          finishOk();
+        }).catch(function () {
+          fetch("/api/listings/" + encodeURIComponent(lid), { method: "DELETE" }).then(finishOk).catch(function () {
+            showAdikaToast("ማጥፋት አልተሳካም");
+          });
+        });
+      } else {
+        fetch("/api/listings/" + encodeURIComponent(lid), { method: "DELETE" }).then(finishOk).catch(function () {
+          showAdikaToast("ማጥፋት አልተሳካም");
+        });
+      }
+    }
+    window.deleteListingById = deleteListingById;
+    window.canManageListing = canManageListing;
+
     function createCardElement(item) {
       var photos = parsePhotosList(item);
       var isCar = (item.main_category === "መኪና" || item.category === "መኪና");
@@ -3607,16 +3719,25 @@
           '</div>' +
           '<div class="flex items-center justify-between gap-1 min-w-0 mt-1">' +
             '<div class="card-price">💰 ' + esc(priceLabel) + '</div>' +
-            '<button type="button" class="card-fav-btn text-sm p-0.5 transition-transform active:scale-75 shrink-0 leading-none" data-id="' + esc(item.id) + '">' +
-              (isFav ? '❤️' : '🤍') +
-            '</button>' +
+            '<div class="flex items-center gap-1 shrink-0">' +
+              (canManageListing(item) ? '<button type="button" class="card-del-btn text-sm p-0.5 leading-none" data-id="' + esc(item.id) + '" title="Delete">🗑️</button>' : '') +
+              '<button type="button" class="card-fav-btn text-sm p-0.5 transition-transform active:scale-75 shrink-0 leading-none" data-id="' + esc(item.id) + '">' +
+                (isFav ? '❤️' : '🤍') +
+              '</button>' +
+            '</div>' +
           '</div>' +
         '</div>';
 
       var favBtnEl = card.querySelector(".card-fav-btn");
-      favBtnEl.onclick = function(e) {
+      if (favBtnEl) favBtnEl.onclick = function(e) {
         e.stopPropagation();
         toggleFav(item.id);
+      };
+      var delBtnEl = card.querySelector(".card-del-btn");
+      if (delBtnEl) delBtnEl.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteListingById(item);
       };
 
       try {
@@ -3973,6 +4094,16 @@
           } else {
             alert("የሻጭ መልእክት መረጃ አልተገኘም");
           }
+        };
+      }
+
+      if (modalDeleteBtn) {
+        var allowDel = canManageListing(item);
+        modalDeleteBtn.classList.toggle("hidden", !allowDel);
+        modalDeleteBtn.style.display = allowDel ? "flex" : "none";
+        modalDeleteBtn.onclick = function (ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          deleteListingById(item);
         };
       }
 
@@ -8287,6 +8418,11 @@
   };
   window.openAddRequestModal = function () {
     hideM("intentModal");
+    try {
+      var u = tgUser();
+      var tgInp = el("reqTg");
+      if (tgInp && !tgInp.value && u && u.username) tgInp.value = "@" + u.username;
+    } catch (e) {}
     showM("addRequestModal");
   };
 
@@ -8373,7 +8509,7 @@
       phone: (el("reqPhone") || {}).value || "",
       telegram_id: tgId(),
       user_id: tgId(),
-      telegram_username: u && u.username ? u.username : "",
+      telegram_username: String((el("reqTg") || {}).value || (u && u.username) || "").replace(/^@/, ""),
       buyer_name: u ? [u.first_name, u.last_name].filter(Boolean).join(" ") : "",
       notify_brokers: true,
       created_at: new Date().toISOString(),
@@ -8397,7 +8533,7 @@
       if (btn) { btn.disabled = false; btn.textContent = "🚀 Submit Listing"; }
       photoDataUrls = [];
       try { if (typeof load === "function") load(false); } catch (e) {}
-      try { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.showAlert) Telegram.WebApp.showAlert("ማስታወቂያዎ ተልኳል"); } catch (e2) {}
+      try { showM("listingSuccessModal"); } catch (e2) {}
     };
     if (sb && typeof sb.from === "function") {
       sb.from("listings").insert(data).then(done).catch(function () {
@@ -8453,6 +8589,8 @@
     if (rc && !rc.__bound) { rc.__bound = true; rc.onclick = function () { hideM("addRequestModal"); }; }
     var ok = el("requestSuccessOk");
     if (ok && !ok.__bound) { ok.__bound = true; ok.onclick = function () { hideM("requestSuccessModal"); }; }
+    var lok = el("listingSuccessOk");
+    if (lok && !lok.__bound) { lok.__bound = true; lok.onclick = function () { hideM("listingSuccessModal"); }; }
     var lf = el("addListingForm");
     if (lf && !lf.__bound) { lf.__bound = true; lf.addEventListener("submit", submitListing); }
     var rf = el("addRequestForm");
