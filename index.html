@@ -4517,8 +4517,11 @@
         }
       } catch (eNav0) {}
       try { forceShowBottomNav(); } catch (eNav) {}
+      try { if (window.forceShowFab) forceShowFab(); } catch (eFab) {}
       try { setTimeout(forceShowBottomNav, 80); } catch (eNav2) {}
+      try { setTimeout(function(){ if (window.forceShowFab) forceShowFab(); }, 80); } catch (eFab2) {}
       try { setTimeout(forceShowBottomNav, 400); } catch (eNav3) {}
+      try { setTimeout(function(){ if (window.forceShowFab) forceShowFab(); }, 400); } catch (eFab3) {}
       try { state.selectedItem = null; } catch (e) {}
       try {
         window.scrollTo({ top: savedFeedScrollY || 0, behavior: "instant" in window ? "instant" : "auto" });
@@ -8854,9 +8857,16 @@
       // Client-side safety filter (in case RLS returns broader set)
       rows = (rows || []).filter(function(it){
         if(!it) return false;
-        var tid = it.telegram_id != null ? String(it.telegram_id) : "";
-        var u = it.user_id != null ? String(it.user_id) : "";
-        return tid === uid || u === uid || tid === String(uidN) || u === String(uidN);
+        var me = String(uid || "");
+        var meN = uidN != null ? String(uidN) : "";
+        function matchVal(v){
+          if(v == null || v === "") return false;
+          var s = String(v);
+          return s === me || s === meN;
+        }
+        return matchVal(it.telegram_id) || matchVal(it.user_id) || matchVal(it.user_chat_id)
+          || matchVal(it.owner_id) || matchVal(it.seller_id)
+          || matchVal(it.telegram_id_str);
       });
       renderCards(rows);
     }
@@ -8877,9 +8887,13 @@
       if(uidN != null){
         attempts.push(function(){ return client.from("listings").select("*").eq("telegram_id", uidN).order("created_at", { ascending: false }); });
         attempts.push(function(){ return client.from("listings").select("*").eq("user_id", uidN).order("created_at", { ascending: false }); });
+        attempts.push(function(){ return client.from("listings").select("*").eq("user_chat_id", uidN).order("created_at", { ascending: false }); });
       }
       attempts.push(function(){ return client.from("listings").select("*").eq("telegram_id", uid).order("created_at", { ascending: false }); });
       attempts.push(function(){ return client.from("listings").select("*").eq("user_id", uid).order("created_at", { ascending: false }); });
+      attempts.push(function(){ return client.from("listings").select("*").eq("user_chat_id", uid).order("created_at", { ascending: false }); });
+      // Broad fetch then client filter (handles type mismatch)
+      attempts.push(function(){ return client.from("listings").select("*").order("created_at", { ascending: false }).limit(80); });
 
       function run(i){
         if(i >= attempts.length){ return fetchApi(); }
@@ -9013,7 +9027,11 @@
     hideM("requestSuccessModal");
     showM("intentModal");
   };
-  window.closeIntentModal = function () { hideM("intentModal"); };
+  window.closeIntentModal = function () {
+    hideM("intentModal");
+    try { if (window.forceShowFab) forceShowFab(); } catch (e) {}
+    try { if (window.restoreHomeChrome) restoreHomeChrome(); } catch (e2) {}
+  };
 
   function setListingStep(n) {
     var s1 = el("listingStep1"), s2 = el("listingStep2");
@@ -9044,27 +9062,108 @@
   };
 
   var photoDataUrls = [];
+
+  function compressImageFile(file, maxW, quality) {
+    maxW = maxW || 900;
+    quality = quality || 0.72;
+    return new Promise(function (resolve) {
+      try {
+        var reader = new FileReader();
+        reader.onerror = function () { resolve(null); };
+        reader.onload = function () {
+          var dataUrl = reader.result;
+          try {
+            var img = new Image();
+            img.onerror = function () { resolve(typeof dataUrl === "string" ? dataUrl : null); };
+            img.onload = function () {
+              try {
+                var w = img.naturalWidth || img.width || 1;
+                var h = img.naturalHeight || img.height || 1;
+                var scale = w > maxW ? (maxW / w) : 1;
+                var cw = Math.max(1, Math.round(w * scale));
+                var ch = Math.max(1, Math.round(h * scale));
+                var canvas = document.createElement("canvas");
+                canvas.width = cw;
+                canvas.height = ch;
+                var ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, cw, ch);
+                var out = canvas.toDataURL("image/jpeg", quality);
+                // Cap ~280KB string length roughly
+                if (out && out.length > 400000) {
+                  out = canvas.toDataURL("image/jpeg", 0.55);
+                }
+                resolve(out || dataUrl);
+              } catch (e2) {
+                resolve(typeof dataUrl === "string" ? dataUrl : null);
+              }
+            };
+            img.src = dataUrl;
+          } catch (e) {
+            resolve(typeof dataUrl === "string" ? dataUrl : null);
+          }
+        };
+        reader.readAsDataURL(file);
+      } catch (e0) {
+        resolve(null);
+      }
+    });
+  }
+
+  function renderPhotoPreview() {
+    var prev = el("listPhotoPreview");
+    if (!prev) return;
+    prev.innerHTML = "";
+    photoDataUrls.forEach(function (url, idx) {
+      var wrap = document.createElement("div");
+      wrap.className = "relative w-full aspect-square rounded-lg overflow-hidden bg-slate-800 border border-white/10";
+      var img = document.createElement("img");
+      img.src = url;
+      img.className = "w-full h-full object-cover";
+      img.alt = "photo " + (idx + 1);
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("aria-label", "Remove photo");
+      btn.className = "absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black leading-none flex items-center justify-center shadow z-10";
+      btn.textContent = "×";
+      btn.onclick = function (e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        photoDataUrls.splice(idx, 1);
+        renderPhotoPreview();
+        // clear file input so same file can be re-selected
+        try {
+          var inp = el("listPhotos");
+          if (inp) inp.value = "";
+        } catch (e2) {}
+      };
+      wrap.appendChild(img);
+      wrap.appendChild(btn);
+      prev.appendChild(wrap);
+    });
+  }
+
   function bindListingPhotos() {
     var inp = el("listPhotos");
     if (!inp || inp.__bound) return;
     inp.__bound = true;
     inp.addEventListener("change", function () {
       var files = Array.prototype.slice.call(inp.files || []).slice(0, 5);
-      photoDataUrls = [];
+      if (!files.length) return;
       var prev = el("listPhotoPreview");
-      if (prev) prev.innerHTML = "";
+      if (prev) prev.innerHTML = '<span class="text-[10px] text-slate-400 col-span-5">ፎቶ በመጫን ላይ...</span>';
+      var chain = Promise.resolve();
       files.forEach(function (f) {
-        var r = new FileReader();
-        r.onload = function () {
-          photoDataUrls.push(r.result);
-          if (prev) {
-            var img = document.createElement("img");
-            img.src = r.result;
-            img.className = "w-full h-12 object-cover rounded-lg";
-            prev.appendChild(img);
-          }
-        };
-        r.readAsDataURL(f);
+        chain = chain.then(function () {
+          return compressImageFile(f, 900, 0.72).then(function (url) {
+            if (url) {
+              if (photoDataUrls.length < 5) photoDataUrls.push(url);
+            }
+          });
+        });
+      });
+      chain.then(function () {
+        renderPhotoPreview();
+      }).catch(function () {
+        renderPhotoPreview();
       });
     });
   }
@@ -9103,8 +9202,10 @@
       urgent: !!(el("listUrgent") || {}).checked,
       phone: (el("listPhone") || {}).value || "",
       telegram_username: String((el("listTg") || {}).value || "").replace(/^@/, ""),
-      telegram_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : tid,
-      user_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : tid,
+      telegram_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : (tid != null ? String(tid) : null),
+      user_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : (tid != null ? String(tid) : null),
+      user_chat_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : (tid != null ? String(tid) : null),
+      telegram_id_str: tid != null ? String(tid) : "",
       // Multi-column photo fields so feed + my-listings always find an image
       photos: imgs.slice(),
       photo_urls: imgs.slice(),
@@ -9161,30 +9262,95 @@
     }
     var btn = el("listingSubmitBtn");
     if (btn) { btn.disabled = true; btn.textContent = "⏳..."; }
-    var sb = sbClient();
-    var done = function () {
+
+    // Ensure photos is a JSON-safe array of strings (compressed data-URLs or http)
+    try {
+      var arr = Array.isArray(data.photos) ? data.photos : [];
+      arr = arr.filter(function (x) { return typeof x === "string" && x.length > 8; }).slice(0, 5);
+      data.photos = arr;
+      data.photo_urls = arr.slice();
+      data.images = arr.slice();
+      data.image_url = arr[0] || data.image_url || "";
+      if (data.extra_data && typeof data.extra_data === "object") {
+        data.extra_data.photos = arr.slice();
+        data.extra_data.photo_urls = arr.slice();
+        data.extra_data.images = arr.slice();
+        data.extra_data.image_url = arr[0] || "";
+      }
+    } catch (eNorm) {}
+
+    var hasRealPhotos = Array.isArray(data.photos) && data.photos.length && !(data.extra_data && data.extra_data.placeholder_photo);
+
+    function finishOk() {
       hideM("addListingModal");
       if (btn) { btn.disabled = false; btn.textContent = "🚀 Submit Listing"; }
       photoDataUrls = [];
+      try { var prev = el("listPhotoPreview"); if (prev) prev.innerHTML = ""; } catch (eP) {}
       try { if (typeof load === "function") load(false); } catch (e) {}
       try { showM("listingSuccessModal"); } catch (e2) {}
-    };
-    if (sb && typeof sb.from === "function") {
-      sb.from("listings").insert(data).then(function (res) {
+      try { if (window.forceShowFab) forceShowFab(); } catch (e3) {}
+      try { if (window.restoreHomeChrome) restoreHomeChrome(); } catch (e4) {}
+    }
+    function finishFail(msg) {
+      if (btn) { btn.disabled = false; btn.textContent = "🚀 Submit Listing"; }
+      alert(msg || "ማስታወቂያ ማስገባት አልተሳካም");
+    }
+
+    function postApi() {
+      return fetch("/api/submit-listing", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (r.ok && (j.success || j.status === "success" || j.req_id)) {
+            finishOk();
+            return true;
+          }
+          console.warn("[Adika] submit-listing fail", r.status, j);
+          return false;
+        });
+      }).catch(function (err) {
+        console.warn("[Adika] submit-listing network", err);
+        return false;
+      });
+    }
+
+    function postSupabase() {
+      var sb = sbClient();
+      if (!(sb && typeof sb.from === "function")) return Promise.resolve(false);
+      // Strip huge base64 for Supabase column limits — keep short URLs only; API handles base64
+      var slim = Object.assign({}, data);
+      try {
+        var keep = (slim.photos || []).filter(function (p) {
+          return typeof p === "string" && (p.indexOf("http") === 0 || p.length < 50000);
+        });
+        if (!keep.length && (data.photos || []).length) {
+          // photos are large data-URLs — let Flask handle them
+          return Promise.resolve(false);
+        }
+        slim.photos = keep;
+        slim.photo_urls = keep.slice();
+        slim.images = keep.slice();
+        slim.image_url = keep[0] || "";
+      } catch (eS) {}
+      return sb.from("listings").insert(slim).then(function (res) {
         if (res && res.error) {
           console.warn("[Adika] insert error", res.error);
-          return fetch("/api/submit-listing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
-            .then(done).catch(done);
+          return false;
         }
-        done();
-      }).catch(function () {
-        fetch("/api/submit-listing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
-          .then(done).catch(done);
-      });
-    } else {
-      fetch("/api/submit-listing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
-        .then(done).catch(done);
+        finishOk();
+        return true;
+      }).catch(function () { return false; });
     }
+
+    // With photos → API first (handles base64). Without → either path.
+    var chain = hasRealPhotos ? postApi().then(function (ok) { return ok ? true : postSupabase(); })
+                              : postSupabase().then(function (ok) { return ok ? true : postApi(); });
+    chain.then(function (ok) {
+      if (!ok) finishFail("ማስታወቂያ ማስገባት አልተሳካም — እንደገና ይሞክሩ");
+    });
   }
 
   function submitRequest(ev) {
