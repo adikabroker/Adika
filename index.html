@@ -1174,13 +1174,11 @@
 
     <!-- Right Section: Messages & Help Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
-      <button id="navMessages" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-slate-500 hover:text-slate-800 transition-all">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-        </svg>
-        <span class="text-[9px] font-semibold mt-0.5">
-          <span class="lang-am">መልእክት</span>
-          <span class="lang-en">Inbox</span>
+      <button id="navMyListings" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-slate-500 hover:text-slate-800 transition-all">
+        <span class="text-base leading-none" aria-hidden="true">📋</span>
+        <span class="text-[8px] font-semibold mt-0.5 leading-tight text-center max-w-[52px]">
+          <span class="lang-am">የእኔ</span>
+          <span class="lang-en">Mine</span>
         </span>
       </button>
 
@@ -1211,6 +1209,28 @@
       <div class="shrink-0 p-2.5 bg-white border-t flex gap-2">
         <textarea id="inboxCompose" rows="1" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" placeholder="መልእክት ይጻፉ..."></textarea>
         <button type="button" id="inboxSendBtn" class="px-4 rounded-xl bg-[#16acbd] text-white font-black text-sm">ላክ</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MY LISTINGS management view -->
+  <div id="myListingsView" class="fixed inset-0 z-[275] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
+    <div class="shrink-0 px-3 py-2.5 flex items-center justify-between gap-2 bg-gradient-to-r from-[#0e7490] to-[#16acbd] text-white shadow-md">
+      <button type="button" id="myListingsBackBtn" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">← ተመለስ</button>
+      <div class="font-black text-sm truncate flex items-center gap-1">📋 <span class="lang-am">የእኔ ማስታወቂያዎች</span><span class="lang-en">My Listings</span></div>
+      <button type="button" id="myListingsCloseBtn" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
+    </div>
+    <div id="myListingsBody" class="flex-1 overflow-y-auto p-3 pb-24">
+      <div id="myListingsStatus" class="text-center text-xs text-slate-500 py-4">እየጫነ ነው...</div>
+      <div id="myListingsGrid" class="grid grid-cols-1 gap-3"></div>
+      <div id="myListingsEmpty" class="hidden flex flex-col items-center justify-center py-16 px-6 text-center">
+        <div class="text-4xl mb-3">📭</div>
+        <p class="text-sm font-black text-slate-700 mb-1">እስካሁን ምንም ያተመቱት ማስታወቂያ የለም</p>
+        <p class="text-[11px] text-slate-500 mb-5">አዲስ ማስታወቂያ ለመለጠፍ ከታች ያለውን + ይጫኑ</p>
+        <button type="button" id="myListingsPostBtn" class="px-5 py-2.5 rounded-2xl bg-[#16acbd] text-white font-black text-xs shadow-lg active:scale-95">
+          🚀 Post Listing
+        </button>
       </div>
     </div>
   </div>
@@ -4326,7 +4346,7 @@
           var detailOpen = overlay && !overlay.classList.contains("hidden") && overlay.style.display !== "none";
           if (detailOpen) return;
           var toolsOpen = false;
-          ["aiModal","analysisView","dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","inboxView"].forEach(function(id) {
+          ["aiModal","analysisView","dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","inboxView","myListingsView"].forEach(function(id) {
             var el = document.getElementById(id);
             if (el && !el.classList.contains("hidden") && el.style.display !== "none" && (el.classList.contains("flex") || el.style.display === "flex")) toolsOpen = true;
           });
@@ -6357,10 +6377,15 @@
 
     // Bottom Navigation Handlers
     document.getElementById("navHome").onclick = function () {
+      try { if (window.closeMyListings) window.closeMyListings(); } catch (e) {}
+      try { if (window.closeInbox) window.closeInbox(); } catch (e2) {}
+      try { if (window.restoreHomeChrome) window.restoreHomeChrome(); } catch (e3) {}
+      try { if (window.forceShowBottomNav) window.forceShowBottomNav(); } catch (e4) {}
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-    document.getElementById("navMessages").onclick = function () {
-      if (window.openInbox) window.openInbox();
+    document.getElementById("navMyListings").onclick = function () {
+      if (window.openMyListings) window.openMyListings();
+      else if (typeof openMyListings === "function") openMyListings();
     };
     document.getElementById("navHelp").onclick = function () {
       var msg = "Adika Marketplace • Help Center\nContact @AdikaMarketplaceBot or call 0911000000.";
@@ -7943,7 +7968,7 @@
     if(id==="navHome"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
     if(id==="inboxBackBtn"){ e.preventDefault(); e.stopPropagation(); var pane=document.getElementById("inboxThreadPane"); if(pane && !pane.classList.contains("hidden")){ if(window.openInbox) openInbox(); return; } if(window.closeInbox) closeInbox(); return; }
     if(id==="inboxCloseBtn"){ e.preventDefault(); e.stopPropagation(); if(window.closeInbox) closeInbox(); return; }
-    if(id==="navMessages"){ e.preventDefault(); e.stopPropagation(); if(window.openInbox) openInbox(); return; }
+    if(id==="navMyListings"||id==="navMessages"){ e.preventDefault(); e.stopPropagation(); if(window.openMyListings) openMyListings(); else if(window.openInbox) openInbox(); return; }
     if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
     if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); if(window.openIntentModal){ window.openIntentModal(); return; } location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
     if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
@@ -8307,6 +8332,235 @@
   if(close) close.onclick = function(){ if(window.closeInbox) closeInbox(); else showInbox(false); };
   var send = document.getElementById("inboxSendBtn");
   if(send) send.onclick = sendMsg;
+})();
+</script>
+
+
+<script>
+(function(){
+  function el(id){ return document.getElementById(id); }
+  function tgId(){
+    try{
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if(u && u.id) return String(u.id);
+    }catch(e){}
+    try{
+      if(typeof getTelegramUserId === "function"){
+        var id = getTelegramUserId();
+        if(id) return String(id);
+      }
+    }catch(e2){}
+    try{ if(window.state && state.userId) return String(state.userId); }catch(e3){}
+    return null;
+  }
+  function sb(){
+    try{ if(typeof ensureSupabaseClient === "function") return ensureSupabaseClient(); }catch(e){}
+    return window.supabase || null;
+  }
+  function showView(on){
+    var v = el("myListingsView");
+    if(!v) return;
+    if(on){
+      v.classList.remove("hidden");
+      v.classList.add("flex");
+      v.style.display = "flex";
+      try{
+        var n=el("adikaBottomNav"); if(n) n.style.setProperty("display","none","important");
+        var f=el("fabBtn"); if(f) f.style.display="none";
+      }catch(e){}
+    } else {
+      v.classList.add("hidden");
+      v.classList.remove("flex");
+      v.style.display = "none";
+      try{
+        if(window.forceShowBottomNav) forceShowBottomNav();
+        else {
+          var n=el("adikaBottomNav");
+          if(n){ n.classList.remove("hidden"); n.style.setProperty("display","flex","important"); }
+        }
+        var f=el("fabBtn"); if(f) f.style.display="";
+      }catch(e2){}
+    }
+  }
+  function esc(s){
+    return String(s==null?"":s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function priceLabel(p){
+    var n = Number(String(p||"").replace(/[^\d.]/g,""));
+    if(!n || n<=0) return "ለዋጋ ደውሉ";
+    try{ return Math.round(n).toLocaleString("en-US") + " ETB"; }catch(e){ return n + " ETB"; }
+  }
+  function photoOf(item){
+    try{
+      if(typeof getValidImageUrl === "function"){
+        var u = getValidImageUrl(item.photo_urls) || getValidImageUrl(item.photos) || getValidImageUrl(item.image_url);
+        if(u) return u;
+      }
+    }catch(e){}
+    var p = item.photo_urls || item.photos || item.image_url || item.photo_url || "";
+    if(Array.isArray(p) && p[0]) return typeof p[0]==="string" ? p[0] : (p[0].url||"");
+    if(typeof p === "string" && p) {
+      if(p.charAt(0)==="["){ try{ var a=JSON.parse(p); if(a&&a[0]) return typeof a[0]==="string"?a[0]:(a[0].url||""); }catch(e){} }
+      return p;
+    }
+    return "";
+  }
+  function renderCards(items){
+    var grid = el("myListingsGrid");
+    var empty = el("myListingsEmpty");
+    var status = el("myListingsStatus");
+    if(status) status.classList.add("hidden");
+    if(!items || !items.length){
+      if(grid) grid.innerHTML = "";
+      if(empty) empty.classList.remove("hidden");
+      return;
+    }
+    if(empty) empty.classList.add("hidden");
+    if(!grid) return;
+    grid.innerHTML = items.map(function(it){
+      var img = photoOf(it);
+      var title = it.title || it.sub_category || it.brand || it.model || it.main_category || "ማስታወቂያ";
+      var cat = it.main_category || it.category || "";
+      var id = it.id;
+      return (
+        '<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-listing-id="'+esc(String(id))+'">'+
+          '<div class="flex gap-0">'+
+            '<div class="w-28 h-24 shrink-0 bg-slate-100 overflow-hidden">'+
+              (img
+                ? '<img src="'+esc(img)+'" class="w-full h-full object-cover" alt="" onerror="this.style.display=\'none\'" />'
+                : '<div class="w-full h-full flex items-center justify-center text-2xl">📷</div>')+
+            '</div>'+
+            '<div class="flex-1 p-2.5 min-w-0 flex flex-col justify-between">'+
+              '<div>'+
+                '<div class="text-xs font-black text-slate-800 truncate">'+esc(title)+'</div>'+
+                '<div class="text-[10px] text-slate-500 mt-0.5">'+esc(cat)+' · #'+esc(String(id))+'</div>'+
+                '<div class="text-[11px] font-black text-[#0e7490] mt-1">💰 '+esc(priceLabel(it.price))+'</div>'+
+              '</div>'+
+            '</div>'+
+          '</div>'+
+          '<button type="button" class="my-listing-delete w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-black border-t border-rose-100 active:scale-[0.99]" data-id="'+esc(String(id))+'">'+
+            '🗑️ ማስታወቂያውን ሰርዝ (Delete)'+
+          '</button>'+
+        '</div>'
+      );
+    }).join("");
+    grid.querySelectorAll(".my-listing-delete").forEach(function(btn){
+      btn.onclick = function(ev){
+        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+        var lid = btn.getAttribute("data-id");
+        if(!lid) return;
+        if(!confirm("ይህን ማስታወቂያ ሰርዘው? / Delete this listing?")) return;
+        deleteListing(lid, btn);
+      };
+    });
+  }
+  function deleteListing(id, btn){
+    if(btn){ btn.disabled = true; btn.textContent = "⏳ በመሰረዝ ላይ..."; }
+    var client = sb();
+    var done = function(ok){
+      if(ok){
+        var card = document.querySelector('#myListingsGrid [data-listing-id="'+String(id).replace(/"/g,"")+'"]');
+        if(card) card.remove();
+        var left = document.querySelectorAll("#myListingsGrid [data-listing-id]");
+        if(!left.length){
+          var empty = el("myListingsEmpty");
+          var grid = el("myListingsGrid");
+          if(grid) grid.innerHTML = "";
+          if(empty) empty.classList.remove("hidden");
+        }
+      } else {
+        if(btn){ btn.disabled = false; btn.textContent = "🗑️ ማስታወቂያውን ሰርዝ (Delete)"; }
+        alert("መሰረዝ አልተሳካም");
+      }
+    };
+    if(client && typeof client.from === "function"){
+      client.from("listings").delete().eq("id", id).then(function(res){
+        if(res && res.error){
+          return client.from("listings").delete().eq("id", String(id)).then(function(r2){
+            done(!(r2 && r2.error));
+          });
+        }
+        done(true);
+      }).catch(function(){
+        fetch("/api/listings/"+encodeURIComponent(id), { method:"DELETE", credentials:"same-origin" })
+          .then(function(r){ done(r.ok); }).catch(function(){ done(false); });
+      });
+    } else {
+      fetch("/api/listings/"+encodeURIComponent(id), { method:"DELETE", credentials:"same-origin" })
+        .then(function(r){ done(r.ok); }).catch(function(){ done(false); });
+    }
+  }
+  function loadMyListings(){
+    var status = el("myListingsStatus");
+    var empty = el("myListingsEmpty");
+    var grid = el("myListingsGrid");
+    if(status){ status.classList.remove("hidden"); status.textContent = "እየጫነ ነው..."; }
+    if(empty) empty.classList.add("hidden");
+    if(grid) grid.innerHTML = "";
+    var uid = tgId();
+    if(!uid){
+      if(status) status.textContent = "Telegram መለያ አልተገኘም — Mini App ከቴሌግራም ይክፈቱ";
+      return;
+    }
+    var client = sb();
+    function apply(rows){
+      if(status) status.classList.add("hidden");
+      renderCards(rows || []);
+    }
+    if(client && typeof client.from === "function"){
+      var q = client.from("listings").select("*").order("created_at", { ascending: false });
+      q = q.or("telegram_id.eq."+uid+",user_id.eq."+uid+",telegram_id.eq."+Number(uid)+",user_id.eq."+Number(uid));
+      q.then(function(res){
+        var rows = (res && res.data) || [];
+        if(res && res.error){
+          return client.from("listings").select("*").eq("telegram_id", uid).then(function(r2){
+            apply((r2 && r2.data) || []);
+          }).catch(function(){ apply([]); });
+        }
+        apply(Array.isArray(rows) ? rows : []);
+      }).catch(function(){
+        fetch("/api/my-listings?user_id="+encodeURIComponent(uid), { credentials:"same-origin" })
+          .then(function(r){ return r.json(); })
+          .then(function(d){ apply((d && (d.items||d.listings||d.data)) || []); })
+          .catch(function(){ apply([]); });
+      });
+    } else {
+      fetch("/api/my-listings?user_id="+encodeURIComponent(uid), { credentials:"same-origin" })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ apply((d && (d.items||d.listings||d.data)) || []); })
+        .catch(function(){
+          if(status){ status.classList.remove("hidden"); status.textContent = "መጫን አልተሳካም"; }
+        });
+    }
+  }
+  window.openMyListings = function(){
+    showView(true);
+    loadMyListings();
+  };
+  window.closeMyListings = function(){
+    showView(false);
+  };
+  function bind(){
+    var b = el("myListingsBackBtn");
+    var c = el("myListingsCloseBtn");
+    var p = el("myListingsPostBtn");
+    if(b && !b.__bound){ b.__bound = true; b.onclick = function(){ window.closeMyListings(); }; }
+    if(c && !c.__bound){ c.__bound = true; c.onclick = function(){ window.closeMyListings(); }; }
+    if(p && !p.__bound){
+      p.__bound = true;
+      p.onclick = function(){
+        window.closeMyListings();
+        try{
+          if(window.openIntentModal) window.openIntentModal();
+          else if(window.openAddListingModal) window.openAddListingModal();
+        }catch(e){}
+      };
+    }
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
 })();
 </script>
 
