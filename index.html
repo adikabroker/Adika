@@ -4376,7 +4376,10 @@
       }
 
       if (item.id) {
-        try { fetch("/api/views/" + item.id, { method: "POST" }).catch(function(){}); } catch(e){}
+        try {
+          var _vid = (item && item.id != null) ? String(item.id).replace(/\D/g, "") || item.id : "";
+          if (_vid) fetch("/api/views/" + encodeURIComponent(_vid), { method: "POST", credentials: "same-origin" }).catch(function(){});
+        } catch(e){}
       }
       loadRecommendations(item);
     }
