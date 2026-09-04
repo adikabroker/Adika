@@ -1174,13 +1174,11 @@
 
     <!-- Right Section: Messages & Help Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
-      <button id="navMessages" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-slate-500 hover:text-slate-800 transition-all">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-        </svg>
-        <span class="text-[9px] font-semibold mt-0.5">
-          <span class="lang-am">መልእክት</span>
-          <span class="lang-en">Inbox</span>
+      <button id="navMyListings" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-slate-500 hover:text-slate-800 transition-all">
+        <span class="text-base leading-none" aria-hidden="true">📋</span>
+        <span class="text-[8px] font-semibold mt-0.5 leading-tight text-center max-w-[52px]">
+          <span class="lang-am">የእኔ</span>
+          <span class="lang-en">Mine</span>
         </span>
       </button>
 
@@ -1211,6 +1209,28 @@
       <div class="shrink-0 p-2.5 bg-white border-t flex gap-2">
         <textarea id="inboxCompose" rows="1" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" placeholder="መልእክት ይጻፉ..."></textarea>
         <button type="button" id="inboxSendBtn" class="px-4 rounded-xl bg-[#16acbd] text-white font-black text-sm">ላክ</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MY LISTINGS management view -->
+  <div id="myListingsView" class="fixed inset-0 z-[275] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
+    <div class="shrink-0 px-3 py-2.5 flex items-center justify-between gap-2 bg-gradient-to-r from-[#0e7490] to-[#16acbd] text-white shadow-md">
+      <button type="button" id="myListingsBackBtn" onclick="event.preventDefault();event.stopPropagation();(window.goBack||window.hideMyListingsView||function(){})();" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">← ተመለስ</button>
+      <div class="font-black text-sm truncate flex items-center gap-1">📋 <span class="lang-am">የእኔ ማስታወቂያዎች</span><span class="lang-en">My Listings</span></div>
+      <button type="button" id="myListingsCloseBtn" onclick="event.preventDefault();event.stopPropagation();(window.goBack||window.hideMyListingsView||function(){})();" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
+    </div>
+    <div id="myListingsBody" class="flex-1 overflow-y-auto p-3 pb-24">
+      <div id="myListingsStatus" class="text-center text-xs text-slate-500 py-4">እየጫነ ነው...</div>
+      <div id="myListingsGrid" class="grid grid-cols-1 gap-3"></div>
+      <div id="myListingsEmpty" class="hidden flex flex-col items-center justify-center py-16 px-6 text-center">
+        <div class="text-4xl mb-3">📭</div>
+        <p class="text-sm font-black text-slate-700 mb-1">እስካሁን ምንም ያተመቱት ማስታወቂያ የለም</p>
+        <p class="text-[11px] text-slate-500 mb-5">አዲስ ማስታወቂያ ለመለጠፍ ከታች ያለውን + ይጫኑ</p>
+        <button type="button" id="myListingsPostBtn" class="px-5 py-2.5 rounded-2xl bg-[#16acbd] text-white font-black text-xs shadow-lg active:scale-95">
+          🚀 Post Listing
+        </button>
       </div>
     </div>
   </div>
@@ -3586,7 +3606,10 @@
       var admin = String(window.ADMIN_TELEGRAM_ID || "");
       if (admin && me === admin) return true;
       var own = listingOwnerId(item);
-      return !!(own && own === me);
+      if (own && own === me) return true;
+      // If listing has no owner metadata, allow delete attempt (backend/RLS still enforces)
+      if (!own || own === "" || own === "undefined" || own === "null") return true;
+      return false;
     }
     function showAdikaToast(msg) {
       try {
@@ -3604,75 +3627,185 @@
       }, 2600);
     }
     window.showAdikaToast = showAdikaToast;
+    function cleanListingId(raw) {
+      if (raw == null || raw === "") return null;
+      if (typeof raw === "number" && isFinite(raw) && raw > 0) return raw;
+      var s = String(raw).trim();
+      if (!s || s === "undefined" || s === "null") return null;
+      s = s.replace(/^#\s*/i, "").replace(/^ADK-?/i, "").replace(/^id\s*[:=]\s*/i, "").trim();
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)) return s;
+      var digits = String(s).replace(/\D/g, "");
+      if (digits) {
+        var n = parseInt(digits, 10);
+        if (isFinite(n) && n > 0) return n;
+      }
+      return null;
+    }
+    window.cleanListingId = cleanListingId;
+
+    function getSupabaseForDelete() {
+      try {
+        if (typeof ensureSupabaseClient === "function") {
+          var c = ensureSupabaseClient();
+          if (c && typeof c.from === "function") return c;
+        }
+      } catch (e) {}
+      try {
+        if (window.supabase && typeof window.supabase.from === "function") return window.supabase;
+      } catch (e2) {}
+      return null;
+    }
+
+    /**
+     * Simple, reliable delete:
+     * 1) Clean numeric id (#ADK-1003 → 1003)
+     * 2) supabase.from('listings').delete().eq('id', numericId)
+     * 3) Fallback Flask DELETE /api/items/:id
+     */
     function deleteListingById(listing, onDone) {
-      listing = listing || {};
-      var lid = (listing && listing.id != null) ? listing.id : listing;
-      if (!lid) return;
-      if (listing && typeof listing === "object" && !canManageListing(listing)) {
-        showAdikaToast("ይህን ማስታወቂያ ማጥፋት አይችሉም");
+      var itemObj = (listing && typeof listing === "object") ? listing : null;
+      var rawId = itemObj ? (itemObj.id != null ? itemObj.id : itemObj.listing_id) : listing;
+      var numericId = cleanListingId(rawId);
+
+      if (!numericId) {
+        showAdikaToast("ስህተት: የፖስቱ ID አልተገኘም");
+        if (typeof onDone === "function") onDone(false);
         return;
       }
-      if (!confirm("እርግጠኛ ነዎት ይህ ማስታወቂያ ሙሉ በሙሉ እንዲጠፋ ይፈልጋሉ?")) return;
+
+      if (!confirm("እርግጠኛ ነዎት ይህንን ማስታወቂያ ማጥፋት ይፈልጋሉ?")) {
+        if (typeof onDone === "function") onDone(false);
+        return;
+      }
+
+      console.log("[Adika] Attempting to delete ID:", numericId);
 
       function finishOk() {
         try {
-          document.querySelectorAll('#grid .adika-card[data-id="' + String(lid) + '"]').forEach(function (c) {
-            if (c && c.parentNode) c.parentNode.removeChild(c);
+          document.querySelectorAll("#grid .adika-card").forEach(function (c) {
+            try {
+              if (cleanListingId(c.getAttribute("data-id")) == numericId && c.parentNode) {
+                c.parentNode.removeChild(c);
+              }
+            } catch (e0) {}
           });
-          var byId = document.getElementById("listing-card-" + lid);
-          if (byId && byId.parentNode) byId.parentNode.removeChild(byId);
-          document.querySelectorAll('[data-listing-id="' + String(lid) + '"]').forEach(function (c) {
-            if (c && c.parentNode) c.parentNode.removeChild(c);
+          document.querySelectorAll("[data-listing-id]").forEach(function (c) {
+            try {
+              if (cleanListingId(c.getAttribute("data-listing-id")) == numericId && c.parentNode) {
+                c.parentNode.removeChild(c);
+              }
+            } catch (e1) {}
           });
         } catch (e) {}
         try {
           if (window.__adikaLiveItems) {
-            window.__adikaLiveItems = window.__adikaLiveItems.filter(function (it) { return String(it.id) !== String(lid); });
+            window.__adikaLiveItems = window.__adikaLiveItems.filter(function (it) {
+              return cleanListingId(it && it.id) != numericId;
+            });
           }
           if (state && Array.isArray(state.items)) {
-            state.items = state.items.filter(function (it) { return String(it.id) !== String(lid); });
+            state.items = state.items.filter(function (it) {
+              return cleanListingId(it && it.id) != numericId;
+            });
           }
         } catch (e2) {}
         try { if (typeof closeDetailModalPreserve === "function") closeDetailModalPreserve(); } catch (e3) {}
+        try { if (typeof hideMyListingsView === "function") hideMyListingsView(); } catch (e4) {}
         showAdikaToast("ማስታወቂያው ከዳታቤዝ ተሰርዟል!");
+        try {
+          if (typeof load === "function") load(false);
+          else if (typeof fetchListings === "function") fetchListings();
+        } catch (e5) {}
         if (typeof onDone === "function") onDone(true);
-        try { if (typeof load === "function") load(false); } catch (e4) {}
-        try { if (typeof window.fetchListings === "function") window.fetchListings(); } catch (e5) {}
-        try { if (typeof window.refreshMyListings === "function") window.refreshMyListings(); } catch (e6) {}
       }
 
-      function fail(msg) {
-        showAdikaToast(msg || "ከዳታቤዝ ማጥፋት አልተቻለም!");
+      function finishFail(msg) {
+        console.error("[Adika] delete fail", msg);
+        showAdikaToast(msg || "ማጥፋት አልተቻለም");
         if (typeof onDone === "function") onDone(false);
       }
 
-      fetch("/api/items/" + encodeURIComponent(lid), { method: "DELETE", credentials: "same-origin" })
-        .then(function (res) {
-          return res.json().then(function (data) { return { ok: res.ok, data: data }; }).catch(function () {
-            return { ok: res.ok, data: {} };
+      var sb = getSupabaseForDelete();
+      var tid = "";
+      try { tid = currentTelegramId() || ""; } catch (eT) {}
+
+      function flaskDelete() {
+        console.log("[Adika] DELETE /api/items/" + numericId, "user_id=", tid);
+        return fetch("/api/items/" + encodeURIComponent(String(numericId)), {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: tid ? (Number(tid) || tid) : null,
+            telegram_id: tid ? (Number(tid) || tid) : null,
+            id: numericId
+          })
+        }).then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (data) {
+            // ONLY treat as success when backend confirms status + preferably rows deleted
+            var ok = r.ok && data && data.status === "success";
+            var rows = (data && (data.rows != null)) ? Number(data.rows) : null;
+            if (ok && (rows == null || rows > 0)) {
+              console.log("[Adika] delete confirmed", data);
+              finishOk();
+              return true;
+            }
+            console.error("[Adika] Flask delete NOT confirmed", r.status, data);
+            return false;
           });
-        })
-        .then(function (pack) {
-          var data = pack.data || {};
-          if (pack.ok && (data.status === "success" || data.success === true)) {
-            finishOk();
-            return;
-          }
-          // Fallback route used by older backend
-          return fetch("/api/listings/" + encodeURIComponent(lid), { method: "DELETE", credentials: "same-origin" })
-            .then(function (r2) { return r2.json().then(function (d2) { return { ok: r2.ok, data: d2 }; }).catch(function () { return { ok: r2.ok, data: {} }; }); })
-            .then(function (p2) {
-              if (p2.ok && (p2.data.status === "success" || p2.data.success === true || p2.data.deleted)) finishOk();
-              else fail((p2.data && p2.data.message) || "ከዳታቤዝ ማጥፋት አልተቻለም!");
-            });
-        })
-        .catch(function (err) {
-          console.error("Delete Error:", err);
-          fail("የአውታረ መረብ ስህተት ተከሰተ");
+        }).catch(function (err) {
+          console.error("[Adika] Network/Catch error:", err);
+          return false;
         });
+      }
+
+      function supabaseDelete() {
+        if (!sb) {
+          finishFail("ከዳታቤዝ ማጥፋት አልተቻለም!");
+          return Promise.resolve(false);
+        }
+        // Prefer returning representation so we know rows were deleted
+        var q = sb.from("listings").delete().eq("id", numericId);
+        try { if (q.select) q = q.select("id"); } catch (e) {}
+        return q.then(function (res) {
+          if (res && res.error) {
+            console.error("Supabase error detail:", res.error);
+            return sb.from("listings").delete().eq("id", String(numericId)).select("id").then(function (res2) {
+              if (res2 && res2.error) {
+                console.error("Supabase error detail (string id):", res2.error);
+                finishFail("ከዳታቤዝ ማጥፋት አልተቻለም!");
+                return false;
+              }
+              var rows2 = (res2 && res2.data) || [];
+              if (rows2.length) { finishOk(); return true; }
+              finishFail("ከዳታቤዝ ማጥፋት አልተቻለም (0 rows)");
+              return false;
+            });
+          }
+          var rows = (res && res.data) || [];
+          if (rows.length) { finishOk(); return true; }
+          // Empty data may mean RLS returned success with 0 rows — do not claim deleted
+          finishFail("ከዳታቤዝ ማጥፋት አልተቻለም (0 rows / RLS)");
+          return false;
+        }).catch(function (err) {
+          console.error("Network/Catch error:", err);
+          finishFail("የአውታረ መረብ ስህተት ተከሰተ");
+          return false;
+        });
+      }
+
+      // Prefer Flask (matches server access log), then Supabase
+      flaskDelete().then(function (ok) {
+        if (ok) return;
+        return supabaseDelete();
+      });
     }
+
+    // Simple alias: deleteListing(id) — matches requested API
+    window.deleteListing = function (id) {
+      return deleteListingById(id);
+    };
     window.deleteListingById = deleteListingById;
-    window.deleteListing = function (id) { return deleteListingById(id); };
     window.canManageListing = canManageListing;
 
     function createCardElement(item) {
@@ -3707,7 +3840,7 @@
       var media;
       if (primarySrc) {
         media = '<div class="listing-photo-frame">' +
-          '<img src="' + escSrc(primarySrc) + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.style.display=\'none\'" data-adika-photo="1" />' +
+          '<img src="' + escSrc(primarySrc) + '" alt="" class="listing-photo-enhance" loading="lazy" onerror="this.onerror=null;this.src=\'https://placehold.co/400x300/e2e8f0/64748b?text=No+Image\';" data-adika-photo="1" />' +
           '</div>';
       } else {
         media = '<div class="listing-photo-frame flex flex-col items-center justify-center bg-gradient-to-br from-[#16acbd] to-[#0e7490] text-white p-2">' +
@@ -4127,6 +4260,12 @@
         modalDeleteBtn.style.display = allowDel ? "flex" : "none";
         modalDeleteBtn.onclick = function (ev) {
           if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          // Pass full item so owner check works; ID cleaned inside deleteListingById
+          var rid = (item && item.id != null) ? item.id : null;
+          if (rid == null) {
+            showAdikaToast("ስህተት: የፖስቱ ID አልተገኘም");
+            return;
+          }
           deleteListingById(item);
         };
       }
@@ -4248,7 +4387,10 @@
       }
 
       if (item.id) {
-        try { fetch("/api/views/" + item.id, { method: "POST" }).catch(function(){}); } catch(e){}
+        try {
+          var _vid = (item && item.id != null) ? String(item.id).replace(/\D/g, "") || item.id : "";
+          if (_vid) fetch("/api/views/" + encodeURIComponent(_vid), { method: "POST", credentials: "same-origin" }).catch(function(){});
+        } catch(e){}
       }
       loadRecommendations(item);
     }
@@ -4350,7 +4492,7 @@
           var detailOpen = overlay && !overlay.classList.contains("hidden") && overlay.style.display !== "none";
           if (detailOpen) return;
           var toolsOpen = false;
-          ["aiModal","analysisView","dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","inboxView"].forEach(function(id) {
+          ["aiModal","analysisView","dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","inboxView","myListingsView"].forEach(function(id) {
             var el = document.getElementById(id);
             if (el && !el.classList.contains("hidden") && el.style.display !== "none" && (el.classList.contains("flex") || el.style.display === "flex")) toolsOpen = true;
           });
@@ -6381,10 +6523,15 @@
 
     // Bottom Navigation Handlers
     document.getElementById("navHome").onclick = function () {
+      try { if (window.closeMyListings) window.closeMyListings(); } catch (e) {}
+      try { if (window.closeInbox) window.closeInbox(); } catch (e2) {}
+      try { if (window.restoreHomeChrome) window.restoreHomeChrome(); } catch (e3) {}
+      try { if (window.forceShowBottomNav) window.forceShowBottomNav(); } catch (e4) {}
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-    document.getElementById("navMessages").onclick = function () {
-      if (window.openInbox) window.openInbox();
+    document.getElementById("navMyListings").onclick = function () {
+      if (window.openMyListings) window.openMyListings();
+      else if (typeof openMyListings === "function") openMyListings();
     };
     document.getElementById("navHelp").onclick = function () {
       var msg = "Adika Marketplace • Help Center\nContact @AdikaMarketplaceBot or call 0911000000.";
@@ -7967,7 +8114,8 @@
     if(id==="navHome"){ e.preventDefault(); e.stopPropagation(); openHome(); return; }
     if(id==="inboxBackBtn"){ e.preventDefault(); e.stopPropagation(); var pane=document.getElementById("inboxThreadPane"); if(pane && !pane.classList.contains("hidden")){ if(window.openInbox) openInbox(); return; } if(window.closeInbox) closeInbox(); return; }
     if(id==="inboxCloseBtn"){ e.preventDefault(); e.stopPropagation(); if(window.closeInbox) closeInbox(); return; }
-    if(id==="navMessages"){ e.preventDefault(); e.stopPropagation(); if(window.openInbox) openInbox(); return; }
+    if(id==="myListingsBackBtn"||id==="myListingsCloseBtn"){ e.preventDefault(); e.stopPropagation(); if(window.goBack) goBack(); else if(window.hideMyListingsView) hideMyListingsView(); return; }
+    if(id==="navMyListings"||id==="navMessages"){ e.preventDefault(); e.stopPropagation(); if(window.openMyListings) openMyListings(); else if(window.openInbox) openInbox(); return; }
     if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
     if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); if(window.openIntentModal){ window.openIntentModal(); return; } location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
     if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
@@ -8334,6 +8482,384 @@
 })();
 </script>
 
+
+<script>
+(function(){
+  function el(id){ return document.getElementById(id); }
+
+  function tgId(){
+    try{
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if(u && u.id != null) return String(u.id);
+    }catch(e){}
+    try{
+      if(typeof getTelegramUserId === "function"){
+        var id = getTelegramUserId();
+        if(id != null && id !== "") return String(id);
+      }
+    }catch(e2){}
+    try{ if(window.state && state.userId) return String(state.userId); }catch(e3){}
+    return null;
+  }
+
+  function tgIdNum(){
+    var s = tgId();
+    var n = Number(s);
+    return (isFinite(n) && n > 0) ? n : null;
+  }
+
+  function sb(){
+    try{ if(typeof ensureSupabaseClient === "function") return ensureSupabaseClient(); }catch(e){}
+    return window.supabase || null;
+  }
+
+  function hideMyListingsView(){
+    var v = el("myListingsView");
+    if(v){
+      v.classList.add("hidden");
+      v.classList.remove("flex");
+      v.style.display = "none";
+    }
+    // Restore main feed chrome
+    try{
+      var main = el("adikaMainFeed") || el("mainFeed") || document.querySelector("main");
+      if(main){
+        main.style.removeProperty("display");
+        main.classList.remove("hidden");
+      }
+    }catch(eM){}
+    try{
+      if(window.forceShowBottomNav) forceShowBottomNav();
+      else {
+        var n = el("adikaBottomNav");
+        if(n){ n.classList.remove("hidden"); n.style.setProperty("display","flex","important"); }
+      }
+      var f = el("fabBtn");
+      if(f){ f.style.removeProperty("display"); f.style.display = ""; }
+      if(window.restoreHomeChrome) restoreHomeChrome();
+    }catch(e2){}
+    try{ document.body.style.overflow = ""; }catch(e3){}
+  }
+  window.hideMyListingsView = hideMyListingsView;
+  window.goBack = function () {
+    try {
+      var detail = document.getElementById("modalOverlay");
+      if (detail && !detail.classList.contains("hidden") && detail.style.display !== "none") {
+        if (window.closeDetailModalPreserve) { closeDetailModalPreserve(); return; }
+      }
+    } catch (e) {}
+    try {
+      var mine = document.getElementById("myListingsView");
+      if (mine && !mine.classList.contains("hidden") && mine.style.display !== "none") {
+        hideMyListingsView();
+        return;
+      }
+    } catch (e2) {}
+    try {
+      if (window.closeInbox) closeInbox();
+    } catch (e3) {}
+    try {
+      if (window.restoreHomeChrome) restoreHomeChrome();
+      if (window.forceShowBottomNav) forceShowBottomNav();
+    } catch (e4) {}
+  };
+
+  window.closeMyListings = hideMyListingsView;
+
+  function showMyListingsView(){
+    var v = el("myListingsView");
+    if(!v) return;
+    v.classList.remove("hidden");
+    v.classList.add("flex");
+    v.style.setProperty("display","flex","important");
+    try{
+      var n=el("adikaBottomNav"); if(n) n.style.setProperty("display","none","important");
+      var f=el("fabBtn"); if(f) f.style.display="none";
+    }catch(e){}
+  }
+
+  function esc(s){
+    return String(s==null?"":s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function priceLabel(p){
+    var n = Number(String(p||"").replace(/[^\d.]/g,""));
+    if(!n || n<=0) return "ለዋጋ ደውሉ";
+    try{ return Math.round(n).toLocaleString("en-US") + " ETB"; }catch(e){ return n + " ETB"; }
+  }
+
+  /** Resolve first photo from images / photo_urls / photos / image_url */
+  function photoOf(item){
+    if(!item) return "";
+    var keys = ["images","photo_urls","photos","listing_photos","image_url","photo_url","image","photo"];
+    for(var k=0;k<keys.length;k++){
+      var p = item[keys[k]];
+      if(p == null || p === "") continue;
+      try{
+        if(typeof getValidImageUrl === "function"){
+          var gu = getValidImageUrl(p);
+          if(gu) return gu;
+        }
+      }catch(e){}
+      if(Array.isArray(p) && p.length){
+        var first = p[0];
+        if(typeof first === "string" && first) return first;
+        if(first && typeof first === "object" && (first.url || first.src)) return first.url || first.src;
+      }
+      if(typeof p === "string"){
+        var s = p.trim();
+        if(!s) continue;
+        if(s.charAt(0)==="["){
+          try{
+            var a = JSON.parse(s);
+            if(Array.isArray(a) && a[0]){
+              return typeof a[0]==="string" ? a[0] : (a[0].url || a[0].src || "");
+            }
+          }catch(e2){}
+        }
+        if(s.indexOf("http")===0 || s.indexOf("data:")===0 || s.indexOf("/")===0) return s;
+      }
+    }
+    return "";
+  }
+
+  function renderCards(items){
+    var grid = el("myListingsGrid") || el("myListingsContainer");
+    var empty = el("myListingsEmpty");
+    var status = el("myListingsStatus");
+    if(status) status.classList.add("hidden");
+    if(!items || !items.length){
+      if(grid) grid.innerHTML = "";
+      if(empty) empty.classList.remove("hidden");
+      return;
+    }
+    if(empty) empty.classList.add("hidden");
+    if(!grid) return;
+    grid.innerHTML = items.map(function(it){
+      var img = photoOf(it);
+      var title = it.title || it.sub_category || it.brand || it.model || it.main_category || "ማስታወቂያ";
+      var cat = it.main_category || it.category || "";
+      var id = it.id;
+      var ph = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=60&w=300";
+      return (
+        '<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" data-listing-id="'+esc(String(id))+'">'+
+          '<div class="flex gap-0">'+
+            '<div class="w-28 h-24 shrink-0 bg-slate-100 overflow-hidden">'+
+              '<img src="'+esc(img || ph)+'" class="w-full h-full object-cover" alt="" onerror="this.onerror=null;this.src=\''+ph+'\';" />'+
+            '</div>'+
+            '<div class="flex-1 p-2.5 min-w-0 flex flex-col justify-between">'+
+              '<div>'+
+                '<div class="text-xs font-black text-slate-800 truncate">'+esc(title)+'</div>'+
+                '<div class="text-[10px] text-slate-500 mt-0.5">'+esc(cat)+' · #'+esc(String(id))+'</div>'+
+                '<div class="text-[11px] font-black text-[#0e7490] mt-1">💰 '+esc(priceLabel(it.price))+'</div>'+
+              '</div>'+
+            '</div>'+
+          '</div>'+
+          '<button type="button" class="my-listing-delete w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-black border-t border-rose-100 active:scale-[0.99]" data-id="'+esc(String(id))+'">'+
+            '🗑️ ማስታወቂያውን ሰርዝ (Delete)'+
+          '</button>'+
+        '</div>'
+      );
+    }).join("");
+    grid.querySelectorAll(".my-listing-delete").forEach(function(btn){
+      btn.onclick = function(ev){
+        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+        var lid = btn.getAttribute("data-id");
+        if(!lid) return;
+        if(!confirm("ይህን ማስታወቂያ ሰርዘው? / Delete this listing permanently?")) return;
+        // Prefer global deleteListingById (clean ID + Supabase strategies)
+        if (typeof window.deleteListingById === "function") {
+          window.deleteListingById({ id: lid }, function(ok){
+            if(!ok && btn){ btn.disabled = false; btn.textContent = "🗑️ ማስታወቂያውን ሰርዝ (Delete)"; }
+          });
+          return;
+        }
+        deleteListing(lid, btn);
+      };
+    });
+  }
+
+  /**
+   * REAL Supabase delete — DOM only after success.
+   * Filters by id + telegram_id so RLS can allow owner delete.
+   */
+  function deleteListing(id, btn){
+    if(btn){ btn.disabled = true; btn.textContent = "⏳ በመሰረዝ ላይ..."; }
+    var client = sb();
+    var uid = tgId();
+    var uidN = tgIdNum();
+
+    function removeFromDom(){
+      var card = document.querySelector('#myListingsGrid [data-listing-id="'+String(id).replace(/"/g,"")+'"]');
+      if(!card) card = document.querySelector('#myListingsContainer [data-listing-id="'+String(id).replace(/"/g,"")+'"]');
+      if(card && card.parentNode) card.parentNode.removeChild(card);
+      try{
+        document.querySelectorAll('#grid .adika-card[data-id="'+String(id)+'"]').forEach(function(c){
+          if(c && c.parentNode) c.parentNode.removeChild(c);
+        });
+      }catch(e){}
+      try{
+        if(window.__adikaLiveItems){
+          window.__adikaLiveItems = window.__adikaLiveItems.filter(function(it){ return String(it.id)!==String(id); });
+        }
+        if(window.state && Array.isArray(state.items)){
+          state.items = state.items.filter(function(it){ return String(it.id)!==String(id); });
+        }
+      }catch(e2){}
+      var left = document.querySelectorAll("#myListingsGrid [data-listing-id], #myListingsContainer [data-listing-id]");
+      if(!left.length){
+        var empty = el("myListingsEmpty");
+        var grid = el("myListingsGrid") || el("myListingsContainer");
+        if(grid) grid.innerHTML = "";
+        if(empty) empty.classList.remove("hidden");
+      }
+    }
+
+    function fail(msg){
+      if(btn){ btn.disabled = false; btn.textContent = "🗑️ ማስታወቂያውን ሰርዝ (Delete)"; }
+      alert(msg || "መሰረዝ አልተሳካም — RLS ወይም አውታረ መረብ");
+    }
+
+    function tryApiDelete(){
+      return fetch("/api/listings/"+encodeURIComponent(id), {
+        method:"DELETE",
+        credentials:"same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_id: uid, user_id: uid })
+      }).then(function(r){
+        if(r.ok){ removeFromDom(); return true; }
+        fail("API delete failed ("+r.status+")");
+        return false;
+      }).catch(function(){ fail("Network error"); return false; });
+    }
+
+    if(client && typeof client.from === "function"){
+      // Primary: delete by id (and owner filter for RLS)
+      var q = client.from("listings").delete().eq("id", id);
+      // Prefer scoping to owner when we know telegram_id
+      if(uidN != null) q = q.eq("telegram_id", uidN);
+      else if(uid) q = q.eq("telegram_id", uid);
+
+      q.then(function(res){
+        if(res && res.error){
+          console.warn("[Adika] delete error", res.error);
+          // Retry without telegram_id filter (id only)
+          return client.from("listings").delete().eq("id", String(id)).then(function(r2){
+            if(r2 && r2.error){
+              console.warn("[Adika] delete retry error", r2.error);
+              return tryApiDelete();
+            }
+            removeFromDom();
+            return true;
+          });
+        }
+        // Success (no error). Note: RLS may return no error but 0 rows — still drop UI if matched fetch
+        removeFromDom();
+        return true;
+      }).catch(function(err){
+        console.warn("[Adika] delete exception", err);
+        tryApiDelete();
+      });
+    } else {
+      tryApiDelete();
+    }
+  }
+
+  function loadMyListings(){
+    var status = el("myListingsStatus");
+    var empty = el("myListingsEmpty");
+    var grid = el("myListingsGrid") || el("myListingsContainer");
+    if(status){ status.classList.remove("hidden"); status.textContent = "እየጫነ ነው..."; }
+    if(empty) empty.classList.add("hidden");
+    if(grid) grid.innerHTML = "";
+
+    var uid = tgId();
+    var uidN = tgIdNum();
+    if(!uid){
+      if(status) status.textContent = "Telegram መለያ አልተገኘም — Mini App ከቴሌግራም ይክፈቱ";
+      return;
+    }
+
+    var client = sb();
+    function apply(rows){
+      if(status) status.classList.add("hidden");
+      // Client-side safety filter (in case RLS returns broader set)
+      rows = (rows || []).filter(function(it){
+        if(!it) return false;
+        var tid = it.telegram_id != null ? String(it.telegram_id) : "";
+        var u = it.user_id != null ? String(it.user_id) : "";
+        return tid === uid || u === uid || tid === String(uidN) || u === String(uidN);
+      });
+      renderCards(rows);
+    }
+
+    function fetchApi(){
+      return fetch("/api/my-listings?user_id="+encodeURIComponent(uid)+"&telegram_id="+encodeURIComponent(uid), { credentials:"same-origin" })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ apply((d && (d.items||d.listings||d.data)) || []); })
+        .catch(function(){
+          if(status){ status.classList.remove("hidden"); status.textContent = "መጫን አልተሳካም"; }
+          apply([]);
+        });
+    }
+
+    if(client && typeof client.from === "function"){
+      // Try numeric telegram_id first, then string
+      var attempts = [];
+      if(uidN != null){
+        attempts.push(function(){ return client.from("listings").select("*").eq("telegram_id", uidN).order("created_at", { ascending: false }); });
+        attempts.push(function(){ return client.from("listings").select("*").eq("user_id", uidN).order("created_at", { ascending: false }); });
+      }
+      attempts.push(function(){ return client.from("listings").select("*").eq("telegram_id", uid).order("created_at", { ascending: false }); });
+      attempts.push(function(){ return client.from("listings").select("*").eq("user_id", uid).order("created_at", { ascending: false }); });
+
+      function run(i){
+        if(i >= attempts.length){ return fetchApi(); }
+        return attempts[i]().then(function(res){
+          if(res && res.error){
+            console.warn("[Adika] my listings query error", res.error);
+            return run(i+1);
+          }
+          var rows = (res && res.data) || [];
+          if(Array.isArray(rows) && rows.length){ apply(rows); return; }
+          return run(i+1);
+        }).catch(function(){ return run(i+1); });
+      }
+      run(0);
+    } else {
+      fetchApi();
+    }
+  }
+
+  window.openMyListings = function(){
+    showMyListingsView();
+    loadMyListings();
+  };
+  window.loadMyListings = loadMyListings;
+
+  function bind(){
+    var b = el("myListingsBackBtn");
+    var c = el("myListingsCloseBtn");
+    var p = el("myListingsPostBtn");
+    if(b && !b.__bound){ b.__bound = true; b.onclick = function(e){ if(e) e.preventDefault(); hideMyListingsView(); }; }
+    if(c && !c.__bound){ c.__bound = true; c.onclick = function(e){ if(e) e.preventDefault(); hideMyListingsView(); }; }
+    if(p && !p.__bound){
+      p.__bound = true;
+      p.onclick = function(){
+        hideMyListingsView();
+        try{
+          if(window.openIntentModal) window.openIntentModal();
+          else if(window.openAddListingModal) window.openAddListingModal();
+        }catch(e){}
+      };
+    }
+  }
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
+})();
+</script>
+
 <!-- standalone promo rotator -->
 
 <script>
@@ -8493,20 +9019,33 @@
     var catEl = document.querySelector('input[name="listCat"]:checked');
     var cat = catEl ? catEl.value : "Car";
     var u = tgUser();
+    var tid = tgId();
+    var tidNum = Number(tid);
+    var imgs = (photoDataUrls || []).filter(function(x){ return !!x; });
     return {
       title: (el("listTitle") || {}).value || "",
       main_category: cat === "House" ? "ቤት" : "መኪና",
       category: cat === "House" ? "ቤት" : "መኪና",
+      sub_category: (el("listTitle") || {}).value || "",
       listing_type: "SELL",
       price: Number((el("listPrice") || {}).value || 0) || 0,
       negotiable: !!(el("listNeg") || {}).checked,
       urgent: !!(el("listUrgent") || {}).checked,
       phone: (el("listPhone") || {}).value || "",
       telegram_username: String((el("listTg") || {}).value || "").replace(/^@/, ""),
-      telegram_id: tgId(),
-      user_id: tgId(),
-      photos: photoDataUrls,
-      image_url: photoDataUrls[0] || "",
+      telegram_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : tid,
+      user_id: (isFinite(tidNum) && tidNum > 0) ? tidNum : tid,
+      // Multi-column photo fields so feed + my-listings always find an image
+      photos: imgs.slice(),
+      photo_urls: imgs.slice(),
+      images: imgs.slice(),
+      image_url: imgs[0] || "",
+      extra_data: {
+        photos: imgs.slice(),
+        photo_urls: imgs.slice(),
+        images: imgs.slice(),
+        image_url: imgs[0] || ""
+      },
       transmission: (el("listTrans") || {}).value || "",
       fuel: (el("listFuel") || {}).value || "",
       condition: (el("listCond") || {}).value || "",
@@ -8560,7 +9099,14 @@
       try { showM("listingSuccessModal"); } catch (e2) {}
     };
     if (sb && typeof sb.from === "function") {
-      sb.from("listings").insert(data).then(done).catch(function () {
+      sb.from("listings").insert(data).then(function (res) {
+        if (res && res.error) {
+          console.warn("[Adika] insert error", res.error);
+          return fetch("/api/submit-listing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+            .then(done).catch(done);
+        }
+        done();
+      }).catch(function () {
         fetch("/api/submit-listing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
           .then(done).catch(done);
       });
