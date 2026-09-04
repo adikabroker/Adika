@@ -2326,6 +2326,136 @@
     </div>
   </div>
 
+<!-- ========== INTENT + LISTING + REQUEST (soft frosted glass) ========== -->
+  <div id="intentModal" class="fixed inset-0 z-[310] hidden items-center justify-center p-4" style="background:rgba(15,23,42,0.38);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
+    <div class="w-full max-w-md rounded-3xl p-5 shadow-2xl" style="background:rgba(30,41,59,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.16);">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-white font-black text-base">ምን ማድረግ ይፈልጋሉ?</h3>
+        <button type="button" id="intentCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">✕</button>
+      </div>
+      <p class="text-[11px] mb-4" style="color:#94A3B8;">የሚፈልጉትን አማራጭ ይምረጡ</p>
+      <button type="button" id="intentSellCard" class="w-full text-left rounded-2xl p-4 mb-3 active:scale-[0.98] transition-transform" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.35);">
+        <div class="text-white font-black text-sm">🏷️ እቃ/ንብረት ለመሸጥ</div>
+        <div class="text-[11px] mt-1" style="color:#94A3B8;">Post Listing — ማስታወቂያ ይለጥፉ</div>
+      </button>
+      <button type="button" id="intentRequestCard" class="w-full text-left rounded-2xl p-4 active:scale-[0.98] transition-transform" style="background:rgba(255,255,255,0.08);border:1px solid rgba(148,163,184,0.28);">
+        <div class="text-white font-black text-sm">🔍 የምፈልገውን ለመጠየቅ</div>
+        <div class="text-[11px] mt-1" style="color:#94A3B8;">Post Request — ፍላጎትዎን ይላኩ</div>
+      </button>
+    </div>
+  </div>
+
+  <div id="addListingModal" class="fixed inset-0 z-[320] hidden items-end justify-center" style="background:rgba(15,23,42,0.38);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
+    <div class="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl p-5 pb-8" style="background:rgba(30,41,59,0.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.14);">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-white font-black text-base">🏷️ ማስታወቂያ መለጠፍ</h3>
+        <button type="button" id="listingCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">✕</button>
+      </div>
+      <div class="flex gap-1 mb-4 p-1 rounded-xl" style="background:rgba(255,255,255,0.06);">
+        <span id="listingStepChip1" class="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-cyan-400 text-slate-950">1 · ዝርዝር</span>
+        <span id="listingStepChip2" class="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg text-slate-300">2 · ፎቶና መገኛ</span>
+      </div>
+      <form id="addListingForm" class="space-y-3">
+        <div id="listingStep1">
+          <label class="block text-[11px] font-bold text-white mb-1">ምድብ</label>
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white cursor-pointer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
+              <input type="radio" name="listCat" value="Car" checked class="accent-cyan-400"> 🚗 መኪና
+            </label>
+            <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white cursor-pointer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
+              <input type="radio" name="listCat" value="House" class="accent-cyan-400"> 🏠 ቤት
+            </label>
+          </div>
+          <label class="block text-[11px] font-bold text-white mb-1">ርዕስ / ሞዴል</label>
+          <input id="listTitle" required placeholder="Toyota Vitz / 3BR Apartment" class="w-full rounded-xl px-3 py-2 text-xs text-white mb-3 outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+          <div id="listCarSpecs" class="grid grid-cols-3 gap-2 mb-3">
+            <select id="listTrans" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+              <option value="Automatic">አውቶ</option><option value="Manual">ማኑዋል</option>
+            </select>
+            <select id="listFuel" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+              <option value="Fuel">ነዳጅ</option><option value="Diesel">ናፍጣ</option><option value="Hybrid">ሃይብሪድ</option><option value="EV">EV</option>
+            </select>
+            <select id="listCond" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+              <option value="Used">ያገለገለ</option><option value="New">አዲስ</option>
+            </select>
+          </div>
+          <div id="listHouseSpecs" class="grid grid-cols-3 gap-2 mb-3 hidden">
+            <input id="listBeds" placeholder="መኝታ" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+            <input id="listBaths" placeholder="መታጠቢያ" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+            <input id="listPType" placeholder="አፓርታማ/ቪላ" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+          </div>
+          <label class="block text-[11px] font-bold text-white mb-1">ዋጋ (ETB)</label>
+          <input id="listPrice" type="number" inputmode="numeric" placeholder="1500000" class="w-full rounded-xl px-3 py-2 text-xs text-white mb-3 outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+          <div class="flex items-center justify-between gap-3 mb-4">
+            <label class="flex items-center gap-2 text-[11px] text-white"><input id="listNeg" type="checkbox" class="accent-cyan-400"> Negotiable Price</label>
+            <label class="flex items-center gap-2 text-[11px] text-white"><input id="listUrgent" type="checkbox" class="accent-rose-400"> Urgent Sale</label>
+          </div>
+          <button type="button" id="listingNextBtn" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">ቀጣይ → ፎቶና መገኛ</button>
+        </div>
+        <div id="listingStep2" class="hidden">
+          <label class="block text-[11px] font-bold text-white mb-1">ፎቶዎች (እስከ 5)</label>
+          <input id="listPhotos" type="file" accept="image/*" multiple class="w-full text-[11px] text-slate-200 mb-2">
+          <div id="listPhotoPreview" class="grid grid-cols-5 gap-1 mb-3"></div>
+          <label class="block text-[11px] font-bold text-white mb-1">ስልክ</label>
+          <input id="listPhone" type="tel" required placeholder="09xxxxxxxx" class="w-full rounded-xl px-3 py-2 text-xs text-white mb-3 outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+          <label class="block text-[11px] font-bold text-white mb-1">Telegram username</label>
+          <input id="listTg" placeholder="@username" class="w-full rounded-xl px-3 py-2 text-xs text-white mb-4 outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="listingBackBtn" class="py-3 rounded-2xl font-bold text-xs text-white" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);">← ተመለስ</button>
+            <button type="submit" id="listingSubmitBtn" class="py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">🚀 Submit Listing</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="addRequestModal" class="fixed inset-0 z-[320] hidden items-end justify-center" style="background:rgba(15,23,42,0.38);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
+    <div class="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl p-5 pb-8" style="background:rgba(30,41,59,0.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.14);">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-white font-black text-base">🔍 የፍላጎት ጥያቄ</h3>
+        <button type="button" id="requestCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">✕</button>
+      </div>
+      <div class="rounded-2xl p-3 mb-4" style="background:rgba(8,145,178,0.18);border:1px solid rgba(34,211,238,0.35);">
+        <p class="text-[11px] leading-relaxed text-white">💡 ጥያቄዎ በፍጥነት መልስ ያገኛል! የሚፈልጉትን መረጃ እዚህ እንደሞሉ፣ ጥያቄዎ ወዲያውኑ በስርዓታችን ለተመዘገቡ ሕጋዊ ደላሎች እና ኤጀንሲዎች በሙሉ ይደርሳል። ከእርሶ ፍላጎት ጋር የሚጣጣሙ ምርጥ አማራጮች ሲገኙ በ Telegram Bot-አችን በኩል በቀጥታ ይላኩልዎታል።</p>
+      </div>
+      <form id="addRequestForm" class="space-y-3">
+        <label class="block text-[11px] font-bold text-white mb-1">ምድብ</label>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
+            <input type="radio" name="reqCat" value="Car" checked class="accent-cyan-400"> 🚗 መኪና
+          </label>
+          <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
+            <input type="radio" name="reqCat" value="House" class="accent-cyan-400"> 🏠 ቤት
+          </label>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-bold text-white mb-1">ዝቅተኛ በጀት</label>
+            <input id="reqMin" type="number" placeholder="500000" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-white mb-1">ከፍተኛ በጀት</label>
+            <input id="reqMax" type="number" placeholder="2500000" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+          </div>
+        </div>
+        <label class="block text-[11px] font-bold text-white mb-1">ዝርዝር / ማስታወሻ</label>
+        <textarea id="reqNotes" rows="3" placeholder="ምን እንደሚፈልጉ ይጻፉ..." class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);"></textarea>
+        <label class="block text-[11px] font-bold text-white mb-1">ስልክ</label>
+        <input id="reqPhone" type="tel" required placeholder="09xxxxxxxx" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
+        <button type="submit" id="requestSubmitBtn" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">ጥያቄ ላክ → ደላሎች</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="requestSuccessModal" class="fixed inset-0 z-[330] hidden items-center justify-center p-4" style="background:rgba(15,23,42,0.42);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);">
+    <div class="w-full max-w-sm rounded-3xl p-5 text-center" style="background:rgba(30,41,59,0.92);backdrop-filter:blur(24px);border:1px solid rgba(34,211,238,0.28);">
+      <div class="text-2xl mb-2">🎉</div>
+      <h3 class="text-white font-black text-sm mb-2">ጥያቄዎ በተሳካ ሁኔታ ተልኳል!</h3>
+      <p class="text-[11px] leading-relaxed mb-4" style="color:#94A3B8;">ፍላጎትዎን ለተረጋገጡ የአዲካ አጋር ደላሎች አቅርበናል። ከእርሶ ፍላጎት ጋር የሚሄዱ አማራጮች ሲገኙ በ Adika Telegram Bot በኩል እናሳውቅዎታለን።</p>
+      <button type="button" id="requestSuccessOk" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">እሺ</button>
+    </div>
+  </div>
+
 <!-- Role selection (first launch) -->
   <div id="roleSelectModal" class="fixed inset-0 z-[180] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl">
@@ -4364,8 +4494,13 @@
       }
     }
 
-    // Dynamic Central FAB
-    fabBtn.onclick = function () {
+    // Dynamic Central FAB → intent picker (2-step listing / request)
+    fabBtn.onclick = function (ev) {
+      try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e) {}
+      if (typeof window.openIntentModal === "function") {
+        window.openIntentModal();
+        return;
+      }
       if (state.tab === "marketplace") {
         window.location.href = "/seller-form";
       } else {
@@ -7679,7 +7814,7 @@
     if(id==="inboxCloseBtn"){ e.preventDefault(); e.stopPropagation(); if(window.closeInbox) closeInbox(); return; }
     if(id==="navMessages"){ e.preventDefault(); e.stopPropagation(); if(window.openInbox) openInbox(); return; }
     if(id==="navHelp"){ e.preventDefault(); e.stopPropagation(); alert("Adika Marketplace\n@AdikaMarketplaceBot"); return; }
-    if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
+    if(id==="fabBtn"){ e.preventDefault(); e.stopPropagation(); if(window.openIntentModal){ window.openIntentModal(); return; } location.href = window.__adikaIsBuy ? "/buyer-form" : "/seller-form"; return; }
     if(id==="brokerCtaHome"){ e.preventDefault(); e.stopPropagation(); show("brokerRegModal"); return; }
 
     if(id==="analysisHomeBtn"){ e.preventDefault(); e.stopPropagation(); hide("analysisView"); openHome(); return; }
@@ -8091,6 +8226,241 @@
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", run);
   else run();
+})();
+</script>
+<script>
+(function () {
+  function el(id) { return document.getElementById(id); }
+  function showM(id) {
+    var n = el(id); if (!n) return;
+    n.classList.remove("hidden");
+    n.classList.add("flex");
+    n.style.display = "flex";
+  }
+  function hideM(id) {
+    var n = el(id); if (!n) return;
+    n.classList.add("hidden");
+    n.classList.remove("flex");
+    n.style.display = "none";
+  }
+  function tgUser() {
+    try {
+      return (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) || null;
+    } catch (e) { return null; }
+  }
+  function tgId() {
+    var u = tgUser();
+    return (u && u.id) || (window.state && state.userId) || null;
+  }
+  function sbClient() {
+    try {
+      if (typeof ensureSupabaseClient === "function") return ensureSupabaseClient();
+    } catch (e) {}
+    return window.supabase || null;
+  }
+
+  window.openIntentModal = function () {
+    hideM("addListingModal");
+    hideM("addRequestModal");
+    hideM("requestSuccessModal");
+    showM("intentModal");
+  };
+  window.closeIntentModal = function () { hideM("intentModal"); };
+
+  function setListingStep(n) {
+    var s1 = el("listingStep1"), s2 = el("listingStep2");
+    var c1 = el("listingStepChip1"), c2 = el("listingStepChip2");
+    if (s1) s1.classList.toggle("hidden", n !== 1);
+    if (s2) s2.classList.toggle("hidden", n !== 2);
+    if (c1) c1.className = n === 1
+      ? "flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-cyan-400 text-slate-950"
+      : "flex-1 text-center text-[10px] font-black py-1.5 rounded-lg text-slate-300";
+    if (c2) c2.className = n === 2
+      ? "flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-cyan-400 text-slate-950"
+      : "flex-1 text-center text-[10px] font-black py-1.5 rounded-lg text-slate-300";
+  }
+
+  window.openAddListingModal = function () {
+    hideM("intentModal");
+    setListingStep(1);
+    showM("addListingModal");
+  };
+  window.openAddRequestModal = function () {
+    hideM("intentModal");
+    showM("addRequestModal");
+  };
+
+  var photoDataUrls = [];
+  function bindListingPhotos() {
+    var inp = el("listPhotos");
+    if (!inp || inp.__bound) return;
+    inp.__bound = true;
+    inp.addEventListener("change", function () {
+      var files = Array.prototype.slice.call(inp.files || []).slice(0, 5);
+      photoDataUrls = [];
+      var prev = el("listPhotoPreview");
+      if (prev) prev.innerHTML = "";
+      files.forEach(function (f) {
+        var r = new FileReader();
+        r.onload = function () {
+          photoDataUrls.push(r.result);
+          if (prev) {
+            var img = document.createElement("img");
+            img.src = r.result;
+            img.className = "w-full h-12 object-cover rounded-lg";
+            prev.appendChild(img);
+          }
+        };
+        r.readAsDataURL(f);
+      });
+    });
+  }
+
+  function bindCatToggle() {
+    document.querySelectorAll('input[name="listCat"]').forEach(function (r) {
+      if (r.__bound) return;
+      r.__bound = true;
+      r.addEventListener("change", function () {
+        var house = r.value === "House";
+        var cs = el("listCarSpecs"), hs = el("listHouseSpecs");
+        if (cs) cs.classList.toggle("hidden", house);
+        if (hs) hs.classList.toggle("hidden", !house);
+      });
+    });
+  }
+
+  function listingPayload() {
+    var catEl = document.querySelector('input[name="listCat"]:checked');
+    var cat = catEl ? catEl.value : "Car";
+    var u = tgUser();
+    return {
+      title: (el("listTitle") || {}).value || "",
+      main_category: cat === "House" ? "ቤት" : "መኪና",
+      category: cat === "House" ? "ቤት" : "መኪና",
+      listing_type: "SELL",
+      price: Number((el("listPrice") || {}).value || 0) || 0,
+      negotiable: !!(el("listNeg") || {}).checked,
+      urgent: !!(el("listUrgent") || {}).checked,
+      phone: (el("listPhone") || {}).value || "",
+      telegram_username: String((el("listTg") || {}).value || "").replace(/^@/, ""),
+      telegram_id: tgId(),
+      user_id: tgId(),
+      photos: photoDataUrls,
+      image_url: photoDataUrls[0] || "",
+      transmission: (el("listTrans") || {}).value || "",
+      fuel: (el("listFuel") || {}).value || "",
+      condition: (el("listCond") || {}).value || "",
+      bedrooms: (el("listBeds") || {}).value || "",
+      bathrooms: (el("listBaths") || {}).value || "",
+      property_type: (el("listPType") || {}).value || "",
+      seller_name: u ? [u.first_name, u.last_name].filter(Boolean).join(" ") : "",
+      created_at: new Date().toISOString(),
+      status: "active"
+    };
+  }
+
+  function requestPayload() {
+    var catEl = document.querySelector('input[name="reqCat"]:checked');
+    var cat = catEl ? catEl.value : "Car";
+    var u = tgUser();
+    return {
+      category: cat === "House" ? "ቤት" : "መኪና",
+      main_category: cat === "House" ? "ቤት" : "መኪና",
+      budget_min: Number((el("reqMin") || {}).value || 0) || 0,
+      budget_max: Number((el("reqMax") || {}).value || 0) || 0,
+      notes: (el("reqNotes") || {}).value || "",
+      details: (el("reqNotes") || {}).value || "",
+      phone: (el("reqPhone") || {}).value || "",
+      telegram_id: tgId(),
+      user_id: tgId(),
+      telegram_username: u && u.username ? u.username : "",
+      buyer_name: u ? [u.first_name, u.last_name].filter(Boolean).join(" ") : "",
+      notify_brokers: true,
+      created_at: new Date().toISOString(),
+      status: "open"
+    };
+  }
+
+  function submitListing(ev) {
+    if (ev) ev.preventDefault();
+    var data = listingPayload();
+    if (!data.title || !data.phone) {
+      alert("ርዕስ እና ስልክ ያስፈልጋሉ");
+      setListingStep(2);
+      return;
+    }
+    var btn = el("listingSubmitBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "⏳..."; }
+    var sb = sbClient();
+    var done = function () {
+      hideM("addListingModal");
+      if (btn) { btn.disabled = false; btn.textContent = "🚀 Submit Listing"; }
+      photoDataUrls = [];
+      try { if (typeof load === "function") load(false); } catch (e) {}
+      try { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.showAlert) Telegram.WebApp.showAlert("ማስታወቂያዎ ተልኳል"); } catch (e2) {}
+    };
+    if (sb && typeof sb.from === "function") {
+      sb.from("listings").insert(data).then(done).catch(function () {
+        fetch("/api/submit-listing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+          .then(done).catch(done);
+      });
+    } else {
+      fetch("/api/submit-listing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+        .then(done).catch(done);
+    }
+  }
+
+  function submitRequest(ev) {
+    if (ev) ev.preventDefault();
+    var data = requestPayload();
+    if (!data.phone) { alert("ስልክ ያስፈልጋል"); return; }
+    var btn = el("requestSubmitBtn");
+    if (btn) { btn.disabled = true; btn.textContent = "⏳..."; }
+    var sb = sbClient();
+    var done = function () {
+      hideM("addRequestModal");
+      showM("requestSuccessModal");
+      if (btn) { btn.disabled = false; btn.textContent = "ጥያቄ ላክ → ደላሎች"; }
+      try {
+        fetch("/api/notify-brokers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).catch(function () {});
+      } catch (e) {}
+    };
+    if (sb && typeof sb.from === "function") {
+      sb.from("buyer_requests").insert(data).then(done).catch(function () {
+        fetch("/api/submit-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+          .then(done).catch(done);
+      });
+    } else {
+      fetch("/api/submit-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+        .then(done).catch(done);
+    }
+  }
+
+  function bind() {
+    bindListingPhotos();
+    bindCatToggle();
+    var sell = el("intentSellCard");
+    var req = el("intentRequestCard");
+    var ic = el("intentCloseBtn");
+    if (sell && !sell.__bound) { sell.__bound = true; sell.onclick = function () { window.openAddListingModal(); }; }
+    if (req && !req.__bound) { req.__bound = true; req.onclick = function () { window.openAddRequestModal(); }; }
+    if (ic && !ic.__bound) { ic.__bound = true; ic.onclick = function () { hideM("intentModal"); }; }
+    var ln = el("listingNextBtn"), lb = el("listingBackBtn"), lc = el("listingCloseBtn");
+    if (ln && !ln.__bound) { ln.__bound = true; ln.onclick = function () { setListingStep(2); }; }
+    if (lb && !lb.__bound) { lb.__bound = true; lb.onclick = function () { setListingStep(1); }; }
+    if (lc && !lc.__bound) { lc.__bound = true; lc.onclick = function () { hideM("addListingModal"); }; }
+    var rc = el("requestCloseBtn");
+    if (rc && !rc.__bound) { rc.__bound = true; rc.onclick = function () { hideM("addRequestModal"); }; }
+    var ok = el("requestSuccessOk");
+    if (ok && !ok.__bound) { ok.__bound = true; ok.onclick = function () { hideM("requestSuccessModal"); }; }
+    var lf = el("addListingForm");
+    if (lf && !lf.__bound) { lf.__bound = true; lf.addEventListener("submit", submitListing); }
+    var rf = el("addRequestForm");
+    if (rf && !rf.__bound) { rf.__bound = true; rf.addEventListener("submit", submitRequest); }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
 })();
 </script>
 </body>
