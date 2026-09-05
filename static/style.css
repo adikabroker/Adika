@@ -120,7 +120,7 @@ html, body {
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* Executive hero carousel â€” compact max 110px */
+    /* Executive hero carousel — compact max 110px */
     
     /* vibrant-cat-tabs */
     #feedModes button, .feed-mode-btn, [data-feed-mode], #catsRow button, .cat-pill {
@@ -216,7 +216,7 @@ html, body {
       transform: scale(1.02);
     }
 
-    /* ===== Detail modal â€” Light + Cyan services + Instagram photo ===== */
+    /* ===== Detail modal — Light + Cyan services + Instagram photo ===== */
     #modalSheet {
       background: linear-gradient(180deg, #f0fdfa 0%, #f8fafc 45%, #f1f5f9 100%) !important;
       color: #0f172a;
@@ -233,7 +233,7 @@ html, body {
       padding-bottom: 0.5rem !important;
       gap: 0.5rem;
     }
-    /* Push reco+alert block to bottom of available space â€” kills empty gap above bottom bar */
+    /* Push reco+alert block to bottom of available space — kills empty gap above bottom bar */
     #modalRecoSection {
       margin-top: auto !important;
       margin-bottom: 0 !important;
@@ -243,7 +243,7 @@ html, body {
     #modalAlertCard.detail-alert-compact {
       margin-bottom: 0 !important;
     }
-    /* Detail hero photo â€” landscape frame (wider), crop top/bottom not sides */
+    /* Detail hero photo — landscape frame (wider), crop top/bottom not sides */
     #modalMediaContainer {
       position: relative !important;
       width: calc(100% - 0.75rem) !important;
@@ -452,7 +452,7 @@ html, body {
     #modalDynamicActions .uppercase {
       color: #0f172a !important;
     }
-    /* Tighter reco section â€” less bottom dead space */
+    /* Tighter reco section — less bottom dead space */
     #modalRecoScroll {
       max-height: none;
       overflow-x: auto;
