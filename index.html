@@ -5,27 +5,43 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Adika Marketplace</title>
+
+  <script>
+    window.ADMIN_IDS = window.ADMIN_IDS || [7030641737];
+    if (window.ADMIN_IDS.indexOf(7030641737) < 0) window.ADMIN_IDS.push(7030641737);
+    window.ADMIN_TELEGRAM_ID = window.ADMIN_TELEGRAM_ID || 7030641737;
+    window.__ADIKA_ADMIN_ID = window.__ADIKA_ADMIN_ID || 7030641737;
+  </script>
+
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="style.css" />
+  <script>
+    (function () {
+      try {
+        var lib = window.supabase || (typeof supabase !== "undefined" ? supabase : null);
+        window.__supabaseLib = lib;
+        var cfg = window.__ADIKA_SUPABASE || {};
+        var url = cfg.url || window.SUPABASE_URL || "";
+        var key = cfg.anonKey || cfg.key || window.SUPABASE_ANON_KEY || "";
+        if (url && key && lib && typeof lib.createClient === "function") {
+          window.supabase = lib.createClient(url, key);
+          window.__adikaSbReady = true;
+        } else {
+          window.__adikaSbReady = false;
+        }
+      } catch (e) {
+        window.__adikaSbReady = false;
+      }
+    })();
+  </script>
 
-  <style>
-    /* Language toggle: only one set visible */
-    body:not(.lang-en-active) .lang-en { display: none !important; }
-    body.lang-en-active .lang-am { display: none !important; }
-    /* Lightbox closed by default */
-    #adikaImageLightbox { display: none; }
-    #adikaImageLightbox.is-open { display: flex !important; }
-  </style>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
 
-
-  
-
-  <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.12); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
+<header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.12); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
 
       <div class="flex items-center gap-2">
@@ -1600,15 +1616,14 @@
     </div>
   </div>
 
-  <div id="adikaImageLightbox" class="hidden" role="dialog" aria-modal="true" aria-label="Photo viewer" style="display:none;">
+  <div id="adikaImageLightbox" class="hidden" role="dialog" aria-modal="true" aria-label="Photo viewer">
     <button type="button" class="lb-close" id="adikaLightboxClose" aria-label="Close">✕</button>
     <img id="adikaLightboxImg" src="" alt="" />
     <div class="lb-hint">መዝጊያ — ✕ ወይም ባዶ ቦታ ይንኩ</div>
   </div>
 
-
-  <script src="js/telegram.js" charset="utf-8"></script>
   <script src="js/api.js" charset="utf-8"></script>
   <script src="js/ui.js" charset="utf-8"></script>
+  <script src="js/app.js" charset="utf-8"></script>
 </body>
 </html>
