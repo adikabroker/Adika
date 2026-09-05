@@ -1434,7 +1434,10 @@
         return;
       }
 
-      function runDelete() {
+      if (!confirm("እርግጠኛ ነዎት ይህንን ማስታወቂያ ማጥፋት ይፈልጋሉ?")) {
+        if (typeof onDone === "function") onDone(false);
+        return;
+      }
 
       console.log("[Adika] Attempting to delete ID:", numericId);
 
@@ -1469,7 +1472,7 @@
         } catch (e2) {}
         try { if (typeof closeDetailModalPreserve === "function") closeDetailModalPreserve(); } catch (e3) {}
         try { if (typeof hideMyListingsView === "function") hideMyListingsView(); } catch (e4) {}
-        showAdikaToast("ማስታወቂያው በትክክል ተሰርዟል");
+        showAdikaToast("ማስታወቂያው ከዳታቤዝ ተሰርዟል!");
         try {
           if (typeof load === "function") load(false);
           else if (typeof fetchListings === "function") fetchListings();
@@ -1558,23 +1561,6 @@
         if (ok) return;
         return supabaseDelete();
       });
-      }
-
-      var confirmMsg = "ይህን ማስታወቂያ ማጥፋት ይፈልጋሉ?";
-      try {
-        if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.showConfirm === "function") {
-          Telegram.WebApp.showConfirm(confirmMsg, function (ok) {
-            if (ok) runDelete();
-            else if (typeof onDone === "function") onDone(false);
-          });
-          return;
-        }
-      } catch (eC) {}
-      if (!confirm(confirmMsg)) {
-        if (typeof onDone === "function") onDone(false);
-        return;
-      }
-      runDelete();
     }
 
     // Simple alias: deleteListing(id) — matches requested API
@@ -2512,11 +2498,19 @@
       try {
         var buyTab = (state.tab && state.tab !== "marketplace") || !!window.__adikaIsBuy;
         function isBuyItem(it){
-          var t = ((it&&it.req_type)||"")+" "+((it&&it.action_type)||"")+" "+((it&&it.listing_type)||"")+" "+((it&&it.post_type)||"");
-          return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t);
+          if (!it) return false;
+          if (it._source === "buyer_requests" || it.is_buyer_request) return true;
+          var t = ((it.req_type)||"")+" "+((it.action_type)||"")+" "+((it.listing_type)||"")+" "+((it.post_type)||"")+" "+((it.status)||"");
+          if (/BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t)) return true;
+          if ((it.budget_min != null || it.budget_max != null) && !it.price) return true;
+          return false;
         }
-        if (buyTab) items = items.filter(isBuyItem);
-        else items = items.filter(function(it){ return !isBuyItem(it); });
+        if (buyTab) {
+          var anyBuySignal = items.some(isBuyItem);
+          if (anyBuySignal) items = items.filter(isBuyItem);
+        } else {
+          items = items.filter(function(it){ return !isBuyItem(it); });
+        }
         if (!append) {
           if (grid) grid.innerHTML = "";
           state.items = items;
@@ -2626,7 +2620,12 @@
       if (state.chassisOnly) qs += "&chassis_only=1";
 
       var urls = [];
-      if (!useForYou) {
+      if (isBuy) {
+        urls.push("/api/buyer-requests?page=" + page + "&limit=" + itemsPerPage + "&order=DESC&active_only=1");
+        urls.push("/api/requests?page=" + page + "&limit=" + itemsPerPage + "&order=DESC");
+        urls.push("/api/listings?" + qs);
+        urls.push("/api/explorer/listings?" + qs);
+      } else if (!useForYou) {
         urls.push("/api/listings?" + qs);
         urls.push("/api/explorer/listings?" + qs);
       }
@@ -2729,40 +2728,39 @@
     };
 
     function setTabs() {
-      var sellOn = state.tab === "marketplace";
-      window.__adikaIsBuy = !sellOn;
-      if (tabSell) {
-        tabSell.className = sellOn
-          ? "tab-feed-btn is-active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1"
-          : "tab-feed-btn py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
-        tabSell.setAttribute("aria-pressed", sellOn ? "true" : "false");
-      }
-      if (tabBuy) {
-        tabBuy.className = !sellOn
-          ? "tab-feed-btn is-active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1"
-          : "tab-feed-btn py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
-        tabBuy.setAttribute("aria-pressed", !sellOn ? "true" : "false");
+      var buy = state.tab !== "marketplace";
+      window.__adikaIsBuy = !!buy;
+      if (!buy) {
+        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+      } else {
+        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
       }
     }
 
-    tabSell.onclick = function (ev) {
-      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-      if (window.__adikaTabLock) return;
-      window.__adikaTabLock = true;
-      setTimeout(function(){ window.__adikaTabLock = false; }, 250);
-      state.tab = "marketplace";
+    function switchTab(mode) {
+      state.tab = mode === "requests" ? "requests" : "marketplace";
+      window.__adikaIsBuy = state.tab !== "marketplace";
       setTabs();
+      try {
+        if (grid) grid.innerHTML = "";
+        state.items = [];
+        state.page = 0;
+        state.hasMore = true;
+        if (statusEl) { statusEl.style.display = "none"; statusEl.innerHTML = ""; }
+      } catch (e) {}
       load(false);
+    }
+
+    tabSell.onclick = function (ev) {
+      try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e) {}
+      switchTab("marketplace");
     };
 
     tabBuy.onclick = function (ev) {
-      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-      if (window.__adikaTabLock) return;
-      window.__adikaTabLock = true;
-      setTimeout(function(){ window.__adikaTabLock = false; }, 250);
-      state.tab = "requests";
-      setTabs();
-      load(false);
+      try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e) {}
+      switchTab("requests");
     };
 
     // FYP tab gate: force onboarding if not completed
@@ -5768,6 +5766,31 @@
   function loadListings(extra){
     var qs = "page=1&limit=40&order=DESC&active_only=1" + (extra||"");
     var buy = /type=BUY/i.test(extra||"") || !!window.__adikaIsBuy;
+    try {
+      var g0 = document.getElementById("grid");
+      if (g0) g0.innerHTML = "";
+      window.__adikaLiveItems = [];
+    } catch (eClr) {}
+    function paintFrom(items){
+      if(!Array.isArray(items)) items = [];
+      function isBuyItem(it){
+        var t=((it&&it.req_type)||"")+" "+((it&&it.action_type)||"")+" "+((it&&it.listing_type)||"");
+        return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t) || !!(it&&it.is_buyer_request);
+      }
+      items = buy ? items.filter(isBuyItem) : items.filter(function(it){ return !isBuyItem(it); });
+      paintLive(items);
+    }
+    if (buy && typeof window.fetchBuyerRequests === "function") {
+      window.fetchBuyerRequests({ limit: 40 }).then(function(items){
+        if (items && items.length) { paintFrom(items); return; }
+        return fetch("/api/listings?"+qs,{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
+          var items = (d && (d.items||d.listings||d.results||d.data)) || [];
+          if(!Array.isArray(items) && items && items.items) items = items.items;
+          paintFrom(items);
+        });
+      }).catch(function(){ paintFrom([]); });
+      return;
+    }
     fetch("/api/listings?"+qs,{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
       var items = (d && (d.items||d.listings||d.results||d.data)) || [];
       if(!Array.isArray(items) && items && items.items) items = items.items;
@@ -5784,23 +5807,15 @@
     });
   }
   function markTabs(buy){
-    try {
-      if (typeof state !== "undefined" && state) state.tab = buy ? "requests" : "marketplace";
-    } catch (e) {}
-    window.__adikaIsBuy = !!buy;
     var s = el("tabSell"), b = el("tabBuy");
-    if(s) {
-      s.className = buy
-        ? "tab-feed-btn py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1"
-        : "tab-feed-btn is-active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
-      s.setAttribute("aria-pressed", buy ? "false" : "true");
-    }
-    if(b) {
-      b.className = buy
-        ? "tab-feed-btn is-active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1"
-        : "tab-feed-btn py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
-      b.setAttribute("aria-pressed", buy ? "true" : "false");
-    }
+    if(s) s.className = buy ? "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1" : "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+    if(b) b.className = buy ? "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1" : "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+    window.__adikaIsBuy = !!buy;
+    try {
+      if (typeof window.state !== "undefined" && window.state) {
+        window.state.tab = buy ? "requests" : "marketplace";
+      }
+    } catch (e) {}
   }
   function markCats(id){
     document.querySelectorAll("#cats .cat-pill").forEach(function(b){
@@ -6026,21 +6041,43 @@
 
     if(id==="tabBuy"){
       e.preventDefault(); e.stopPropagation();
-      if (window.__adikaTabLock) return;
-      window.__adikaTabLock = true;
-      setTimeout(function(){ window.__adikaTabLock = false; }, 250);
-      markTabs(true);
-      try { if (typeof state !== "undefined") state.tab = "requests"; } catch (eB) {}
-      if (typeof load === "function") load(false);
-      else loadListings("&type=BUY");
+      try {
+        if (typeof window.state !== "undefined") window.state.tab = "requests";
+        window.__adikaIsBuy = true;
+      } catch (e2) {}
+      if (typeof markTabs === "function") markTabs(true);
+      try {
+        if (typeof load === "function" && window.state) { load(false); return; }
+      } catch (e3) {}
+      try {
+        var g = document.getElementById("grid");
+        if (g) g.innerHTML = "";
+      } catch (e4) {}
+      if (typeof window.fetchBuyerRequests === "function") {
+        window.fetchBuyerRequests({ limit: 40 }).then(function(items){
+          if (typeof paintLive === "function") paintLive(items || []);
+          else if (window.__adikaPaintListings) window.__adikaPaintListings(items || []);
+        }).catch(function(){ loadListings("&type=BUY"); });
+      } else {
+        loadListings("&type=BUY");
+      }
       return;
     }
     if(id==="tabSell"){
       e.preventDefault(); e.stopPropagation();
-      markTabs(false);
-      try { if (typeof state !== "undefined") state.tab = "marketplace"; } catch (eS) {}
-      if (typeof load === "function") load(false);
-      else loadListings("&type=SELL");
+      try {
+        if (typeof window.state !== "undefined") window.state.tab = "marketplace";
+        window.__adikaIsBuy = false;
+      } catch (e2) {}
+      if (typeof markTabs === "function") markTabs(false);
+      try {
+        if (typeof load === "function" && window.state) { load(false); return; }
+      } catch (e3) {}
+      try {
+        var g2 = document.getElementById("grid");
+        if (g2) g2.innerHTML = "";
+      } catch (e4) {}
+      loadListings("&type=SELL");
       return;
     }
     if(id==="langAmBtn"){ e.preventDefault(); e.stopPropagation(); setLang(false); return; }
