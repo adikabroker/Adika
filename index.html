@@ -745,7 +745,7 @@
     /* Toast at TOP — never covers bottom nav / FAB */
     #adikaToast, .adika-toast, [id*="oast"] {
       position: fixed !important;
-      top: 15px !important;
+      top: 20px !important;
       bottom: auto !important;
       left: 50% !important;
       transform: translateX(-50%) !important;
@@ -8633,7 +8633,7 @@
       try { showM("listingSuccessModal"); } catch (e2) {}
     };
     if (sb && typeof sb.from === "function") {
-      sb.from("adika_clean_market").insert(data).then(done).catch(function () {
+      sb.from("listings").insert(data).then(done).catch(function () {
         fetch("/api/submit-listing", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
           .then(done).catch(done);
       });
@@ -8659,7 +8659,7 @@
       } catch (e) {}
     };
     if (sb && typeof sb.from === "function") {
-      sb.from("buyers").insert(data).then(done).catch(function () {
+      sb.from("buyer_requests").insert(data).then(done).catch(function () {
         fetch("/api/submit-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
           .then(done).catch(done);
       });
@@ -8699,21 +8699,14 @@
 })();
 </script>
 
-
 <script>
-/* ===== Adika master fix v3: adika_clean_market + buyers tables ===== */
+/* ===== Adika master fix v2: toast-top, chrome, buyers, delete ===== */
 (function () {
   var ADMIN = 7030641737;
-  var TABLE_SELL = "adika_clean_market";
-  var TABLE_BUY = "buyers";
-  var TABLE_PHOTOS = "listing_photos";
-
   window.ADMIN_IDS = window.ADMIN_IDS || [ADMIN];
   if (window.ADMIN_IDS.indexOf(ADMIN) < 0) window.ADMIN_IDS.push(ADMIN);
   window.ADMIN_TELEGRAM_ID = ADMIN;
   window.__ADIKA_ADMIN_ID = ADMIN;
-  window.__ADIKA_TABLE_SELL = TABLE_SELL;
-  window.__ADIKA_TABLE_BUY = TABLE_BUY;
 
   function el(id) { return document.getElementById(id); }
 
@@ -8766,24 +8759,14 @@
 
   function isBuyItem(it) {
     if (!it) return false;
-    if (it.is_buyer_request || it._source === "buyers" || it._source === "buyer_requests") return true;
+    if (it.is_buyer_request || it._source === "buyer_requests") return true;
     var blob = [it.req_type, it.action_type, it.listing_type, it.post_type, it.type, it.status].join(" ");
     if (/BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(blob)) return true;
     if ((it.budget_min != null || it.budget_max != null) && !(Number(it.price) > 0)) return true;
     return false;
   }
 
-  function sb() {
-    try {
-      if (typeof ensureSupabaseClient === "function") {
-        var c = ensureSupabaseClient();
-        if (c) return c;
-      }
-    } catch (e) {}
-    return window.supabase || null;
-  }
-
-  /* ---- Toast TOP ---- */
+  /* ---- Toast at TOP ---- */
   function ensureToastEl() {
     var t = el("adikaToast");
     if (!t) {
@@ -8792,12 +8775,13 @@
       t.className = "hidden";
       document.body.appendChild(t);
     }
-    t.style.cssText = "position:fixed;top:15px;left:50%;transform:translateX(-50%);z-index:99999;" +
+    t.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;" +
       "max-width:min(92vw,360px);padding:10px 16px;border-radius:999px;font-size:11px;font-weight:800;" +
       "color:#fff;background:rgba(15,23,42,0.92);backdrop-filter:blur(12px);" +
-      "border:1px solid rgba(255,255,255,0.16);box-shadow:0 8px 24px rgba(0,0,0,0.25);text-align:center;bottom:auto;";
+      "border:1px solid rgba(255,255,255,0.16);box-shadow:0 8px 24px rgba(0,0,0,0.25);text-align:center;";
     return t;
   }
+
   window.showAdikaToast = function (msg, ms) {
     var t = ensureToastEl();
     t.textContent = msg || "";
@@ -8810,12 +8794,13 @@
     }, ms || 2200);
   };
 
-  /* ---- Chrome ---- */
+  /* ---- Chrome restore INSTANT ---- */
   function forceShowChrome() {
     try {
       var h = el("adikaFixedHeader");
       if (h) {
         h.classList.remove("hidden");
+        h.style.setProperty("display", "", "important");
         h.style.setProperty("visibility", "visible", "important");
         h.style.setProperty("opacity", "1", "important");
       }
@@ -8852,36 +8837,32 @@
     try { if (typeof _cp === "function") _cp(); } catch (e) {}
     ["modalOverlay", "modalSheet"].forEach(function (id) {
       var m = el(id);
-      if (m) { m.classList.add("hidden"); m.style.display = "none"; }
+      if (m) {
+        m.classList.add("hidden");
+        m.classList.remove("flex");
+        m.style.display = "none";
+      }
     });
     forceShowChrome();
     requestAnimationFrame(forceShowChrome);
     setTimeout(forceShowChrome, 0);
-    setTimeout(forceShowChrome, 40);
+    setTimeout(forceShowChrome, 30);
+    setTimeout(forceShowChrome, 120);
   };
 
   document.addEventListener("click", function (e) {
     var t = e.target;
     if (!t) return;
     var id = t.id || "";
-    if (id === "modalClose" || id === "modalBackBtn" || /ተመለስ|ዋና ገፅ/.test(t.textContent || "")) {
+    var txt = (t.textContent || "");
+    if (id === "modalClose" || id === "modalBackBtn" || /ተመለስ|ዋና ገፅ/.test(txt)) {
       forceShowChrome();
       setTimeout(forceShowChrome, 0);
+      setTimeout(forceShowChrome, 40);
     }
   }, true);
 
-  /* ---- DELETE unified on adika_clean_market / buyers ---- */
-  async function cascadeDeletePhotos(listingId) {
-    var client = sb();
-    if (!(client && listingId)) return;
-    try {
-      await client.from(TABLE_PHOTOS).delete().eq("listing_id", listingId);
-    } catch (e) {}
-    try {
-      await client.from(TABLE_PHOTOS).delete().eq("market_id", listingId);
-    } catch (e2) {}
-  }
-
+  /* ---- Delete ---- */
   async function deleteItem(it) {
     if (!window.canDeleteListing(it)) {
       window.showAdikaToast("ማጥፋት አይቻልም — ባለቤት ወይም አድሚን ብቻ");
@@ -8889,66 +8870,42 @@
     }
     if (!confirm("እርግጠኛ ነዎት ማጥፋት ይፈልጋሉ?")) return false;
     var id = it && (it.id || it.req_id);
-    if (id == null || id === "") {
+    if (!id) {
       window.showAdikaToast("መለያ አልተገኘም");
       return false;
     }
     var isBuy = isBuyItem(it) || !!window.__adikaIsBuy;
-    var table = isBuy ? TABLE_BUY : TABLE_SELL;
+    var endpoints = isBuy
+      ? ["/api/delete-request", "/api/buyer-requests/" + encodeURIComponent(id), "/api/delete"]
+      : ["/api/delete-listing", "/api/listings/" + encodeURIComponent(id), "/api/delete"];
+    var payload = {
+      id: id,
+      listing_id: id,
+      user_id: currentTgId(),
+      telegram_id: currentTgId(),
+      table: isBuy ? "buyer_requests" : "listings",
+      admin: isAdmin()
+    };
     var ok = false;
-    var client = sb();
-
-    // 1) Supabase direct (primary — correct table)
-    if (client && typeof client.from === "function") {
+    for (var i = 0; i < endpoints.length && !ok; i++) {
       try {
-        var r = await client.from(table).delete().eq("id", id);
-        if (r && !r.error) {
-          ok = true;
-        } else {
-          // try string id
-          r = await client.from(table).delete().eq("id", String(id));
-          if (r && !r.error) ok = true;
-        }
-        if (ok) await cascadeDeletePhotos(id);
-      } catch (e) {
-        console.warn("[Adika] sb delete", e);
-      }
+        var method = endpoints[i].indexOf("/" + id) >= 0 || endpoints[i].indexOf(encodeURIComponent(id)) >= 0 ? "DELETE" : "POST";
+        var res = await fetch(endpoints[i], {
+          method: method,
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) { ok = true; break; }
+      } catch (e) {}
     }
-
-    // 2) Flask API fallback with explicit table name
-    if (!ok) {
-      var endpoints = [
-        { url: "/api/delete", method: "POST" },
-        { url: "/api/delete-listing", method: "POST" },
-        { url: "/api/market/" + encodeURIComponent(id), method: "DELETE" },
-        { url: "/api/listings/" + encodeURIComponent(id), method: "DELETE" }
-      ];
-      var payload = {
-        id: id,
-        listing_id: id,
-        user_id: currentTgId(),
-        telegram_id: currentTgId(),
-        table: table,
-        table_name: table,
-        admin: isAdmin(),
-        cascade_photos: true
-      };
-      for (var i = 0; i < endpoints.length && !ok; i++) {
-        try {
-          var res = await fetch(endpoints[i].url, {
-            method: endpoints[i].method,
-            credentials: "same-origin",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          });
-          if (res.ok) {
-            ok = true;
-            break;
-          }
-        } catch (e3) {}
-      }
+    if (!ok && window.supabase && typeof window.supabase.from === "function") {
+      try {
+        var table = isBuy ? "buyer_requests" : "listings";
+        var r = await window.supabase.from(table).delete().eq("id", id);
+        if (r && !r.error) ok = true;
+      } catch (e2) {}
     }
-
     if (ok) {
       try {
         var uid = currentTgId();
@@ -8959,7 +8916,7 @@
             return String(x.id) !== String(id);
           })));
         }
-      } catch (e4) {}
+      } catch (e3) {}
       var card = document.querySelector('.adika-card[data-id="' + String(id) + '"]');
       if (card && card.parentNode) card.parentNode.removeChild(card);
       window.__adikaLiveItems = (window.__adikaLiveItems || []).filter(function (x) {
@@ -8969,7 +8926,7 @@
       forceShowChrome();
       return true;
     }
-    window.showAdikaToast("ማጥፋት አልተሳካም — ሠንጠረዥ: " + table);
+    window.showAdikaToast("ማጥፋት አልተሳካም");
     return false;
   }
   window.adikaDeleteItem = deleteItem;
@@ -8984,6 +8941,7 @@
     btn.className = "adika-card-del is-allowed";
     btn.setAttribute("data-delete", "1");
     btn.setAttribute("data-id", String(it.id || ""));
+    btn.setAttribute("aria-label", "Delete");
     btn.textContent = "🗑️";
     btn.addEventListener("click", function (e) {
       e.preventDefault();
@@ -9016,82 +8974,52 @@
 
   function wrapPaint(name) {
     var orig = window[name];
-    if (typeof orig !== "function" || orig.__delW3) return;
+    if (typeof orig !== "function" || orig.__delW) return;
     window[name] = function () {
       var r = orig.apply(this, arguments);
       setTimeout(decorateAllCards, 20);
       setTimeout(decorateAllCards, 150);
       return r;
     };
-    window[name].__delW3 = true;
+    window[name].__delW = true;
   }
   wrapPaint("__adikaPaintListings");
   wrapPaint("paintLive");
   wrapPaint("finishLoading");
 
-  /* ---- Fetch SELL from adika_clean_market ---- */
-  window.fetchMarketListings = async function () {
-    var rows = [];
-    var client = sb();
-    if (client && typeof client.from === "function") {
-      try {
-        var r = await client.from(TABLE_SELL).select("*").order("created_at", { ascending: false }).limit(50);
-        if (r && !r.error) rows = r.data || [];
-      } catch (e) {}
-    }
-    if (!rows.length) {
-      try {
-        var res = await fetch("/api/listings?page=1&limit=50&order=DESC&active_only=1&type=SELL&table=" + TABLE_SELL, { credentials: "same-origin" });
-        if (res.ok) {
-          var j = await res.json().catch(function () { return {}; });
-          rows = j.items || j.listings || j.results || j.data || [];
-        }
-      } catch (e2) {}
-    }
-    return (Array.isArray(rows) ? rows : []).filter(function (x) { return !isBuyItem(x); });
-  };
-
-  /* ---- Fetch BUY from buyers table ONLY ---- */
+  /* ---- Buyers ONLY ---- */
   window.fetchBuyers = async function fetchBuyers() {
     var rows = [];
-    var client = sb();
-    if (client && typeof client.from === "function") {
+    var urls = [
+      "/api/buyer-requests?page=1&limit=50&order=DESC&active_only=1",
+      "/api/requests?page=1&limit=50&order=DESC",
+      "/api/listings?type=BUY&page=1&limit=50&order=DESC&active_only=1"
+    ];
+    for (var i = 0; i < urls.length; i++) {
       try {
-        var r = await client.from(TABLE_BUY).select("*").order("created_at", { ascending: false }).limit(50);
-        if (r && !r.error) rows = r.data || [];
+        var res = await fetch(urls[i], { credentials: "same-origin" });
+        if (!res.ok) continue;
+        var j = await res.json().catch(function () { return {}; });
+        rows = j.items || j.listings || j.results || j.data || [];
+        if (!Array.isArray(rows) && rows && Array.isArray(rows.items)) rows = rows.items;
+        if (Array.isArray(rows) && rows.length) break;
       } catch (e) {}
-      // legacy fallback name
-      if (!rows.length) {
-        try {
-          var r2 = await client.from("buyer_requests").select("*").order("created_at", { ascending: false }).limit(50);
-          if (r2 && !r2.error) rows = r2.data || [];
-        } catch (e2) {}
-      }
     }
-    if (!rows.length) {
-      var urls = [
-        "/api/buyers?page=1&limit=50&order=DESC",
-        "/api/buyer-requests?page=1&limit=50&order=DESC",
-        "/api/listings?type=BUY&page=1&limit=50&order=DESC"
-      ];
-      for (var i = 0; i < urls.length; i++) {
-        try {
-          var res = await fetch(urls[i], { credentials: "same-origin" });
-          if (!res.ok) continue;
-          var j = await res.json().catch(function () { return {}; });
-          rows = j.items || j.listings || j.results || j.data || [];
-          if (Array.isArray(rows) && rows.length) break;
-        } catch (e3) {}
-      }
+    if ((!rows || !rows.length) && window.supabase && typeof window.supabase.from === "function") {
+      try {
+        var r1 = await window.supabase.from("buyer_requests").select("*").order("created_at", { ascending: false }).limit(50);
+        if (r1 && !r1.error) rows = r1.data || [];
+      } catch (e2) {}
     }
-    return (Array.isArray(rows) ? rows : []).map(function (r) {
+    rows = (Array.isArray(rows) ? rows : []).map(function (r) {
       r = Object.assign({}, r);
       r.listing_type = r.listing_type || r.req_type || "BUY";
       r.req_type = r.req_type || "BUY";
       r.is_buyer_request = true;
-      r._source = "buyers";
+      r._source = "buyer_requests";
       return r;
     }).filter(isBuyItem);
+    return rows;
   };
 
   function clearGrid() {
@@ -9176,6 +9104,7 @@
     if (st) { st.style.display = "block"; st.textContent = "በመጫን ላይ..."; }
     window.fetchBuyers().then(function (items) {
       if (st) st.style.display = "none";
+      // STRICT: never paint sellers
       paintBuyers((items || []).filter(isBuyItem));
     }).catch(function () {
       if (st) st.style.display = "none";
@@ -9195,18 +9124,23 @@
         return;
       }
     } catch (e) {}
-    window.fetchMarketListings().then(function (items) {
-      window.__adikaIsBuy = false;
-      window.__adikaLiveItems = items;
-      if (typeof window.__adikaPaintListings === "function") window.__adikaPaintListings(items);
-      else if (typeof paintLive === "function") paintLive(items);
-      setTimeout(decorateAllCards, 40);
-    });
+    fetch("/api/listings?page=1&limit=40&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var items = (d && (d.items || d.listings || d.results || d.data)) || [];
+        if (!Array.isArray(items)) items = [];
+        items = items.filter(function (x) { return !isBuyItem(x); });
+        window.__adikaIsBuy = false;
+        window.__adikaLiveItems = items;
+        if (typeof window.__adikaPaintListings === "function") window.__adikaPaintListings(items);
+        else if (typeof paintLive === "function") paintLive(items);
+        setTimeout(decorateAllCards, 40);
+      });
   }
 
   function hookDetail() {
     var orig = window.openDetailModal;
-    if (typeof orig !== "function" || orig.__authW3) return;
+    if (typeof orig !== "function" || orig.__authW) return;
     window.openDetailModal = function (it, photos) {
       var r = orig.apply(this, arguments);
       setTimeout(function () {
@@ -9229,23 +9163,18 @@
       }, 40);
       return r;
     };
-    window.openDetailModal.__authW3 = true;
+    window.openDetailModal.__authW = true;
   }
-
-  // Patch insert paths used by listing submit if they still point wrong
-  try {
-    var _ins = window.submitListing;
-  } catch (e) {}
 
   function bind() {
     hookDetail();
     ensureToastEl();
     var s = el("tabSell"), b = el("tabBuy");
-    if (s && !s.__v3) { s.__v3 = true; s.addEventListener("click", openMarket, true); }
-    if (b && !b.__v3) { b.__v3 = true; b.addEventListener("click", openBuyers, true); }
+    if (s && !s.__v2) { s.__v2 = true; s.addEventListener("click", openMarket, true); }
+    if (b && !b.__v2) { b.__v2 = true; b.addEventListener("click", openBuyers, true); }
     document.querySelectorAll("#cats .cat-pill").forEach(function (p) {
-      if (p.__v3) return;
-      p.__v3 = true;
+      if (p.__v2) return;
+      p.__v2 = true;
       p.addEventListener("click", function () {
         var cid = p.getAttribute("data-id") || (p.getAttribute("data-filter") === "chassis" ? "chassis" : "all");
         setCatActive(cid);
