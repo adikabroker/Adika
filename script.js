@@ -7311,3 +7311,100 @@
   else bindTabs();
 })();
 
+
+/* ===== Safe startup: never leave #grid empty ===== */
+(function adikaSafeBoot() {
+  function gridEl() {
+    return document.getElementById("grid")
+      || document.getElementById("listingsContainer")
+      || document.querySelector(".listings-grid");
+  }
+
+  window.fetchListings = window.fetchListings || function fetchListings(opts) {
+    opts = opts || {};
+    var limit = opts.limit || 20;
+    var offset = opts.offset || 0;
+    var page = Math.floor(offset / limit) + 1;
+    return fetch("/api/listings?page=" + page + "&limit=" + limit + "&order=DESC&active_only=1&type=SELL", {
+      credentials: "same-origin"
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; });
+    }).then(function (j) {
+      var rows = (j && (j.data || j.listings || j.items || j.results)) || [];
+      return Array.isArray(rows) ? rows : [];
+    }).catch(function (err) {
+      console.warn("[Adika] fetchListings", err);
+      return [];
+    });
+  };
+
+  function paintRows(items) {
+    try {
+      if (typeof paintLive === "function") { paintLive(items || []); return; }
+    } catch (e1) { console.warn(e1); }
+    try {
+      if (typeof finishLoading === "function") { finishLoading(items || [], false, false); return; }
+    } catch (e2) { console.warn(e2); }
+    var g = gridEl();
+    if (!g) return;
+    if (!items || !items.length) {
+      g.innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:#0f172a;font-weight:800;font-size:12px;">ማስታወቂያ በመጫን ላይ...</div>';
+      return;
+    }
+    g.innerHTML = "";
+    items.slice(0, 20).forEach(function (it) {
+      var d = document.createElement("div");
+      d.className = "adika-card p-2";
+      d.textContent = it.title || it.name || "Listing";
+      g.appendChild(d);
+    });
+  }
+
+  function startFeed() {
+    try {
+      if (window.Telegram && Telegram.WebApp && Telegram.WebApp.ready) {
+        try { Telegram.WebApp.ready(); } catch (eTg) {}
+      }
+    } catch (e0) {}
+
+    try {
+      if (typeof load === "function") {
+        try { if (window.__adikaState) window.__adikaState.loading = false; } catch (eS) {}
+        load(false);
+        return;
+      }
+    } catch (eLoad) {
+      console.warn("[Adika] load() failed", eLoad);
+    }
+
+    try {
+      window.fetchListings({ limit: 20, offset: 0 }).then(paintRows).catch(function (e) {
+        console.warn("[Adika] boot fetch", e);
+        paintRows([]);
+      });
+    } catch (eFetch) {
+      console.warn("[Adika] boot", eFetch);
+      paintRows([]);
+    }
+  }
+
+  function onReady(fn) {
+    try {
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fn);
+      else fn();
+    } catch (e) {
+      try { fn(); } catch (e2) {}
+    }
+  }
+
+  onReady(function () {
+    try { startFeed(); } catch (e) { console.error("[Adika] startFeed", e); }
+    setTimeout(function () {
+      try {
+        var g = gridEl();
+        var empty = !g || !g.children || g.children.length === 0;
+        if (empty) startFeed();
+      } catch (e2) {}
+    }, 1200);
+  });
+})();
