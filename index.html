@@ -777,6 +777,51 @@
     #analysisView #advisorChatLog {
       padding-bottom: 5.5rem !important;
     }
+  
+    /* ===== Active tab + category pill highlighting ===== */
+    #tabSell.is-active, #tabBuy.is-active,
+    #tabSell.active, #tabBuy.active {
+      background: #fff !important;
+      color: #16acbd !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
+    }
+    #cats .cat-pill.is-active, #cats .cat-pill.active,
+    #catsRow .cat-pill.is-active, #catsRow button.active,
+    #feedModes button.active, .feed-mode-btn.active {
+      background: #fff !important;
+      color: #16acbd !important;
+      box-shadow: 0 2px 10px rgba(0,96,100,0.35) !important;
+      transform: scale(1.04);
+      border-color: rgba(255,255,255,0.9) !important;
+    }
+    #cats .cat-pill:not(.is-active):not(.active) {
+      background: rgba(255,255,255,0.20) !important;
+      color: #fff !important;
+    }
+
+    /* ===== Immediate tactile feedback on tap ===== */
+    button, .cat-pill, .adika-card, .tab-feed-btn, #tabSell, #tabBuy,
+    #langAmBtn, #langEnBtn, #fabBtn, .tool-card-pro, a[role="button"] {
+      -webkit-tap-highlight-color: rgba(22,172,189,0.25);
+      touch-action: manipulation;
+    }
+    button:active, .cat-pill:active, .tab-feed-btn:active,
+    #tabSell:active, #tabBuy:active, #langAmBtn:active, #langEnBtn:active,
+    #fabBtn:active, .tool-card-pro:active, .adika-card:active {
+      transform: scale(0.96) !important;
+      filter: brightness(0.92);
+      opacity: 0.92;
+      transition: transform 0.06s ease, filter 0.06s ease, opacity 0.06s ease !important;
+    }
+    #fabBtn:active {
+      transform: scale(0.90) !important;
+      background: #0e7490 !important;
+    }
+    .cat-pill:active {
+      background: rgba(255,255,255,0.55) !important;
+      color: #0e7490 !important;
+    }
+
   </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
@@ -9525,11 +9570,243 @@
 })();
 </script>
 
-  <div id="adikaImageLightbox" class="" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div id="adikaImageLightbox" class="hidden" role="dialog" style="display:none" aria-modal="true" aria-label="Photo viewer">
     <button type="button" class="lb-close" id="adikaLightboxClose" aria-label="Close">✕</button>
     <img id="adikaLightboxImg" src="" alt="Full photo" />
     <div class="lb-hint">መዝጊያ — ✕ ወይም ባዶ ቦታ ይንኩ</div>
   </div>
+
+
+/* ===== STRICT Buyers tab + active pills (overrides) ===== */
+(function () {
+  function el(id) { return document.getElementById(id); }
+
+  function setTabActive(buy) {
+    var s = el("tabSell"), b = el("tabBuy");
+    window.__adikaIsBuy = !!buy;
+    try { if (window.state) window.state.tab = buy ? "requests" : "marketplace"; } catch (e) {}
+    if (s) {
+      s.classList.toggle("is-active", !buy);
+      s.classList.toggle("active", !buy);
+      if (!buy) {
+        s.className = "is-active active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+      } else {
+        s.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+      }
+    }
+    if (b) {
+      b.classList.toggle("is-active", !!buy);
+      b.classList.toggle("active", !!buy);
+      if (buy) {
+        b.className = "is-active active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+      } else {
+        b.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+      }
+    }
+  }
+
+  function setCatActive(idOrFilter) {
+    document.querySelectorAll("#cats .cat-pill, #catsRow .cat-pill").forEach(function (p) {
+      var match = false;
+      if (idOrFilter === "chassis") {
+        match = p.getAttribute("data-filter") === "chassis";
+      } else {
+        match = (p.getAttribute("data-id") || "") === String(idOrFilter || "");
+      }
+      p.classList.toggle("is-active", match);
+      p.classList.toggle("active", match);
+      if (p.getAttribute("data-filter") === "chassis") {
+        p.className = match
+          ? "cat-pill is-active active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm border border-emerald-300/40"
+          : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40";
+        if (p.getAttribute("data-filter") === "chassis") p.setAttribute("data-filter", "chassis");
+      } else if (!p.getAttribute("data-filter")) {
+        p.className = match
+          ? "cat-pill is-active active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm"
+          : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30";
+        if (p.getAttribute("data-id")) p.setAttribute("data-id", p.getAttribute("data-id"));
+      }
+    });
+    // re-apply data attributes lost by className overwrite
+    document.querySelectorAll("#cats .cat-pill").forEach(function (p) {
+      /* data-id preserved if we set via classList only — fix below */
+    });
+  }
+
+  // Safer cat active: only toggle classes, don't wipe data-*
+  function setCatActiveSafe(cid, filter) {
+    document.querySelectorAll("#cats .cat-pill").forEach(function (p) {
+      var isChassis = p.getAttribute("data-filter") === "chassis";
+      var match = false;
+      if (filter === "chassis") match = isChassis;
+      else if (!isChassis) match = (p.getAttribute("data-id") || "") === String(cid || "all");
+      p.classList.toggle("is-active", match);
+      p.classList.toggle("active", match);
+      if (match) {
+        p.style.background = "#fff";
+        p.style.color = "#16acbd";
+        p.style.boxShadow = "0 2px 10px rgba(0,96,100,0.35)";
+      } else if (isChassis) {
+        p.style.background = "";
+        p.style.color = "";
+        p.style.boxShadow = "";
+      } else {
+        p.style.background = "rgba(255,255,255,0.20)";
+        p.style.color = "#fff";
+        p.style.boxShadow = "";
+      }
+    });
+  }
+
+  function isBuyItem(it) {
+    if (!it) return false;
+    if (it.is_buyer_request || it._source === "buyer_requests") return true;
+    var t = [it.req_type, it.action_type, it.listing_type, it.post_type, it.status, it.type].join(" ");
+    if (/BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t)) return true;
+    // budget without price => request
+    if ((it.budget_min != null || it.budget_max != null) && !(it.price > 0)) return true;
+    return false;
+  }
+
+  function clearGrid() {
+    var g = el("grid");
+    if (g) g.innerHTML = "";
+  }
+
+  async function fetchBuyersOnly() {
+    var rows = [];
+    var urls = [
+      "/api/buyer-requests?page=1&limit=40&order=DESC&active_only=1",
+      "/api/requests?page=1&limit=40&order=DESC",
+      "/api/listings?type=BUY&page=1&limit=40&order=DESC&active_only=1"
+    ];
+    for (var i = 0; i < urls.length; i++) {
+      try {
+        var res = await fetch(urls[i], { credentials: "same-origin" });
+        if (!res.ok) continue;
+        var j = await res.json().catch(function () { return {}; });
+        rows = j.items || j.listings || j.results || j.data || [];
+        if (!Array.isArray(rows) && rows && rows.items) rows = rows.items;
+        if (Array.isArray(rows) && rows.length) break;
+      } catch (e) {}
+    }
+    if ((!rows || !rows.length) && window.supabase && typeof window.supabase.from === "function") {
+      try {
+        var r1 = await window.supabase.from("buyer_requests").select("*").order("created_at", { ascending: false }).limit(40);
+        if (r1 && !r1.error) rows = r1.data || [];
+      } catch (e2) {}
+    }
+    rows = (Array.isArray(rows) ? rows : []).map(function (r) {
+      r = r || {};
+      r.listing_type = r.listing_type || r.req_type || "BUY";
+      r.req_type = r.req_type || "BUY";
+      r.is_buyer_request = true;
+      r._source = r._source || "buyer_requests";
+      return r;
+    });
+    // STRICT: only buyer-like rows
+    return rows.filter(isBuyItem);
+  }
+
+  function paintBuyers(items) {
+    items = (items || []).filter(isBuyItem);
+    window.__adikaLiveItems = items;
+    if (typeof window.__adikaPaintListings === "function") {
+      window.__adikaIsBuy = true;
+      window.__adikaPaintListings(items);
+      return;
+    }
+    if (typeof paintLive === "function") {
+      window.__adikaIsBuy = true;
+      paintLive(items);
+      return;
+    }
+    var g = el("grid");
+    if (!g) return;
+    if (!items.length) {
+      g.innerHTML = '<div style="grid-column:1/-1;padding:28px 12px;text-align:center;color:#475569;font-weight:800;">📋 የፈላጊ ጥያቄ አልተገኘም</div>';
+      return;
+    }
+    var html = "";
+    items.forEach(function (it) {
+      var title = it.title || it.notes || it.details || it.main_category || "ጥያቄ";
+      var budget = "";
+      if (it.budget_min || it.budget_max) {
+        budget = (it.budget_min || 0).toLocaleString("en-US") + " – " + (it.budget_max || 0).toLocaleString("en-US") + " ETB";
+      }
+      html += '<button type="button" class="adika-card" data-live="1" data-id="' + String(it.id || "") + '">' +
+        '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">📋</div>' +
+        '<div style="padding:8px;"><div class="card-title">' + title + '</div>' +
+        '<div class="card-price" style="margin-top:4px;">💰 ' + (budget || "ለዋጋ ደውሉ") + "</div></div></button>";
+    });
+    g.innerHTML = html;
+  }
+
+  function openBuyersTab(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    setTabActive(true);
+    clearGrid();
+    var status = el("status");
+    if (status) { status.style.display = "block"; status.textContent = "በመጫን ላይ..."; }
+    fetchBuyersOnly().then(function (items) {
+      if (status) status.style.display = "none";
+      paintBuyers(items);
+    }).catch(function () {
+      if (status) status.style.display = "none";
+      paintBuyers([]);
+    });
+  }
+
+  function openMarketTab(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    setTabActive(false);
+    clearGrid();
+    try {
+      if (typeof load === "function") { load(false); return; }
+    } catch (e) {}
+    try {
+      if (typeof window.__adikaPaintListings === "function") {
+        var qs = "page=1&limit=40&order=DESC&active_only=1&type=SELL";
+        fetch("/api/listings?" + qs, { credentials: "same-origin" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var items = (d && (d.items || d.listings || d.results || d.data)) || [];
+            if (!Array.isArray(items)) items = [];
+            window.__adikaIsBuy = false;
+            window.__adikaPaintListings(items.filter(function (it) { return !isBuyItem(it); }));
+          });
+      }
+    } catch (e2) {}
+  }
+
+  function bind() {
+    var s = el("tabSell"), b = el("tabBuy");
+    if (s && !s.__buyFix) {
+      s.__buyFix = true;
+      s.addEventListener("click", openMarketTab, true);
+    }
+    if (b && !b.__buyFix) {
+      b.__buyFix = true;
+      b.addEventListener("click", openBuyersTab, true);
+    }
+    // Category pills active state
+    document.querySelectorAll("#cats .cat-pill").forEach(function (p) {
+      if (p.__catFix) return;
+      p.__catFix = true;
+      p.addEventListener("click", function () {
+        var cid = p.getAttribute("data-id") || "all";
+        var filter = p.getAttribute("data-filter");
+        setCatActiveSafe(cid, filter);
+      }, true);
+    });
+    // default: marketplace + foryou active
+    setTabActive(false);
+    setCatActiveSafe("foryou");
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
+})();
 
 </body>
 </html>
