@@ -9266,5 +9266,131 @@
 })();
 </script>
 
+
+<script>
+/* ===== Delete endpoint match: /api/delete-listing/<id> ===== */
+(function () {
+  var ADMIN = 7030641737;
+
+  function currentTgId() {
+    try {
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if (u && u.id != null) return String(u.id);
+    } catch (e) {}
+    try { if (window.state && state.userId != null) return String(state.userId); } catch (e2) {}
+    return "";
+  }
+
+  function isBuyItem(it) {
+    if (!it) return false;
+    if (it.is_buyer_request || it._source === "buyers") return true;
+    var blob = [it.req_type, it.action_type, it.listing_type].join(" ");
+    return /BUY|REQUEST|WANT|ፈላጊ/i.test(blob);
+  }
+
+  async function callDeleteApi(id, isBuy) {
+    var payload = {
+      id: id,
+      listing_id: id,
+      user_id: currentTgId(),
+      telegram_id: currentTgId(),
+      table: isBuy ? "buyers" : "adika_clean_market",
+      admin: Number(currentTgId()) === ADMIN
+    };
+    var urls = isBuy
+      ? [
+          "/api/delete-buyer/" + encodeURIComponent(id),
+          "/api/delete",
+        ]
+      : [
+          "/api/delete-listing/" + encodeURIComponent(id),
+          "/api/delete",
+        ];
+    for (var i = 0; i < urls.length; i++) {
+      try {
+        var res = await fetch(urls[i], {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json", "X-Telegram-User-Id": currentTgId() },
+          body: JSON.stringify(payload)
+        });
+        // some servers reject body on DELETE — retry POST
+        if (res.status === 405 || res.status === 400) {
+          res = await fetch(urls[i], {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", "X-Telegram-User-Id": currentTgId() },
+            body: JSON.stringify(payload)
+          });
+        }
+        var data = await res.json().catch(function () { return {}; });
+        if (res.ok && (data.success === true || data.status === "success" || res.status === 200)) {
+          return { ok: true, data: data };
+        }
+        if (res.ok && !data.error) return { ok: true, data: data };
+      } catch (e) {
+        console.warn("[Adika] delete try", urls[i], e);
+      }
+    }
+    // Supabase direct last resort
+    try {
+      var client = window.supabase;
+      if (client && typeof client.from === "function") {
+        var tables = isBuy ? ["buyers", "buyer_requests"] : ["adika_clean_market", "listings"];
+        for (var t = 0; t < tables.length; t++) {
+          var r = await client.from(tables[t]).delete().eq("id", id);
+          if (r && !r.error) return { ok: true, data: { table: tables[t] } };
+          r = await client.from(tables[t]).delete().eq("id", String(id));
+          if (r && !r.error) return { ok: true, data: { table: tables[t] } };
+        }
+      }
+    } catch (e2) {}
+    return { ok: false };
+  }
+
+  window.adikaDeleteItem = async function (it) {
+    if (!it) return false;
+    if (typeof window.canDeleteListing === "function" && !window.canDeleteListing(it)) {
+      if (window.showAdikaToast) window.showAdikaToast("ማጥፋት አይቻልም — ባለቤት ወይም አድሚን ብቻ");
+      else alert("ማጥፋት አይቻልም");
+      return false;
+    }
+    if (!confirm("እርግጠኛ ነዎት ይህን መረጃ ማጥፋት ይፈልጋሉ?")) return false;
+    var id = it.id || it.req_id;
+    if (id == null) {
+      if (window.showAdikaToast) window.showAdikaToast("መለያ አልተገኘም");
+      return false;
+    }
+    var isBuy = isBuyItem(it) || !!window.__adikaIsBuy;
+    var result = await callDeleteApi(id, isBuy);
+    if (result.ok) {
+      var card =
+        document.querySelector('.adika-card[data-id="' + String(id) + '"]') ||
+        document.getElementById("card-" + id);
+      if (card && card.parentNode) card.parentNode.removeChild(card);
+      window.__adikaLiveItems = (window.__adikaLiveItems || []).filter(function (x) {
+        return String(x.id) !== String(id);
+      });
+      if (window.showAdikaToast) window.showAdikaToast("ማስታወቂያው ተሰርዟል!");
+      if (window.forceShowFab) window.forceShowFab();
+      return true;
+    }
+    if (window.showAdikaToast) window.showAdikaToast("ማጥፋት አልተሳካም");
+    else alert("ማጥፋት አልተሳካም");
+    return false;
+  };
+
+  window.deleteListing = function (id) {
+    var items = window.__adikaLiveItems || [];
+    var it = null;
+    for (var i = 0; i < items.length; i++) {
+      if (String(items[i].id) === String(id)) { it = items[i]; break; }
+    }
+    if (!it) it = { id: id };
+    return window.adikaDeleteItem(it);
+  };
+})();
+</script>
+
 </body>
 </html>
