@@ -108,22 +108,11 @@
     return { ok: false, error: "no backend" };
   }
 
-  function confirmDelete(msg) {
-    return new Promise(function (resolve) {
-      try {
-        if (w.Telegram && Telegram.WebApp && typeof Telegram.WebApp.showConfirm === "function") {
-          Telegram.WebApp.showConfirm(msg, function (ok) { resolve(!!ok); });
-          return;
-        }
-      } catch (e) {}
-      try { resolve(!!w.confirm(msg)); } catch (e2) { resolve(false); }
-    });
-  }
-
   async function deleteListing(id) {
     if (id == null || id === "") return { ok: false, error: "missing id" };
-    var okConfirm = await confirmDelete("ይህን ማስታወቂያ ማጥፋት ይፈልጋሉ?");
-    if (!okConfirm) return { ok: false, cancelled: true };
+    if (!w.confirm || !confirm("እርግጠኛ ነዎት ይህ ማስታወቂያ ሙሉ በሙሉ እንዲጠፋ ይፈልጋሉ?")) {
+      return { ok: false, cancelled: true };
+    }
 
     var me = uid();
     var admin = typeof w.isAdikaAdmin === "function" && w.isAdikaAdmin(me);
@@ -145,7 +134,62 @@
     }
   }
 
+
+  async function fetchBuyerRequests(opts) {
+    opts = opts || {};
+    var limit = opts.limit || 40;
+    var offset = opts.offset || 0;
+    var page = opts.page || (Math.floor(offset / limit) + 1);
+
+    var urls = [
+      "/api/buyer-requests?page=" + page + "&limit=" + limit + "&order=DESC&active_only=1",
+      "/api/requests?page=" + page + "&limit=" + limit + "&order=DESC",
+      "/api/listings?page=" + page + "&limit=" + limit + "&order=DESC&active_only=1&type=BUY"
+    ];
+    for (var i = 0; i < urls.length; i++) {
+      try {
+        var res = await fetch(urls[i], { credentials: "same-origin" });
+        if (!res.ok) continue;
+        var j = await res.json().catch(function () { return {}; });
+        var rows = j.items || j.listings || j.results || j.data || [];
+        if (!Array.isArray(rows) && rows && Array.isArray(rows.items)) rows = rows.items;
+        if (Array.isArray(rows) && rows.length) {
+          return rows.map(function (r) {
+            r = r || {};
+            r.listing_type = r.listing_type || r.req_type || r.action_type || "BUY";
+            r.req_type = r.req_type || "BUY";
+            r._source = r._source || "buyer_requests";
+            r.is_buyer_request = true;
+            return normalizeListing(r);
+          });
+        }
+      } catch (e) {}
+    }
+
+    var sb = sbClient();
+    if (sb) {
+      try {
+        var out = await sb.from(REQUESTS_TABLE)
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(offset, offset + limit - 1);
+        if (out && !out.error && Array.isArray(out.data) && out.data.length) {
+          return out.data.map(function (r) {
+            r = r || {};
+            r.listing_type = r.listing_type || "BUY";
+            r.req_type = r.req_type || "BUY";
+            r._source = "buyer_requests";
+            r.is_buyer_request = true;
+            return normalizeListing(r);
+          });
+        }
+      } catch (e2) {}
+    }
+    return [];
+  }
+
   w.ADIKA_TABLES = { listings: LISTINGS_TABLE, photos: PHOTOS_TABLE, requests: REQUESTS_TABLE };
+  w.fetchBuyerRequests = fetchBuyerRequests;
   w.fetchListings = fetchListings;
   w.fetchMyListings = fetchMyListings;
   w.submitListing = submitListing;
