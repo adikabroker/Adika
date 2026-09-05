@@ -3,9 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-
-
-  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Adika Marketplace</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -13,7 +11,34 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="./style.css" id="adikaCss" />
+  <script>
+    (function () {
+      var link = document.getElementById("adikaCss");
+      if (!link) return;
+      link.onerror = function () {
+        this.onerror = null;
+        this.href = "/static/style.css";
+      };
+      // Flask static fallback if root 404s (some hosts don't fire onerror for CSS)
+      setTimeout(function () {
+        try {
+          var sheets = document.styleSheets;
+          var ok = false;
+          for (var i = 0; i < sheets.length; i++) {
+            try {
+              if (sheets[i].href && /style\.css/.test(sheets[i].href) && sheets[i].cssRules && sheets[i].cssRules.length) {
+                ok = true; break;
+              }
+            } catch (e) { /* cross-origin */ ok = true; }
+          }
+          if (!ok && link && link.href.indexOf("/static/") < 0) {
+            link.href = "/static/style.css";
+          }
+        } catch (e2) {}
+      }, 80);
+    })();
+  </script>
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
 
@@ -1612,6 +1637,21 @@
     <div class="lb-hint">መዝጊያ — ✕ ወይም ባዶ ቦታ ይንኩ</div>
   </div>
 
-  <script src="script.js" charset="utf-8"></script>
+  <script>
+    (function () {
+      function loadScript(src, next) {
+        var s = document.createElement("script");
+        s.charset = "utf-8";
+        s.src = src;
+        s.onload = function () { if (next) next(true); };
+        s.onerror = function () { if (next) next(false); };
+        document.body.appendChild(s);
+      }
+      // Try flat root first, then Flask /static/
+      loadScript("./script.js", function (ok) {
+        if (!ok) loadScript("/static/script.js");
+      });
+    })();
+  </script>
 </body>
 </html>
