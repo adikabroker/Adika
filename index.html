@@ -1009,7 +1009,12 @@
     <div id="grid" class="grid grid-cols-2 gap-2"></div>
     <script>
     (function(){
-      function money(v){
+      function money(v, item){
+        try {
+          if (item && typeof item === "object") {
+            return formatListingPrice(v, item);
+          }
+        } catch (e) {}
         var n = Number(String(v||"").replace(/[^\d.]/g,""));
         if(!n || n<=0 || n>300000000) return "ለዋጋ ደውሉ";
         return Math.round(n).toLocaleString("en-US") + " ETB";
@@ -1102,7 +1107,7 @@
                 '<div class="card-time">'+time+'</div>'+
               '</div>'+
               '<div style="margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:4px;">'+
-                '<div class="card-price">💰 '+money(it.price)+'</div>'+
+                '<div class="card-price">💰 '+money(it.price, it)+'</div>'+
                 '<span class="card-fav-btn" data-id="'+String(it.id||"")+'" style="font-size:16px;line-height:1;">🤍</span>'+
               '</div>'+
             '</div></button>';
@@ -2984,7 +2989,7 @@
           var list = collectPhotoUrls(it);
           img = (list && list[0]) || getValidImageUrl(it.photo_urls) || getValidImageUrl(it.photos) || "";
         } catch (e3) { img = ""; }
-        var price = formatListingPrice(it.price);
+        var price = formatListingPrice(it.price, it);
         var name = it.title || it.sub_category || it.model || it.main_category || "ንብረት";
         return (
           '<button type="button" class="reco-card shrink-0 text-left active:scale-95 transition-all" data-id="' + esc(String(it.id || "")) + '">' +
@@ -3355,13 +3360,34 @@
       } catch (e) { return ""; }
     }
 
-    function formatListingPrice(raw) {
+    function formatListingPrice(raw, item) {
+      // Buyer request: prefer budget_min / budget_max
+      try {
+        var it = item || (raw && typeof raw === "object" ? raw : null);
+        if (it && typeof it === "object") {
+          var bmin = Number(it.budget_min || it.min_budget || 0) || 0;
+          var bmax = Number(it.budget_max || it.max_budget || 0) || 0;
+          var isBuy = !!(it.is_buyer_request || it._source === "buyers" || it._source === "buyer_requests");
+          if (!isBuy) {
+            var blob = [it.req_type, it.action_type, it.listing_type, it.type].join(" ");
+            isBuy = /BUY|REQUEST|WANT|መግዛት|ፈላጊ/i.test(blob);
+          }
+          if (isBuy || (bmin > 0 || bmax > 0) && !(Number(it.price) > 0)) {
+            if (bmin > 0 && bmax > 0) {
+              return Math.round(bmin).toLocaleString("en-US") + " – " + Math.round(bmax).toLocaleString("en-US") + " ETB";
+            }
+            if (bmax > 0) return "እስከ " + Math.round(bmax).toLocaleString("en-US") + " ETB";
+            if (bmin > 0) return "ከ " + Math.round(bmin).toLocaleString("en-US") + " ETB";
+          }
+          raw = it.price != null ? it.price : raw;
+        }
+      } catch (e) {}
       if (raw == null || raw === "" || raw === "—" || raw === "Contact") return "ለዋጋ ደውሉ";
       var cleaned = String(raw).replace(/ETB/gi, "").replace(/ብር/g, "").replace(/,/g, "").trim();
       var digits = cleaned.replace(/[^\d.]/g, "");
       var n = Number(digits);
       if (!isFinite(n) || n <= 0 || n > 300000000) return "ለዋጋ ደውሉ";
-      return Math.round(n).toLocaleString() + " ETB";
+      return Math.round(n).toLocaleString("en-US") + " ETB";
     }
 
     function extractBrandModel(item, extra) {
@@ -3737,7 +3763,7 @@
           '</div>';
       }
 
-      var priceLabel = formatListingPrice(item.price);
+      var priceLabel = formatListingPrice(item.price, item);
       var views = item.view_count || item.views_count || 0;
       var isFav = Boolean(favorites[item.id]);
       var timeLabel = relativeTime(item.created_at);
@@ -3906,7 +3932,7 @@
       if (modalTitle) modalTitle.textContent = modalTitleText;
 
       var isSell = String(item.req_type || item.action_type || "").toUpperCase().indexOf("SELL") >= 0 || String(item.action_type || "") === "መሸጥ";
-      var priceTxt = formatListingPrice(item.price);
+      var priceTxt = formatListingPrice(item.price, item);
       modalPrice.textContent = priceTxt;
       modalTime.textContent = relativeTime(item.created_at) ? ("⏱️ " + relativeTime(item.created_at)) : "";
       try {
@@ -4022,7 +4048,7 @@
           '<span>' + icon + '</span> ' + label + ': <strong class="text-slate-900">' + esc(String(value)) + '</strong>' +
           (extraHtml || "") + '</p>';
       }
-      var priceLabel = formatListingPrice(item.price);
+      var priceLabel = formatListingPrice(item.price, item);
       var negHtml = "";
       try {
         var negotiable = extra.negotiable || item.negotiable || /negotiable|ይደራደራል|የሚደራደር/i.test(String(item.description || ""));
@@ -8147,7 +8173,7 @@
         if(el("modalTitle")) el("modalTitle").textContent = (it.brand&&it.model)?(it.brand+" "+it.model):(it.sub_category||it.title||"ማስታወቂያ");
         if(el("modalPrice")){
           var n=Number(String(it.price||"").replace(/[^\d.]/g,""));
-          el("modalPrice").textContent = (!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB");
+          el("modalPrice").textContent = (typeof formatListingPrice==="function")?formatListingPrice(it.price,it):((!n||n<=0||n>300000000)?"ለዋጋ ደውሉ":(Math.round(n).toLocaleString("en-US")+" ETB"));
         }
         if(el("modalDesc")) el("modalDesc").textContent = it.description||"";
         show("modalOverlay");
@@ -8646,5 +8672,122 @@
   else bind();
 })();
 </script>
+
+<script>
+/* ===== FAB + bottom nav instant restore + budget price helper ===== */
+(function () {
+  function forceShowChrome() {
+    try {
+      var n = document.getElementById("adikaBottomNav");
+      if (n) {
+        n.classList.remove("hidden");
+        n.style.setProperty("display", "flex", "important");
+        n.style.setProperty("visibility", "visible", "important");
+        n.style.setProperty("opacity", "1", "important");
+        n.style.setProperty("z-index", "80", "important");
+      }
+      var f = document.getElementById("fabBtn");
+      if (f) {
+        f.classList.remove("hidden");
+        f.style.setProperty("display", "flex", "important");
+        f.style.setProperty("visibility", "visible", "important");
+        f.style.setProperty("opacity", "1", "important");
+        f.style.setProperty("pointer-events", "auto", "important");
+        f.style.setProperty("z-index", "95", "important");
+        // centered like default
+        f.style.setProperty("left", "50%", "important");
+        f.style.setProperty("right", "auto", "important");
+        f.style.setProperty("transform", "translateX(-50%)", "important");
+        f.style.setProperty("bottom", "calc(18px + env(safe-area-inset-bottom, 0px))", "important");
+        f.style.setProperty("position", "fixed", "important");
+      }
+      var h = document.getElementById("adikaFixedHeader");
+      if (h) {
+        h.classList.remove("hidden");
+        h.style.setProperty("visibility", "visible", "important");
+        h.style.setProperty("opacity", "1", "important");
+      }
+      document.body.style.overflow = "";
+    } catch (e) {}
+  }
+  window.forceShowFab = forceShowChrome;
+  window.restoreHomeChrome = forceShowChrome;
+  window.instantShowHomeChrome = forceShowChrome;
+
+  // Wrap closeDetailModalPreserve
+  var _cp = window.closeDetailModalPreserve;
+  window.closeDetailModalPreserve = function () {
+    try { if (typeof _cp === "function") _cp(); } catch (e) {}
+    ["modalOverlay", "modalSheet"].forEach(function (id) {
+      var m = document.getElementById(id);
+      if (m) {
+        m.classList.add("hidden");
+        m.classList.remove("flex");
+        m.style.display = "none";
+      }
+    });
+    forceShowChrome();
+    requestAnimationFrame(forceShowChrome);
+    setTimeout(forceShowChrome, 0);
+    setTimeout(forceShowChrome, 30);
+    setTimeout(forceShowChrome, 100);
+  };
+
+  // Any back/close that hides modal
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t) return;
+    var id = t.id || "";
+    var txt = (t.textContent || "");
+    if (id === "modalClose" || id === "modalBackBtn" || id === "listingCloseBtn" ||
+        id === "requestCloseBtn" || id === "intentCloseBtn" ||
+        /ተመለስ|ዋና ገፅ|←/.test(txt)) {
+      setTimeout(forceShowChrome, 0);
+      setTimeout(forceShowChrome, 40);
+      setTimeout(forceShowChrome, 120);
+    }
+  }, true);
+
+  // When modal overlay loses flex/hidden
+  try {
+    var ov = document.getElementById("modalOverlay");
+    if (ov && !ov.__chromeObs) {
+      ov.__chromeObs = true;
+      new MutationObserver(function () {
+        if (ov.classList.contains("hidden") || ov.style.display === "none") {
+          forceShowChrome();
+        }
+      }).observe(ov, { attributes: true, attributeFilter: ["class", "style"] });
+    }
+  } catch (e) {}
+
+  // openDetailModal: after fill price use formatListingPrice with full item
+  var _od = window.openDetailModal;
+  if (typeof _od === "function" && !_od.__budgetWrap) {
+    window.openDetailModal = function (it, photos) {
+      var r = _od.apply(this, arguments);
+      try {
+        var mp = document.getElementById("modalPrice");
+        if (mp && it && typeof formatListingPrice === "function") {
+          mp.textContent = formatListingPrice(it.price, it);
+        }
+      } catch (e) {}
+      return r;
+    };
+    window.openDetailModal.__budgetWrap = true;
+  }
+
+  // Initial
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      forceShowChrome();
+      setTimeout(forceShowChrome, 300);
+    });
+  } else {
+    forceShowChrome();
+  }
+})();
+</script>
+
 </body>
 </html>
