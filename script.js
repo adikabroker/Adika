@@ -2132,6 +2132,8 @@
         var img = document.getElementById("adikaLightboxImg");
         if (!box || !img) return;
         img.src = src;
+        box.classList.remove("hidden");
+        box.removeAttribute("hidden");
         box.classList.add("is-open");
         box.style.display = "flex";
         try { document.body.style.overflow = "hidden"; } catch (e) {}
@@ -2143,6 +2145,8 @@
         var img = document.getElementById("adikaLightboxImg");
         if (box) {
           box.classList.remove("is-open");
+          box.classList.add("hidden");
+          box.setAttribute("hidden", "");
           box.style.display = "none";
         }
         if (img) img.src = "";
