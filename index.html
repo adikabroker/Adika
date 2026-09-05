@@ -2,6 +2,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  window.ADMIN_IDS = window.ADMIN_IDS || [7030641737];
+  if (window.ADMIN_IDS.indexOf(7030641737) < 0) window.ADMIN_IDS.push(7030641737);
+  window.ADMIN_TELEGRAM_ID = 7030641737;
+  window.__ADIKA_ADMIN_ID = 7030641737;
+</script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Adika Marketplace</title>
@@ -734,6 +741,72 @@
     #analysisView #advisorChatLog {
       padding-bottom: 5.5rem !important;
     }
+  
+    /* Toast at TOP — never covers bottom nav / FAB */
+    #adikaToast, .adika-toast, [id*="oast"] {
+      position: fixed !important;
+      top: 20px !important;
+      bottom: auto !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      z-index: 99999 !important;
+      max-width: min(92vw, 360px);
+      pointer-events: none;
+    }
+    #adikaToast:not(.hidden) { pointer-events: auto; }
+
+    /* FAB always available */
+    #fabBtn {
+      position: fixed !important;
+      left: 50% !important;
+      right: auto !important;
+      transform: translateX(-50%) !important;
+      bottom: calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+      z-index: 95 !important;
+      display: flex !important;
+      align-items: center; justify-content: center;
+      width: 56px; height: 56px; border-radius: 9999px;
+    }
+    #fabBtn.is-forced-visible,
+    #adikaBottomNav.is-forced-visible {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    #adikaBottomNav {
+      z-index: 80 !important;
+    }
+
+    /* Card delete */
+    .adika-card { position: relative; }
+    .adika-card-del {
+      position: absolute; top: 6px; right: 6px; z-index: 8;
+      width: 28px; height: 28px; border-radius: 999px;
+      background: rgba(239,68,68,0.92); color: #fff; border: none;
+      font-size: 14px; display: none; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .adika-card-del.is-allowed { display: flex !important; }
+    .adika-card-del:active { transform: scale(0.9); background: #b91c1c; }
+
+    /* Active tabs/pills */
+    #tabSell.is-active, #tabBuy.is-active, #tabSell.active, #tabBuy.active {
+      background: #fff !important; color: #16acbd !important;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
+    }
+    #cats .cat-pill.is-active, #cats .cat-pill.active {
+      background: #fff !important; color: #16acbd !important;
+      box-shadow: 0 2px 10px rgba(0,96,100,0.35) !important;
+    }
+
+    /* Tactile */
+    button:active, .cat-pill:active, .adika-card:active, #tabSell:active, #tabBuy:active, #fabBtn:active {
+      transform: scale(0.96) !important;
+      filter: brightness(0.93);
+      transition: transform 0.06s ease, filter 0.06s ease !important;
+    }
+    #fabBtn:active { transform: translateX(-50%) scale(0.92) !important; }
+
   </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
@@ -2479,7 +2552,7 @@
     </div>
   </div>
 
-  <div id="adikaToast" class="fixed left-1/2 -translate-x-1/2 bottom-24 z-[400] hidden px-4 py-2 rounded-full text-[11px] font-bold text-white shadow-lg" style="background:rgba(15,23,42,0.88);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.16);"></div>
+  <div id="adikaToast" class="fixed left-1/2 -translate-x-1/2 bottom-24 z-[400] hidden px-4 py-2 rounded-full text-[11px] font-bold text-white shadow-lg" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;bottom:auto;"></div>
 
 <!-- Role selection (first launch) -->
   <div id="roleSelectModal" class="fixed inset-0 z-[180] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
@@ -8625,5 +8698,511 @@
   else bind();
 })();
 </script>
+
+<script>
+/* ===== Adika master fix v2: toast-top, chrome, buyers, delete ===== */
+(function () {
+  var ADMIN = 7030641737;
+  window.ADMIN_IDS = window.ADMIN_IDS || [ADMIN];
+  if (window.ADMIN_IDS.indexOf(ADMIN) < 0) window.ADMIN_IDS.push(ADMIN);
+  window.ADMIN_TELEGRAM_ID = ADMIN;
+  window.__ADIKA_ADMIN_ID = ADMIN;
+
+  function el(id) { return document.getElementById(id); }
+
+  function currentTgId() {
+    try {
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if (u && u.id != null) return String(u.id);
+    } catch (e) {}
+    try { if (window.state && state.userId != null) return String(state.userId); } catch (e2) {}
+    return "";
+  }
+
+  function isAdmin() {
+    var id = currentTgId();
+    if (!id) return false;
+    var n = Number(id);
+    if (n === ADMIN) return true;
+    var list = window.ADMIN_IDS || [];
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i]) === id || Number(list[i]) === n) return true;
+    }
+    return false;
+  }
+
+  function isOwner(listing) {
+    if (!listing) return false;
+    var me = currentTgId();
+    if (!me) return false;
+    var cands = [
+      listing.user_id, listing.telegram_id, listing.user_chat_id,
+      listing.telegram_id_str, listing.owner_id, listing.seller_id,
+      listing.created_by, listing.broker_id
+    ];
+    try {
+      var extra = listing.extra_data;
+      if (typeof extra === "string") extra = JSON.parse(extra);
+      if (extra && typeof extra === "object") {
+        cands.push(extra.user_id, extra.telegram_id, extra.chat_id, extra.owner_id);
+      }
+    } catch (e) {}
+    for (var i = 0; i < cands.length; i++) {
+      if (cands[i] != null && String(cands[i]) === me) return true;
+    }
+    return false;
+  }
+
+  window.canDeleteListing = function (listing) {
+    return isAdmin() || isOwner(listing);
+  };
+
+  function isBuyItem(it) {
+    if (!it) return false;
+    if (it.is_buyer_request || it._source === "buyer_requests") return true;
+    var blob = [it.req_type, it.action_type, it.listing_type, it.post_type, it.type, it.status].join(" ");
+    if (/BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(blob)) return true;
+    if ((it.budget_min != null || it.budget_max != null) && !(Number(it.price) > 0)) return true;
+    return false;
+  }
+
+  /* ---- Toast at TOP ---- */
+  function ensureToastEl() {
+    var t = el("adikaToast");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "adikaToast";
+      t.className = "hidden";
+      document.body.appendChild(t);
+    }
+    t.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;" +
+      "max-width:min(92vw,360px);padding:10px 16px;border-radius:999px;font-size:11px;font-weight:800;" +
+      "color:#fff;background:rgba(15,23,42,0.92);backdrop-filter:blur(12px);" +
+      "border:1px solid rgba(255,255,255,0.16);box-shadow:0 8px 24px rgba(0,0,0,0.25);text-align:center;";
+    return t;
+  }
+
+  window.showAdikaToast = function (msg, ms) {
+    var t = ensureToastEl();
+    t.textContent = msg || "";
+    t.classList.remove("hidden");
+    t.style.display = "block";
+    clearTimeout(window.__adikaToastTimer);
+    window.__adikaToastTimer = setTimeout(function () {
+      t.classList.add("hidden");
+      t.style.display = "none";
+    }, ms || 2200);
+  };
+
+  /* ---- Chrome restore INSTANT ---- */
+  function forceShowChrome() {
+    try {
+      var h = el("adikaFixedHeader");
+      if (h) {
+        h.classList.remove("hidden");
+        h.style.setProperty("display", "", "important");
+        h.style.setProperty("visibility", "visible", "important");
+        h.style.setProperty("opacity", "1", "important");
+      }
+      var n = el("adikaBottomNav");
+      if (n) {
+        n.classList.remove("hidden");
+        n.classList.add("is-forced-visible");
+        n.style.setProperty("display", "flex", "important");
+        n.style.setProperty("visibility", "visible", "important");
+        n.style.setProperty("opacity", "1", "important");
+      }
+      var f = el("fabBtn");
+      if (f) {
+        f.classList.remove("hidden");
+        f.classList.add("is-forced-visible");
+        f.style.setProperty("display", "flex", "important");
+        f.style.setProperty("visibility", "visible", "important");
+        f.style.setProperty("opacity", "1", "important");
+        f.style.setProperty("pointer-events", "auto", "important");
+        f.style.setProperty("z-index", "95", "important");
+        f.style.setProperty("left", "50%", "important");
+        f.style.setProperty("transform", "translateX(-50%)", "important");
+        f.style.setProperty("bottom", "calc(18px + env(safe-area-inset-bottom, 0px))", "important");
+      }
+      document.body.style.overflow = "";
+    } catch (e) {}
+  }
+  window.forceShowFab = forceShowChrome;
+  window.restoreHomeChrome = forceShowChrome;
+  window.instantShowHomeChrome = forceShowChrome;
+
+  var _cp = window.closeDetailModalPreserve;
+  window.closeDetailModalPreserve = function () {
+    try { if (typeof _cp === "function") _cp(); } catch (e) {}
+    ["modalOverlay", "modalSheet"].forEach(function (id) {
+      var m = el(id);
+      if (m) {
+        m.classList.add("hidden");
+        m.classList.remove("flex");
+        m.style.display = "none";
+      }
+    });
+    forceShowChrome();
+    requestAnimationFrame(forceShowChrome);
+    setTimeout(forceShowChrome, 0);
+    setTimeout(forceShowChrome, 30);
+    setTimeout(forceShowChrome, 120);
+  };
+
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t) return;
+    var id = t.id || "";
+    var txt = (t.textContent || "");
+    if (id === "modalClose" || id === "modalBackBtn" || /ተመለስ|ዋና ገፅ/.test(txt)) {
+      forceShowChrome();
+      setTimeout(forceShowChrome, 0);
+      setTimeout(forceShowChrome, 40);
+    }
+  }, true);
+
+  /* ---- Delete ---- */
+  async function deleteItem(it) {
+    if (!window.canDeleteListing(it)) {
+      window.showAdikaToast("ማጥፋት አይቻልም — ባለቤት ወይም አድሚን ብቻ");
+      return false;
+    }
+    if (!confirm("እርግጠኛ ነዎት ማጥፋት ይፈልጋሉ?")) return false;
+    var id = it && (it.id || it.req_id);
+    if (!id) {
+      window.showAdikaToast("መለያ አልተገኘም");
+      return false;
+    }
+    var isBuy = isBuyItem(it) || !!window.__adikaIsBuy;
+    var endpoints = isBuy
+      ? ["/api/delete-request", "/api/buyer-requests/" + encodeURIComponent(id), "/api/delete"]
+      : ["/api/delete-listing", "/api/listings/" + encodeURIComponent(id), "/api/delete"];
+    var payload = {
+      id: id,
+      listing_id: id,
+      user_id: currentTgId(),
+      telegram_id: currentTgId(),
+      table: isBuy ? "buyer_requests" : "listings",
+      admin: isAdmin()
+    };
+    var ok = false;
+    for (var i = 0; i < endpoints.length && !ok; i++) {
+      try {
+        var method = endpoints[i].indexOf("/" + id) >= 0 || endpoints[i].indexOf(encodeURIComponent(id)) >= 0 ? "DELETE" : "POST";
+        var res = await fetch(endpoints[i], {
+          method: method,
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) { ok = true; break; }
+      } catch (e) {}
+    }
+    if (!ok && window.supabase && typeof window.supabase.from === "function") {
+      try {
+        var table = isBuy ? "buyer_requests" : "listings";
+        var r = await window.supabase.from(table).delete().eq("id", id);
+        if (r && !r.error) ok = true;
+      } catch (e2) {}
+    }
+    if (ok) {
+      try {
+        var uid = currentTgId();
+        var key = "adika_my_posts_" + uid;
+        var stash = JSON.parse(localStorage.getItem(key) || "[]");
+        if (Array.isArray(stash)) {
+          localStorage.setItem(key, JSON.stringify(stash.filter(function (x) {
+            return String(x.id) !== String(id);
+          })));
+        }
+      } catch (e3) {}
+      var card = document.querySelector('.adika-card[data-id="' + String(id) + '"]');
+      if (card && card.parentNode) card.parentNode.removeChild(card);
+      window.__adikaLiveItems = (window.__adikaLiveItems || []).filter(function (x) {
+        return String(x.id) !== String(id);
+      });
+      window.showAdikaToast("ማስታወቂያው ከዳታቤዝ ተሰርዟል!");
+      forceShowChrome();
+      return true;
+    }
+    window.showAdikaToast("ማጥፋት አልተሳካም");
+    return false;
+  }
+  window.adikaDeleteItem = deleteItem;
+
+  function decorateCardDelete(card, it) {
+    if (!card || !it) return;
+    var old = card.querySelector(".adika-card-del");
+    if (old) old.remove();
+    if (!window.canDeleteListing(it)) return;
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "adika-card-del is-allowed";
+    btn.setAttribute("data-delete", "1");
+    btn.setAttribute("data-id", String(it.id || ""));
+    btn.setAttribute("aria-label", "Delete");
+    btn.textContent = "🗑️";
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteItem(it);
+    });
+    card.appendChild(btn);
+  }
+
+  function decorateAllCards() {
+    var items = window.__adikaLiveItems || [];
+    document.querySelectorAll("#grid .adika-card").forEach(function (card, idx) {
+      var it = card._adikaItem || items[idx] || null;
+      if (!it) {
+        var did = card.getAttribute("data-id");
+        if (did) {
+          for (var i = 0; i < items.length; i++) {
+            if (String(items[i].id) === String(did)) { it = items[i]; break; }
+          }
+        }
+      }
+      if (it) {
+        card._adikaItem = it;
+        if (it.id && !card.getAttribute("data-id")) card.setAttribute("data-id", String(it.id));
+        decorateCardDelete(card, it);
+      }
+    });
+  }
+  window.adikaDecorateDeletes = decorateAllCards;
+
+  function wrapPaint(name) {
+    var orig = window[name];
+    if (typeof orig !== "function" || orig.__delW) return;
+    window[name] = function () {
+      var r = orig.apply(this, arguments);
+      setTimeout(decorateAllCards, 20);
+      setTimeout(decorateAllCards, 150);
+      return r;
+    };
+    window[name].__delW = true;
+  }
+  wrapPaint("__adikaPaintListings");
+  wrapPaint("paintLive");
+  wrapPaint("finishLoading");
+
+  /* ---- Buyers ONLY ---- */
+  window.fetchBuyers = async function fetchBuyers() {
+    var rows = [];
+    var urls = [
+      "/api/buyer-requests?page=1&limit=50&order=DESC&active_only=1",
+      "/api/requests?page=1&limit=50&order=DESC",
+      "/api/listings?type=BUY&page=1&limit=50&order=DESC&active_only=1"
+    ];
+    for (var i = 0; i < urls.length; i++) {
+      try {
+        var res = await fetch(urls[i], { credentials: "same-origin" });
+        if (!res.ok) continue;
+        var j = await res.json().catch(function () { return {}; });
+        rows = j.items || j.listings || j.results || j.data || [];
+        if (!Array.isArray(rows) && rows && Array.isArray(rows.items)) rows = rows.items;
+        if (Array.isArray(rows) && rows.length) break;
+      } catch (e) {}
+    }
+    if ((!rows || !rows.length) && window.supabase && typeof window.supabase.from === "function") {
+      try {
+        var r1 = await window.supabase.from("buyer_requests").select("*").order("created_at", { ascending: false }).limit(50);
+        if (r1 && !r1.error) rows = r1.data || [];
+      } catch (e2) {}
+    }
+    rows = (Array.isArray(rows) ? rows : []).map(function (r) {
+      r = Object.assign({}, r);
+      r.listing_type = r.listing_type || r.req_type || "BUY";
+      r.req_type = r.req_type || "BUY";
+      r.is_buyer_request = true;
+      r._source = "buyer_requests";
+      return r;
+    }).filter(isBuyItem);
+    return rows;
+  };
+
+  function clearGrid() {
+    var g = el("grid");
+    if (g) g.innerHTML = "";
+  }
+
+  function paintBuyers(items) {
+    items = (items || []).filter(isBuyItem);
+    window.__adikaLiveItems = items;
+    window.__adikaIsBuy = true;
+    if (typeof window.__adikaPaintListings === "function") {
+      window.__adikaPaintListings(items);
+      setTimeout(decorateAllCards, 30);
+      return;
+    }
+    if (typeof paintLive === "function") {
+      paintLive(items);
+      setTimeout(decorateAllCards, 30);
+      return;
+    }
+    var g = el("grid");
+    if (!g) return;
+    if (!items.length) {
+      g.innerHTML = '<div style="grid-column:1/-1;padding:28px 12px;text-align:center;color:#475569;font-weight:800;">📋 የፈላጊ ጥያቄ አልተገኘም</div>';
+      return;
+    }
+    g.innerHTML = "";
+    items.forEach(function (it) {
+      var title = it.title || it.notes || it.details || it.main_category || "ጥያቄ";
+      var budget = "";
+      if (it.budget_min || it.budget_max) {
+        budget = Number(it.budget_min || 0).toLocaleString("en-US") + " – " + Number(it.budget_max || 0).toLocaleString("en-US") + " ETB";
+      }
+      var card = document.createElement("button");
+      card.type = "button";
+      card.className = "adika-card";
+      card.setAttribute("data-live", "1");
+      card.setAttribute("data-id", String(it.id || ""));
+      card._adikaItem = it;
+      card.innerHTML =
+        '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:36px;">📋</div>' +
+        '<div style="padding:8px;"><div class="card-title">' + String(title).replace(/</g, "") + '</div>' +
+        '<div class="card-price" style="margin-top:4px;">💰 ' + (budget || "ለዋጋ ደውሉ") + "</div></div>";
+      g.appendChild(card);
+      decorateCardDelete(card, it);
+    });
+  }
+
+  function setTabActive(buy) {
+    window.__adikaIsBuy = !!buy;
+    try { if (window.state) window.state.tab = buy ? "requests" : "marketplace"; } catch (e) {}
+    var s = el("tabSell"), b = el("tabBuy");
+    if (s) {
+      s.className = buy
+        ? "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1"
+        : "is-active active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+    }
+    if (b) {
+      b.className = buy
+        ? "is-active active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1"
+        : "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+    }
+  }
+
+  function setCatActive(cid) {
+    document.querySelectorAll("#cats .cat-pill").forEach(function (p) {
+      var isCh = p.getAttribute("data-filter") === "chassis";
+      var match = isCh ? cid === "chassis" : (p.getAttribute("data-id") || "") === String(cid || "");
+      p.classList.toggle("is-active", match);
+      p.classList.toggle("active", match);
+      if (match) { p.style.background = "#fff"; p.style.color = "#16acbd"; }
+      else if (!isCh) { p.style.background = "rgba(255,255,255,0.20)"; p.style.color = "#fff"; }
+    });
+  }
+
+  function openBuyers(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    setTabActive(true);
+    clearGrid();
+    var st = el("status");
+    if (st) { st.style.display = "block"; st.textContent = "በመጫን ላይ..."; }
+    window.fetchBuyers().then(function (items) {
+      if (st) st.style.display = "none";
+      // STRICT: never paint sellers
+      paintBuyers((items || []).filter(isBuyItem));
+    }).catch(function () {
+      if (st) st.style.display = "none";
+      paintBuyers([]);
+    });
+  }
+  window.openBuyers = openBuyers;
+
+  function openMarket(ev) {
+    if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+    setTabActive(false);
+    clearGrid();
+    try {
+      if (typeof load === "function") {
+        load(false);
+        setTimeout(decorateAllCards, 250);
+        return;
+      }
+    } catch (e) {}
+    fetch("/api/listings?page=1&limit=40&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var items = (d && (d.items || d.listings || d.results || d.data)) || [];
+        if (!Array.isArray(items)) items = [];
+        items = items.filter(function (x) { return !isBuyItem(x); });
+        window.__adikaIsBuy = false;
+        window.__adikaLiveItems = items;
+        if (typeof window.__adikaPaintListings === "function") window.__adikaPaintListings(items);
+        else if (typeof paintLive === "function") paintLive(items);
+        setTimeout(decorateAllCards, 40);
+      });
+  }
+
+  function hookDetail() {
+    var orig = window.openDetailModal;
+    if (typeof orig !== "function" || orig.__authW) return;
+    window.openDetailModal = function (it, photos) {
+      var r = orig.apply(this, arguments);
+      setTimeout(function () {
+        var allow = window.canDeleteListing(it);
+        document.querySelectorAll("#modalOverlay [data-delete], #modalSheet [data-delete], #modalDeleteBtn, .btn-delete").forEach(function (btn) {
+          if (allow) {
+            btn.classList.remove("hidden");
+            btn.style.display = "";
+            btn.onclick = function (e) {
+              if (e) { e.preventDefault(); e.stopPropagation(); }
+              deleteItem(it).then(function (ok) {
+                if (ok && window.closeDetailModalPreserve) window.closeDetailModalPreserve();
+              });
+            };
+          } else {
+            btn.classList.add("hidden");
+            btn.style.display = "none";
+          }
+        });
+      }, 40);
+      return r;
+    };
+    window.openDetailModal.__authW = true;
+  }
+
+  function bind() {
+    hookDetail();
+    ensureToastEl();
+    var s = el("tabSell"), b = el("tabBuy");
+    if (s && !s.__v2) { s.__v2 = true; s.addEventListener("click", openMarket, true); }
+    if (b && !b.__v2) { b.__v2 = true; b.addEventListener("click", openBuyers, true); }
+    document.querySelectorAll("#cats .cat-pill").forEach(function (p) {
+      if (p.__v2) return;
+      p.__v2 = true;
+      p.addEventListener("click", function () {
+        var cid = p.getAttribute("data-id") || (p.getAttribute("data-filter") === "chassis" ? "chassis" : "all");
+        setCatActive(cid);
+        if (window.__adikaIsBuy) {
+          window.fetchBuyers().then(function (items) {
+            if (cid && cid !== "all" && cid !== "foryou" && cid !== "chassis") {
+              items = items.filter(function (it) {
+                var c = String(it.main_category || it.category || "");
+                return c.indexOf(cid) >= 0;
+              });
+            }
+            paintBuyers(items.filter(isBuyItem));
+          });
+        }
+      }, true);
+    });
+    forceShowChrome();
+    setTabActive(false);
+    setCatActive("foryou");
+    setTimeout(decorateAllCards, 700);
+    setTimeout(decorateAllCards, 1800);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
+  setTimeout(hookDetail, 400);
+})();
+</script>
+
 </body>
 </html>
