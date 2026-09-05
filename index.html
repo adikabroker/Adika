@@ -2,33 +2,23 @@
 <html lang="am">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Adika Marketplace</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // Optional: set window.__ADIKA_SUPABASE = { url: "...", anonKey: "..." } before this runs
-    (function () {
-      try {
-        var lib = window.supabase || (typeof supabase !== "undefined" ? supabase : null);
-        window.__supabaseLib = lib;
-        var cfg = window.__ADIKA_SUPABASE || {};
-        var url = cfg.url || window.SUPABASE_URL || "";
-        var key = cfg.anonKey || cfg.key || window.SUPABASE_ANON_KEY || "";
-        if (url && key && lib && typeof lib.createClient === "function") {
-          window.supabase = lib.createClient(url, key);
-          window.__adikaSbReady = true;
-        } else {
-          window.__adikaSbReady = false;
-        }
-      } catch (e) {
-        window.__adikaSbReady = false;
-      }
-    })();
-  </script>
   <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* Language toggle: only one set visible */
+    body:not(.lang-en-active) .lang-en { display: none !important; }
+    body.lang-en-active .lang-am { display: none !important; }
+    /* Lightbox closed by default */
+    #adikaImageLightbox { display: none; }
+    #adikaImageLightbox.is-open { display: flex !important; }
+  </style>
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
 
@@ -42,14 +32,14 @@
         <div class="flex-1 grid grid-cols-2 gap-1 p-0.5 bg-black/15 rounded-xl">
           <button id="tabSell" type="button"
             class="py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1">
-            <span>ðŸ›’</span>
-            <span class="lang-am">áŒˆá‰ á‹«</span>
+            <span>🛒</span>
+            <span class="lang-am">ገበያ</span>
             <span class="lang-en">Marketplace</span>
           </button>
           <button id="tabBuy" type="button"
             class="py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1">
-            <span>ðŸ“‹</span>
-            <span class="lang-am">áˆáˆ‹áŒŠá‹Žá‰½</span>
+            <span>📋</span>
+            <span class="lang-am">ፈላጊዎች</span>
             <span class="lang-en">Buyers</span>
           </button>
         </div>
@@ -66,39 +56,39 @@
 
       <div class="flex items-center gap-2">
         <div class="relative flex-1 min-w-0">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">ðŸ”</span>
-          <input id="q" type="search" placeholder="áŠ•á‰¥áˆ¨á‰µ á‹­áˆáˆáŒ‰... / Search..." autocomplete="off"
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
+          <input id="q" type="search" placeholder="ንብረት ይፈልጉ... / Search..." autocomplete="off"
             class="w-full pl-8 pr-3 py-1.5 rounded-full bg-white/90 text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
         </div>
         <button type="button" id="brokerCtaHome" class="shrink-0 backdrop-blur-3xl px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap active:scale-95 transition-all shadow-sm flex items-center gap-1"
                 style="background: rgba(255,255,255,0.10); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.30); color: #004d40;">
-          <span>ðŸ¤</span><span>á‹°áˆ‹áˆ‹ áŠ–á‰µ?</span>
+          <span>🤝</span><span>ደላላ ኖት?</span>
         </button>
       </div>
 
       <div id="cats" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
         <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white text-[#16acbd] shadow-sm" data-id="foryou">
-          <span class="lang-am">âœ¨ áˆˆáŠ¥áˆ­áˆµá‹Ž</span>
-          <span class="lang-en">âœ¨ For You</span>
+          <span class="lang-am">✨ ለእርስዎ</span>
+          <span class="lang-en">✨ For You</span>
         </button>
         <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="all">
-          <span class="lang-am">ðŸŒ áˆáˆ‰áˆ</span>
-          <span class="lang-en">ðŸŒ All</span>
+          <span class="lang-am">🌐 ሁሉም</span>
+          <span class="lang-en">🌐 All</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="áˆ˜áŠªáŠ“">
-          <span class="lang-am">ðŸš— áˆ˜áŠªáŠ“</span>
-          <span class="lang-en">ðŸš— Cars</span>
+        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="መኪና">
+          <span class="lang-am">🚗 መኪና</span>
+          <span class="lang-en">🚗 Cars</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="á‰¤á‰µ">
-          <span class="lang-am">ðŸ  á‰¤á‰µ</span>
-          <span class="lang-en">ðŸ  Property</span>
+        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ቤት">
+          <span class="lang-am">🏠 ቤት</span>
+          <span class="lang-en">🏠 Property</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="áŠ•áŒá‹µ">
-          <span class="lang-am">ðŸ¢ áŠ•áŒá‹µ</span>
-          <span class="lang-en">ðŸ¢ Commercial</span>
+        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ንግድ">
+          <span class="lang-am">🏢 ንግድ</span>
+          <span class="lang-en">🏢 Commercial</span>
         </button>
         <button id="filterChassisChip" type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40" data-filter="chassis">
-          <span>ðŸ” <span class="lang-am">áˆ»áˆ² á‹«áˆ‹á‰¸á‹</span><span class="lang-en">VIN</span></span>
+          <span>🔍 <span class="lang-am">ሻሲ ያላቸው</span><span class="lang-en">VIN</span></span>
         </button>
       </div>
     </div>
@@ -108,7 +98,7 @@
 
     <div id="filterBanner" class="hidden mb-1 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
       <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
-      <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">âœ•</button>
+      <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
     </div>
 
     <div id="homeHero" class="mt-0 mb-1 px-0">
@@ -124,76 +114,76 @@
         <div id="promoSlides" class="relative h-full w-full">
           <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3 is-active" data-tool="poa" data-idx="0">
             <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">ðŸ“œ</span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">📜</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">á‹¨</span><span class="promo-letter" style="animation-delay:30ms">á‹</span><span class="promo-letter" style="animation-delay:60ms">áŠ­</span><span class="promo-letter" style="animation-delay:90ms">áˆ</span><span class="promo-letter" style="animation-delay:120ms">áŠ“</span> <span class="promo-letter" style="animation-delay:180ms">áˆ›</span><span class="promo-letter" style="animation-delay:210ms">áŒ£</span><span class="promo-letter" style="animation-delay:240ms">áˆª</span><span class="promo-letter" style="animation-delay:270ms">á‹«</span></p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">á‹¨á‹áŠ­áˆáŠ“ áˆ°áŠá‹¶á‰½áŠ• áˆ…áŒ‹á‹ŠáŠá‰µ á‰ áˆµáŠ«áŠ• á‹«áˆ¨áŒ‹áŒˆáŒ¡</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ው</span><span class="promo-letter" style="animation-delay:60ms">ክ</span><span class="promo-letter" style="animation-delay:90ms">ል</span><span class="promo-letter" style="animation-delay:120ms">ና</span> <span class="promo-letter" style="animation-delay:180ms">ማ</span><span class="promo-letter" style="animation-delay:210ms">ጣ</span><span class="promo-letter" style="animation-delay:240ms">ሪ</span><span class="promo-letter" style="animation-delay:270ms">ያ</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የውክልና ሰነዶችን ህጋዊነት በስካን ያረጋገጡ</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">áŠ áˆµáŒ€áˆáˆ­ âž”</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
           <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="chassis" data-idx="1" style="opacity:0;pointer-events:none">
             <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(56,189,248,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">ðŸ”</span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🔍</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">á‹¨</span><span class="promo-letter" style="animation-delay:30ms">áˆ»</span><span class="promo-letter" style="animation-delay:60ms">áŠ•</span><span class="promo-letter" style="animation-delay:90ms">áˆ²</span> <span class="promo-letter" style="animation-delay:150ms">áˆ›</span><span class="promo-letter" style="animation-delay:180ms">áŒ£</span><span class="promo-letter" style="animation-delay:210ms">áˆª</span><span class="promo-letter" style="animation-delay:240ms">á‹«</span></p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">á‹¨áˆ˜áŠªáŠ“á‹áŠ• áŠ¥á‹áŠá‰°áŠ› á‰³áˆªáŠ­ áŠ¥áŠ“ VIN á‹­áˆ˜áˆ­áˆáˆ©</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ሻ</span><span class="promo-letter" style="animation-delay:60ms">ን</span><span class="promo-letter" style="animation-delay:90ms">ሲ</span> <span class="promo-letter" style="animation-delay:150ms">ማ</span><span class="promo-letter" style="animation-delay:180ms">ጣ</span><span class="promo-letter" style="animation-delay:210ms">ሪ</span><span class="promo-letter" style="animation-delay:240ms">ያ</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የመኪናውን እውነተኛ ታሪክ እና VIN ይመርምሩ</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">áŠ áˆµáŒ€áˆáˆ­ âž”</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
           <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="duty" data-idx="2" style="opacity:0;pointer-events:none">
             <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(45,212,191,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">ðŸ§®</span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🧮</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">á‹¨</span><span class="promo-letter" style="animation-delay:30ms">á‰€</span><span class="promo-letter" style="animation-delay:60ms">áˆ¨</span><span class="promo-letter" style="animation-delay:90ms">áŒ¥</span> <span class="promo-letter" style="animation-delay:150ms">áˆµ</span><span class="promo-letter" style="animation-delay:180ms">áˆŒ</span><span class="promo-letter" style="animation-delay:210ms">á‰µ</span></p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">á‹¨áŒ‰áˆáˆ©áŠ­ á‰€áˆ¨áŒ¥ áŠ¥áŠ“ á‰³áŠ­áˆµ á‰µáŠ­áŠ­áˆˆáŠ› áˆµáˆŒá‰µ</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ቀ</span><span class="promo-letter" style="animation-delay:60ms">ረ</span><span class="promo-letter" style="animation-delay:90ms">ጥ</span> <span class="promo-letter" style="animation-delay:150ms">ስ</span><span class="promo-letter" style="animation-delay:180ms">ሌ</span><span class="promo-letter" style="animation-delay:210ms">ት</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የጉምሩክ ቀረጥ እና ታክስ ትክክለኛ ስሌት</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">áŠ áˆµáŒ€áˆáˆ­ âž”</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
           <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="loan" data-idx="3" style="opacity:0;pointer-events:none">
             <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(14,165,233,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">ðŸ¦</span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🏦</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">á‹¨</span><span class="promo-letter" style="animation-delay:30ms">á‰£</span><span class="promo-letter" style="animation-delay:60ms">áŠ•</span><span class="promo-letter" style="animation-delay:90ms">áŠ­</span> <span class="promo-letter" style="animation-delay:150ms">á‰¥</span><span class="promo-letter" style="animation-delay:180ms">á‹µ</span><span class="promo-letter" style="animation-delay:210ms">áˆ­</span></p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">á‹¨á‰¤á‰µ áŠ¥áŠ“ á‹¨áˆ˜áŠªáŠ“ á‰¥á‹µáˆ­ á‹ˆáˆ­áˆƒá‹Š áˆµáˆŒá‰µ</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">ባ</span><span class="promo-letter" style="animation-delay:60ms">ን</span><span class="promo-letter" style="animation-delay:90ms">ክ</span> <span class="promo-letter" style="animation-delay:150ms">ብ</span><span class="promo-letter" style="animation-delay:180ms">ድ</span><span class="promo-letter" style="animation-delay:210ms">ር</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የቤት እና የመኪና ብድር ወርሃዊ ስሌት</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">áŠ áˆµáŒ€áˆáˆ­ âž”</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
           <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="compare" data-idx="4" style="opacity:0;pointer-events:none">
             <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(34,211,238,0.4),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">âš–ï¸</span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">⚖️</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">á‹¨</span><span class="promo-letter" style="animation-delay:30ms">áˆ˜</span><span class="promo-letter" style="animation-delay:60ms">áŠª</span><span class="promo-letter" style="animation-delay:90ms">áŠ“</span> <span class="promo-letter" style="animation-delay:150ms">áŠ•</span><span class="promo-letter" style="animation-delay:180ms">á…</span><span class="promo-letter" style="animation-delay:210ms">á…</span><span class="promo-letter" style="animation-delay:240ms">áˆ­</span></p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">á‹¨áˆáˆˆá‰µ áˆ˜áŠªáŠ“á‹Žá‰½áŠ• á‰¥á‰ƒá‰µ áŒŽáŠ• áˆˆáŒŽáŠ• á‹«á‹ˆá‹³á‹µáˆ©</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate"><span class="promo-letter" style="animation-delay:0ms">የ</span><span class="promo-letter" style="animation-delay:30ms">መ</span><span class="promo-letter" style="animation-delay:60ms">ኪ</span><span class="promo-letter" style="animation-delay:90ms">ና</span> <span class="promo-letter" style="animation-delay:150ms">ን</span><span class="promo-letter" style="animation-delay:180ms">ፅ</span><span class="promo-letter" style="animation-delay:210ms">ፅ</span><span class="promo-letter" style="animation-delay:240ms">ር</span></p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የሁለት መኪናዎችን ብቃት ጎን ለጎን ያወዳድሩ</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">áŠ áˆµáŒ€áˆáˆ­ âž”</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;box-shadow:0 2px 8px rgba(14,165,233,0.45);">አስጀምር ➔</span>
           </div>
 
           <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="contract" data-idx="5" style="opacity:0;pointer-events:none">
             <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(125,211,252,0.45),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">ðŸ“„</span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">📄</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">á‹¨áˆ½á‹«áŒ­ á‹áˆ</p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">áˆ…áŒ‹á‹Š á‹¨áˆ˜áŠªáŠ“áŠ“ á‹¨á‰¤á‰µ á‹áˆ á‰ áˆ°áŠ¨áŠ•á‹¶á‰½ á‹«á‹˜áŒ‹áŒ</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">የሽያጭ ውል</p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">ህጋዊ የመኪናና የቤት ውል በሰከንዶች ያዘጋጁ</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">áŠ áˆµáŒ€áˆáˆ­ âž”</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">አስጀምር ➔</span>
           </div>
           <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="diag" data-idx="6" style="opacity:0;pointer-events:none">
             <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(52,211,153,0.4),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">ðŸ“‹</span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">📋</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">á‹¨áˆáˆ­áˆ˜áˆ« á‹ˆáˆ¨á‰€á‰µ</p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">á‹¨áŒ‹áˆ«á‹¥ áˆáˆ­áˆ˜áˆ« á‹ˆáˆ¨á‰€á‰µ á‹ˆá‹²á‹«á‹áŠ‘ á‹­á‰°áŠ•á‰µáŠ‘</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">የምርመራ ወረቀት</p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የጋራዥ ምርመራ ወረቀት ወዲያውኑ ይተንትኑ</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">áŠ áˆµáŒ€áˆáˆ­ âž”</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">አስጀምር ➔</span>
           </div>
           <div class="promo-slide absolute inset-0 flex items-center gap-2 py-1 px-3" data-tool="cadastral" data-idx="7" style="opacity:0;pointer-events:none">
             <span class="promo-orb absolute left-1 w-8 h-8 rounded-full pointer-events-none" style="background:radial-gradient(circle,rgba(56,189,248,0.4),transparent 70%);"></span>
-            <span class="promo-icon relative text-base shrink-0 z-[1]">ðŸ—ºï¸</span>
+            <span class="promo-icon relative text-base shrink-0 z-[1]">🗺️</span>
             <div class="flex-1 min-w-0 relative z-[1]">
-              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">á‹¨á‹²áŒ‚á‰³áˆ áŠ«áˆ­á‰³ áˆ›áŒ£áˆªá‹«</p>
-              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">á‹¨áˆ˜áˆ¬á‰µ áŠ«áˆ­á‰³ áŽá‰¶ áŠ áˆµáŒˆá‰¥á‰°á‹ á‹«áˆ¨áŒ‹áŒáŒ¡</p>
+              <p class="promo-title text-[10px] font-black text-white leading-tight truncate">የዲጂታል ካርታ ማጣሪያ</p>
+              <p class="promo-sub text-[8px] text-sky-100/85 font-medium truncate">የመሬት ካርታ ፎቶ አስገብተው ያረጋግጡ</p>
             </div>
-            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">áŠ áˆµáŒ€áˆáˆ­ âž”</span>
+            <span class="promo-cta relative z-[1] text-[8px] font-black text-slate-950 shrink-0 px-2 py-0.5 rounded-full" style="background:#0ea5e9;">አስጀምር ➔</span>
           </div>
         </div>
 
@@ -229,8 +219,8 @@
     <div id="loadMoreWrap" class="flex justify-center items-center mt-2 mb-1 pb-4">
       <button id="more" type="button"
         class="hidden flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-teal-700 font-extrabold text-xs shadow-md border border-teal-200 active:scale-95 transition-all">
-        <span id="btnText" class="lang-am">á‰°áŒ¨áˆ›áˆª â†“</span>
-        <span class="lang-en" id="btnTextEn">Load More â†“</span>
+        <span id="btnText" class="lang-am">ተጨማሪ ↓</span>
+        <span class="lang-en" id="btnTextEn">Load More ↓</span>
         <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -247,7 +237,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
         </svg>
         <span class="text-[9px] font-bold mt-0.5">
-          <span class="lang-am">áˆ˜áŠáˆ»</span>
+          <span class="lang-am">መነሻ</span>
           <span class="lang-en">Home</span>
         </span>
       </button>
@@ -260,7 +250,7 @@
           <span class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
         </div>
         <span class="text-[9px] font-semibold mt-0.5 text-[#0e7490]">
-          <span class="lang-am">áŠ áˆ›áŠ«áˆª</span>
+          <span class="lang-am">አማካሪ</span>
           <span class="lang-en">Advisor</span>
         </span>
       </button>
@@ -275,9 +265,9 @@
 
     <div class="flex items-center gap-2 w-5/12 justify-around">
       <button id="navMyListings" type="button" class="flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-[#0e7490] hover:text-[#0f766e]">
-        <span class="text-base leading-none opacity-100" aria-hidden="true">ðŸ“‹</span>
+        <span class="text-base leading-none opacity-100" aria-hidden="true">📋</span>
         <span class="text-[9px] font-bold mt-0.5 leading-tight text-center max-w-[52px] text-[#0e7490] opacity-100">
-          <span class="lang-am">á‹¨áŠ¥áŠ”</span>
+          <span class="lang-am">የእኔ</span>
           <span class="lang-en">Mine</span>
         </span>
       </button>
@@ -287,7 +277,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
         <span class="text-[9px] font-bold mt-0.5 text-[#0e7490] opacity-100">
-          <span class="lang-am">áŠ¥áˆ­á‹³á‰³</span>
+          <span class="lang-am">እርዳታ</span>
           <span class="lang-en">Help</span>
         </span>
       </button>
@@ -296,36 +286,36 @@
 
   <div id="inboxView" class="fixed inset-0 z-[275] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
     <div class="shrink-0 px-3 py-2.5 flex items-center justify-between text-white" style="background:linear-gradient(90deg,#0e7490,#16acbd);">
-      <button type="button" id="inboxBackBtn" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-      <div class="font-black text-sm truncate">áˆ˜áˆáŠ¥áŠ­á‰µ</div>
-      <button type="button" id="inboxCloseBtn" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">âœ•</button>
+      <button type="button" id="inboxBackBtn" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">← ተመለስ</button>
+      <div class="font-black text-sm truncate">መልእክት</div>
+      <button type="button" id="inboxCloseBtn" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
     </div>
     <div id="inboxThreadList" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
     <div id="inboxThreadPane" class="hidden flex-1 flex flex-col min-h-0">
       <div id="inboxThreadMeta" class="px-3 py-2 text-[11px] font-bold text-slate-600 border-b bg-white/80"></div>
       <div id="inboxThreadLog" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
       <div class="shrink-0 p-2.5 bg-white border-t flex gap-2">
-        <textarea id="inboxCompose" rows="1" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" placeholder="áˆ˜áˆáŠ¥áŠ­á‰µ á‹­áŒ»á‰..."></textarea>
-        <button type="button" id="inboxSendBtn" class="px-4 rounded-xl bg-[#16acbd] text-white font-black text-sm">áˆ‹áŠ­</button>
+        <textarea id="inboxCompose" rows="1" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" placeholder="መልእክት ይጻፉ..."></textarea>
+        <button type="button" id="inboxSendBtn" class="px-4 rounded-xl bg-[#16acbd] text-white font-black text-sm">ላክ</button>
       </div>
     </div>
   </div>
 
   <div id="myListingsView" class="fixed inset-0 z-[275] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
     <div class="shrink-0 px-3 py-2.5 flex items-center justify-between gap-2 bg-gradient-to-r from-[#0e7490] to-[#16acbd] text-white shadow-md">
-      <button type="button" id="myListingsBackBtn" onclick="event.preventDefault();event.stopPropagation();(window.goBack||window.hideMyListingsView||function(){})();" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-      <div class="font-black text-sm truncate flex items-center gap-1">ðŸ“‹ <span class="lang-am">á‹¨áŠ¥áŠ” áˆ›áˆµá‰³á‹ˆá‰‚á‹«á‹Žá‰½</span><span class="lang-en">My Listings</span></div>
-      <button type="button" id="myListingsCloseBtn" onclick="event.preventDefault();event.stopPropagation();(window.goBack||window.hideMyListingsView||function(){})();" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">âœ•</button>
+      <button type="button" id="myListingsBackBtn" onclick="event.preventDefault();event.stopPropagation();(window.goBack||window.hideMyListingsView||function(){})();" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">← ተመለስ</button>
+      <div class="font-black text-sm truncate flex items-center gap-1">📋 <span class="lang-am">የእኔ ማስታወቂያዎች</span><span class="lang-en">My Listings</span></div>
+      <button type="button" id="myListingsCloseBtn" onclick="event.preventDefault();event.stopPropagation();(window.goBack||window.hideMyListingsView||function(){})();" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
     </div>
     <div id="myListingsBody" class="flex-1 overflow-y-auto p-3 pb-24">
-      <div id="myListingsStatus" class="text-center text-xs text-slate-500 py-4">áŠ¥á‹¨áŒ«áŠ áŠá‹...</div>
+      <div id="myListingsStatus" class="text-center text-xs text-slate-500 py-4">እየጫነ ነው...</div>
       <div id="myListingsGrid" class="grid grid-cols-1 gap-3"></div>
       <div id="myListingsEmpty" class="hidden flex flex-col items-center justify-center py-16 px-6 text-center">
-        <div class="text-4xl mb-3">ðŸ“­</div>
-        <p class="text-sm font-black text-slate-700 mb-1">áŠ¥áˆµáŠ«áˆáŠ• áˆáŠ•áˆ á‹«á‰°áˆ˜á‰±á‰µ áˆ›áˆµá‰³á‹ˆá‰‚á‹« á‹¨áˆˆáˆ</p>
-        <p class="text-[11px] text-slate-500 mb-5">áŠ á‹²áˆµ áˆ›áˆµá‰³á‹ˆá‰‚á‹« áˆˆáˆ˜áˆˆáŒ á áŠ¨á‰³á‰½ á‹«áˆˆá‹áŠ• + á‹­áŒ«áŠ‘</p>
+        <div class="text-4xl mb-3">📭</div>
+        <p class="text-sm font-black text-slate-700 mb-1">እስካሁን ምንም ያተመቱት ማስታወቂያ የለም</p>
+        <p class="text-[11px] text-slate-500 mb-5">አዲስ ማስታወቂያ ለመለጠፍ ከታች ያለውን + ይጫኑ</p>
         <button type="button" id="myListingsPostBtn" class="px-5 py-2.5 rounded-2xl bg-[#16acbd] text-white font-black text-xs shadow-lg active:scale-95">
-          ðŸš€ Post Listing
+          🚀 Post Listing
         </button>
       </div>
     </div>
@@ -334,16 +324,16 @@
   <div id="analysisView" class="fixed inset-0 z-[280] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(165deg,#020617 0%,#0b3a4a 55%,#021016 100%);">
     <div class="shrink-0 px-3 py-2.5 text-white flex items-center justify-between" style="background:linear-gradient(90deg,#020617,#0e7490,#16acbd);border-bottom:1px solid rgba(255,255,255,0.12);">
       <div class="flex items-center gap-2 min-w-0">
-        <button id="analysisBackBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-bold">â† áˆ€á‰¥</button>
-        <button id="analysisHomeBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[10px] font-bold">ðŸ  á‹‹áŠ“ áŒˆá…</button>
+        <button id="analysisBackBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-bold">← ሀብ</button>
+        <button id="analysisHomeBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[10px] font-bold">🏠 ዋና ገፅ</button>
         <div class="min-w-0 flex-1">
-          <div class="font-black text-xs truncate">áŠ á‹²áŠ« á‹²áŒ‚á‰³áˆ áŠ áˆ›áŠ«áˆª</div>
-          <div class="text-[10px] text-cyan-100/85 truncate">Adika Digital System Â· Live Desk</div>
+          <div class="font-black text-xs truncate">አዲካ ዲጂታል አማካሪ</div>
+          <div class="text-[10px] text-cyan-100/85 truncate">Adika Digital System · Live Desk</div>
         </div>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
-        <span class="text-[9px] font-extrabold text-emerald-200 bg-emerald-400/15 px-2 py-0.5 rounded-full border border-emerald-300/30">á‹áŒáŒ</span>
-        <button id="analysisCloseBtn" type="button" class="w-8 h-8 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-bold text-sm">âœ•</button>
+        <span class="text-[9px] font-extrabold text-emerald-200 bg-emerald-400/15 px-2 py-0.5 rounded-full border border-emerald-300/30">ዝግጁ</span>
+        <button id="analysisCloseBtn" type="button" class="w-8 h-8 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-bold text-sm">✕</button>
       </div>
     </div>
     <div class="chat-shell flex-1 flex flex-col min-h-0 relative overflow-hidden">
@@ -352,14 +342,14 @@
       <div class="px-3 pt-3 pb-1 shrink-0 relative z-10">
         <div class="rounded-2xl px-3 py-2 flex items-center justify-between" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.22);">
           <div class="text-[11px] font-black text-white flex items-center gap-1.5">
-            <span>ðŸ’¬</span><span>á‹¨á‰€áŒ¥á‰³ á‹¨á‹á‹­áŠ“áŠ•áˆµ á‹á‹­á‹­á‰µ</span>
+            <span>💬</span><span>የቀጥታ የፋይናንስ ውይይት</span>
           </div>
-          <span class="text-[9px] font-bold text-cyan-300">áˆáŒ£áŠ• áˆáˆ‹áˆ½</span>
+          <span class="text-[9px] font-bold text-cyan-300">ፈጣን ምላሽ</span>
         </div>
       </div>
       <div id="advisorChatLog" class="flex-1 overflow-y-auto px-3 pt-3 pb-3 space-y-2.5 text-xs scroll-smooth relative z-10"></div>
       <div class="chat-input-bar relative z-20 shrink-0">
-        <textarea id="advisorChatInput" rows="2" placeholder="áˆµáˆˆ áˆ˜áŠªáŠ“á£ á‰¤á‰µá£ á‰€áˆ¨áŒ¥ á‹ˆá‹­áˆ á‹¨á‰£áŠ•áŠ­ á‰¥á‹µáˆ­ á‰ áŠ áˆ›áˆ­áŠ› á‹­áŒ á‹­á‰..."></textarea>
+        <textarea id="advisorChatInput" rows="2" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር በአማርኛ ይጠይቁ..."></textarea>
         <button id="advisorChatSend" type="button" class="chat-send-btn" aria-label="Send">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
         </button>
@@ -376,25 +366,25 @@
         <div class="flex items-center justify-between gap-2">
           <button type="button" id="aiHubBackBtn"
             class="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white text-sm font-semibold transition-all active:scale-95 shrink-0">
-            â† <span class="lang-am">á‰°áˆ˜áˆˆáˆµ</span><span class="lang-en">Back</span>
+            ← <span class="lang-am">ተመለስ</span><span class="lang-en">Back</span>
           </button>
           <h3 class="font-extrabold text-sm tracking-wide text-white drop-shadow-md text-center flex-1 truncate">
-            Adika Digital Hub ðŸ› ï¸
+            Adika Digital Hub 🛠️
           </h3>
           <button id="aiModalClose" type="button"
             class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white flex items-center justify-center font-bold text-sm transition-all active:scale-95 shrink-0">
-            âœ•
+            ✕
           </button>
         </div>
 
         <div class="grid grid-cols-2 gap-1 bg-white/10 p-0.5 rounded-xl text-xs font-bold border border-white/10">
           <button id="aiTabTools" type="button" class="py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold">
-            <span class="lang-am">ðŸ› ï¸ áˆ˜áˆ³áˆªá‹«á‹Žá‰½</span>
-            <span class="lang-en">ðŸ› ï¸ Tools Hub</span>
+            <span class="lang-am">🛠️ መሳሪያዎች</span>
+            <span class="lang-en">🛠️ Tools Hub</span>
           </button>
           <button id="aiTabSearch" type="button" class="py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center">
-            <span class="lang-am">ðŸ” áˆáŒ£áŠ• ááˆˆáŒ‹</span>
-            <span class="lang-en">ðŸ” Smart Search</span>
+            <span class="lang-am">🔍 ፈጣን ፍለጋ</span>
+            <span class="lang-en">🔍 Smart Search</span>
           </button>
         </div>
       </div>
@@ -406,8 +396,8 @@
         <div class="budget-glass-card py-2 px-3 mb-2 space-y-1 relative z-10 shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5 text-white font-extrabold text-xs drop-shadow-md">
-              <span>ðŸ’¡</span>
-              <span class="lang-am">á‹¨áŒá‹¢áŠ“ á‹¨á‰ áŒ€á‰µ áŠ áˆ›áŠ«áˆª</span>
+              <span>💡</span>
+              <span class="lang-am">የግዢና የበጀት አማካሪ</span>
               <span class="lang-en">Purchase & Budget Advisor</span>
             </div>
             <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-cyan-400/20 text-cyan-100 border border-cyan-400/30 whitespace-nowrap shrink-0 drop-shadow-sm">Adika Advisor</span>
@@ -416,17 +406,17 @@
           <div class="grid grid-cols-2 gap-2">
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label class="text-[10px] font-bold text-white drop-shadow-md">áŒ á‰…áˆ‹áˆ‹ á‰ áŒ€á‰µ (ETB)</label>
+                <label class="text-[10px] font-bold text-white drop-shadow-md">ጠቅላላ በጀት (ETB)</label>
               </div>
               <input id="advisorBudget" type="number" value="2000000" placeholder="2,000,000" class="w-full py-1.5 px-2.5 rounded-lg bg-white/15 border border-white/25 text-xs font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
               <div id="advisorBudgetFormatted" class="hidden text-[9px] font-medium text-slate-400/70 mt-0.5">2,000,000 ETB</div>
             </div>
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label class="text-[10px] font-bold text-white drop-shadow-md">á‹ˆáˆ­áˆƒá‹Š áŒˆá‰¢ (ETB)</label>
+                <label class="text-[10px] font-bold text-white drop-shadow-md">ወርሃዊ ገቢ (ETB)</label>
               </div>
               <input id="advisorMonthlyIncome" type="number" value="25000" placeholder="25,000" class="w-full py-1.5 px-2.5 rounded-lg bg-white/15 border border-white/25 text-xs font-normal text-slate-400/80 placeholder-slate-500 outline-none focus:ring-2 focus:ring-cyan-400/40 focus:text-white" />
-              <div id="advisorIncomeFormatted" class="hidden text-[9px] font-medium text-slate-400/70 mt-0.5">25,000 / á‹ˆáˆ­</div>
+              <div id="advisorIncomeFormatted" class="hidden text-[9px] font-medium text-slate-400/70 mt-0.5">25,000 / ወር</div>
             </div>
           </div>
           <div class="flex gap-1 overflow-x-auto no-scrollbar">
@@ -439,27 +429,27 @@
 
           <button id="advisorBtn" type="button" class="w-full py-1 rounded-xl bg-cyan-400/25 hover:bg-cyan-400/35 text-cyan-100 font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-cyan-400/40 backdrop-blur-md">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-            <span>á‹¨áŠ¢áŠ•á‰¨áˆµá‰µáˆ˜áŠ•á‰µ áŠ áˆ›áˆ«áŒ®á‰½ áŠ áˆ³á‹­</span>
+            <span>የኢንቨስትመንት አማራጮች አሳይ</span>
           </button>
 
           <div id="opportunityCards" class="hidden space-y-1.5">
             <div class="opp-card" data-opp="auto">
-              <div class="opp-label text-amber-400">A Â· Automotive</div>
-              <div class="opp-title">á‰°áˆ½áŠ¨áˆ­áŠ«áˆª + á‹¨á‰£áŠ•áŠ­ á‰¥á‹µáˆ­</div>
-              <div id="oppAutoBody" class="opp-body">áŠ¨á‰€áŒ¥á‰³ áŒˆá‰ á‹« áŠ¥á‹¨á‰°áŒ«áŠâ€¦</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="auto" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'auto',optionType:'Automotive'});else if(window.openAiChat)openAiChat();">áŒ¥áˆá‰… á‹¨á‹á‹­áŠ“áŠ•áˆµ á‰µáŠ•á‰°áŠ“ â†’</button>
+              <div class="opp-label text-amber-400">A · Automotive</div>
+              <div class="opp-title">ተሽከርካሪ + የባንክ ብድር</div>
+              <div id="oppAutoBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="auto" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'auto',optionType:'Automotive'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና →</button>
             </div>
             <div class="opp-card" data-opp="property">
-              <div class="opp-label text-sky-400">B Â· Real Estate</div>
-              <div class="opp-title">áˆªáˆ áŠ¥áˆµá‰´á‰µ Â· á‰…á‹µáˆ˜ áŠ­áá‹«</div>
-              <div id="oppPropBody" class="opp-body">áŠ¨á‰€áŒ¥á‰³ áŒˆá‰ á‹« áŠ¥á‹¨á‰°áŒ«áŠâ€¦</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="property" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'property',optionType:'Real Estate'});else if(window.openAiChat)openAiChat();">áŒ¥áˆá‰… á‹¨á‹á‹­áŠ“áŠ•áˆµ á‰µáŠ•á‰°áŠ“ â†’</button>
+              <div class="opp-label text-sky-400">B · Real Estate</div>
+              <div class="opp-title">ሪል እስቴት · ቅድመ ክፍያ</div>
+              <div id="oppPropBody" class="opp-body">ከቀጥታ ገበያ እየተጫነ…</div>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="property" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'property',optionType:'Real Estate'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና →</button>
             </div>
             <div class="opp-card" data-opp="roi">
-              <div class="opp-label text-emerald-400">C Â· Business ROI</div>
-              <div class="opp-title">áŠ•áŒá‹µ / Startup Â· á‹“áˆ˜á‰³á‹Š ROI</div>
-              <div id="oppRoiBody" class="opp-body">áŠ¨á‰ áŒ€á‰µ á‰€áˆ˜áˆ­ áŠ¥á‹¨á‰°áˆ°áˆ‹â€¦</div>
-              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="roi" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'roi',optionType:'Business'});else if(window.openAiChat)openAiChat();">áŒ¥áˆá‰… á‹¨á‹á‹­áŠ“áŠ•áˆµ á‰µáŠ•á‰°áŠ“ â†’</button>
+              <div class="opp-label text-emerald-400">C · Business ROI</div>
+              <div class="opp-title">ንግድ / Startup · ዓመታዊ ROI</div>
+              <div id="oppRoiBody" class="opp-body">ከበጀት ቀመር እየተሰላ…</div>
+              <button type="button" class="opp-cta opp-chat-cta pointer-events-auto relative z-20 cursor-pointer" data-context="roi" onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({context:'roi',optionType:'Business'});else if(window.openAiChat)openAiChat();">ጥልቅ የፋይናንስ ትንተና →</button>
             </div>
           </div>
 
@@ -467,33 +457,33 @@
 
           <div id="advisorExtraFilters" class="hidden space-y-2.5 pt-1">
             <div>
-              <label class="text-[10px] font-bold text-slate-700 block mb-1">á‹¨áŒá‹¢ áŠ áˆ‹áˆ› (Purchase Purpose)</label>
+              <label class="text-[10px] font-bold text-slate-700 block mb-1">የግዢ አላማ (Purchase Purpose)</label>
               <div class="grid grid-cols-2 gap-1 bg-white/80 p-1 rounded-xl border border-slate-200">
                 <button id="advisorPurposeBiz" type="button" class="advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1" data-purpose="business">
-                  <span>ðŸš•</span>
-                  <span>áˆˆáˆµáˆ« / áŠ•áŒá‹µ (Ride/Cargo)</span>
+                  <span>🚕</span>
+                  <span>ለስራ / ንግድ (Ride/Cargo)</span>
                 </button>
                 <button id="advisorPurposeFam" type="button" class="advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1" data-purpose="personal">
-                  <span>ðŸ </span>
-                  <span>áˆˆáŒáˆ / á‰¤á‰°áˆ°á‰¥ (Personal)</span>
+                  <span>🏠</span>
+                  <span>ለግል / ቤተሰብ (Personal)</span>
                 </button>
               </div>
             </div>
             <div>
-              <label class="text-[10px] font-bold text-slate-700 block mb-1">á‹¨áŒá‹¢ áˆ˜áŠ•áŒˆá‹µ (Payment Strategy)</label>
+              <label class="text-[10px] font-bold text-slate-700 block mb-1">የግዢ መንገድ (Payment Strategy)</label>
               <div class="grid grid-cols-2 gap-1 bg-white/80 p-1 rounded-xl border border-slate-200">
                 <button id="advisorPayCash" type="button" class="advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1" data-pay="cash">
-                  <span>ðŸ’µ</span>
-                  <span>á‰£áˆˆáŠ á‰ áŒ€á‰µ (Cash Buy)</span>
+                  <span>💵</span>
+                  <span>ባለኝ በጀት (Cash Buy)</span>
                 </button>
                 <button id="advisorPayLoan" type="button" class="advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1" data-pay="loan">
-                  <span>ðŸ¦</span>
-                  <span>á‰ á‰£áŠ•áŠ­ á‰¥á‹µáˆ­ (Down Payment)</span>
+                  <span>🏦</span>
+                  <span>በባንክ ብድር (Down Payment)</span>
                 </button>
               </div>
             </div>
             <div id="advisorIncomeRow" class="hidden">
-              <label class="text-[10px] font-bold text-slate-700 block mb-1">á‹ˆáˆ­áˆƒá‹Š á‹¨á‰°áŒ£áˆ« áŒˆá‰¢ (Monthly Net Income in ETB)</label>
+              <label class="text-[10px] font-bold text-slate-700 block mb-1">ወርሃዊ የተጣራ ገቢ (Monthly Net Income in ETB)</label>
               <input id="advisorIncome" type="number" placeholder="80,000" value="80000" class="w-full px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 outline-none" />
             </div>
           </div>
@@ -501,48 +491,48 @@
 
         <div id="hubToolsDock" class="flex flex-col shrink-0">
           <h4 class="text-[10px] font-extrabold text-white drop-shadow-md mb-1.5 shrink-0">
-            <span class="lang-am">á‰°áŒ¨áˆ›áˆª á‹¨á‹á‹­áŠ“áŠ•áˆµáŠ“ á‹¨áˆ…áŒ áˆ˜áˆ³áˆªá‹«á‹Žá‰½</span>
+            <span class="lang-am">ተጨማሪ የፋይናንስና የህግ መሳሪያዎች</span>
             <span class="lang-en">Financial, Legal & Diagnostic Tools</span>
           </h4>
           <div id="hubToolsGrid" class="tools-grid-compact text-xs shrink min-h-0">
             <button id="toolDutyBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.0s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></span>
-              <span class="tool-title">á‹¨á‰€áˆ¨áŒ¥ áˆµáˆŒá‰µ</span>
+              <span class="tool-title">የቀረጥ ስሌት</span>
               <span class="tool-sub">Customs Duty & Taxes</span>
             </button>
             <button id="toolLoanBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.08s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h18M5 10V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2M5 10v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8"/><circle cx="12" cy="14" r="1.5"/></svg></span>
-              <span class="tool-title">á‹¨á‰£áŠ•áŠ­ á‰¥á‹µáˆ­</span>
+              <span class="tool-title">የባንክ ብድር</span>
               <span class="tool-sub">Mortgage & Auto Loan</span>
             </button>
             <button id="toolCompareBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.16s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h8M8 12h8M8 17h5"/><path d="M4 4v16M20 4v16"/></svg></span>
-              <span class="tool-title">á‹¨áˆ˜áŠªáŠ“ áŠ•áŒ½áŒ½áˆ­</span>
+              <span class="tool-title">የመኪና ንጽጽር</span>
               <span class="tool-sub">Vehicle Comparison</span>
             </button>
             <button id="toolContractBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.24s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg></span>
-              <span class="tool-title">á‹¨áˆ½á‹«áŒ­ á‹áˆ</span>
+              <span class="tool-title">የሽያጭ ውል</span>
               <span class="tool-sub">Legal Sales Contract</span>
             </button>
             <button id="toolPoaBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.32s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></span>
-              <span class="tool-title">á‹áŠ­áˆáŠ“ áˆ›áˆ¨áŒ‹áŒˆáŒ«</span>
+              <span class="tool-title">ውክልና ማረጋገጫ</span>
               <span class="tool-sub">Verify Power of Attorney</span>
             </button>
             <button id="toolDiagBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.4s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.3.6.9 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
-              <span class="tool-title">á‹¨áˆáˆ­áˆ˜áˆ« á‹ˆáˆ¨á‰€á‰µ</span>
+              <span class="tool-title">የምርመራ ወረቀት</span>
               <span class="tool-sub">Garage Diagnostic Sheet</span>
             </button>
             <button id="toolChassisBtn" type="button" class="tool-card-pro stagger-in flex flex-col justify-between py-2 px-2 min-h-0" style="animation-delay:0.48s">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="11" r="3"/><path d="M12 14v3"/></svg></span>
-              <span class="tool-title">á‹¨áˆ»áˆ² áˆ›áˆ¨áŒ‹áŒˆáŒ«</span>
+              <span class="tool-title">የሻሲ ማረጋገጫ</span>
               <span class="tool-sub">Chassis / VIN Specs</span>
             </button>
             <button id="toolLandMapBtn" type="button" class="tool-card-pro flex flex-col justify-between py-2 px-2">
               <span class="tool-icon-wrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/><circle cx="12" cy="10" r="2"/></svg></span>
-              <span class="tool-title">á‹¨á‹²áŒ‚á‰³áˆ áŠ«áˆ­á‰³ áˆ›áŒ£áˆªá‹«</span>
+              <span class="tool-title">የዲጂታል ካርታ ማጣሪያ</span>
               <span class="tool-sub">Cadastral Map Verification</span>
             </button>
           </div>
@@ -550,10 +540,10 @@
             onclick="event.preventDefault();event.stopPropagation();if(window.handleStartAiChat)handleStartAiChat({optionType:'general'});else if(window.openAiChat)openAiChat();"
             class="w-full bg-gradient-to-r from-cyan-500/20 via-slate-900/60 to-indigo-500/20 backdrop-blur-2xl border border-cyan-400/50 rounded-2xl p-3 mt-2 flex items-center justify-between shadow-lg shadow-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer relative z-10 shrink-0">
             <div class="min-w-0 text-left pr-2">
-              <div class="text-white font-extrabold text-[12px] leading-tight drop-shadow-md">ðŸ’¡ á‹²áŒ‚á‰³áˆ á‹¨á‹á‹­áŠ“áŠ•áˆµ áŠ áˆ›áŠ«áˆª</div>
+              <div class="text-white font-extrabold text-[12px] leading-tight drop-shadow-md">💡 ዲጂታል የፋይናንስ አማካሪ</div>
               <div class="text-cyan-300 text-[10px] font-semibold drop-shadow-[0_0_8px_rgba(34,211,238,0.45)] mt-0.5">Adika Senior Digital Financial Advisor</div>
             </div>
-            <span class="bg-cyan-400 text-slate-950 px-3 py-1.5 rounded-xl font-bold text-xs shrink-0 shadow-md shadow-cyan-400/30">áŠ áˆáŠ‘áŠ‘ áŠ áˆ›áŠ­áˆ­ â†’</span>
+            <span class="bg-cyan-400 text-slate-950 px-3 py-1.5 rounded-xl font-bold text-xs shrink-0 shadow-md shadow-cyan-400/30">አሁኑኑ አማክር →</span>
           </button>
         </div>
       </div>
@@ -565,21 +555,21 @@
           <div class="flex items-center justify-between gap-2 mb-4">
             <button type="button" id="aiSearchBackBtn"
               class="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white border border-white/30 px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1 active:scale-95">
-              â† <span class="lang-am">áˆ˜áˆ˜áˆˆáˆµ</span><span class="lang-en">Back</span>
+              ← <span class="lang-am">መመለስ</span><span class="lang-en">Back</span>
             </button>
             <h3 class="text-cyan-300 font-bold text-sm drop-shadow-[0_0_10px_rgba(34,211,238,0.5)] text-center flex-1">
-              ðŸ” á‹²áŒ‚á‰³áˆ ááˆˆáŒ‹
+              🔍 ዲጂታል ፍለጋ
             </h3>
             <button type="button" id="aiSearchCloseBtn"
               class="bg-white/20 hover:bg-white/30 text-white rounded-full p-1.5 border border-white/30 w-8 h-8 flex items-center justify-center active:scale-95">
-              âœ•
+              ✕
             </button>
           </div>
 
           <div class="space-y-4">
             <div>
               <label class="text-cyan-300 font-semibold text-xs drop-shadow-md mb-1.5 block">
-                <span class="lang-am">áˆáŠ• áŠ á‹­áŠá‰µ áŠ•á‰¥áˆ¨á‰µ á‹­áˆáˆáŒ‹áˆ‰?</span>
+                <span class="lang-am">ምን አይነት ንብረት ይፈልጋሉ?</span>
                 <span class="lang-en">What are you looking for?</span>
               </label>
               <textarea id="aiPrompt" rows="2"
@@ -589,21 +579,21 @@
 
             <div>
               <label class="text-cyan-300 font-semibold text-xs drop-shadow-md mb-1.5 block">
-                <span class="lang-am">áˆáŒ£áŠ• áŠ áˆ›áˆ«áŒ®á‰½</span>
+                <span class="lang-am">ፈጣን አማራጮች</span>
                 <span class="lang-en">Quick Tags</span>
               </label>
               <div class="flex flex-wrap gap-1.5">
-                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="áˆ˜áŠªáŠ“">ðŸš— Cars / áˆ˜áŠªáŠ–á‰½</button>
-                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="á‰¤á‰µ">ðŸ  House / á‰¤á‰¶á‰½</button>
-                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="áŠ¦á‰¶áˆ›á‰²áŠ­">âš™ï¸ Automatic</button>
-                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="áŠ á‹²áˆµ">âœ¨ Brand New</button>
-                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="á‰ªáˆ‹">ðŸ¡ Villa</button>
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="መኪና">🚗 Cars / መኪኖች</button>
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="ቤት">🏠 House / ቤቶች</button>
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="ኦቶማቲክ">⚙️ Automatic</button>
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="አዲስ">✨ Brand New</button>
+                <button type="button" class="ai-chip bg-white/15 hover:bg-cyan-500/20 backdrop-blur-md border border-white/30 text-white rounded-xl px-3.5 py-2 text-xs font-medium transition-all active:scale-95" data-q="ቪላ">🏡 Villa</button>
               </div>
             </div>
 
             <div>
               <label class="text-cyan-300 font-semibold text-xs drop-shadow-md mb-1.5 block">
-                <span class="lang-am">á‹¨á‰ áŒ€á‰µ áˆ˜áŒ áŠ•</span>
+                <span class="lang-am">የበጀት መጠን</span>
                 <span class="lang-en">Budget Range</span>
               </label>
               <div class="grid grid-cols-3 gap-1.5 text-xs">
@@ -615,10 +605,10 @@
 
             <div class="pt-1 flex gap-2">
               <button id="aiResetBtn" type="button" class="w-1/3 py-2.5 rounded-xl bg-white/15 border border-white/30 text-white font-bold text-xs backdrop-blur-md active:scale-95">
-                <span class="lang-am">áŠ áŒ½á‹³</span><span class="lang-en">Reset</span>
+                <span class="lang-am">አጽዳ</span><span class="lang-en">Reset</span>
               </button>
               <button id="aiApplyBtn" type="button" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs shadow-md active:scale-95 flex items-center justify-center gap-1.5">
-                <span>âœ¨ <span class="lang-am">áŠ áŒ£áˆ«</span><span class="lang-en">Apply</span></span>
+                <span>✨ <span class="lang-am">አጣራ</span><span class="lang-en">Apply</span></span>
               </button>
             </div>
           </div>
@@ -634,13 +624,13 @@
       <div class="px-3 py-2.5 text-white flex items-center justify-between shrink-0 gap-2"
            style="background:linear-gradient(105deg,rgba(14,116,144,0.92),rgba(22,172,189,0.9));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
         <div class="flex items-center gap-1.5 min-w-0">
-          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] shrink-0 border border-white/25">â† á‰°áˆ˜áˆˆáˆµ</button>
-          <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-bold truncate border border-white/20">áˆ˜áŠªáŠ“</span>
+          <button id="modalBackBtn" type="button" class="btn-back flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold text-[11px] shrink-0 border border-white/25">← ተመለስ</button>
+          <span id="modalCategoryBadge" class="px-2 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-bold truncate border border-white/20">መኪና</span>
           <span id="modalIdBadge" class="text-[10px] text-cyan-50 font-semibold shrink-0 opacity-90">#ADK-</span>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
-          <button id="modalFavBtn" type="button" class="w-8 h-8 rounded-full bg-white/15 text-white font-bold flex items-center justify-center text-sm border border-white/20">â™¡</button>
-          <button id="modalClose" type="button" class="w-8 h-8 rounded-full bg-slate-900/70 text-white font-bold flex items-center justify-center text-sm border border-white/15" aria-label="Close">âœ•</button>
+          <button id="modalFavBtn" type="button" class="w-8 h-8 rounded-full bg-white/15 text-white font-bold flex items-center justify-center text-sm border border-white/20">♡</button>
+          <button id="modalClose" type="button" class="w-8 h-8 rounded-full bg-slate-900/70 text-white font-bold flex items-center justify-center text-sm border border-white/15" aria-label="Close">✕</button>
         </div>
       </div>
 
@@ -652,7 +642,7 @@
           <div class="flex items-center justify-between gap-2">
             <div class="min-w-0 flex items-center gap-1.5">
               <h2 id="modalTitle" class="text-[16px] font-black text-slate-900 leading-tight truncate"></h2>
-              <span class="detail-badge detail-badge-verified shrink-0">âœ” Verified</span>
+              <span class="detail-badge detail-badge-verified shrink-0">✔ Verified</span>
             </div>
             <span id="modalTime" class="text-[11px] text-slate-400 font-medium shrink-0"></span>
           </div>
@@ -664,8 +654,8 @@
 
         <div id="modalDynamicActions" class="detail-hub-services mx-0 p-3 space-y-2">
           <div class="text-[11px] font-black text-slate-800 tracking-wide flex items-center gap-1">
-            <span>âœ¨</span>
-            <span class="lang-am">á‹¨áŠ á‹²áŠ« á‹²áŒ‚á‰³áˆáŠ“ á‹á‹­áŠ“áŠ•áˆµ áŠ áŒˆáˆáŒáˆŽá‰¶á‰½</span>
+            <span>✨</span>
+            <span class="lang-am">የአዲካ ዲጂታልና ፋይናንስ አገልግሎቶች</span>
             <span class="lang-en">Adika Digital & Finance Services</span>
           </div>
           <div id="modalActionButtonsRow" class="grid grid-cols-2 gap-2"></div>
@@ -673,7 +663,7 @@
 
         <div class="detail-glass-card p-3.5 space-y-2">
           <p class="text-[11px] font-black text-slate-400 uppercase tracking-wide border-b border-slate-100 pb-1.5 m-0">
-            <span class="lang-am">á‹áˆ­á‹áˆ­ áˆ˜áŒáˆˆáŒ«</span>
+            <span class="lang-am">ዝርዝር መግለጫ</span>
             <span class="lang-en">Full Details</span>
           </p>
           <div id="modalSpecs" class="space-y-1.5 text-xs text-slate-700 font-medium"></div>
@@ -682,16 +672,16 @@
 
         <div id="modalRecoSection" class="space-y-2">
           <div class="flex items-center justify-between gap-2">
-            <div id="modalRecoTitle" class="text-[11px] font-extrabold text-slate-800">ðŸ¤– áˆˆáŠ¥áˆ­áˆµá‹Ž á‹¨á‰°áˆ˜áˆ¨áŒ¡ á‰°á‰€áˆ«áˆ«á‰¢ áˆ˜áŠªáŠ–á‰½</div>
+            <div id="modalRecoTitle" class="text-[11px] font-extrabold text-slate-800">🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች</div>
             <div id="modalRecoIntent" class="text-[9px] font-bold text-[#0e7490] bg-[#16acbd]/10 px-2 py-0.5 rounded-full truncate max-w-[45%]"></div>
           </div>
           <div id="modalRecoScroll" data-role="recommendationsContainer" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1 -mx-0.5 px-0.5 recommendations-container"></div>
           <div id="modalAlertCard" class="hidden detail-alert-compact">
             <div class="flex items-center gap-2">
-              <span class="text-base shrink-0">ðŸ””</span>
+              <span class="text-base shrink-0">🔔</span>
               <p id="modalAlertText" class="text-[10px] text-slate-700 font-semibold leading-snug m-0 flex-1"></p>
               <button type="button" id="modalAlertBtn" class="shrink-0 bg-teal-500 text-white text-[10px] font-black px-3 py-1.5 rounded-xl shadow-md active:scale-95">
-                áŠ áˆ³á‹á‰€áŠ
+                አሳውቀኝ
               </button>
             </div>
             <div id="modalAlertStatus" class="text-[10px] font-bold text-teal-700 hidden mt-1.5"></div>
@@ -703,26 +693,26 @@
            style="padding-top:0.5rem;padding-bottom:calc(0.5rem + env(safe-area-inset-bottom,0px));">
         <a id="modalCallBtn" href="tel:"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-black text-xs shadow-md active:scale-95 transition-all">
-          <span>ðŸ“ž</span>
-          <span class="lang-am">á‹°á‹áˆ</span>
+          <span>📞</span>
+          <span class="lang-am">ደውል</span>
           <span class="lang-en">Call</span>
         </a>
         <button id="modalChatBtn" type="button"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-200 active:scale-95 transition-all">
-          <span>ðŸ’¬</span>
-          <span class="lang-am">áˆ˜áˆáŠ¥áŠ­á‰µ</span>
+          <span>💬</span>
+          <span class="lang-am">መልእክት</span>
           <span class="lang-en">Message</span>
         </button>
         <button id="modalShareBtn" type="button"
           class="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-md active:scale-95 transition-all">
-          <span>ðŸ”—</span>
-          <span class="lang-am">áŠ áŒ‹áˆ«</span>
+          <span>🔗</span>
+          <span class="lang-am">አጋራ</span>
           <span class="lang-en">Share</span>
         </button>
         <button id="modalDeleteBtn" type="button"
           class="hidden col-span-3 flex items-center justify-center gap-1 py-2 rounded-xl bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200 active:scale-95 transition-all">
-          <span>ðŸ—‘ï¸</span>
-          <span class="lang-am">áˆ›áˆµá‰³á‹ˆá‰‚á‹« áŠ áŒ¥á‹</span>
+          <span>🗑️</span>
+          <span class="lang-am">ማስታወቂያ አጥፋ</span>
           <span class="lang-en">Delete listing</span>
         </button>
       </div>
@@ -732,33 +722,33 @@
   <div id="dutyModal" class="fixed inset-0 z-[9999] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
     <div class="hub-sheet w-full max-w-md rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden">
       <div class="hub-header px-4 py-3 text-white flex items-center justify-between shrink-0">
-        <h3 class="font-extrabold text-xs tracking-wide">ðŸ§® á‹¨áŠ¢á‰µá‹®áŒµá‹« áŒ‰áˆáˆ©áŠ­ á‹¨á‰€áˆ¨áŒ¥ áˆµáˆŒá‰µ (Duty Calculator)</h3>
+        <h3 class="font-extrabold text-xs tracking-wide">🧮 የኢትዮጵያ ጉምሩክ የቀረጥ ስሌት (Duty Calculator)</h3>
 <div class="flex items-center gap-1 shrink-0">
-          <button type="button" onclick="navigateBack('dutyModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-          <button type="button" onclick="goHomeFromTool('dutyModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">ðŸ  á‹‹áŠ“ áŒˆá…</button>
-          <button type="button" onclick="closeModal('dutyModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">âœ•</button>
+          <button type="button" onclick="navigateBack('dutyModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('dutyModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('dutyModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
         <div>
-          <label class="font-bold text-slate-700 block mb-1">á‹¨áˆ˜áŠªáŠ“á‹ CIF á‹‹áŒ‹ (USD / á‹¶áˆ‹áˆ­)</label>
+          <label class="font-bold text-slate-700 block mb-1">የመኪናው CIF ዋጋ (USD / ዶላር)</label>
           <input id="dutyCif" type="number" value="12000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="font-bold text-slate-700 block mb-1">á‹¨áŠá‹³áŒ… á‹“á‹­áŠá‰µ</label>
+            <label class="font-bold text-slate-700 block mb-1">የነዳጅ ዓይነት</label>
             <select id="dutyFuel" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
-              <option value="Benzine">Benzine (á‰¤áŠ•á‹šáŠ•)</option>
-              <option value="Diesel">Diesel (áŠ“ááŒ£)</option>
-              <option value="Electric">Electric (áŠ¤áˆŒáŠ­á‰µáˆªáŠ­ EV - 5% á‰€áˆ¨áŒ¥)</option>
+              <option value="Benzine">Benzine (ቤንዚን)</option>
+              <option value="Diesel">Diesel (ናፍጣ)</option>
+              <option value="Electric">Electric (ኤሌክትሪክ EV - 5% ቀረጥ)</option>
             </select>
           </div>
           <div>
-            <label class="font-bold text-slate-700 block mb-1">á‹¨áˆžá‰°áˆ­ áˆ˜áŒ áŠ• (CC)</label>
+            <label class="font-bold text-slate-700 block mb-1">የሞተር መጠን (CC)</label>
             <input id="dutyCc" type="number" value="1300" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
           </div>
         </div>
-        <button id="dutyCalculateBtn" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow active:scale-95">á‰€áˆ¨áŒ¥ áŠ áˆµáˆ‹ (Calculate)</button>
+        <button id="dutyCalculateBtn" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow active:scale-95">ቀረጥ አስላ (Calculate)</button>
         <div id="dutyResult" class="hidden p-3 bg-slate-50 rounded-xl border space-y-1.5 font-medium"></div>
       </div>
     </div>
@@ -767,29 +757,29 @@
   <div id="loanModal" class="fixed inset-0 z-[9999] bg-slate-950/55 backdrop-blur-sm hidden items-end justify-center">
     <div class="hub-sheet w-full max-w-md rounded-t-3xl max-h-[88vh] flex flex-col overflow-hidden">
       <div class="hub-header px-4 py-3 text-white flex items-center justify-between shrink-0">
-        <h3 class="font-extrabold text-xs tracking-wide">ðŸ¦ á‹¨á‰£áŠ•áŠ­ á‰¥á‹µáˆ­áŠ“ á‹ˆáˆ­áˆƒá‹Š áŠ­áá‹« (Bank Loan)</h3>
+        <h3 class="font-extrabold text-xs tracking-wide">🏦 የባንክ ብድርና ወርሃዊ ክፍያ (Bank Loan)</h3>
 <div class="flex items-center gap-1 shrink-0">
-          <button type="button" onclick="navigateBack('loanModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-          <button type="button" onclick="goHomeFromTool('loanModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">ðŸ  á‹‹áŠ“ áŒˆá…</button>
-          <button type="button" onclick="closeModal('loanModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">âœ•</button>
+          <button type="button" onclick="navigateBack('loanModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('loanModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('loanModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
         <div>
-          <label class="font-bold text-slate-700 block mb-1">á‹¨áŠ•á‰¥áˆ¨á‰± á‹‹áŒ‹ (á‰¥áˆ­)</label>
+          <label class="font-bold text-slate-700 block mb-1">የንብረቱ ዋጋ (ብር)</label>
           <input id="loanPrice" type="number" value="3000000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="font-bold text-slate-700 block mb-1">á‰…á‹µáˆ˜ áŠ­áá‹« (%)</label>
+            <label class="font-bold text-slate-700 block mb-1">ቅድመ ክፍያ (%)</label>
             <input id="loanDown" type="number" value="30" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
           </div>
           <div>
-            <label class="font-bold text-slate-700 block mb-1">á‹¨áˆ˜áŠ­áˆá‹« á‹“áˆ˜á‰³á‰µ</label>
+            <label class="font-bold text-slate-700 block mb-1">የመክፈያ ዓመታት</label>
             <input id="loanYears" type="number" value="10" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
           </div>
         </div>
-        <button id="loanCalculateBtn" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow active:scale-95">á‰¥á‹µáˆ­ áŠ áˆµáˆ‹ (Calculate)</button>
+        <button id="loanCalculateBtn" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow active:scale-95">ብድር አስላ (Calculate)</button>
         <div id="loanResult" class="hidden p-3 bg-slate-50 rounded-xl border space-y-1.5 font-medium"></div>
       </div>
     </div>
@@ -803,17 +793,17 @@
           <h3 class="font-black text-xs tracking-wide truncate">Comparison Engine</h3>
         </div>
 <div class="flex items-center gap-1 shrink-0">
-          <button type="button" onclick="navigateBack('compareModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-          <button type="button" onclick="goHomeFromTool('compareModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">ðŸ  á‹‹áŠ“ áŒˆá…</button>
-          <button type="button" onclick="closeModal('compareModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">âœ•</button>
+          <button type="button" onclick="navigateBack('compareModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('compareModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('compareModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
       <div class="px-3 pt-2.5 shrink-0">
         <div class="flex p-0.5 rounded-full bg-slate-900 border border-slate-800 gap-0.5" id="compareTabs">
-          <button type="button" data-ctab="vehicles" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all bg-teal-600 text-white shadow">ðŸš— á‰°áˆ½áŠ¨áˆ­áŠ«áˆª</button>
-          <button type="button" data-ctab="property" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">ðŸ  áˆªáˆ áˆµá‰´á‰µ</button>
-          <button type="button" data-ctab="business" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">ðŸ’¼ á‰¢á‹áŠáˆµ ROI</button>
+          <button type="button" data-ctab="vehicles" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all bg-teal-600 text-white shadow">🚗 ተሽከርካሪ</button>
+          <button type="button" data-ctab="property" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">🏠 ሪል ስቴት</button>
+          <button type="button" data-ctab="business" class="compare-tab flex-1 py-1.5 rounded-full text-[10px] font-extrabold transition-all text-slate-400 hover:text-white">💼 ቢዝነስ ROI</button>
         </div>
       </div>
 
@@ -822,15 +812,15 @@
         <div id="comparePanelVehicles" class="space-y-2">
           <div class="grid grid-cols-2 gap-2">
             <div class="relative space-y-1">
-              <label class="text-[9px] font-bold text-slate-400 block">áˆ˜áŠªáŠ“ A (áˆžá‹´áˆ)</label>
+              <label class="text-[9px] font-bold text-slate-400 block">መኪና A (ሞዴል)</label>
               <input id="compareCar1" type="text" list="vehicleSuggestions" autocomplete="off" placeholder="e.g. Toyota Belta" value="Toyota Vitz" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
-              <label class="text-[8px] font-bold text-slate-500">á‹¨áˆáˆ­á‰µ á‹˜áˆ˜áŠ• (Year)</label>
+              <label class="text-[8px] font-bold text-slate-500">የምርት ዘመን (Year)</label>
               <input id="compareYear1" type="number" min="1990" max="2026" placeholder="2018" value="2018" class="w-full p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
             </div>
             <div class="relative space-y-1">
-              <label class="text-[9px] font-bold text-slate-400 block">áˆ˜áŠªáŠ“ B (áˆžá‹´áˆ)</label>
+              <label class="text-[9px] font-bold text-slate-400 block">መኪና B (ሞዴል)</label>
               <input id="compareCar2" type="text" list="vehicleSuggestions" autocomplete="off" placeholder="e.g. BYD Dolphin" value="BYD Dolphin" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
-              <label class="text-[8px] font-bold text-slate-500">á‹¨áˆáˆ­á‰µ á‹˜áˆ˜áŠ• (Year)</label>
+              <label class="text-[8px] font-bold text-slate-500">የምርት ዘመን (Year)</label>
               <input id="compareYear2" type="number" min="1990" max="2026" placeholder="2023" value="2023" class="w-full p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-[11px] font-bold text-white outline-none focus:ring-1 focus:ring-teal-500" />
             </div>
           </div>
@@ -841,7 +831,7 @@
             <option value="Toyota Hiace"><option value="BYD Seagull"><option value="BYD Dolphin"><option value="BYD Song Plus">
             <option value="Suzuki Dzire"><option value="Suzuki Swift"><option value="Hyundai Accent"><option value="Hyundai Tucson">
           </datalist>
-          <p class="text-[9px] text-slate-500">á‰ vehicles_db áŠ¨áˆŒáˆˆ á‰ áŠ á‹²áŠ« á‹²áŒ‚á‰³áˆ áˆ²áˆµá‰°áˆ á‹¨áŒ‰áˆáˆ©áŠ­/áŠá‹³áŒ…/á‹‹áŒ‹ áŒáˆá‰µ á‹«áˆ°áˆ‹áˆá¢</p>
+          <p class="text-[9px] text-slate-500">በvehicles_db ከሌለ በአዲካ ዲጂታል ሲስተም የጉምሩክ/ነዳጅ/ዋጋ ግምት ያሰላል።</p>
         </div>
 
         <div id="comparePanelProperty" class="hidden space-y-2">
@@ -849,48 +839,48 @@
             <div>
               <label class="text-[9px] font-bold text-slate-400 block mb-1">Asset A</label>
               <select id="compareAsset1" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white">
-                <option value="apartment">áŠ á“áˆ­á‰µáˆ˜áŠ•á‰µ</option>
-                <option value="condo">áŠ®áŠ•á‹¶áˆšáŠ’á‹¨áˆ</option>
-                <option value="residential_villa">á‰ªáˆ‹ / á‹¨áˆ˜áŠ–áˆªá‹« á‰¤á‰µ</option>
-                <option value="vacant_land">á‰£á‹¶ áˆ˜áˆ¬á‰µ</option>
-                <option value="commercial_shop">á‹¨áŠ•áŒá‹µ áˆ±á‰…</option>
-                <option value="warehouse">á‹Œáˆ­áˆƒá‹áˆµ</option>
+                <option value="apartment">አፓርትመንት</option>
+                <option value="condo">ኮንዶሚኒየም</option>
+                <option value="residential_villa">ቪላ / የመኖሪያ ቤት</option>
+                <option value="vacant_land">ባዶ መሬት</option>
+                <option value="commercial_shop">የንግድ ሱቅ</option>
+                <option value="warehouse">ዌርሃውስ</option>
               </select>
             </div>
             <div>
               <label class="text-[9px] font-bold text-slate-400 block mb-1">Asset B</label>
               <select id="compareAsset2" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white">
-                <option value="vacant_land">á‰£á‹¶ áˆ˜áˆ¬á‰µ</option>
-                <option value="apartment">áŠ á“áˆ­á‰µáˆ˜áŠ•á‰µ</option>
-                <option value="condo">áŠ®áŠ•á‹¶áˆšáŠ’á‹¨áˆ</option>
-                <option value="residential_villa">á‰ªáˆ‹ / á‹¨áˆ˜áŠ–áˆªá‹« á‰¤á‰µ</option>
-                <option value="commercial_shop">á‹¨áŠ•áŒá‹µ áˆ±á‰…</option>
-                <option value="warehouse">á‹Œáˆ­áˆƒá‹áˆµ</option>
+                <option value="vacant_land">ባዶ መሬት</option>
+                <option value="apartment">አፓርትመንት</option>
+                <option value="condo">ኮንዶሚኒየም</option>
+                <option value="residential_villa">ቪላ / የመኖሪያ ቤት</option>
+                <option value="commercial_shop">የንግድ ሱቅ</option>
+                <option value="warehouse">ዌርሃውስ</option>
               </select>
             </div>
           </div>
           <div>
-            <label class="text-[9px] font-bold text-slate-400 block mb-1">áˆ›áŒ£á‰€áˆ» á‰ áŒ€á‰µ (ETB)</label>
+            <label class="text-[9px] font-bold text-slate-400 block mb-1">ማጣቀሻ በጀት (ETB)</label>
             <input id="comparePropBudget" type="number" value="3000000" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white" />
           </div>
-          <p class="text-[9px] text-slate-500">Inflation hedge Â· Rental yield Â· 3/5yr appreciation Â· Development score</p>
+          <p class="text-[9px] text-slate-500">Inflation hedge · Rental yield · 3/5yr appreciation · Development score</p>
         </div>
 
         <div id="comparePanelBusiness" class="hidden space-y-2">
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-[9px] font-bold text-slate-400 block mb-1">áŠ•áŒá‹µ A</label>
-              <input id="compareBiz1" type="text" value="CafÃ© & Restaurant" placeholder="e.g. CafÃ© & Restaurant" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white" />
+              <label class="text-[9px] font-bold text-slate-400 block mb-1">ንግድ A</label>
+              <input id="compareBiz1" type="text" value="Café & Restaurant" placeholder="e.g. Café & Restaurant" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white" />
             </div>
             <div>
-              <label class="text-[9px] font-bold text-slate-400 block mb-1">áŠ•áŒá‹µ B</label>
+              <label class="text-[9px] font-bold text-slate-400 block mb-1">ንግድ B</label>
               <input id="compareBiz2" type="text" value="Cosmetics Import" placeholder="e.g. Cosmetics Import" class="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-[11px] font-bold text-white" />
             </div>
           </div>
-          <p class="text-[9px] text-slate-500">Capital Â· Space Â· Labor Â· Demand Â· Risk Â· Breakeven Â· ROI</p>
+          <p class="text-[9px] text-slate-500">Capital · Space · Labor · Demand · Risk · Breakeven · ROI</p>
         </div>
 
-        <button id="compareBtn" type="button" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white font-black text-xs shadow-lg active:scale-[0.98]">á‹áŒ¤á‰±áŠ• á‹­áˆ˜áˆáŠ¨á‰± â†’</button>
+        <button id="compareBtn" type="button" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 text-white font-black text-xs shadow-lg active:scale-[0.98]">ውጤቱን ይመልከቱ →</button>
         <div id="compareResult" class="hidden space-y-2.5"></div>
       </div>
     </div>
@@ -899,213 +889,213 @@
   <div id="contractModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
-        <h3 class="font-extrabold text-xs tracking-wide">ðŸ“œ áˆ…áŒ‹á‹Š á‹áˆ áˆ›á‹˜áŒ‹áŒƒ (Contract Wizard)</h3>
+        <h3 class="font-extrabold text-xs tracking-wide">📜 ህጋዊ ውል ማዘጋጃ (Contract Wizard)</h3>
 <div class="flex items-center gap-1 shrink-0">
-          <button type="button" onclick="navigateBack('contractModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-          <button type="button" onclick="goHomeFromTool('contractModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">ðŸ  á‹‹áŠ“ áŒˆá…</button>
-          <button type="button" onclick="closeModal('contractModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">âœ•</button>
+          <button type="button" onclick="navigateBack('contractModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('contractModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('contractModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
       <div class="px-3 pt-2 pb-1 bg-slate-50 border-b border-slate-100 shrink-0">
         <div class="grid grid-cols-4 gap-1 p-0.5 bg-slate-200/60 rounded-xl">
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm" data-step="0">á‹“á‹­áŠá‰µ</button>
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="1">á‰°á‹‹á‹‹á‹®á‰½</button>
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="2">áŠ•á‰¥áˆ¨á‰µ</button>
-          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="3">áŒˆáŠ•á‹˜á‰¥</button>
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all bg-white text-[#0e7490] shadow-sm" data-step="0">ዓይነት</button>
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="1">ተዋዋዮች</button>
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="2">ንብረት</button>
+          <button type="button" class="contract-step-tab py-1.5 rounded-lg text-[9px] font-extrabold transition-all text-slate-500" data-step="3">ገንዘብ</button>
         </div>
       </div>
 
       <div class="p-3.5 overflow-y-auto space-y-3 flex-1 text-xs">
 
         <div id="contractStep0" class="contract-step space-y-2">
-          <div class="text-[11px] font-black text-slate-800">á‹¨á‹áˆ á‹“á‹­áŠá‰µ á‹­áˆáˆ¨áŒ¡</div>
+          <div class="text-[11px] font-black text-slate-800">የውል ዓይነት ይምረጡ</div>
           <div class="grid grid-cols-1 gap-2">
             <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border-2 border-[#16acbd] bg-[#16acbd]/5 cursor-pointer">
               <input type="radio" name="cContractType" value="vehicle_sale" checked class="accent-[#16acbd]" />
-              <span class="font-bold text-slate-800">ðŸš— á‹¨áˆ˜áŠªáŠ“ áˆ½á‹«áŒ­ á‹áˆ (Vehicle Sale)</span>
+              <span class="font-bold text-slate-800">🚗 የመኪና ሽያጭ ውል (Vehicle Sale)</span>
             </label>
             <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
               <input type="radio" name="cContractType" value="vehicle_rental" class="accent-[#16acbd]" />
-              <span class="font-bold text-slate-800">ðŸ”‘ á‹¨áˆ˜áŠªáŠ“ áŠªáˆ«á‹­ á‹áˆ (Vehicle Rental)</span>
+              <span class="font-bold text-slate-800">🔑 የመኪና ኪራይ ውል (Vehicle Rental)</span>
             </label>
             <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
               <input type="radio" name="cContractType" value="house_sale" class="accent-[#16acbd]" />
-              <span class="font-bold text-slate-800">ðŸ  á‹¨á‰¤á‰µ áˆ½á‹«áŒ­ á‹áˆ (House Sale)</span>
+              <span class="font-bold text-slate-800">🏠 የቤት ሽያጭ ውል (House Sale)</span>
             </label>
             <label class="c-type-opt flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
               <input type="radio" name="cContractType" value="house_rental" class="accent-[#16acbd]" />
-              <span class="font-bold text-slate-800">ðŸ¢ á‹¨á‰¤á‰µ áŠªáˆ«á‹­ á‹áˆ (House Rental)</span>
+              <span class="font-bold text-slate-800">🏢 የቤት ኪራይ ውል (House Rental)</span>
             </label>
           </div>
         </div>
 
         <div id="contractStep1" class="contract-step space-y-2.5 hidden">
-          <div class="text-[11px] font-black text-slate-800">á‹¨á‰°á‹‹á‹‹á‹®á‰½ áˆ˜áˆ¨áŒƒ</div>
+          <div class="text-[11px] font-black text-slate-800">የተዋዋዮች መረጃ</div>
           <div class="p-2 rounded-xl bg-slate-50 border space-y-2">
-            <div class="text-[10px] font-extrabold text-[#0e7490]" id="cPartyALabel">á‹áˆ áˆ°áŒª / áˆ»áŒ­ / áŠ áŠ¨áˆ«á‹­</div>
-            <input id="cSellerName" type="text" placeholder="áˆ™áˆ‰ áˆµáˆ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+            <div class="text-[10px] font-extrabold text-[#0e7490]" id="cPartyALabel">ውል ሰጪ / ሻጭ / አከራይ</div>
+            <input id="cSellerName" type="text" placeholder="ሙሉ ስም *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
             <div class="grid grid-cols-2 gap-2">
-              <input id="cSellerNationality" type="text" value="áŠ¢á‰µá‹®áŒµá‹«á‹Š" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-              <input id="cSellerPhone" type="tel" placeholder="áˆµáˆáŠ­ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+              <input id="cSellerNationality" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+              <input id="cSellerPhone" type="tel" placeholder="ስልክ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
             </div>
             <div class="grid grid-cols-2 gap-2">
-              <select id="cSellerSubCity" class="w-full p-2 rounded-xl bg-white border text-xs font-bold">                <option value="">â€” á‹­áˆáˆ¨áŒ¡ â€”</option>
-                <option>áŠ á‹²áˆµ áŠ¨á‰°áˆ›</option>
-                <option>áŠ á‰ƒá‰‚ á‰ƒáˆŠá‰²</option>
-                <option>áŠ áˆ«á‹³</option>
-                <option>á‰¦áˆŒ</option>
-                <option>áŒ‰áˆˆáˆŒ</option>
-                <option>á‰‚áˆ­á‰†áˆµ</option>
-                <option>áŠ®áˆáŒ á‰€áˆ«áŠ•á‹®</option>
-                <option>áˆá‹°á‰³</option>
-                <option>áŠ•á‹áˆµ áˆµáˆáŠ­ áˆ‹áá‰¶</option>
-                <option>á‹¨áŠ«</option>
-                <option>áˆŒáˆš áŠ©áˆ«</option>
+              <select id="cSellerSubCity" class="w-full p-2 rounded-xl bg-white border text-xs font-bold">                <option value="">— ይምረጡ —</option>
+                <option>አዲስ ከተማ</option>
+                <option>አቃቂ ቃሊቲ</option>
+                <option>አራዳ</option>
+                <option>ቦሌ</option>
+                <option>ጉለሌ</option>
+                <option>ቂርቆስ</option>
+                <option>ኮልፌ ቀራንዮ</option>
+                <option>ልደታ</option>
+                <option>ንፋስ ስልክ ላፍቶ</option>
+                <option>የካ</option>
+                <option>ሌሚ ኩራ</option>
               </select>
-              <input id="cSellerWoreda" type="text" placeholder="á‹ˆáˆ¨á‹³" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+              <input id="cSellerWoreda" type="text" placeholder="ወረዳ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
             </div>
-            <input id="cSellerHouseNo" type="text" placeholder="á‹¨á‰¤á‰µ á‰áŒ¥áˆ­" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+            <input id="cSellerHouseNo" type="text" placeholder="የቤት ቁጥር" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
           </div>
           <div class="p-2 rounded-xl bg-slate-50 border space-y-2">
-            <div class="text-[10px] font-extrabold text-[#0e7490]" id="cPartyBLabel">á‹áˆ á‰°á‰€á‰£á‹­ / áŒˆá‹¢ / á‰°áŠ¨áˆ«á‹­</div>
-            <input id="cBuyerName" type="text" placeholder="áˆ™áˆ‰ áˆµáˆ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+            <div class="text-[10px] font-extrabold text-[#0e7490]" id="cPartyBLabel">ውል ተቀባይ / ገዢ / ተከራይ</div>
+            <input id="cBuyerName" type="text" placeholder="ሙሉ ስም *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
             <div class="grid grid-cols-2 gap-2">
-              <input id="cBuyerNationality" type="text" value="áŠ¢á‰µá‹®áŒµá‹«á‹Š" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
-              <input id="cBuyerPhone" type="tel" placeholder="áˆµáˆáŠ­ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+              <input id="cBuyerNationality" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+              <input id="cBuyerPhone" type="tel" placeholder="ስልክ *" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
             </div>
             <div class="grid grid-cols-2 gap-2">
-              <select id="cBuyerSubCity" class="w-full p-2 rounded-xl bg-white border text-xs font-bold">                <option value="">â€” á‹­áˆáˆ¨áŒ¡ â€”</option>
-                <option>áŠ á‹²áˆµ áŠ¨á‰°áˆ›</option>
-                <option>áŠ á‰ƒá‰‚ á‰ƒáˆŠá‰²</option>
-                <option>áŠ áˆ«á‹³</option>
-                <option>á‰¦áˆŒ</option>
-                <option>áŒ‰áˆˆáˆŒ</option>
-                <option>á‰‚áˆ­á‰†áˆµ</option>
-                <option>áŠ®áˆáŒ á‰€áˆ«áŠ•á‹®</option>
-                <option>áˆá‹°á‰³</option>
-                <option>áŠ•á‹áˆµ áˆµáˆáŠ­ áˆ‹áá‰¶</option>
-                <option>á‹¨áŠ«</option>
-                <option>áˆŒáˆš áŠ©áˆ«</option>
+              <select id="cBuyerSubCity" class="w-full p-2 rounded-xl bg-white border text-xs font-bold">                <option value="">— ይምረጡ —</option>
+                <option>አዲስ ከተማ</option>
+                <option>አቃቂ ቃሊቲ</option>
+                <option>አራዳ</option>
+                <option>ቦሌ</option>
+                <option>ጉለሌ</option>
+                <option>ቂርቆስ</option>
+                <option>ኮልፌ ቀራንዮ</option>
+                <option>ልደታ</option>
+                <option>ንፋስ ስልክ ላፍቶ</option>
+                <option>የካ</option>
+                <option>ሌሚ ኩራ</option>
               </select>
-              <input id="cBuyerWoreda" type="text" placeholder="á‹ˆáˆ¨á‹³" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+              <input id="cBuyerWoreda" type="text" placeholder="ወረዳ" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
             </div>
-            <input id="cBuyerHouseNo" type="text" placeholder="á‹¨á‰¤á‰µ á‰áŒ¥áˆ­" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
+            <input id="cBuyerHouseNo" type="text" placeholder="የቤት ቁጥር" class="w-full p-2 rounded-xl bg-white border text-xs font-bold" />
           </div>
         </div>
 
         <div id="contractStep2" class="contract-step space-y-2.5 hidden">
-          <div class="text-[11px] font-black text-slate-800">á‹¨áŠ•á‰¥áˆ¨á‰µ / áˆ˜áŠªáŠ“ áˆ˜áˆ¨áŒƒ</div>
+          <div class="text-[11px] font-black text-slate-800">የንብረት / መኪና መረጃ</div>
 
           <div id="cFieldsVehicle" class="space-y-2">
             <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold text-slate-500">áˆ˜áŠªáŠ“</span>
+              <span class="text-[10px] font-bold text-slate-500">መኪና</span>
               <label class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-bold cursor-pointer">
-                ðŸ“· áˆŠá‰¥áˆ¬
+                📷 ሊብሬ
                 <input id="cLibreFile" type="file" accept="image/*" class="hidden" />
               </label>
             </div>
             <div id="cLibreStatus" class="hidden text-[10px] font-bold text-[#0e7490]"></div>
-            <input id="cPlate" type="text" placeholder="áˆ°áˆŒá‹³ á‰áŒ¥áˆ­ *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cChassis" type="text" placeholder="á‰»áˆ² / Chassis *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
-            <input id="cEngine" type="text" placeholder="á‹¨áˆžá‰°áˆ­ á‰áŒ¥áˆ­" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
-            <input id="cCarModel" type="text" placeholder="á‹¨áˆ˜áŠªáŠ“ á‹“á‹­áŠá‰µ / áˆžá‹´áˆ *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cPlate" type="text" placeholder="ሰሌዳ ቁጥር *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cChassis" type="text" placeholder="ቻሲ / Chassis *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
+            <input id="cEngine" type="text" placeholder="የሞተር ቁጥር" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold font-mono" />
+            <input id="cCarModel" type="text" placeholder="የመኪና ዓይነት / ሞዴል *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
           </div>
 
           <div id="cFieldsHouse" class="space-y-2 hidden">
             <div class="grid grid-cols-2 gap-2">
-              <select id="cHouseSubCity" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">                <option value="">â€” á‹­áˆáˆ¨áŒ¡ â€”</option>
-                <option>áŠ á‹²áˆµ áŠ¨á‰°áˆ›</option>
-                <option>áŠ á‰ƒá‰‚ á‰ƒáˆŠá‰²</option>
-                <option>áŠ áˆ«á‹³</option>
-                <option>á‰¦áˆŒ</option>
-                <option>áŒ‰áˆˆáˆŒ</option>
-                <option>á‰‚áˆ­á‰†áˆµ</option>
-                <option>áŠ®áˆáŒ á‰€áˆ«áŠ•á‹®</option>
-                <option>áˆá‹°á‰³</option>
-                <option>áŠ•á‹áˆµ áˆµáˆáŠ­ áˆ‹áá‰¶</option>
-                <option>á‹¨áŠ«</option>
-                <option>áˆŒáˆš áŠ©áˆ«</option>
+              <select id="cHouseSubCity" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">                <option value="">— ይምረጡ —</option>
+                <option>አዲስ ከተማ</option>
+                <option>አቃቂ ቃሊቲ</option>
+                <option>አራዳ</option>
+                <option>ቦሌ</option>
+                <option>ጉለሌ</option>
+                <option>ቂርቆስ</option>
+                <option>ኮልፌ ቀራንዮ</option>
+                <option>ልደታ</option>
+                <option>ንፋስ ስልክ ላፍቶ</option>
+                <option>የካ</option>
+                <option>ሌሚ ኩራ</option>
               </select>
-              <input id="cHouseWoreda" type="text" placeholder="á‹¨á‰¤á‰µ á‹ˆáˆ¨á‹³" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+              <input id="cHouseWoreda" type="text" placeholder="የቤት ወረዳ" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
             </div>
-            <input id="cHouseNo" type="text" placeholder="á‹¨á‰¤á‰µ á‰áŒ¥áˆ­" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cTitleDeed" type="text" placeholder="á‹¨áŠ«áˆ­á‰³ / á‹°á‰¥á‰°áˆ­ á‰áŒ¥áˆ­" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cAreaSqm" type="text" placeholder="áˆµá‹á‰µ (áŠ«.áˆœ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cHouseNo" type="text" placeholder="የቤት ቁጥር" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cTitleDeed" type="text" placeholder="የካርታ / ደብተር ቁጥር" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cAreaSqm" type="text" placeholder="ስፋት (ካ.ሜ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
             <select id="cHouseUse" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
-              <option value="á‹¨áˆ˜áŠ–áˆªá‹«">á‹¨áˆ˜áŠ–áˆªá‹« á‰¤á‰µ</option>
-              <option value="á‹¨áŠ•áŒá‹µ">á‹¨áŠ•áŒá‹µ á‰¤á‰µ</option>
+              <option value="የመኖሪያ">የመኖሪያ ቤት</option>
+              <option value="የንግድ">የንግድ ቤት</option>
             </select>
           </div>
         </div>
 
         <div id="contractStep3" class="contract-step space-y-2.5 hidden">
-          <div class="text-[11px] font-black text-slate-800">á‹¨áŒˆáŠ•á‹˜á‰¥áŠ“ áˆáˆµáŠ­áˆ®á‰½</div>
+          <div class="text-[11px] font-black text-slate-800">የገንዘብና ምስክሮች</div>
 
           <div id="cFinSale" class="space-y-2">
             <div class="grid grid-cols-2 gap-2">
               <div>
-                <label class="font-bold text-slate-600 block mb-1">áŒ á‰…áˆ‹áˆ‹ á‹‹áŒ‹ (á‰¥áˆ­) *</label>
+                <label class="font-bold text-slate-600 block mb-1">ጠቅላላ ዋጋ (ብር) *</label>
                 <input id="cTotalPrice" type="text" placeholder="2,200,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
               </div>
               <div>
-                <label class="font-bold text-slate-600 block mb-1">á‰…á‹µáˆ˜ áŠ­áá‹« (á‰¥áˆ­)</label>
+                <label class="font-bold text-slate-600 block mb-1">ቅድመ ክፍያ (ብር)</label>
                 <input id="cAdvance" type="text" placeholder="500,000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
               </div>
             </div>
             <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex justify-between items-center">
-              <span class="font-bold text-emerald-800 text-[10px]">á‰€áˆª áŠ­áá‹«</span>
-              <span id="cBalance" class="font-black text-emerald-900 text-sm">0 á‰¥áˆ­</span>
+              <span class="font-bold text-emerald-800 text-[10px]">ቀሪ ክፍያ</span>
+              <span id="cBalance" class="font-black text-emerald-900 text-sm">0 ብር</span>
             </div>
-            <input id="cDeadline" type="text" placeholder="áˆ›áˆˆá‰‚á‹« á‰€áŠ• (áˆáˆ³. áŒ¥á‰…áˆá‰µ 30 á‰€áŠ• 2018 á‹“.áˆ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cDeadline" type="text" placeholder="ማለቂያ ቀን (ምሳ. ጥቅምት 30 ቀን 2018 ዓ.ም)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
           </div>
 
           <div id="cFinRental" class="space-y-2 hidden">
             <div class="grid grid-cols-2 gap-2">
-              <input id="cRentRate" type="text" placeholder="á‹¨áŠªáˆ«á‹­ á‹‹áŒ‹ (á‰¥áˆ­) *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+              <input id="cRentRate" type="text" placeholder="የኪራይ ዋጋ (ብር) *" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
               <select id="cRentPeriod" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold">
-                <option value="á‰ á‹ˆáˆ­">á‰ á‹ˆáˆ­</option>
-                <option value="á‰ á‰€áŠ•">á‰ á‰€áŠ•</option>
+                <option value="በወር">በወር</option>
+                <option value="በቀን">በቀን</option>
               </select>
             </div>
-            <input id="cRentStart" type="text" placeholder="áˆ˜áŒ€áˆ˜áˆªá‹« á‰€áŠ• (áŠ áˆ›áˆ­áŠ› áŒ½áˆá)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cRentEnd" type="text" placeholder="áˆ›áˆˆá‰‚á‹« á‰€áŠ• / á‹¨áŠªáˆ«á‹­ á‹˜áˆ˜áŠ•" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cRentAdvanceMonths" type="text" placeholder="á‹¨á‰°áŠ¨áˆáˆˆ á‰…á‹µáˆ˜ á‹ˆáˆ«á‰µ á‰¥á‹›á‰µ (áˆˆá‰¤á‰µ áŠªáˆ«á‹­)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-            <input id="cRentAdvanceTotal" type="text" placeholder="áŒ á‰…áˆ‹áˆ‹ á‹¨á‰°áŠ¨áˆáˆˆ á‰…á‹µáˆ˜ áŠªáˆ«á‹­ (á‰¥áˆ­)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cRentStart" type="text" placeholder="መጀመሪያ ቀን (አማርኛ ጽሁፍ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cRentEnd" type="text" placeholder="ማለቂያ ቀን / የኪራይ ዘመን" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cRentAdvanceMonths" type="text" placeholder="የተከፈለ ቅድመ ወራት ብዛት (ለቤት ኪራይ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+            <input id="cRentAdvanceTotal" type="text" placeholder="ጠቅላላ የተከፈለ ቅድመ ኪራይ (ብር)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
           </div>
-          <label class="font-bold text-slate-600 block mb-1">á‹¨á‹áˆ áˆ›ááˆ¨áˆ» áŠ«áˆ³ (á‰ á‰¥áˆ­)</label>
+          <label class="font-bold text-slate-600 block mb-1">የውል ማፍረሻ ካሳ (በብር)</label>
           <input id="cPenalty" type="text" value="50000" placeholder="50000" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
-          <input id="cContractDate" type="text" placeholder="á‹¨á‹áˆ á‰€áŠ• (áˆáˆ³. áˆ˜áˆµáŠ¨áˆ¨áˆ 15 á‰€áŠ• 2018 á‹“.áˆ)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
+          <input id="cContractDate" type="text" placeholder="የውል ቀን (ምሳ. መስከረም 15 ቀን 2018 ዓ.ም)" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold" />
 
           <details class="rounded-xl border border-slate-200 bg-white" open>
-            <summary class="cursor-pointer px-3 py-2 font-bold text-slate-700 text-[11px]">ðŸ‘¥ 3 áˆáˆµáŠ­áˆ®á‰½</summary>
+            <summary class="cursor-pointer px-3 py-2 font-bold text-slate-700 text-[11px]">👥 3 ምስክሮች</summary>
             <div class="p-3 pt-1 space-y-3 border-t border-slate-100">
               <div class="space-y-1.5 p-2 bg-slate-50 rounded-xl">
-                <div class="text-[10px] font-extrabold text-slate-500">áˆáˆµáŠ­áˆ­ 1</div>
-                <input id="cWit1Name" type="text" placeholder="áˆ™áˆ‰ áˆµáˆ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                <div class="text-[10px] font-extrabold text-slate-500">ምስክር 1</div>
+                <input id="cWit1Name" type="text" placeholder="ሙሉ ስም" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
                 <div class="grid grid-cols-2 gap-1.5">
-                  <input id="cWit1Nat" type="text" value="áŠ¢á‰µá‹®áŒµá‹«á‹Š" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                  <input id="cWit1Phone" type="tel" placeholder="áˆµáˆáŠ­" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                  <input id="cWit1Nat" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                  <input id="cWit1Phone" type="tel" placeholder="ስልክ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
                 </div>
-                <input id="cWit1Addr" type="text" placeholder="áŠ­/áŠ¨á‰°áˆ› Â· á‹ˆáˆ¨á‹³ Â· á‰¤á‰µ á‰" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                <input id="cWit1Addr" type="text" placeholder="ክ/ከተማ · ወረዳ · ቤት ቁ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
               </div>
               <div class="space-y-1.5 p-2 bg-slate-50 rounded-xl">
-                <div class="text-[10px] font-extrabold text-slate-500">áˆáˆµáŠ­áˆ­ 2</div>
-                <input id="cWit2Name" type="text" placeholder="áˆ™áˆ‰ áˆµáˆ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                <div class="text-[10px] font-extrabold text-slate-500">ምስክር 2</div>
+                <input id="cWit2Name" type="text" placeholder="ሙሉ ስም" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
                 <div class="grid grid-cols-2 gap-1.5">
-                  <input id="cWit2Nat" type="text" value="áŠ¢á‰µá‹®áŒµá‹«á‹Š" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                  <input id="cWit2Phone" type="tel" placeholder="áˆµáˆáŠ­" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                  <input id="cWit2Nat" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                  <input id="cWit2Phone" type="tel" placeholder="ስልክ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
                 </div>
-                <input id="cWit2Addr" type="text" placeholder="áŠ­/áŠ¨á‰°áˆ› Â· á‹ˆáˆ¨á‹³ Â· á‰¤á‰µ á‰" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                <input id="cWit2Addr" type="text" placeholder="ክ/ከተማ · ወረዳ · ቤት ቁ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
               </div>
               <div class="space-y-1.5 p-2 bg-slate-50 rounded-xl">
-                <div class="text-[10px] font-extrabold text-slate-500">áˆáˆµáŠ­áˆ­ 3</div>
-                <input id="cWit3Name" type="text" placeholder="áˆ™áˆ‰ áˆµáˆ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                <div class="text-[10px] font-extrabold text-slate-500">ምስክር 3</div>
+                <input id="cWit3Name" type="text" placeholder="ሙሉ ስም" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
                 <div class="grid grid-cols-2 gap-1.5">
-                  <input id="cWit3Nat" type="text" value="áŠ¢á‰µá‹®áŒµá‹«á‹Š" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
-                  <input id="cWit3Phone" type="tel" placeholder="áˆµáˆáŠ­" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                  <input id="cWit3Nat" type="text" value="ኢትዮጵያዊ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                  <input id="cWit3Phone" type="tel" placeholder="ስልክ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
                 </div>
-                <input id="cWit3Addr" type="text" placeholder="áŠ­/áŠ¨á‰°áˆ› Â· á‹ˆáˆ¨á‹³ Â· á‰¤á‰µ á‰" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
+                <input id="cWit3Addr" type="text" placeholder="ክ/ከተማ · ወረዳ · ቤት ቁ" class="w-full p-2 rounded-lg bg-white border text-xs font-bold" />
               </div>
             </div>
           </details>
@@ -1116,12 +1106,12 @@
 
       <div class="p-2.5 border-t border-slate-100 bg-white shrink-0 space-y-2">
         <div class="flex gap-2">
-          <button type="button" id="cStepPrev" class="flex-1 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-[11px] hidden">â† á‰€á‹µáˆž</button>
-          <button type="button" id="cStepNext" class="flex-1 py-2 rounded-xl bg-slate-800 text-white font-bold text-[11px]">á‰€áŒ£á‹­ â†’</button>
+          <button type="button" id="cStepPrev" class="flex-1 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-[11px] hidden">← ቀድሞ</button>
+          <button type="button" id="cStepNext" class="flex-1 py-2 rounded-xl bg-slate-800 text-white font-bold text-[11px]">ቀጣይ →</button>
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <button type="button" id="cSaveDraftBtn" class="py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-[11px]">ðŸ’¾ áˆ¨á‰‚á‰… áŠ áˆµá‰€áˆáŒ¥</button>
-          <button type="button" id="cFinalizeBtn" class="py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-[11px] shadow">ðŸ“„ á‹áˆ áŠ áŒ áŠ“á‰…á‰…</button>
+          <button type="button" id="cSaveDraftBtn" class="py-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 font-bold text-[11px]">💾 ረቂቅ አስቀምጥ</button>
+          <button type="button" id="cFinalizeBtn" class="py-2.5 rounded-xl bg-[#16acbd] text-white font-bold text-[11px] shadow">📄 ውል አጠናቅቅ</button>
         </div>
       </div>
     </div>
@@ -1131,35 +1121,35 @@
     <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3.5 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0 shadow-sm">
         <div class="flex items-center gap-2 min-w-0">
-          <div class="w-8 h-8 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-base shadow-inner shrink-0">ðŸ“„</div>
+          <div class="w-8 h-8 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-base shadow-inner shrink-0">📄</div>
           <div class="min-w-0">
             <div class="font-black text-xs tracking-tight flex items-center gap-1.5 flex-wrap">
-              <span>á‹¨á‹áŠ­áˆáŠ“ áˆ°áŠá‹µ áˆ›áˆ¨áŒ‹áŒˆáŒ« (POA Digital Verification)</span>
+              <span>የውክልና ሰነድ ማረጋገጫ (POA Digital Verification)</span>
               <span class="px-1.5 py-0.5 bg-cyan-400/25 border border-cyan-200/50 text-[9px] text-cyan-50 rounded-full font-bold uppercase shrink-0">ADIKA</span>
             </div>
-            <div class="text-[10px] text-[#b5eff3] font-medium truncate">á‰ áŠ á‹²áŠ« á‹²áŒ‚á‰³áˆ áˆ²áˆµá‰°áˆ á‹¨á‰€áˆ¨á‰  á‹¨á‹áŠ­áˆáŠ“ áˆ°áŠá‹µ áˆ›áŒ£áˆªá‹«</div>
+            <div class="text-[10px] text-[#b5eff3] font-medium truncate">በአዲካ ዲጂታል ሲስተም የቀረበ የውክልና ሰነድ ማጣሪያ</div>
           </div>
         </div>
 <div class="flex items-center gap-1 shrink-0">
-          <button type="button" onclick="navigateBack('poaModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-          <button type="button" onclick="goHomeFromTool('poaModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">ðŸ  á‹‹áŠ“ áŒˆá…</button>
-          <button type="button" onclick="closeModal('poaModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">âœ•</button>
+          <button type="button" onclick="navigateBack('poaModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('poaModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('poaModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
       <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs" style="background:linear-gradient(180deg,#0b3a4a,#021016);">
         <label class="block cursor-pointer">
           <div class="rounded-2xl border-2 border-dashed border-cyan-400/40 p-7 text-center active:scale-[0.99] transition" style="background:linear-gradient(180deg,rgba(8,47,73,0.55),rgba(2,6,23,0.75));">
-            <div class="mx-auto w-14 h-14 rounded-2xl bg-cyan-400/15 border border-cyan-300/30 flex items-center justify-center text-2xl mb-3">ðŸ“·</div>
-            <div class="font-black text-white text-sm drop-shadow-md">á‹¨á‹áŠ­áˆáŠ“á‹áŠ• áŽá‰¶ á‹«áˆµáŒˆá‰¡</div>
-            <div class="text-[10px] text-cyan-100/80 mt-1.5 leading-relaxed">á‰  Adika Digital System á‹­áˆ˜áˆ¨áˆ˜áˆ«áˆ â€” áŠ¨áŒ‹áˆˆáˆª á‹­áˆáˆ¨áŒ¡ á‹ˆá‹­áˆ áŽá‰¶ á‹«áŠ•áˆ±</div>
+            <div class="mx-auto w-14 h-14 rounded-2xl bg-cyan-400/15 border border-cyan-300/30 flex items-center justify-center text-2xl mb-3">📷</div>
+            <div class="font-black text-white text-sm drop-shadow-md">የውክልናውን ፎቶ ያስገቡ</div>
+            <div class="text-[10px] text-cyan-100/80 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ከጋለሪ ይምረጡ ወይም ፎቶ ያንሱ</div>
           </div>
           <input id="poaImageFile" type="file" accept="image/*,application/pdf" class="hidden" />
         </label>
-        <p class="text-[10px] text-cyan-100/60 leading-snug text-center">á‹¨áˆ°áŠá‹±áŠ• áˆ™áˆ‰ áŒˆáŒ½ á‹ˆá‹­áˆ á‹¨áˆ›áˆ…á‰°áˆ áŠ­ááˆ áŒáˆáŒ½ áŠ á‹µáˆ­áŒˆá‹ á‹­áŒ­áŠ‘á¢</p>
+        <p class="text-[10px] text-cyan-100/60 leading-snug text-center">የሰነዱን ሙሉ ገጽ ወይም የማህተም ክፍል ግልጽ አድርገው ይጭኑ።</p>
 
         <div id="poaScanBusy" class="hidden p-3 text-center text-[11px] text-slate-500 bg-white rounded-xl border border-slate-100">
-          â³ á‰ áŠ á‹²áŠ« á‹²áŒ‚á‰³áˆ áˆ²áˆµá‰°áˆ áŠ¥á‹¨á‰°áˆ˜áˆ¨áˆ˜áˆ¨ áŠá‹â€¦
+          ⏳ በአዲካ ዲጂታል ሲስተም እየተመረመረ ነው…
         </div>
         <div id="poaResult" class="hidden font-medium"></div>
       </div>
@@ -1170,13 +1160,13 @@
     <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-gradient-to-r from-slate-900 via-[#0e7490] to-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="min-w-0">
-          <div class="font-black text-xs tracking-tight">ðŸ›¡ï¸ á‹¨á‹²áŒ‚á‰³áˆ áŠ«áˆ­á‰³ áˆ›áŒ£áˆªá‹«</div>
+          <div class="font-black text-xs tracking-tight">🛡️ የዲጂታል ካርታ ማጣሪያ</div>
           <div class="text-[10px] text-cyan-100/90 font-medium">Adika Digital System - Cadastral Verification</div>
         </div>
 <div class="flex items-center gap-1 shrink-0">
-          <button type="button" onclick="navigateBack('landMapModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-          <button type="button" onclick="goHomeFromTool('landMapModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">ðŸ  á‹‹áŠ“ áŒˆá…</button>
-          <button type="button" onclick="closeModal('landMapModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">âœ•</button>
+          <button type="button" onclick="navigateBack('landMapModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('landMapModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('landMapModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
 
@@ -1184,18 +1174,18 @@
         <div id="landMapUploadPanel" class="space-y-3">
           <label class="block cursor-pointer">
             <div class="rounded-2xl border-2 border-dashed border-cyan-400/40 bg-white/5 p-7 text-center active:scale-[0.99] transition" style="background:linear-gradient(180deg,rgba(8,47,73,0.55),rgba(2,6,23,0.75));">
-              <div class="mx-auto w-14 h-14 rounded-2xl bg-cyan-400/15 border border-cyan-300/30 flex items-center justify-center text-2xl mb-3">ðŸ“·</div>
-              <div class="font-black text-white text-sm drop-shadow-md">á‹¨áŠ«áˆ­á‰³á‹áŠ• áŽá‰¶ á‹«áˆµáŒˆá‰¡</div>
-              <div class="text-[10px] text-cyan-100/80 mt-1.5 leading-relaxed">á‰  Adika Digital System á‹­áˆ˜áˆ¨áˆ˜áˆ«áˆ â€” á‹ˆá‹° áŠ¦áŠáˆ´áˆ‹á‹Š áŠ«á‹³áˆµá‰°áˆ­ áŒˆáŒ½ á‹­á‹ˆáˆ°á‹³áˆ‰</div>
+              <div class="mx-auto w-14 h-14 rounded-2xl bg-cyan-400/15 border border-cyan-300/30 flex items-center justify-center text-2xl mb-3">📷</div>
+              <div class="font-black text-white text-sm drop-shadow-md">የካርታውን ፎቶ ያስገቡ</div>
+              <div class="text-[10px] text-cyan-100/80 mt-1.5 leading-relaxed">በ Adika Digital System ይመረመራል — ወደ ኦፊሴላዊ ካዳስተር ገጽ ይወሰዳሉ</div>
             </div>
             <input id="landMapFile" type="file" accept="image/*" class="hidden" />
           </label>
           <div id="landMapToast" class="hidden mb-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold text-center leading-snug"></div>
           <div id="landMapRetryBox" class="hidden">
             <button type="button" id="landMapRetryBtn" class="w-full py-3 rounded-xl bg-[#1e73be] text-white font-bold text-xs shadow">
-              ðŸ“· áŠ¥á‰£áŠ­á‹ŽáŠ• á‹¨áŠ«áˆ­á‰³á‹áŠ• áŽá‰¶ áŒáˆáŒ½ áŠ á‹µáˆ­áŒˆá‹ áŠ¥áŠ•á‹°áŒˆáŠ“ á‹«áŠ•áˆ±
+              📷 እባክዎን የካርታውን ፎቶ ግልጽ አድርገው እንደገና ያንሱ
             </button>
-            <p class="text-[10px] text-slate-500 text-center mt-2 leading-relaxed">á‰  Adika Digital System áˆ›áˆ¨áŒ‹áŒˆáŒ« áˆ‹á‹­ á‹­áŒˆáŠ›áˆ</p>
+            <p class="text-[10px] text-slate-500 text-center mt-2 leading-relaxed">በ Adika Digital System ማረጋገጫ ላይ ይገኛል</p>
           </div>
         </div>
 
@@ -1204,7 +1194,7 @@
             <img id="landMapPreview" alt="" class="w-full h-full object-contain opacity-90" />
             <div class="absolute inset-0 pointer-events-none land-scan-laser"></div>
             <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-slate-950/90 to-transparent p-3">
-              <div class="text-[10px] text-cyan-100 font-bold leading-relaxed">âš¡ Adika Digital System á‹¨áˆ°áŠá‹±áŠ• áˆáˆµáˆ á‰ áˆ›áŠ•á‰ á‰¥ áŠ¥áŠ“ áŠ¨áˆ›á‹•áŠ¨áˆ‹á‹Š á‹³á‰³á‰¤á‹ áŒ‹áˆ­ á‰ áˆ›áŒˆáŠ“áŠ˜á‰µ áˆ‹á‹­ á‹­áŒˆáŠ›áˆ...</div>
+              <div class="text-[10px] text-cyan-100 font-bold leading-relaxed">⚡ Adika Digital System የሰነዱን ምስል በማንበብ እና ከማዕከላዊ ዳታቤዝ ጋር በማገናኘት ላይ ይገኛል...</div>
             </div>
           </div>
         </div>
@@ -1213,27 +1203,27 @@
           <div id="adikaSuccessModal" class="rounded-2xl overflow-hidden border border-slate-200 shadow-lg bg-white">
             <div class="bg-gradient-to-r from-[#0e4d8b] via-[#1e73be] to-[#16acbd] px-4 py-4 text-center text-white">
               <div class="text-[10px] font-bold tracking-wide opacity-90">ADIKA DIGITAL SYSTEM</div>
-              <div class="font-black text-sm mt-1 leading-snug">á‹¨áŠ á‹²áŠ« á‹²áŒ‚á‰³áˆ áˆ›áˆ¨áŒ‹áŒˆáŒ«</div>
+              <div class="font-black text-sm mt-1 leading-snug">የአዲካ ዲጂታል ማረጋገጫ</div>
               <div class="text-[10px] mt-0.5 text-blue-100">Adika Digital Verification</div>
             </div>
             <div class="px-4 pt-4 pb-2 flex flex-col items-center text-center">
               <div class="w-14 h-14 rounded-full bg-emerald-100 border-2 border-emerald-400 flex items-center justify-center mb-3 adika-success-pulse">
-                <span class="text-2xl text-emerald-600 font-black">âœ“</span>
+                <span class="text-2xl text-emerald-600 font-black">✓</span>
               </div>
-              <div class="font-black text-slate-900 text-[13px] leading-snug">á‹¨á‹­á‹žá‰³ áˆ›áˆ¨áŒ‹áŒˆáŒ« áˆ°áŠá‹±</div>
-              <div class="font-bold text-emerald-700 text-[12px] mt-1 leading-snug">á‰ áˆ²áˆµá‰°áˆ™ á‹áˆµáŒ¥ á‰ á‰°áˆ³áŠ« áˆáŠ”á‰³ á‰°áˆ¨áŒ‹áŒáŒ§áˆá¢</div>
+              <div class="font-black text-slate-900 text-[13px] leading-snug">የይዞታ ማረጋገጫ ሰነዱ</div>
+              <div class="font-bold text-emerald-700 text-[12px] mt-1 leading-snug">በሲስተሙ ውስጥ በተሳካ ሁኔታ ተረጋግጧል።</div>
               <div id="adikaPayloadHint" class="mt-3 w-full p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-mono text-slate-600 break-all hidden"></div>
             </div>
             <div class="px-4 pb-4 space-y-2">
               <button type="button" id="adikaViewResultBtn" class="w-full py-3 rounded-xl bg-[#1e73be] hover:bg-[#1862a3] text-white font-black text-sm shadow-md active:scale-[0.98] transition">
-                á‹áŒ¤á‰±áŠ• á‹­áˆ˜áˆáŠ¨á‰±
+                ውጤቱን ይመልከቱ
               </button>
               <div class="grid grid-cols-2 gap-2">
-                <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-xl bg-slate-100 text-slate-800 font-bold text-[10px]">ðŸ“„ á‹ˆá‹° á‹áˆ áŠ á‹›á‹áˆ­</button>
-                <button type="button" id="landMapShareBtn" class="py-2.5 rounded-xl bg-slate-800 text-white font-bold text-[10px]">ðŸ“¤ áŠ áŒ‹áˆ«</button>
+                <button type="button" id="landMapToContractBtn" class="py-2.5 rounded-xl bg-slate-100 text-slate-800 font-bold text-[10px]">📄 ወደ ውል አዛውር</button>
+                <button type="button" id="landMapShareBtn" class="py-2.5 rounded-xl bg-slate-800 text-white font-bold text-[10px]">📤 አጋራ</button>
               </div>
-              <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-xl text-slate-500 font-bold text-[10px]">â† áŠ á‹²áˆµ áˆ›áŒ£áˆªá‹«</button>
-              <p class="text-[9px] text-slate-400 text-center leading-relaxed">á‰  Adika Digital System á‹¨á‰°áˆ¨áŒ‹áŒˆáŒ  Â· áŠ¦áŠáˆ´áˆ‹á‹Š á‹áŒ¤á‰µ áŠ¨áˆ˜áŠ•áŒáˆ¥á‰µ áˆ°áˆ­á‰¨áˆ­</p>
+              <button type="button" id="landMapResetBtn" class="w-full py-2 rounded-xl text-slate-500 font-bold text-[10px]">← አዲስ ማጣሪያ</button>
+              <p class="text-[9px] text-slate-400 text-center leading-relaxed">በ Adika Digital System የተረጋገጠ · ኦፊሴላዊ ውጤት ከመንግሥት ሰርቨር</p>
             </div>
           </div>
         </div>
@@ -1244,25 +1234,25 @@
   <div id="diagModal" class="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
-        <h3 class="font-extrabold text-xs tracking-wide">ðŸ› ï¸ á‹¨áˆáˆ­áˆ˜áˆ« á‹ˆáˆ¨á‰€á‰µ á‰°áŠ•á‰³áŠ (Diagnostic Analyzer)</h3>
+        <h3 class="font-extrabold text-xs tracking-wide">🛠️ የምርመራ ወረቀት ተንታኝ (Diagnostic Analyzer)</h3>
 <div class="flex items-center gap-1 shrink-0">
-          <button type="button" onclick="navigateBack('diagModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-          <button type="button" onclick="goHomeFromTool('diagModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">ðŸ  á‹‹áŠ“ áŒˆá…</button>
-          <button type="button" onclick="closeModal('diagModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">âœ•</button>
+          <button type="button" onclick="navigateBack('diagModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('diagModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('diagModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
       <div class="p-4 overflow-y-auto space-y-3 flex-1 text-xs">
         <div>
-          <label class="font-bold text-slate-700 block mb-1">á‹¨áˆ˜áŠªáŠ“á‹ áˆžá‹´áˆ</label>
+          <label class="font-bold text-slate-700 block mb-1">የመኪናው ሞዴል</label>
           <input id="diagCarModel" type="text" value="Toyota Vitz 2018" class="w-full p-2 rounded-xl bg-slate-50 border text-xs font-bold mb-2" />
 
-          <label class="font-bold text-slate-700 block mb-1">1. á‹¨áˆáˆ­áˆ˜áˆ« á‹ˆáˆ¨á‰€á‰µ áŽá‰¶ áŒ«áŠ• (Upload Sheet)</label>
+          <label class="font-bold text-slate-700 block mb-1">1. የምርመራ ወረቀት ፎቶ ጫን (Upload Sheet)</label>
           <input id="diagImageFile" type="file" accept="image/*" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#16acbd] file:text-white hover:file:bg-[#1394a3] cursor-pointer mb-2 bg-slate-50 p-1.5 rounded-xl border" />
 
-          <label class="font-bold text-slate-700 block mb-1">2. á‹ˆá‹­áˆ á‹¨áŒ‹áˆ«á‹¥ áˆáˆ­áˆ˜áˆ« áŒ½áˆ‘á áŠ áˆµáŒˆá‰£ (Type Text)</label>
+          <label class="font-bold text-slate-700 block mb-1">2. ወይም የጋራዥ ምርመራ ጽሑፍ አስገባ (Type Text)</label>
           <textarea id="diagInput" rows="3" placeholder="Compression 160psi, Brake pads 40%, Valve gasket leak, AC low..." class="w-full p-2.5 rounded-xl bg-slate-50 border text-xs resize-none"></textarea>
         </div>
-        <button id="diagAnalyzeBtn" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow active:scale-95">ðŸ” á‰°áŠ•á‰µáŠ•áŠ“ á‹‹áŒ‹ áŠ áˆµáˆ‹ (Analyze Report)</button>
+        <button id="diagAnalyzeBtn" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow active:scale-95">🔍 ተንትንና ዋጋ አስላ (Analyze Report)</button>
         <div id="diagResult" class="hidden p-3 bg-slate-50 rounded-xl border space-y-1.5 font-medium"></div>
       </div>
     </div>
@@ -1272,31 +1262,31 @@
     <div class="w-full max-w-md hub-sheet rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-4 py-3 bg-[#16acbd] text-white flex items-center justify-between shrink-0">
         <div class="flex items-center gap-1.5">
-          <span class="text-base">ðŸ›¡ï¸</span>
+          <span class="text-base">🛡️</span>
           <h3 class="font-extrabold text-xs tracking-wide">
-            <span class="lang-am">á‹¨áˆ»áˆ² á‰áŒ¥áˆ­ áˆ›áˆ¨áŒ‹áŒˆáŒ« (Chassis / VIN Decoder)</span>
+            <span class="lang-am">የሻሲ ቁጥር ማረጋገጫ (Chassis / VIN Decoder)</span>
             <span class="lang-en">Chassis & VIN Verification</span>
           </h3>
         </div>
 <div class="flex items-center gap-1 shrink-0">
-          <button type="button" onclick="navigateBack('chassisModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">â† á‰°áˆ˜áˆˆáˆµ</button>
-          <button type="button" onclick="goHomeFromTool('chassisModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">ðŸ  á‹‹áŠ“ áŒˆá…</button>
-          <button type="button" onclick="closeModal('chassisModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">âœ•</button>
+          <button type="button" onclick="navigateBack('chassisModal')" class="btn-back flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-2 py-1.5 rounded-lg text-[10px] font-bold">← ተመለስ</button>
+          <button type="button" onclick="goHomeFromTool('chassisModal')" class="flex items-center gap-1 text-white bg-white/15 hover:bg-white/25 px-2 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">🏠 ዋና ገፅ</button>
+          <button type="button" onclick="closeModal('chassisModal')" class="btn-close w-8 h-8 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white flex items-center justify-center font-bold text-sm" aria-label="Close">✕</button>
         </div>
       </div>
       <div class="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs">
         <div>
           <label class="font-bold text-slate-700 block mb-1">
-            <span class="lang-am">á‹¨áˆ˜áŠªáŠ“á‹ 17-á‹²áŒ‚á‰µ áˆ»áˆ² / VIN á‰áŒ¥áˆ­ á‹«áˆµáŒˆá‰¡</span>
+            <span class="lang-am">የመኪናው 17-ዲጂት ሻሲ / VIN ቁጥር ያስገቡ</span>
             <span class="lang-en">Enter 17-Digit Chassis / VIN Number</span>
           </label>
           <div class="relative">
-            <input id="chassisInput" type="text" placeholder="áˆˆáˆáˆ³áˆŒá¡ JTDKB20U... (17 Digits)" class="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/25 focus:ring-2 focus:ring-cyan-400 outline-none text-xs font-mono uppercase font-black tracking-wider text-white placeholder-white/40" />
+            <input id="chassisInput" type="text" placeholder="ለምሳሌ፡ JTDKB20U... (17 Digits)" class="w-full px-3 py-2.5 rounded-xl bg-white/10 border border-white/25 focus:ring-2 focus:ring-cyan-400 outline-none text-xs font-mono uppercase font-black tracking-wider text-white placeholder-white/40" />
           </div>
 
           <div class="mt-2.5">
             <span class="text-[10px] font-bold text-slate-400 block mb-1">
-              <span class="lang-am">áˆáŒ£áŠ• á‹¨áˆ™áŠ¨áˆ« áˆ»áˆ²á‹Žá‰½ (Quick Test):</span>
+              <span class="lang-am">ፈጣን የሙከራ ሻሲዎች (Quick Test):</span>
               <span class="lang-en">Sample VINs:</span>
             </span>
             <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
@@ -1309,14 +1299,14 @@
         </div>
 
         <button id="chassisVerifyBtn" type="button" class="w-full py-2.5 bg-[#16acbd] text-white font-bold rounded-xl shadow-md active:scale-95 flex items-center justify-center gap-1.5">
-          <span>ðŸ” <span class="lang-am">áˆ»áˆ² áŠ áˆ¨áŒ‹áŒáŒ¥áŠ“ á‹áˆ­á‹áˆ­ áŠ á‹áŒ£</span><span class="lang-en">Verify Chassis Specs</span></span>
+          <span>🔍 <span class="lang-am">ሻሲ አረጋግጥና ዝርዝር አውጣ</span><span class="lang-en">Verify Chassis Specs</span></span>
         </button>
 
         <div id="chassisResult" class="hidden font-medium"></div>
       </div>
       <div class="p-2.5 border-t border-white/10 shrink-0">
         <button type="button" onclick="navigateBack('chassisModal')" class="w-full py-2.5 rounded-xl bg-white/10 border border-white/20 text-white font-bold text-xs active:scale-[0.98]">
-          â† á‰°áˆ˜áˆˆáˆµ
+          ← ተመለስ
         </button>
       </div>
     </div>
@@ -1326,18 +1316,18 @@
     <div class="bg-slate-900/80 backdrop-blur-xl border border-white/10 w-full max-w-md rounded-3xl p-5 text-white shadow-2xl my-auto">
       <div class="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
         <h3 class="text-base font-bold text-teal-400 flex items-center gap-2">
-          <span>âœ¨</span> á‹¨á‰£áˆ…áˆª áŠ¥áŠ“ ááˆ‹áŒŽá‰µ áˆ˜áˆ˜á‹áŒˆá‰¢á‹«
+          <span>✨</span> የባህሪ እና ፍላጎት መመዝገቢያ
         </h3>
-        <button type="button" id="onboardSkipBtn" onclick="closeOnboarding(true)" class="text-white/60 hover:text-white text-xs bg-white/10 px-2.5 py-1 rounded-full">âœ• á‹áˆˆáˆ</button>
+        <button type="button" id="onboardSkipBtn" onclick="closeOnboarding(true)" class="text-white/60 hover:text-white text-xs bg-white/10 px-2.5 py-1 rounded-full">✕ ዝለል</button>
       </div>
       <form id="onboardingForm" class="space-y-3.5 text-left">
         <div>
-          <label class="block text-[11px] font-medium text-slate-300 mb-1">áˆ™áˆ‰ áˆµáˆ</label>
-          <input type="text" id="fullName" name="fullName" required placeholder="áˆµáˆ" autocomplete="name" class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400">
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">ሙሉ ስም</label>
+          <input type="text" id="fullName" name="fullName" required placeholder="ስም" autocomplete="name" class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-[11px] font-medium text-slate-300 mb-1">áˆµáˆáŠ­ á‰áŒ¥áˆ­</label>
+            <label class="block text-[11px] font-medium text-slate-300 mb-1">ስልክ ቁጥር</label>
             <input type="tel" id="phoneNum" name="phoneNum" required placeholder="09xxxxxxxx" inputmode="tel" class="w-full bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400">
           </div>
           <div>
@@ -1346,72 +1336,72 @@
           </div>
         </div>
         <div>
-          <label class="block text-[11px] font-medium text-slate-300 mb-1">á‹¨áˆšáˆ°áˆ©á‰ á‰µ / á‹¨áˆšáˆáˆáŒ‰á‰µ áˆá‹µá‰¥</label>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">የሚሰሩበት / የሚፈልጉት ምድብ</label>
           <div class="flex flex-wrap gap-2">
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
               <input type="radio" name="mainCat" value="Car" checked class="accent-teal-400">
-              <span>ðŸš— áˆ˜áŠªáŠ“</span>
+              <span>🚗 መኪና</span>
             </label>
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
               <input type="radio" name="mainCat" value="House" class="accent-teal-400">
-              <span>ðŸ  á‰¤á‰µ</span>
+              <span>🏠 ቤት</span>
             </label>
           </div>
         </div>
         <div id="carSpecs" class="space-y-2 bg-white/5 p-2.5 rounded-2xl border border-white/10">
           <div class="grid grid-cols-2 gap-2">
             <select id="carTrans" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
-              <option value="Automatic">áŠ á‹á‰¶áˆ›á‰²áŠ­</option>
-              <option value="Manual">áˆ›áŠ‘á‹‹áˆ</option>
+              <option value="Automatic">አውቶማቲክ</option>
+              <option value="Manual">ማኑዋል</option>
             </select>
             <select id="carFuel" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
-              <option value="Fuel">áŠá‹³áŒ…</option>
-              <option value="EV">áŠ¤áˆŒáŠ­á‰µáˆªáŠ­</option>
-              <option value="Hybrid">áˆƒá‹­á‰¥áˆªá‹µ</option>
+              <option value="Fuel">ነዳጅ</option>
+              <option value="EV">ኤሌክትሪክ</option>
+              <option value="Hybrid">ሃይብሪድ</option>
             </select>
           </div>
         </div>
         <div id="houseSpecs" class="space-y-2 bg-white/5 p-2.5 rounded-2xl border border-white/10 hidden">
           <div class="grid grid-cols-2 gap-2">
-            <input type="text" id="houseType" placeholder="áŠ á“áˆ­á‰³áˆ› / á‰ªáˆ‹ / áŠ®áŠ•á‹¶" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-500">
-            <input type="text" id="houseLoc" placeholder="áŠ áŠ«á‰£á‰¢ (á‰¦áˆŒá£ áŠ á‹«á‰µ...)" class="bg-slate-800 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500">
+            <input type="text" id="houseType" placeholder="አፓርታማ / ቪላ / ኮንዶ" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-500">
+            <input type="text" id="houseLoc" placeholder="አካባቢ (ቦሌ፣ አያት...)" class="bg-slate-800 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500">
           </div>
         </div>
         <div>
-          <label class="block text-[11px] font-medium text-slate-300 mb-1">á‹¨á‰¦áŒ€á‰µ áˆ˜áŒ áŠ• (ETB)</label>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">የቦጀት መጠን (ETB)</label>
           <select id="budgetRange" class="w-full bg-slate-800 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:border-teal-400">
-            <option value="0-1500000">áŠ¥áˆµáŠ¨ 1.5 áˆšáˆŠá‹®áŠ• ETB</option>
-            <option value="1500000-4000000" selected>áŠ¨ 1.5M â€“ 4 áˆšáˆŠá‹®áŠ• ETB</option>
-            <option value="4000000-10000000">áŠ¨ 4M â€“ 10 áˆšáˆŠá‹®áŠ• ETB</option>
-            <option value="10000000-999999999">áŠ¨ 10 áˆšáˆŠá‹®áŠ• ETB á‰ áˆ‹á‹­</option>
+            <option value="0-1500000">እስከ 1.5 ሚሊዮን ETB</option>
+            <option value="1500000-4000000" selected>ከ 1.5M – 4 ሚሊዮን ETB</option>
+            <option value="4000000-10000000">ከ 4M – 10 ሚሊዮን ETB</option>
+            <option value="10000000-999999999">ከ 10 ሚሊዮን ETB በላይ</option>
           </select>
         </div>
         <div class="flex items-center gap-2 pt-1">
           <input type="checkbox" id="isBroker" class="w-4 h-4 accent-teal-400 rounded">
-          <label for="isBroker" class="text-xs text-slate-200">áŠ¥áŠ•á‹° á•áˆ®áŒáˆ½áŠ“áˆ á‹°áˆ‹áˆ‹/áŠ¤áŒ€áŠ•áˆ² áˆ˜áˆ˜á‹áŒˆá‰¥ áŠ¥áˆáˆáŒ‹áˆˆáˆ</label>
+          <label for="isBroker" class="text-xs text-slate-200">እንደ ፕሮፌሽናል ደላላ/ኤጀንሲ መመዝገብ እፈልጋለሁ</label>
         </div>
         <button type="submit" id="onboardSubmitBtn" class="w-full bg-teal-400 hover:bg-teal-300 text-slate-950 font-black py-3 rounded-2xl text-xs shadow-lg shadow-teal-400/20 active:scale-95 transition-all mt-2">
-          âœ… áˆ˜á‹áŒá‰¥ / Submit
+          ✅ መዝግብ / Submit
         </button>
       </form>
-      <p class="mt-3 text-[10px] text-slate-500 text-center">Telegram ID á‹­áŒˆáŠ“áŠ›áˆ Â· user_preferences Â· FYP</p>
+      <p class="mt-3 text-[10px] text-slate-500 text-center">Telegram ID ይገናኛል · user_preferences · FYP</p>
     </div>
   </div>
 
   <div id="intentModal" class="fixed inset-0 z-[310] hidden items-center justify-center p-4" style="background:rgba(15,23,42,0.38);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
     <div class="w-full max-w-md rounded-3xl p-5 shadow-2xl" style="background:rgba(30,41,59,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.16);">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-white font-black text-base">áˆáŠ• áˆ›á‹µáˆ¨áŒ á‹­áˆáˆáŒ‹áˆ‰?</h3>
-        <button type="button" id="intentCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">âœ•</button>
+        <h3 class="text-white font-black text-base">ምን ማድረግ ይፈልጋሉ?</h3>
+        <button type="button" id="intentCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">✕</button>
       </div>
-      <p class="text-[11px] mb-4" style="color:#94A3B8;">á‹¨áˆšáˆáˆáŒ‰á‰µáŠ• áŠ áˆ›áˆ«áŒ­ á‹­áˆáˆ¨áŒ¡</p>
+      <p class="text-[11px] mb-4" style="color:#94A3B8;">የሚፈልጉትን አማራጭ ይምረጡ</p>
       <button type="button" id="intentSellCard" class="w-full text-left rounded-2xl p-4 mb-3 active:scale-[0.98] transition-transform" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.35);">
-        <div class="text-white font-black text-sm">ðŸ·ï¸ áŠ¥á‰ƒ/áŠ•á‰¥áˆ¨á‰µ áˆˆáˆ˜áˆ¸áŒ¥</div>
-        <div class="text-[11px] mt-1" style="color:#94A3B8;">Post Listing â€” áˆ›áˆµá‰³á‹ˆá‰‚á‹« á‹­áˆˆáŒ¥á‰</div>
+        <div class="text-white font-black text-sm">🏷️ እቃ/ንብረት ለመሸጥ</div>
+        <div class="text-[11px] mt-1" style="color:#94A3B8;">Post Listing — ማስታወቂያ ይለጥፉ</div>
       </button>
       <button type="button" id="intentRequestCard" class="w-full text-left rounded-2xl p-4 active:scale-[0.98] transition-transform" style="background:rgba(255,255,255,0.08);border:1px solid rgba(148,163,184,0.28);">
-        <div class="text-white font-black text-sm">ðŸ” á‹¨áˆáˆáˆáŒˆá‹áŠ• áˆˆáˆ˜áŒ á‹¨á‰…</div>
-        <div class="text-[11px] mt-1" style="color:#94A3B8;">Post Request â€” ááˆ‹áŒŽá‰µá‹ŽáŠ• á‹­áˆ‹áŠ©</div>
+        <div class="text-white font-black text-sm">🔍 የምፈልገውን ለመጠየቅ</div>
+        <div class="text-[11px] mt-1" style="color:#94A3B8;">Post Request — ፍላጎትዎን ይላኩ</div>
       </button>
     </div>
   </div>
@@ -1419,61 +1409,61 @@
   <div id="addListingModal" class="fixed inset-0 z-[320] hidden items-end justify-center" style="background:rgba(15,23,42,0.38);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
     <div class="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl p-5 pb-8" style="background:rgba(30,41,59,0.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.14);">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-white font-black text-base">ðŸ·ï¸ áˆ›áˆµá‰³á‹ˆá‰‚á‹« áˆ˜áˆˆáŒ á</h3>
-        <button type="button" id="listingCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">âœ•</button>
+        <h3 class="text-white font-black text-base">🏷️ ማስታወቂያ መለጠፍ</h3>
+        <button type="button" id="listingCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">✕</button>
       </div>
       <div class="flex gap-1 mb-4 p-1 rounded-xl" style="background:rgba(255,255,255,0.06);">
-        <span id="listingStepChip1" class="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-cyan-400 text-slate-950">1 Â· á‹áˆ­á‹áˆ­</span>
-        <span id="listingStepChip2" class="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg text-slate-300">2 Â· áŽá‰¶áŠ“ áˆ˜áŒˆáŠ›</span>
+        <span id="listingStepChip1" class="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg bg-cyan-400 text-slate-950">1 · ዝርዝር</span>
+        <span id="listingStepChip2" class="flex-1 text-center text-[10px] font-black py-1.5 rounded-lg text-slate-300">2 · ፎቶና መገኛ</span>
       </div>
       <form id="addListingForm" class="space-y-3">
         <div id="listingStep1">
-          <label class="block text-[11px] font-bold text-white mb-1">áˆá‹µá‰¥</label>
+          <label class="block text-[11px] font-bold text-white mb-1">ምድብ</label>
           <div class="grid grid-cols-2 gap-2 mb-3">
             <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white cursor-pointer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
-              <input type="radio" name="listCat" value="Car" checked class="accent-cyan-400"> ðŸš— áˆ˜áŠªáŠ“
+              <input type="radio" name="listCat" value="Car" checked class="accent-cyan-400"> 🚗 መኪና
             </label>
             <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white cursor-pointer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
-              <input type="radio" name="listCat" value="House" class="accent-cyan-400"> ðŸ  á‰¤á‰µ
+              <input type="radio" name="listCat" value="House" class="accent-cyan-400"> 🏠 ቤት
             </label>
           </div>
-          <label class="block text-[11px] font-bold text-white mb-1">áˆ­á‹•áˆµ / áˆžá‹´áˆ</label>
+          <label class="block text-[11px] font-bold text-white mb-1">ርዕስ / ሞዴል</label>
           <input id="listTitle" required placeholder="Toyota Vitz / 3BR Apartment" class="w-full rounded-xl px-3 py-2 text-xs text-white mb-3 outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
           <div id="listCarSpecs" class="grid grid-cols-3 gap-2 mb-3">
             <select id="listTrans" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
-              <option value="Automatic">áŠ á‹á‰¶</option><option value="Manual">áˆ›áŠ‘á‹‹áˆ</option>
+              <option value="Automatic">አውቶ</option><option value="Manual">ማኑዋል</option>
             </select>
             <select id="listFuel" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
-              <option value="Fuel">áŠá‹³áŒ…</option><option value="Diesel">áŠ“ááŒ£</option><option value="Hybrid">áˆƒá‹­á‰¥áˆªá‹µ</option><option value="EV">EV</option>
+              <option value="Fuel">ነዳጅ</option><option value="Diesel">ናፍጣ</option><option value="Hybrid">ሃይብሪድ</option><option value="EV">EV</option>
             </select>
             <select id="listCond" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
-              <option value="Used">á‹«áŒˆáˆˆáŒˆáˆˆ</option><option value="New">áŠ á‹²áˆµ</option>
+              <option value="Used">ያገለገለ</option><option value="New">አዲስ</option>
             </select>
           </div>
           <div id="listHouseSpecs" class="grid grid-cols-3 gap-2 mb-3 hidden">
-            <input id="listBeds" placeholder="áˆ˜áŠá‰³" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
-            <input id="listBaths" placeholder="áˆ˜á‰³áŒ á‰¢á‹«" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
-            <input id="listPType" placeholder="áŠ á“áˆ­á‰³áˆ›/á‰ªáˆ‹" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+            <input id="listBeds" placeholder="መኝታ" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+            <input id="listBaths" placeholder="መታጠቢያ" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+            <input id="listPType" placeholder="አፓርታማ/ቪላ" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
           </div>
-          <label class="block text-[11px] font-bold text-white mb-1">á‹‹áŒ‹ (ETB)</label>
+          <label class="block text-[11px] font-bold text-white mb-1">ዋጋ (ETB)</label>
           <input id="listPrice" type="number" inputmode="numeric" placeholder="1500000" class="w-full rounded-xl px-3 py-2 text-xs text-white mb-3 outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
           <div class="flex items-center justify-between gap-3 mb-4">
             <label class="flex items-center gap-2 text-[11px] text-white"><input id="listNeg" type="checkbox" class="accent-cyan-400"> Negotiable Price</label>
             <label class="flex items-center gap-2 text-[11px] text-white"><input id="listUrgent" type="checkbox" class="accent-rose-400"> Urgent Sale</label>
           </div>
-          <button type="button" id="listingNextBtn" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">á‰€áŒ£á‹­ â†’ áŽá‰¶áŠ“ áˆ˜áŒˆáŠ›</button>
+          <button type="button" id="listingNextBtn" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">ቀጣይ → ፎቶና መገኛ</button>
         </div>
         <div id="listingStep2" class="hidden">
-          <label class="block text-[11px] font-bold text-white mb-1">áŽá‰¶á‹Žá‰½ (áŠ¥áˆµáŠ¨ 5)</label>
+          <label class="block text-[11px] font-bold text-white mb-1">ፎቶዎች (እስከ 5)</label>
           <input id="listPhotos" type="file" accept="image/*" multiple class="w-full text-[11px] text-slate-200 mb-2">
           <div id="listPhotoPreview" class="grid grid-cols-5 gap-1 mb-3"></div>
-          <label class="block text-[11px] font-bold text-white mb-1">áˆµáˆáŠ­</label>
+          <label class="block text-[11px] font-bold text-white mb-1">ስልክ</label>
           <input id="listPhone" type="tel" required placeholder="09xxxxxxxx" class="w-full rounded-xl px-3 py-2 text-xs text-white mb-3 outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
           <label class="block text-[11px] font-bold text-white mb-1">Telegram username</label>
           <input id="listTg" placeholder="@username" class="w-full rounded-xl px-3 py-2 text-xs text-white mb-4 outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
           <div class="grid grid-cols-2 gap-2">
-            <button type="button" id="listingBackBtn" class="py-3 rounded-2xl font-bold text-xs text-white" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);">â† á‰°áˆ˜áˆˆáˆµ</button>
-            <button type="submit" id="listingSubmitBtn" class="py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">ðŸš€ Submit Listing</button>
+            <button type="button" id="listingBackBtn" class="py-3 rounded-2xl font-bold text-xs text-white" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);">← ተመለስ</button>
+            <button type="submit" id="listingSubmitBtn" class="py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">🚀 Submit Listing</button>
           </div>
         </div>
       </form>
@@ -1483,37 +1473,37 @@
   <div id="addRequestModal" class="fixed inset-0 z-[320] hidden items-end justify-center" style="background:rgba(15,23,42,0.38);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);">
     <div class="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl p-5 pb-8" style="background:rgba(30,41,59,0.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.14);">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-white font-black text-base">ðŸ” á‹¨ááˆ‹áŒŽá‰µ áŒ¥á‹«á‰„</h3>
-        <button type="button" id="requestCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">âœ•</button>
+        <h3 class="text-white font-black text-base">🔍 የፍላጎት ጥያቄ</h3>
+        <button type="button" id="requestCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">✕</button>
       </div>
       <div class="rounded-2xl p-3 mb-4" style="background:rgba(8,145,178,0.18);border:1px solid rgba(34,211,238,0.35);">
-        <p class="text-[11px] leading-relaxed text-white">ðŸ’¡ áŒ¥á‹«á‰„á‹Ž á‰ ááŒ¥áŠá‰µ áˆ˜áˆáˆµ á‹«áŒˆáŠ›áˆ! á‹¨áˆšáˆáˆáŒ‰á‰µáŠ• áˆ˜áˆ¨áŒƒ áŠ¥á‹šáˆ… áŠ¥áŠ•á‹°áˆžáˆ‰á£ áŒ¥á‹«á‰„á‹Ž á‹ˆá‹²á‹«á‹áŠ‘ á‰ áˆµáˆ­á‹“á‰³á‰½áŠ• áˆˆá‰°áˆ˜á‹˜áŒˆá‰¡ áˆ•áŒ‹á‹Š á‹°áˆ‹áˆŽá‰½ áŠ¥áŠ“ áŠ¤áŒ€áŠ•áˆ²á‹Žá‰½ á‰ áˆ™áˆ‰ á‹­á‹°áˆ­áˆ³áˆá¢ áŠ¨áŠ¥áˆ­áˆ¶ ááˆ‹áŒŽá‰µ áŒ‹áˆ­ á‹¨áˆšáŒ£áŒ£áˆ™ áˆáˆ­áŒ¥ áŠ áˆ›áˆ«áŒ®á‰½ áˆ²áŒˆáŠ™ á‰  Telegram Bot-áŠ á‰½áŠ• á‰ áŠ©áˆ á‰ á‰€áŒ¥á‰³ á‹­áˆ‹áŠ©áˆá‹Žá‰³áˆá¢</p>
+        <p class="text-[11px] leading-relaxed text-white">💡 ጥያቄዎ በፍጥነት መልስ ያገኛል! የሚፈልጉትን መረጃ እዚህ እንደሞሉ፣ ጥያቄዎ ወዲያውኑ በስርዓታችን ለተመዘገቡ ሕጋዊ ደላሎች እና ኤጀንሲዎች በሙሉ ይደርሳል። ከእርሶ ፍላጎት ጋር የሚጣጣሙ ምርጥ አማራጮች ሲገኙ በ Telegram Bot-አችን በኩል በቀጥታ ይላኩልዎታል።</p>
       </div>
       <form id="addRequestForm" class="space-y-3">
-        <label class="block text-[11px] font-bold text-white mb-1">áˆá‹µá‰¥</label>
+        <label class="block text-[11px] font-bold text-white mb-1">ምድብ</label>
         <div class="grid grid-cols-2 gap-2">
           <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
-            <input type="radio" name="reqCat" value="Car" checked class="accent-cyan-400"> ðŸš— áˆ˜áŠªáŠ“
+            <input type="radio" name="reqCat" value="Car" checked class="accent-cyan-400"> 🚗 መኪና
           </label>
           <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
-            <input type="radio" name="reqCat" value="House" class="accent-cyan-400"> ðŸ  á‰¤á‰µ
+            <input type="radio" name="reqCat" value="House" class="accent-cyan-400"> 🏠 ቤት
           </label>
         </div>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-[11px] font-bold text-white mb-1">á‹á‰…á‰°áŠ› á‰ áŒ€á‰µ</label>
+            <label class="block text-[11px] font-bold text-white mb-1">ዝቅተኛ በጀት</label>
             <input id="reqMin" type="number" placeholder="500000" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
           </div>
           <div>
-            <label class="block text-[11px] font-bold text-white mb-1">áŠ¨áá‰°áŠ› á‰ áŒ€á‰µ</label>
+            <label class="block text-[11px] font-bold text-white mb-1">ከፍተኛ በጀት</label>
             <input id="reqMax" type="number" placeholder="2500000" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
           </div>
         </div>
-        <label class="block text-[11px] font-bold text-white mb-1">á‹áˆ­á‹áˆ­ / áˆ›áˆµá‰³á‹ˆáˆ»</label>
-        <textarea id="reqNotes" rows="3" placeholder="áˆáŠ• áŠ¥áŠ•á‹°áˆšáˆáˆáŒ‰ á‹­áŒ»á‰..." class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);"></textarea>
+        <label class="block text-[11px] font-bold text-white mb-1">ዝርዝር / ማስታወሻ</label>
+        <textarea id="reqNotes" rows="3" placeholder="ምን እንደሚፈልጉ ይጻፉ..." class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);"></textarea>
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-[11px] font-bold text-white mb-1">áˆµáˆáŠ­</label>
+            <label class="block text-[11px] font-bold text-white mb-1">ስልክ</label>
             <input id="reqPhone" type="tel" required placeholder="09xxxxxxxx" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
           </div>
           <div>
@@ -1521,26 +1511,26 @@
             <input id="reqTg" placeholder="@username" class="w-full rounded-xl px-3 py-2 text-xs text-white outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
           </div>
         </div>
-        <button type="submit" id="requestSubmitBtn" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">áŒ¥á‹«á‰„ áˆ‹áŠ­ â†’ á‹°áˆ‹áˆŽá‰½</button>
+        <button type="submit" id="requestSubmitBtn" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">ጥያቄ ላክ → ደላሎች</button>
       </form>
     </div>
   </div>
 
   <div id="requestSuccessModal" class="fixed inset-0 z-[330] hidden items-center justify-center p-4" style="background:rgba(15,23,42,0.42);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);">
     <div class="w-full max-w-sm rounded-3xl p-5 text-center" style="background:rgba(30,41,59,0.92);backdrop-filter:blur(24px);border:1px solid rgba(34,211,238,0.28);">
-      <div class="text-2xl mb-2">ðŸŽ‰</div>
-      <h3 class="text-white font-black text-sm mb-2">áŒ¥á‹«á‰„á‹Ž á‰ á‰°áˆ³áŠ« áˆáŠ”á‰³ á‰°áˆáŠ³áˆ!</h3>
-      <p class="text-[11px] leading-relaxed mb-4" style="color:#94A3B8;">ááˆ‹áŒŽá‰µá‹ŽáŠ• áˆˆá‰°áˆ¨áŒ‹áŒˆáŒ¡ á‹¨áŠ á‹²áŠ« áŠ áŒ‹áˆ­ á‹°áˆ‹áˆŽá‰½ áŠ á‰…áˆ­á‰ áŠ“áˆá¢ áŠ¨áŠ¥áˆ­áˆ¶ ááˆ‹áŒŽá‰µ áŒ‹áˆ­ á‹¨áˆšáˆ„á‹± áŠ áˆ›áˆ«áŒ®á‰½ áˆ²áŒˆáŠ™ á‰  Adika Telegram Bot á‰ áŠ©áˆ áŠ¥áŠ“áˆ³á‹á‰…á‹Žá‰³áˆˆáŠ•á¢</p>
-      <button type="button" id="requestSuccessOk" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">áŠ¥áˆº</button>
+      <div class="text-2xl mb-2">🎉</div>
+      <h3 class="text-white font-black text-sm mb-2">ጥያቄዎ በተሳካ ሁኔታ ተልኳል!</h3>
+      <p class="text-[11px] leading-relaxed mb-4" style="color:#94A3B8;">ፍላጎትዎን ለተረጋገጡ የአዲካ አጋር ደላሎች አቅርበናል። ከእርሶ ፍላጎት ጋር የሚሄዱ አማራጮች ሲገኙ በ Adika Telegram Bot በኩል እናሳውቅዎታለን።</p>
+      <button type="button" id="requestSuccessOk" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">እሺ</button>
     </div>
   </div>
 
   <div id="listingSuccessModal" class="fixed inset-0 z-[330] hidden items-center justify-center p-4" style="background:rgba(15,23,42,0.42);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);">
     <div class="w-full max-w-sm rounded-3xl p-5 text-center" style="background:rgba(30,41,59,0.92);backdrop-filter:blur(24px);border:1px solid rgba(34,211,238,0.28);">
-      <div class="text-2xl mb-2">ðŸŽ‰</div>
-      <h3 class="text-white font-black text-sm mb-2">áˆ›áˆµá‰³á‹ˆá‰‚á‹«á‹Ž á‰ á‰°áˆ³áŠ« áˆáŠ”á‰³ á‰°áˆˆáŒ¥ááˆ!</h3>
-      <p class="text-[11px] leading-relaxed mb-4" style="color:#94A3B8;">áŠ•á‰¥áˆ¨á‰µá‹Ž á‰ áŒˆá‰ á‹«á‹ áˆ‹á‹­ áˆˆáˆáˆ‰áˆ áˆáˆ‹áŒŠá‹Žá‰½ á‹­á‰³á‹«áˆá¢ áˆ›áˆµá‰³á‹ˆá‰‚á‹«á‹áŠ• áˆ›áŒ¥á‹á‰µ áŠ¨áˆáˆˆáŒ‰ á‰  "á‹¨áŠ¥áŠ” áˆ›áˆµá‰³á‹ˆá‰‚á‹«á‹Žá‰½" (My Listings) áŒˆáŒ½ áˆ‹á‹­ á‰ áˆ˜áŒá‰£á‰µ áˆ›áŒ¥á‹á‰µ á‹­á‰½áˆ‹áˆ‰á¢</p>
-      <button type="button" id="listingSuccessOk" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">áŠ¥áˆº</button>
+      <div class="text-2xl mb-2">🎉</div>
+      <h3 class="text-white font-black text-sm mb-2">ማስታወቂያዎ በተሳካ ሁኔታ ተለጥፏል!</h3>
+      <p class="text-[11px] leading-relaxed mb-4" style="color:#94A3B8;">ንብረትዎ በገበያው ላይ ለሁሉም ፈላጊዎች ይታያል። ማስታወቂያውን ማጥፋት ከፈለጉ በ "የእኔ ማስታወቂያዎች" (My Listings) ገጽ ላይ በመግባት ማጥፋት ይችላሉ።</p>
+      <button type="button" id="listingSuccessOk" class="w-full py-3 rounded-2xl font-black text-xs bg-cyan-400 text-slate-950">እሺ</button>
     </div>
   </div>
 
@@ -1548,13 +1538,13 @@
 
   <div id="roleSelectModal" class="fixed inset-0 z-[180] bg-black/60 backdrop-blur-sm hidden items-end justify-center">
     <div class="w-full max-w-md bg-white rounded-t-3xl p-5 shadow-2xl">
-      <div class="font-black text-lg text-slate-900 mb-1">áŠ¥áŠ•áŠ³áŠ• á‹ˆá‹° Adika á‰ á‹°áˆ…áŠ“ áˆ˜áŒ¡</div>
-      <div class="text-xs text-slate-500 mb-4">áŠ¥á‰£áŠ­á‹Ž áˆšáŠ“á‹ŽáŠ• á‹­áˆáˆ¨áŒ¡</div>
+      <div class="font-black text-lg text-slate-900 mb-1">እንኳን ወደ Adika በደህና መጡ</div>
+      <div class="text-xs text-slate-500 mb-4">እባክዎ ሚናዎን ይምረጡ</div>
       <button type="button" id="roleUserBtn" class="w-full py-3.5 mb-2 rounded-xl bg-[#16acbd] text-white font-bold text-sm">
-        ðŸ‘¤ á‰°áˆ« á‰°áŒ á‰ƒáˆš / áˆáˆ‹áŒŠ / áˆ»áŒ­
+        👤 ተራ ተጠቃሚ / ፈላጊ / ሻጭ
       </button>
       <button type="button" id="roleBrokerBtn" class="w-full py-3.5 rounded-xl bg-slate-900 text-white font-bold text-sm">
-        ðŸ¢ á‹°áˆ‹áˆ‹ / áŠ¤áŒ€áŠ•á‰µ áŠáŠ
+        🏢 ደላላ / ኤጀንት ነኝ
       </button>
     </div>
   </div>
@@ -1564,61 +1554,61 @@
       <div class="flex items-center justify-between px-4 py-3 border-b border-white/25 shrink-0 gap-2">
         <button type="button" onclick="(function(){var m=document.getElementById('brokerRegModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}document.body.style.overflow='';})()"
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white border border-white/30 text-xs font-medium transition-all active:scale-95 shrink-0">
-          â† Back
+          ← Back
         </button>
-        <h2 class="text-white font-bold text-base truncate text-center flex-1 drop-shadow-sm">á‹°áˆ‹áˆ‹ áˆá‹áŒˆá‰£</h2>
+        <h2 class="text-white font-bold text-base truncate text-center flex-1 drop-shadow-sm">ደላላ ምዝገባ</h2>
         <button type="button" onclick="(function(){var m=document.getElementById('brokerRegModal');if(m){m.classList.add('hidden');m.classList.remove('flex');m.style.display='none';}document.body.style.overflow='';})()"
           class="p-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white transition-all active:scale-95 shrink-0 leading-none text-sm">
-          âœ•
+          ✕
         </button>
       </div>
       <div class="px-5 py-4 overflow-y-auto flex-1" style="padding-bottom: 8px;">
-        <label class="text-xs font-bold text-white/90 mb-1 block">áˆ™áˆ‰ áˆµáˆ</label>
-        <input id="brName" class="w-full mb-3 px-4 py-3 rounded-2xl text-sm font-bold text-white placeholder-slate-200 bg-white/20 backdrop-blur-md border border-white/30 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/40 transition-all" placeholder="áˆµáˆ" />
-        <label class="text-xs font-bold text-white/90 mb-1 block">áˆµáˆáŠ­ á‰áŒ¥áˆ­</label>
+        <label class="text-xs font-bold text-white/90 mb-1 block">ሙሉ ስም</label>
+        <input id="brName" class="w-full mb-3 px-4 py-3 rounded-2xl text-sm font-bold text-white placeholder-slate-200 bg-white/20 backdrop-blur-md border border-white/30 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/40 transition-all" placeholder="ስም" />
+        <label class="text-xs font-bold text-white/90 mb-1 block">ስልክ ቁጥር</label>
         <input id="brPhone" class="w-full mb-3 px-4 py-3 rounded-2xl text-sm font-bold text-white placeholder-slate-200 bg-white/20 backdrop-blur-md border border-white/30 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/40 transition-all" placeholder="09xxxxxxxx" />
         <label class="text-xs font-bold text-white/90 mb-1 block">Telegram username</label>
         <input id="brUser" class="w-full mb-3 px-4 py-3 rounded-2xl text-sm font-bold text-white placeholder-slate-200 bg-white/20 backdrop-blur-md border border-white/30 focus:outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/40 transition-all" placeholder="@username" />
-        <div class="text-xs font-bold text-white/90 mb-2">á‹¨áˆšáˆ°áˆ©á‰ á‰µ áˆá‹µá‰¥</div>
+        <div class="text-xs font-bold text-white/90 mb-2">የሚሰሩበት ምድብ</div>
         <div class="flex flex-wrap gap-2 mb-4">
           <label class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold">
-            <input type="checkbox" class="brCat accent-cyan-400" value="áˆ˜áŠªáŠ“" checked /> ðŸš— áˆ˜áŠªáŠ“
+            <input type="checkbox" class="brCat accent-cyan-400" value="መኪና" checked /> 🚗 መኪና
           </label>
           <label class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold">
-            <input type="checkbox" class="brCat accent-cyan-400" value="á‰¤á‰µ" /> ðŸ  á‰¤á‰µ
+            <input type="checkbox" class="brCat accent-cyan-400" value="ቤት" /> 🏠 ቤት
           </label>
           <label class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold">
-            <input type="checkbox" class="brCat accent-cyan-400" value="áŠ•áŒá‹µ" /> ðŸ¢ áŠ•áŒá‹µ
+            <input type="checkbox" class="brCat accent-cyan-400" value="ንግድ" /> 🏢 ንግድ
           </label>
         </div>
-        <label class="text-xs font-bold text-white/90 mb-1 block">á‹¨áˆ˜á‰³á‹ˆá‰‚á‹« áŽá‰¶ (áŠ áˆ›áˆ«áŒ­)</label>
+        <label class="text-xs font-bold text-white/90 mb-1 block">የመታወቂያ ፎቶ (አማራጭ)</label>
         <div class="mt-1 mb-2 flex gap-2 items-center">
           <label class="flex-1 py-3 rounded-2xl border-2 border-dashed border-white/30 bg-white/15 backdrop-blur-md text-center text-xs font-bold text-white cursor-pointer active:bg-white/25">
-            ðŸ“· áŽá‰¶ áŠ áŠ•áˆ³ / áˆáˆ¨áŒ¥
+            📷 ፎቶ አንሳ / ምረጥ
             <input id="brIdPhoto" type="file" accept="image/*" capture="environment" class="hidden" />
           </label>
           <img id="brIdPreview" alt="" class="hidden w-14 h-14 rounded-xl object-cover border border-white/30" />
         </div>
-        <p class="text-[10px] text-white/70 mb-2">áˆá‹áŒˆá‰£á‹ áˆˆáŠ á‹µáˆšáŠ• á‹­áˆ‹áŠ«áˆ â€” áŠ¨á‰°áˆ¨áŒ‹áŒˆáŒ  á‰ áŠ‹áˆ‹ á‹°áˆ‹áˆ‹ á‹­áˆ†áŠ“áˆ‰á¢</p>
+        <p class="text-[10px] text-white/70 mb-2">ምዝገባው ለአድሚን ይላካል — ከተረጋገጠ በኋላ ደላላ ይሆናሉ።</p>
       </div>
       <div class="px-5 pt-2 pb-5 border-t border-white/25 shrink-0 bg-white/10 backdrop-blur-md" style="padding-bottom: max(1.25rem, env(safe-area-inset-bottom));">
         <button type="button" id="brSubmitBtn" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-400 to-teal-300 text-slate-950 font-black hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-cyan-400/30">
-          âœ… áˆ˜áˆ˜á‹áŒˆá‰¥ / Submit
+          ✅ መመዝገብ / Submit
         </button>
       </div>
-      <button type="button" id="openBrokerRegFromMenu" class="hidden">á‹°áˆ‹áˆ‹ áŠá‹Žá‰µ? á‹­áˆ˜á‹áŒˆá‰¡</button>
+      <button type="button" id="openBrokerRegFromMenu" class="hidden">ደላላ ነዎት? ይመዝገቡ</button>
     </div>
   </div>
 
-  <div id="adikaImageLightbox" class="" role="dialog" aria-modal="true" aria-label="Photo viewer">
-    <button type="button" class="lb-close" id="adikaLightboxClose" aria-label="Close">âœ•</button>
-    <img id="adikaLightboxImg" src="" alt="Full photo" />
-    <div class="lb-hint">áˆ˜á‹áŒŠá‹« â€” âœ• á‹ˆá‹­áˆ á‰£á‹¶ á‰¦á‰³ á‹­áŠ•áŠ©</div>
+  <div id="adikaImageLightbox" class="hidden" role="dialog" aria-modal="true" aria-label="Photo viewer" style="display:none;">
+    <button type="button" class="lb-close" id="adikaLightboxClose" aria-label="Close">✕</button>
+    <img id="adikaLightboxImg" src="" alt="" />
+    <div class="lb-hint">መዝጊያ — ✕ ወይም ባዶ ቦታ ይንኩ</div>
   </div>
 
 
-  <script src="js/telegram.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="js/telegram.js" charset="utf-8"></script>
+  <script src="js/api.js" charset="utf-8"></script>
+  <script src="js/ui.js" charset="utf-8"></script>
 </body>
 </html>
