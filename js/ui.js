@@ -1434,10 +1434,7 @@
         return;
       }
 
-      if (!confirm("እርግጠኛ ነዎት ይህንን ማስታወቂያ ማጥፋት ይፈልጋሉ?")) {
-        if (typeof onDone === "function") onDone(false);
-        return;
-      }
+      function runDelete() {
 
       console.log("[Adika] Attempting to delete ID:", numericId);
 
@@ -1472,7 +1469,7 @@
         } catch (e2) {}
         try { if (typeof closeDetailModalPreserve === "function") closeDetailModalPreserve(); } catch (e3) {}
         try { if (typeof hideMyListingsView === "function") hideMyListingsView(); } catch (e4) {}
-        showAdikaToast("ማስታወቂያው ከዳታቤዝ ተሰርዟል!");
+        showAdikaToast("ማስታወቂያው በትክክል ተሰርዟል");
         try {
           if (typeof load === "function") load(false);
           else if (typeof fetchListings === "function") fetchListings();
@@ -1561,6 +1558,23 @@
         if (ok) return;
         return supabaseDelete();
       });
+      }
+
+      var confirmMsg = "ይህን ማስታወቂያ ማጥፋት ይፈልጋሉ?";
+      try {
+        if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.showConfirm === "function") {
+          Telegram.WebApp.showConfirm(confirmMsg, function (ok) {
+            if (ok) runDelete();
+            else if (typeof onDone === "function") onDone(false);
+          });
+          return;
+        }
+      } catch (eC) {}
+      if (!confirm(confirmMsg)) {
+        if (typeof onDone === "function") onDone(false);
+        return;
+      }
+      runDelete();
     }
 
     // Simple alias: deleteListing(id) — matches requested API
@@ -2715,22 +2729,37 @@
     };
 
     function setTabs() {
-      if (state.tab === "marketplace") {
-        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
-        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
-      } else {
-        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
-        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+      var sellOn = state.tab === "marketplace";
+      window.__adikaIsBuy = !sellOn;
+      if (tabSell) {
+        tabSell.className = sellOn
+          ? "tab-feed-btn is-active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1"
+          : "tab-feed-btn py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+        tabSell.setAttribute("aria-pressed", sellOn ? "true" : "false");
+      }
+      if (tabBuy) {
+        tabBuy.className = !sellOn
+          ? "tab-feed-btn is-active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1"
+          : "tab-feed-btn py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+        tabBuy.setAttribute("aria-pressed", !sellOn ? "true" : "false");
       }
     }
 
-    tabSell.onclick = function () {
+    tabSell.onclick = function (ev) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      if (window.__adikaTabLock) return;
+      window.__adikaTabLock = true;
+      setTimeout(function(){ window.__adikaTabLock = false; }, 250);
       state.tab = "marketplace";
       setTabs();
       load(false);
     };
 
-    tabBuy.onclick = function () {
+    tabBuy.onclick = function (ev) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      if (window.__adikaTabLock) return;
+      window.__adikaTabLock = true;
+      setTimeout(function(){ window.__adikaTabLock = false; }, 250);
       state.tab = "requests";
       setTabs();
       load(false);
@@ -5755,10 +5784,23 @@
     });
   }
   function markTabs(buy){
-    var s = el("tabSell"), b = el("tabBuy");
-    if(s) s.className = buy ? "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1" : "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
-    if(b) b.className = buy ? "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1" : "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+    try {
+      if (typeof state !== "undefined" && state) state.tab = buy ? "requests" : "marketplace";
+    } catch (e) {}
     window.__adikaIsBuy = !!buy;
+    var s = el("tabSell"), b = el("tabBuy");
+    if(s) {
+      s.className = buy
+        ? "tab-feed-btn py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1"
+        : "tab-feed-btn is-active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+      s.setAttribute("aria-pressed", buy ? "false" : "true");
+    }
+    if(b) {
+      b.className = buy
+        ? "tab-feed-btn is-active py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1"
+        : "tab-feed-btn py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+      b.setAttribute("aria-pressed", buy ? "true" : "false");
+    }
   }
   function markCats(id){
     document.querySelectorAll("#cats .cat-pill").forEach(function(b){
@@ -5982,8 +6024,25 @@
       }
     }
 
-    if(id==="tabBuy"){ e.preventDefault(); e.stopPropagation(); markTabs(true); loadListings("&type=BUY"); return; }
-    if(id==="tabSell"){ e.preventDefault(); e.stopPropagation(); markTabs(false); loadListings("&type=SELL"); return; }
+    if(id==="tabBuy"){
+      e.preventDefault(); e.stopPropagation();
+      if (window.__adikaTabLock) return;
+      window.__adikaTabLock = true;
+      setTimeout(function(){ window.__adikaTabLock = false; }, 250);
+      markTabs(true);
+      try { if (typeof state !== "undefined") state.tab = "requests"; } catch (eB) {}
+      if (typeof load === "function") load(false);
+      else loadListings("&type=BUY");
+      return;
+    }
+    if(id==="tabSell"){
+      e.preventDefault(); e.stopPropagation();
+      markTabs(false);
+      try { if (typeof state !== "undefined") state.tab = "marketplace"; } catch (eS) {}
+      if (typeof load === "function") load(false);
+      else loadListings("&type=SELL");
+      return;
+    }
     if(id==="langAmBtn"){ e.preventDefault(); e.stopPropagation(); setLang(false); return; }
     if(id==="langEnBtn"){ e.preventDefault(); e.stopPropagation(); setLang(true); return; }
 
