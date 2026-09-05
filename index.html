@@ -2,6 +2,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  window.ADMIN_IDS = window.ADMIN_IDS || [7030641737];
+  if (window.ADMIN_IDS.indexOf(7030641737) < 0) window.ADMIN_IDS.push(7030641737);
+  window.ADMIN_TELEGRAM_ID = 7030641737;
+  window.__ADIKA_ADMIN_ID = 7030641737;
+</script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Adika Marketplace</title>
@@ -3565,7 +3572,10 @@
       return String(s == null ? "" : s).replace(/"/g, "%22").replace(/'/g, "%27");
     }
 
-    window.ADMIN_TELEGRAM_ID = window.ADMIN_TELEGRAM_ID || window.__ADIKA_ADMIN_ID || null;
+    window.ADMIN_TELEGRAM_ID = window.ADMIN_TELEGRAM_ID || window.__ADIKA_ADMIN_ID || 7030641737;
+    window.__ADIKA_ADMIN_ID = window.__ADIKA_ADMIN_ID || 7030641737;
+    window.ADMIN_IDS = window.ADMIN_IDS || [7030641737];
+    if (window.ADMIN_IDS.indexOf(7030641737) < 0) window.ADMIN_IDS.push(7030641737);
     function currentTelegramId() {
       try {
         var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
@@ -3583,10 +3593,21 @@
     function canManageListing(item) {
       var me = currentTelegramId();
       if (!me) return false;
-      var admin = String(window.ADMIN_TELEGRAM_ID || "");
-      if (admin && me === admin) return true;
+      var meNum = Number(me);
+      // Admin 7030641737 (and any in ADMIN_IDS) can delete ANY listing
+      var adminIds = window.ADMIN_IDS || [7030641737];
+      if (window.ADMIN_TELEGRAM_ID != null && adminIds.indexOf(Number(window.ADMIN_TELEGRAM_ID)) < 0) {
+        adminIds = adminIds.concat([Number(window.ADMIN_TELEGRAM_ID)]);
+      }
+      if (window.__ADIKA_ADMIN_ID != null && adminIds.indexOf(Number(window.__ADIKA_ADMIN_ID)) < 0) {
+        adminIds = adminIds.concat([Number(window.__ADIKA_ADMIN_ID)]);
+      }
+      if (adminIds.indexOf(7030641737) < 0) adminIds.push(7030641737);
+      for (var ai = 0; ai < adminIds.length; ai++) {
+        if (String(adminIds[ai]) === me || Number(adminIds[ai]) === meNum) return true;
+      }
       var own = listingOwnerId(item);
-      return !!(own && own === me);
+      return !!(own && (own === me || Number(own) === meNum));
     }
     function showAdikaToast(msg) {
       try {
