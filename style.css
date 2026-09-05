@@ -750,3 +750,35 @@ html, body {
   position: fixed !important;
   z-index: 90;
 }
+
+#tabBuy.is-active,
+#tabSell.is-active,
+.tab-feed-btn.is-active {
+  background: #fff !important;
+  color: #16acbd !important;
+  box-shadow: 0 1px 4px rgba(15,23,42,0.12);
+}
+
+#adikaPromoBanner {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 0.4rem;
+  flex-shrink: 0;
+}
+#adikaMainFeed {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 108px);
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+}
+#grid {
+  flex: 0 0 auto;
+}
+#loadMoreWrap {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  margin-top: 8px !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 8px !important;
+  height: auto !important;
+}
