@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Adika Marketplace</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -11,7 +12,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <!-- Fallback if not using Flask templates / static folder:
   <link rel="stylesheet" href="./style.css" />
+  -->
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
 
@@ -1610,6 +1614,9 @@
     <div class="lb-hint">መዝጊያ — ✕ ወይም ባዶ ቦታ ይንኩ</div>
   </div>
 
+  <script src="{{ url_for('static', filename='script.js') }}" charset="utf-8"></script>
+  <!-- Fallback if not using Flask templates / static folder:
   <script src="./script.js" charset="utf-8"></script>
+  -->
 </body>
 </html>
