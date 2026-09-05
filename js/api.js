@@ -108,11 +108,22 @@
     return { ok: false, error: "no backend" };
   }
 
+  function confirmDelete(msg) {
+    return new Promise(function (resolve) {
+      try {
+        if (w.Telegram && Telegram.WebApp && typeof Telegram.WebApp.showConfirm === "function") {
+          Telegram.WebApp.showConfirm(msg, function (ok) { resolve(!!ok); });
+          return;
+        }
+      } catch (e) {}
+      try { resolve(!!w.confirm(msg)); } catch (e2) { resolve(false); }
+    });
+  }
+
   async function deleteListing(id) {
     if (id == null || id === "") return { ok: false, error: "missing id" };
-    if (!w.confirm || !confirm("እርግጠኛ ነዎት ይህ ማስታወቂያ ሙሉ በሙሉ እንዲጠፋ ይፈልጋሉ?")) {
-      return { ok: false, cancelled: true };
-    }
+    var okConfirm = await confirmDelete("ይህን ማስታወቂያ ማጥፋት ይፈልጋሉ?");
+    if (!okConfirm) return { ok: false, cancelled: true };
 
     var me = uid();
     var admin = typeof w.isAdikaAdmin === "function" && w.isAdikaAdmin(me);
