@@ -3235,11 +3235,34 @@
         savePromise.then(function () {
           markOnboarded();
           showOb(false);
-          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); else triggerFypFeed(); } catch (eF) { triggerFypFeed(); }
+          try {
+            window.__adikaLastPrefs = data;
+            window.__adikaUserPrefs = data;
+          } catch (eP) {}
+          try {
+            if (typeof window.adikaParseBudgetRange === "function") {
+              var b = window.adikaParseBudgetRange(data);
+              console.log("[Adika FYP prefs]", data.main_category || data.category, b);
+            }
+          } catch (eB) {}
+          try {
+            if (window.state) { state.feedMode = "foryou"; state.category = ""; }
+            if (typeof window.loadSmartFYP === "function") window.loadSmartFYP({ page: 1, append: false });
+            else if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
+            else if (typeof triggerFypFeed === "function") triggerFypFeed();
+            else if (typeof load === "function") load(false);
+          } catch (eF) {
+            try { if (typeof triggerFypFeed === "function") triggerFypFeed(); } catch (e2) {}
+          }
         }).catch(function () {
           markOnboarded();
           showOb(false);
-          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); else triggerFypFeed(); } catch (eF2) { triggerFypFeed(); }
+          try { window.__adikaLastPrefs = data; } catch (eP2) {}
+          try {
+            if (typeof window.loadSmartFYP === "function") window.loadSmartFYP({ page: 1, append: false });
+            else if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
+            else if (typeof triggerFypFeed === "function") triggerFypFeed();
+          } catch (eF2) {}
         }).finally(function () {
           if (btn) { btn.disabled = false; btn.textContent = "✅ መዝግብ / Submit"; }
         });
@@ -3306,20 +3329,36 @@
         document.body.style.overflow = "hidden";
       }
 
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () {
-          // TESTING: show onboarding on every Mini App open
-          forceOpenOnboardingForTest();
-        });
-      } else {
+      function maybeOpenFirstTimePrefs() {
+        bind();
+        var hasLocal = false;
+        try {
+          hasLocal = isOnboarded() || !!readLocalPrefs();
+        } catch (e) {}
+        if (hasLocal) {
+          showOb(false);
+          return;
+        }
+        // First visit — auto-open Preferences and keep open until Submit or Skip
         forceOpenOnboardingForTest();
       }
-      // Also when FYP tab is already selected without onboard
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          setTimeout(maybeOpenFirstTimePrefs, 250);
+        });
+      } else {
+        setTimeout(maybeOpenFirstTimePrefs, 250);
+      }
       setTimeout(function () {
         try {
-          if (!isOnboarded() && state && state.feedMode === "foryou") showOb(true);
+          if (!isOnboarded() && !readLocalPrefs()) showOb(true);
         } catch (e) {}
-      }, 900);
+      }, 800);
+      setTimeout(function () {
+        try {
+          if (!isOnboarded() && !readLocalPrefs()) showOb(true);
+        } catch (e) {}
+      }, 1500);
     })();
 
     var favorites = {};
@@ -11552,46 +11591,50 @@
 </script>
 
 
+
 <script>
-/* ===== Startup: no auto modals — main FYP only ===== */
+/* ===== Startup: close Help only; allow first-time Preferences modal ===== */
 (function () {
-  function closeAllStartupModals() {
-    ["adikaHelpSheet", "unifiedOnboardingModal", "onboardingModal", "prefsModal", "fypOnboardModal"].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      el.classList.add("hidden");
-      el.style.display = "none";
-      el.setAttribute("aria-hidden", "true");
-    });
-    // Don't auto-call openHelpContact / openOnboarding
+  function closeHelpOnly() {
+    var el = document.getElementById("adikaHelpSheet");
+    if (el && el.parentNode) el.parentNode.removeChild(el);
   }
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", closeAllStartupModals);
+    document.addEventListener("DOMContentLoaded", closeHelpOnly);
   } else {
-    closeAllStartupModals();
+    closeHelpOnly();
   }
-  window.addEventListener("load", closeAllStartupModals);
-  // Block accidental auto-open within first 1.5s
-  var _origHelp = window.openHelpContact;
+  window.addEventListener("load", closeHelpOnly);
+
+  // Help opens only on user click
   var bootTs = Date.now();
-  window.openHelpContact = function () {
-    if (Date.now() - bootTs < 800 && !window.__adikaUserOpenedHelp) {
-      return; // ignore early auto-triggers
-    }
-    window.__adikaUserOpenedHelp = true;
-    if (typeof _origHelp === "function") return _origHelp.apply(this, arguments);
-  };
-  // Allow real clicks after marking flag
+  var _origHelp = null;
+  function wrapHelp() {
+    if (typeof window.openHelpContact !== "function") return;
+    if (window.openHelpContact.__userOnly) return;
+    _origHelp = window.openHelpContact;
+    window.openHelpContact = function () {
+      if (Date.now() - bootTs < 600 && !window.__adikaUserOpenedHelp) return;
+      window.__adikaUserOpenedHelp = true;
+      return _origHelp.apply(this, arguments);
+    };
+    window.openHelpContact.__userOnly = true;
+  }
+  wrapHelp();
+  setTimeout(wrapHelp, 300);
+  setTimeout(wrapHelp, 1000);
+
   document.addEventListener("click", function (e) {
-    var t = e.target;
-    if (!t) return;
-    var txt = (t.textContent || "") + " " + (t.getAttribute("aria-label") || "");
-    if (/እርዳታ|Help|help/i.test(txt) || (t.closest && t.closest("[data-open-help]"))) {
+    var tg = e.target;
+    if (!tg) return;
+    var txt = (tg.textContent || "") + " " + (tg.getAttribute("aria-label") || "");
+    if (/እርዳታ|Help/i.test(txt) || (tg.closest && tg.closest("[data-open-help]"))) {
       window.__adikaUserOpenedHelp = true;
     }
   }, true);
 })();
 </script>
+
 
 
 <script>
@@ -11641,6 +11684,64 @@
     });
     return { items: out, budget: { min: minP, max: maxP, label: raw }, category: cat };
   };
+})();
+</script>
+
+
+<script>
+/* ===== Re-open Preferences from ⚙️ / አማራጭ ===== */
+(function () {
+  function openPrefs() {
+    window.__adikaUserOpenedPrefs = true;
+    try {
+      if (typeof window.__adikaShowOnboarding === "function") return window.__adikaShowOnboarding();
+      if (typeof window.openFYPWithOnboarding === "function") return window.openFYPWithOnboarding();
+    } catch (e) {}
+    var m = document.getElementById("unifiedOnboardingModal");
+    if (!m) return;
+    m.classList.remove("hidden");
+    m.classList.add("flex");
+    m.style.setProperty("display", "flex", "important");
+    m.style.zIndex = "10000";
+    document.body.style.overflow = "hidden";
+  }
+  window.openPreferencesModal = openPrefs;
+  window.closePreferencesModal = function () {
+    try {
+      if (typeof window.closeOnboarding === "function") window.closeOnboarding(false);
+    } catch (e) {}
+    var m = document.getElementById("unifiedOnboardingModal");
+    if (m) {
+      m.classList.add("hidden");
+      m.classList.remove("flex");
+      m.style.display = "none";
+      document.body.style.overflow = "";
+    }
+  };
+
+  document.addEventListener("click", function (e) {
+    var el = e.target;
+    if (!el) return;
+    var node = el.closest ? (el.closest("[data-open-prefs], [data-open-preferences], #btnPrefs, #settingsBtn, #navSettings") || el) : el;
+    var txt = (node.textContent || "") + " " + (node.getAttribute("aria-label") || "") + " " + (node.id || "");
+    var id = (node.id || "") + " " + (node.getAttribute("data-action") || "");
+    if (
+      /አማራጭ|ምርጫ|Preferences|Settings|⚙️/i.test(txt) ||
+      /prefs|settings|onboard/i.test(id) ||
+      (node.getAttribute && node.getAttribute("data-open-prefs") != null)
+    ) {
+      // Don't steal Help button
+      if (/እርዳታ|Help/i.test(txt) && !/አማራጭ|ምርጫ|⚙️/.test(txt)) return;
+      // Avoid nav marketplace tabs
+      if (/ገበያ|ፈላጊ|ለእርስዎ|ሁሉም/.test(txt) && !/አማራጭ|⚙️/.test(txt)) return;
+      if (node.closest && node.closest("#adikaBottomNav") && !/አማራጭ|⚙️|settings/i.test(txt + id)) return;
+      // Only explicit settings-like
+      if (!/አማራጭ|ምርጫ|⚙️|prefs|settings|onboard/i.test(txt + id) && !(node.getAttribute && node.getAttribute("data-open-prefs") != null)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openPrefs();
+    }
+  }, true);
 })();
 </script>
 
