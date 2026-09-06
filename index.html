@@ -10820,46 +10820,69 @@
   function fetchListingPool(limit, prefs) {
     limit = limit || 120;
     var client = sb();
-    var bud = resolvePrefBudget(prefs || {});
-    var wantCat = prefCategoryKey(prefs || {});
+    var p = prefs || {};
+    var bud = resolvePrefBudget(p);
 
-    function fromApi() {
-      var qs = "page=1&limit=" + limit + "&order=DESC&active_only=1&type=SELL";
-      if (wantCat === "car") qs += "&category=" + encodeURIComponent("መኪና");
-      else if (wantCat === "house") qs += "&category=" + encodeURIComponent("ቤት");
-      else if (wantCat === "commercial") qs += "&category=" + encodeURIComponent("ንግድ");
-      if (bud.min > 0) qs += "&min_price=" + encodeURIComponent(bud.min);
-      if (bud.max > 0 && bud.max < 999999999) qs += "&max_price=" + encodeURIComponent(bud.max);
-      return fetch("/api/listings?" + qs, { credentials: "same-origin" })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var items = (d && (d.items || d.listings || d.results || d.data)) || [];
-          return Array.isArray(items) ? items : [];
-        })
-        .catch(function () { return []; });
+    /*
+     * STRICT FYP DATABASE FILTERING
+     * --------------------------------
+     * IMPORTANT:
+     * - Never fetch an unfiltered listings pool and filter it in JavaScript.
+     * - Category is filtered directly in Supabase with .eq().
+     * - Budget is filtered directly in Supabase with .gte() / .lte().
+     * - The UI receives ONLY rows returned by this filtered query.
+     */
+    if (!client) return Promise.resolve([]);
+
+    // Read the user's actual saved category.  The onboarding stores Amharic
+    // values (e.g. "መኪና", "ቤት", "ንግድ"), but keep the raw preference when
+    // available so the database filter is an explicit equality filter.
+    var prefCategory = String(
+      p.category ||
+      p.main_category ||
+      p.preferred_category ||
+      ""
+    ).trim();
+
+    // If an older/local preference only contains English, normalize it to the
+    // canonical category values used by the listings table.
+    if (!prefCategory) {
+      var wantCat = prefCategoryKey(p);
+      if (wantCat === "car") prefCategory = "መኪና";
+      else if (wantCat === "house") prefCategory = "ቤት";
+      else if (wantCat === "commercial") prefCategory = "ንግድ";
+    } else {
+      var normalized = normCat(prefCategory);
+      if (normalized === "car" && /^(car|vehicle|auto)$/i.test(prefCategory)) prefCategory = "መኪና";
+      else if (normalized === "house" && /^(house|property|home|apartment|villa|condo)$/i.test(prefCategory)) prefCategory = "ቤት";
+      else if (normalized === "commercial" && /^(commercial|business)$/i.test(prefCategory)) prefCategory = "ንግድ";
     }
 
-    if (client) {
-      var q = client.from("listings").select("*").eq("status", "active").order("created_at", { ascending: false }).limit(limit);
-      if (bud.min > 0) q = q.gte("price", bud.min);
-      if (bud.max > 0 && bud.max < 999999999) q = q.lte("price", bud.max);
-      if (wantCat === "car") {
-        q = q.or("main_category.ilike.%መኪና%,main_category.ilike.%car%,category.ilike.%መኪና%,category.ilike.%car%");
-      } else if (wantCat === "house") {
-        q = q.or("main_category.ilike.%ቤት%,main_category.ilike.%house%,category.ilike.%ቤት%,category.ilike.%house%");
-      } else if (wantCat === "commercial") {
-        q = q.or("main_category.ilike.%ንግድ%,main_category.ilike.%commercial%,category.ilike.%ንግድ%,category.ilike.%commercial%");
-      }
-      return q.then(function (res) {
-        var rows = (res && res.data) || [];
-        if (rows.length) return rows;
-        throw new Error("empty");
-      }).catch(function () {
-        return fromApi();
-      });
+    // Start with the base query, then add ONLY database-level filters.
+    let query = client
+      .from("listings")
+      .select("*")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (prefCategory) {
+      query = query.eq("category", prefCategory);
     }
-    return fromApi();
+    if (bud.max > 0 && bud.max < 999999999) {
+      query = query.lte("price", bud.max);
+    }
+    if (bud.min > 0) {
+      query = query.gte("price", bud.min);
+    }
+
+    return query.then(function (res) {
+      if (res && res.error) throw res.error;
+      var rows = (res && res.data) || [];
+      return Array.isArray(rows) ? rows : [];
+    });
   }
+
 
   // ---------- Scoring (ranking only, after hard filter) ----------
   function scorePreferences(listing, prefs) {
@@ -11053,7 +11076,7 @@
         '<p style="margin:0 0 14px;font-size:11px;font-weight:600;color:#64748b;">No listings match your selected category and budget.</p>' +
         '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">' +
           '<button type="button" id="fypEmptyAdjustBtn" style="padding:9px 14px;border-radius:999px;background:linear-gradient(135deg,#0ea5e9,#14b8a6);color:#fff;font-size:11px;font-weight:900;border:0;">⚙️ ምርጫ ቀይር / Adjust</button>' +
-          '<button type="button" id="fypEmptyAllBtn" style="padding:9px 14px;border-radius:999px;background:#fff;color:#0e7490;font-size:11px;font-weight:900;border:1px solid rgba(14,116,144,0.25);">🌐 ሁሉንም ይመልከቱ / View all</button>' +
+          '<button type="button" id="fypEmptyResetBtn" style="padding:9px 14px;border-radius:999px;background:#fff;color:#0e7490;font-size:11px;font-weight:900;border:1px solid rgba(14,116,144,0.25);">🔄 ማጣሪያውን ዳግም አስጀምር / Reset filters</button>' +
         "</div>" +
       "</div>";
     if (g) {
@@ -11069,7 +11092,7 @@
       }
     } catch (e) {}
     var adj = document.getElementById("fypEmptyAdjustBtn");
-    var all = document.getElementById("fypEmptyAllBtn");
+    var reset = document.getElementById("fypEmptyResetBtn");
     if (adj) {
       adj.onclick = function (e) {
         e.preventDefault();
@@ -11079,15 +11102,55 @@
         } catch (err) {}
       };
     }
-    if (all) {
-      all.onclick = function (e) {
+    if (reset) {
+      reset.onclick = function (e) {
         e.preventDefault();
         try {
-          if (window.state) { state.feedMode = "all"; state.category = ""; }
-          if (typeof paintFeedModes === "function") paintFeedModes();
-          if (typeof window.load === "function") window.load(false);
-          else if (typeof load === "function") load(false);
-        } catch (err) {}
+          // Clear the local preference cache immediately.
+          ["adika_user_prefs", "adika_fyp_prefs"].forEach(function (key) {
+            try { localStorage.removeItem(key); } catch (e0) {}
+            try { if (typeof _lsRemove === "function") _lsRemove(key); } catch (e1) {}
+          });
+
+          // Clear the in-memory FYP preference so the next render cannot
+          // accidentally reuse the old 1.5M–4M range.
+          window.__adikaFypPrefs = null;
+
+          if (window.state) {
+            state.feedMode = "foryou";
+            state.category = "";
+            state.page = 1;
+          }
+
+          // Keep the database preference in sync when possible.
+          var resetUid = tgId();
+          var resetClient = sb();
+          if (resetClient && resetUid) {
+            resetClient.from("user_preferences")
+              .update({
+                category: null,
+                main_category: null,
+                preferred_category: null,
+                budget: null,
+                budget_range: null,
+                budget_min: null,
+                budget_max: null,
+                price_min: null,
+                price_max: null
+              })
+              .or("user_id.eq." + resetUid + ",telegram_id.eq." + resetUid)
+              .then(function () {
+                if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
+              })
+              .catch(function () {
+                if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
+              });
+          } else if (typeof window.loadFYPFeed === "function") {
+            window.loadFYPFeed();
+          }
+        } catch (err) {
+          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); } catch (e2) {}
+        }
       };
     }
     var more = document.getElementById("more");
@@ -11226,33 +11289,8 @@
       }
       paintRanked(slice, append);
 
-      // Server RPC enrichment — still STRICTLY filtered
-      try {
-        var client = sb();
-        if (client && uid && typeof client.rpc === "function" && !append) {
-          client.rpc("get_fyp_feed", {
-            p_telegram_id: Number(uid) || uid,
-            p_limit: 40,
-            p_offset: 0
-          }).then(function (res) {
-            var rows = (res && res.data) || [];
-            if (!Array.isArray(rows) || !rows.length) return;
-            rows = rows.filter(function (r) { return matchesStrictFyp(r, prefs); });
-            if (!rows.length) return;
-            var seen = {};
-            ranked.forEach(function (r) { if (r && r.id != null) seen[String(r.id)] = 1; });
-            var extra = rows.filter(function (r) { return r && r.id != null && !seen[String(r.id)]; });
-            if (!extra.length) return;
-            var merged = rankListings(ranked.concat(extra), ctx);
-            merged = merged.filter(function (r) { return matchesStrictFyp(r, prefs); });
-            if (!merged.length) {
-              paintFypEmpty(prefs);
-              return;
-            }
-            paintRanked(merged.slice(0, perPage), false);
-          }).catch(function () {});
-        }
-      } catch (eRpc) {}
+      // No post-fetch RPC enrichment: the Supabase query above is the single
+      // source of FYP listings, so unfiltered rows can never enter the feed.
     }).catch(function (err) {
       console.warn("[Adika FYP]", err);
       try {
@@ -11311,6 +11349,105 @@
 })();
 </script>
 
+
+
+<script>
+/* ========================================================================
+   STRICT FYP / PREFERENCES MODAL CLEANUP
+   - Closing preferences immediately restores the main feed.
+   - No residual opacity, CSS filter, or pointer-event state remains.
+   ======================================================================== */
+(function () {
+  "use strict";
+
+  function restoreMainFeed() {
+    try {
+      var main = document.getElementById("adikaMainFeed");
+      if (main) {
+        main.style.opacity = "1";
+        main.style.filter = "none";
+        main.style.pointerEvents = "auto";
+      }
+
+      var grid = document.getElementById("grid");
+      if (grid) {
+        grid.style.opacity = "1";
+        grid.style.filter = "none";
+        grid.style.pointerEvents = "auto";
+      }
+
+      // Remove any temporary modal/backdrop state that can leave the feed
+      // visually dull or non-interactive after the preferences form closes.
+      document.body.style.filter = "none";
+      document.body.style.pointerEvents = "auto";
+      document.body.style.overflow = "";
+
+      var modal = document.getElementById("unifiedOnboardingModal") ||
+                  document.getElementById("onboardingModal");
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+        modal.style.display = "none";
+        modal.style.opacity = "1";
+        modal.style.filter = "none";
+        modal.style.pointerEvents = "none";
+      }
+    } catch (e) {}
+  }
+
+  // Public API requested by the FYP preferences UI.
+  window.closePreferencesModal = function () {
+    try {
+      if (typeof window.closeOnboarding === "function") {
+        window.closeOnboarding(true);
+      } else {
+        restoreMainFeed();
+      }
+    } catch (e) {
+      restoreMainFeed();
+    }
+
+    // Run again after class/style transitions so the final state is guaranteed.
+    restoreMainFeed();
+    setTimeout(restoreMainFeed, 0);
+    setTimeout(restoreMainFeed, 80);
+    setTimeout(restoreMainFeed, 250);
+  };
+
+  // Also guarantee the cleanup whenever the existing onboarding close path
+  // is used by the ✕/skip button.
+  var originalCloseOnboarding = window.closeOnboarding;
+  if (typeof originalCloseOnboarding === "function" &&
+      !originalCloseOnboarding.__adikaOpacityFixed) {
+    window.closeOnboarding = function () {
+      var result;
+      try {
+        result = originalCloseOnboarding.apply(this, arguments);
+      } catch (e) {}
+      restoreMainFeed();
+      setTimeout(restoreMainFeed, 0);
+      setTimeout(restoreMainFeed, 80);
+      return result;
+    };
+    window.closeOnboarding.__adikaOpacityFixed = true;
+  }
+
+  // If another script closes the modal directly, keep the main feed clean.
+  document.addEventListener("click", function (ev) {
+    try {
+      var target = ev.target;
+      if (!target) return;
+
+      var closeBtn = target.closest &&
+        target.closest("#onboardSkipBtn, #closePreferencesModal, [data-close-preferences]");
+      if (closeBtn) {
+        setTimeout(restoreMainFeed, 0);
+        setTimeout(restoreMainFeed, 100);
+      }
+    } catch (e) {}
+  }, true);
+})();
+</script>
 
 </body>
 </html>
