@@ -4484,11 +4484,7 @@ function shareContract() {{
             if not n:
                 n = _sb_delete("listings", str(clean_id))
             # Optional mirror table (if user has it)
-            try:
-# PURGED single-table:                 pass  # adika_clean_market dropped
-# PURGED single-table:                 pass  # adika_clean_market dropped
-            except Exception:
-                pass
+            # purged empty try (adika_clean_market dropped)
             _sb_delete_photos(clean_id)
 
             if deleted_rows > 0:
