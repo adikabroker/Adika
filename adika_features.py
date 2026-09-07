@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 """
 adika_features.py — Broker match, Telegram OTP, For-You feed
 Shared by Flask api_service routes.
@@ -10,6 +12,11 @@ import random
 import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
+
+try:
+    import requests
+except Exception:
+    requests = None  # type: ignore
 
 from config import logger
 
@@ -580,15 +587,63 @@ def get_user_preferences(user_id: int) -> Dict[str, Any]:
 
 
 def _parse_price(val: Any) -> float:
+    """
+    Parse ETB prices from numbers or Amharic/English strings.
+    Supports: 4500000 | 4.5M | 4.5 ሚሊዮን | 2.5M - 3.5M (returns max of range).
+    """
     if val is None:
         return 0.0
     if isinstance(val, (int, float)):
-        return float(val)
-    s = re.sub(r"[^\d.]", "", str(val).replace(",", ""))
-    try:
-        return float(s) if s else 0.0
-    except Exception:
+        return float(val) if abs(float(val)) < 1e15 else 0.0
+    s = str(val).strip()
+    if not s:
         return 0.0
+
+    def _token(raw: str) -> float:
+        raw = raw.strip().replace(",", "")
+        m = re.match(
+            r"^([\d.]+)\s*(m|million|ሚሊዮን|ሚሊ|ሚ|k|thousand|ሺህ|ሺ)?$",
+            raw,
+            re.I,
+        )
+        if not m:
+            digits = re.sub(r"[^\d.]", "", raw)
+            try:
+                return float(digits) if digits else 0.0
+            except Exception:
+                return 0.0
+        n = float(m.group(1))
+        unit = (m.group(2) or "").lower()
+        if unit in ("m", "million") or "ሚ" in unit:
+            return n * 1_000_000
+        if unit in ("k", "thousand") or "ሺ" in unit:
+            return n * 1_000
+        # bare number next to ሚሊ in surrounding text handled by caller
+        if n > 0 and n < 1000 and re.search(r"ሚሊ|million|\bM\b", s, re.I):
+            return n * 1_000_000
+        return n
+
+    # Range: take MAX so budget filters "under X" still work when listing shows a band
+    range_m = re.search(
+        r"([\d.,]+\s*(?:m|M|million|ሚሊዮን|ሚሊ|ሚ|k|K|ሺህ|ሺ)?)\s*[-–—to]+\s*([\d.,]+\s*(?:m|M|million|ሚሊዮን|ሚሊ|ሚ|k|K|ሺህ|ሺ)?)",
+        s,
+        re.I,
+    )
+    if range_m:
+        a = _token(range_m.group(1))
+        b = _token(range_m.group(2))
+        return max(a, b)
+
+    # Single token with unit somewhere in string
+    single = re.search(
+        r"([\d.,]+)\s*(m|M|million|ሚሊዮን|ሚሊ|ሚ|k|K|ሺህ|ሺ)",
+        s,
+        re.I,
+    )
+    if single:
+        return _token(single.group(1) + " " + single.group(2))
+
+    return _token(s)
 
 
 def score_listing_for_user(item: Dict[str, Any], prefs: Dict[str, Any]) -> int:
@@ -624,109 +679,396 @@ def score_listing_for_user(item: Dict[str, Any], prefs: Dict[str, Any]) -> int:
     return score
 
 
-def _unify_image_url(item):
-    """Primary image: image_url -> images[0] -> photo_url -> telegram_image."""
-    extra = item.get("extra_data") or {}
-    if isinstance(extra, str):
+
+def extract_search_intent(query: str, use_llm: bool = True) -> Dict[str, Any]:
+    """
+    Parse free-text (Amharic/English) search into structured intent JSON.
+    Falls back to rule-based extraction when LLM is unavailable.
+    Keys: category, brand, model, price_max, price_min, transmission, fuel, keywords
+    """
+    q = (query or "").strip()
+    intent: Dict[str, Any] = {
+        "category": "",
+        "brand": "",
+        "model": "",
+        "price_max": 0,
+        "price_min": 0,
+        "transmission": "",
+        "fuel": "",
+        "keywords": [],
+        "raw": q,
+    }
+    if not q:
+        return intent
+
+    low = q.lower()
+
+    # Category
+    if any(x in low for x in ("መኪና", "car", "vehicle", "auto", "toyota", "suzuki", "prado", "dzire", "byd")):
+        intent["category"] = "መኪና"
+    elif any(x in low for x in ("ቤት", "house", "home", "villa", "apartment", "condo", "property")):
+        intent["category"] = "ቤት"
+
+    # Brands common in Ethiopia market
+    brands = [
+        "toyota", "suzuki", "hyundai", "kia", "nissan", "honda", "byd", "geely",
+        "haval", "changan", "volkswagen", "bmw", "mercedes", "audi", "tesla",
+        "mitsubishi", "isuzu", "mazda", "ford", "chevrolet", "jetour", "land cruiser", "prado",
+    ]
+    for b in brands:
+        if b in low:
+            intent["brand"] = b.title() if b != "byd" else "BYD"
+            if b in ("land cruiser", "prado"):
+                intent["brand"] = "Toyota"
+                intent["model"] = "Land Cruiser Prado" if "prado" in low or "land" in low else intent["model"]
+            break
+
+    # Model hints
+    models = [
+        "corolla", "vitz", "yaris", "rav4", "hilux", "prado", "land cruiser",
+        "dzire", "swift", "jimny", "tucson", "creta", "elantra", "sportage",
+        "seagull", "song plus", "yuan plus", "coolray", "h6", "tracker", "id.4",
+        "patrol", "civic", "model y",
+    ]
+    for m in models:
+        if m in low:
+            intent["model"] = m.title() if m not in ("id.4", "song plus", "yuan plus", "model y") else m.title().replace("Id.4", "ID.4")
+            break
+
+    # Transmission / fuel
+    if any(x in low for x in ("አውቶ", "auto", "automatic", "cvt", "dct")):
+        intent["transmission"] = "automatic"
+    elif any(x in low for x in ("ማንዋል", "manual")):
+        intent["transmission"] = "manual"
+    if any(x in low for x in ("ናፍጣ", "diesel")):
+        intent["fuel"] = "diesel"
+    elif any(x in low for x in ("ቤንዚን", "benzine", "petrol", "gasoline")):
+        intent["fuel"] = "benzine"
+    elif any(x in low for x in ("ኤሌክትሪክ", "electric", "ev", "hybrid")):
+        intent["fuel"] = "electric"
+
+    # Price: 4M, 1.5 ሚሊዮን, under 3 million, እስከ 4000000
+    def _tok_to_num(raw: str, unit: str = "") -> int:
         try:
-            extra = json.loads(extra)
+            n = float(str(raw).replace(",", ""))
         except Exception:
-            extra = {}
-    if not isinstance(extra, dict):
-        extra = {}
+            return 0
+        u = (unit or "").lower()
+        if any(x in u for x in ("m", "ሚ", "mil", "million")) or (n < 1000 and any(x in low for x in ("ሚሊ", "million", "m "))):
+            return int(n * 1_000_000)
+        if any(x in u for x in ("k", "ሺ")):
+            return int(n * 1_000)
+        if n < 1000 and ("ሚሊ" in low or "million" in low):
+            return int(n * 1_000_000)
+        return int(n)
 
-    def _from(val):
-        if not val:
-            return ""
-        if isinstance(val, list) and val:
-            first = val[0]
-            if isinstance(first, dict):
-                return str(first.get("url") or first.get("src") or first.get("file_id") or "")
-            return str(first)
-        if isinstance(val, dict):
-            return str(val.get("url") or val.get("src") or val.get("file_id") or "")
-        s = str(val).strip()
-        if s and s.lower() not in ("none", "null", "[]", "{}"):
-            return s
-        return ""
+    m_range = re.search(
+        r"([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|ሚሊዮን|million|ሺ|ሺህ)?\s*[-–—to]+\s*([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|ሚሊዮን|million|ሺ|ሺህ)?",
+        q,
+        re.I,
+    )
+    if m_range:
+        intent["price_min"] = _tok_to_num(m_range.group(1), m_range.group(2) or m_range.group(4) or "")
+        intent["price_max"] = _tok_to_num(m_range.group(3), m_range.group(4) or m_range.group(2) or "")
+    else:
+        m_max = re.search(
+            r"(?:እስከ|under|below|max|<=|≤|በጀት)?\s*([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|ሚሊዮን|million|ሺ|ሺህ)?",
+            q,
+            re.I,
+        )
+        if m_max:
+            intent["price_max"] = _tok_to_num(m_max.group(1), m_max.group(2) or "")
 
-    for key in (
-        "image_url",
-        "images",
-        "photo_url",
-        "telegram_image",
-        "photo_urls",
-        "photos",
-        "photo_id",
-        "cover_url",
-        "thumbnail",
-    ):
-        url = _from(item.get(key)) or _from(extra.get(key))
-        if url:
-            return url
-    return ""
+    intent["keywords"] = [w for w in re.split(r"\s+", q) if len(w) > 1][:12]
+
+    # Optional LLM enrichment
+    if use_llm and q:
+        try:
+            intent = _llm_enrich_intent(q, intent)
+        except Exception as e:
+            logger.debug("extract_search_intent LLM skip: %s", e)
+    return intent
 
 
-def fetch_for_you_feed(user_id: int = 0, limit: int = 30, page: int = 1) -> Dict[str, Any]:
-    """Simple FYP: newest listings only. No history, scoring, or dual-table merge."""
-    from models import get_db_connection
-    items: List[Dict[str, Any]] = []
+def _llm_enrich_intent(query: str, base: Dict[str, Any]) -> Dict[str, Any]:
+    """Best-effort OpenRouter/Gemini JSON extraction; never raises to caller."""
+    import os
+    prompt = (
+        "Extract vehicle/property search intent as strict JSON with keys: "
+        "category (መኪና or ቤት or empty), brand, model, price_max (number ETB), "
+        "price_min (number), transmission (automatic|manual|), fuel (benzine|diesel|electric|). "
+        f"Query: {query}\nReturn ONLY JSON."
+    )
+    text = ""
+    # OpenRouter
+    key = os.environ.get("OPENROUTER_API_KEY") or ""
+    if key and requests is not None:
+        try:
+            import requests as _req
+            r = _req.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": os.environ.get("OPENROUTER_MODEL") or "deepseek/deepseek-chat",
+                    "messages": [
+                        {"role": "system", "content": "You extract structured search intent. Reply JSON only."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "temperature": 0.1,
+                },
+                timeout=12,
+            )
+            if r.ok:
+                data = r.json()
+                text = (((data.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
+        except Exception as e:
+            logger.debug("openrouter intent: %s", e)
+    if not text:
+        return base
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    try:
+        parsed = json.loads(text)
+    except Exception:
+        return base
+    if not isinstance(parsed, dict):
+        return base
+    out = dict(base)
+    for k in ("category", "brand", "model", "transmission", "fuel"):
+        if parsed.get(k):
+            out[k] = str(parsed[k]).strip()
+    for k in ("price_max", "price_min"):
+        try:
+            v = parsed.get(k)
+            if v is not None and str(v).strip() != "":
+                out[k] = int(float(re.sub(r"[^\d.]", "", str(v)) or 0))
+        except Exception:
+            pass
+    return out
+
+
+# requests may be missing in pure feature module
+try:
+    import requests  # type: ignore  # noqa: F401
+except Exception:
+    requests = None  # type: ignore
+
+
+def _listing_matches_intent(item: Dict[str, Any], intent: Dict[str, Any]) -> bool:
+    if not intent:
+        return True
+    blob = " ".join(
+        str(item.get(k) or "")
+        for k in (
+            "main_category", "category", "sub_category", "description",
+            "brand", "model", "full_model", "name", "title", "extra_data",
+        )
+    ).lower()
+    cat = (intent.get("category") or "").strip()
+    if cat == "መኪና" and not any(x in blob for x in ("መኪና", "car", "vehicle", "toyota", "suzuki", "byd", "auto")):
+        # still allow if brand/model set
+        if not (intent.get("brand") or intent.get("model")):
+            return False
+    if cat == "ቤት" and not any(x in blob for x in ("ቤት", "house", "home", "villa", "apartment", "property")):
+        return False
+    brand = (intent.get("brand") or "").lower()
+    if brand and brand not in blob:
+        return False
+    model = (intent.get("model") or "").lower()
+    if model and model not in blob:
+        return False
+    price = _parse_price(item.get("price") or item.get("current_price_range_etb"))
+    pmax = float(intent.get("price_max") or 0)
+    pmin = float(intent.get("price_min") or 0)
+    if pmax > 0 and price > 0 and price > pmax:
+        return False
+    if pmin > 0 and price > 0 and price < pmin:
+        return False
+    trans = (intent.get("transmission") or "").lower()
+    if trans:
+        tblob = str(item.get("transmission") or item.get("extra_data") or "").lower()
+        if tblob and trans[:4] not in tblob and ("auto" in trans and "auto" not in tblob and "አውቶ" not in tblob):
+            # soft: don't hard-exclude catalog rows missing transmission
+            if item.get("source") == "listing" and tblob:
+                return False
+    return True
+
+
+def search_listings_by_intent(intent: Dict[str, Any], limit: int = 40) -> List[Dict[str, Any]]:
+    """Query marketplace `listings` table with intent filters."""
+    from models import get_db_connection, is_postgres
     conn = None
-    lim = 30 if not limit else max(1, min(int(limit), 30))
+    out: List[Dict[str, Any]] = []
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM listings ORDER BY created_at DESC LIMIT 30")
-        rows = cur.fetchall() or []
-        for r in rows:
-            d = dict(r) if not isinstance(r, dict) else dict(r)
-            extra = d.get("extra_data")
-            if isinstance(extra, str):
-                try:
-                    extra = json.loads(extra)
-                    d["extra_data"] = extra
-                except Exception:
-                    extra = {}
-            image_url = _unify_image_url(d)
-            d["image_url"] = image_url
-            if image_url:
-                if not d.get("photo_urls"):
-                    d["photo_urls"] = [image_url]
-                if not d.get("photos"):
-                    d["photos"] = [image_url]
-            created = d.get("created_at")
-            if created and not isinstance(created, str):
-                try:
-                    d["created_at"] = created.isoformat()
-                except Exception:
-                    d["created_at"] = str(created)
-            d["source"] = "listing"
-            d["target_type"] = "listing"
-            d["title"] = (
-                d.get("title")
-                or d.get("sub_category")
-                or d.get("main_category")
-                or "ንብረት"
-            )
-            items.append(d)
-            if len(items) >= lim:
+        cur.execute(
+            """
+            SELECT * FROM listings
+            WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
+              AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT')
+                   OR COALESCE(req_type,'') = '')
+            ORDER BY id DESC
+            LIMIT 250
+            """
+        )
+        for r in cur.fetchall() or []:
+            d = _normalize_listing_row(dict(r), source="listing")
+            if _listing_matches_intent(d, intent):
+                d["_score"] = score_listing_for_user(d, {
+                    "categories": [intent.get("category")] if intent.get("category") else [],
+                    "budget_min": intent.get("price_min") or 0,
+                    "budget_max": intent.get("price_max") or 999999999,
+                })
+                out.append(d)
+            if len(out) >= limit * 3:
                 break
+        out.sort(key=lambda x: (-int(x.get("_score") or 0), -(x.get("id") or 0)))
+        return out[:limit]
     except Exception as e:
-        logger.error("fetch_for_you_feed: %s", e, exc_info=True)
+        logger.error("search_listings_by_intent: %s", e, exc_info=True)
+        return []
     finally:
         if conn:
             try:
                 conn.close()
             except Exception:
                 pass
+
+
+def search_ethiopia_vehicles_by_intent(intent: Dict[str, Any], limit: int = 40) -> List[Dict[str, Any]]:
+    """Query Adika Clean Market catalog `ethiopia_vehicles`."""
+    from models import get_db_connection
+    conn = None
+    out: List[Dict[str, Any]] = []
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = _ph()
+        brand = (intent.get("brand") or "").strip()
+        model = (intent.get("model") or "").strip()
+        keywords = intent.get("keywords") or []
+        # Broad fetch then filter — table is small catalog
+        try:
+            cur.execute("SELECT * FROM ethiopia_vehicles ORDER BY id DESC LIMIT 400")
+        except Exception:
+            return []
+        for r in cur.fetchall() or []:
+            d = dict(r)
+            d = _normalize_listing_row(d, source="clean_market")
+            # Map catalog fields into listing-like shape for UI
+            d["id"] = d.get("id")
+            d["main_category"] = d.get("category") or "መኪና"
+            d["category"] = d.get("category") or "መኪና"
+            d["description"] = d.get("core_advantage") or d.get("primary_use_case") or ""
+            d["price"] = d.get("current_price_range_etb") or ""
+            d["title"] = d.get("name") or d.get("full_model") or d.get("model_key") or "Adika Clean Market"
+            d["is_clean_market"] = True
+            if _listing_matches_intent(d, intent) or _vehicle_soft_match(d, brand, model, keywords):
+                score = 0
+                blob = " ".join(str(d.get(k) or "") for k in ("name", "full_model", "brand", "model_key", "category")).lower()
+                if brand and brand.lower() in blob:
+                    score += 12
+                if model and model.lower() in blob:
+                    score += 14
+                if intent.get("category") == "መኪና":
+                    score += 4
+                d["_score"] = score
+                out.append(d)
+        out.sort(key=lambda x: (-int(x.get("_score") or 0), str(x.get("name") or "")))
+        return out[:limit]
+    except Exception as e:
+        logger.error("search_ethiopia_vehicles_by_intent: %s", e, exc_info=True)
+        return []
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def _vehicle_soft_match(d: Dict[str, Any], brand: str, model: str, keywords: List[str]) -> bool:
+    blob = " ".join(str(d.get(k) or "") for k in ("name", "full_model", "brand", "model_key", "category", "primary_use_case")).lower()
+    if brand and brand.lower() in blob:
+        return True
+    if model and model.lower() in blob:
+        return True
+    hits = 0
+    for kw in (keywords or [])[:8]:
+        if len(kw) > 2 and kw.lower() in blob:
+            hits += 1
+    return hits >= 2
+
+
+def unified_smart_search(query: str = "", intent: Optional[Dict[str, Any]] = None, limit: int = 24) -> Dict[str, Any]:
+    """
+    Hybrid AI search across marketplace `listings` AND catalog `ethiopia_vehicles`.
+    Every item is tagged: source = "listing" | "clean_market".
+    """
+    intent = intent or extract_search_intent(query or "")
+    # Default category to cars when brand/model present
+    if not intent.get("category") and (intent.get("brand") or intent.get("model")):
+        intent["category"] = "መኪና"
+
+    listings: List[Dict[str, Any]] = []
+    catalog: List[Dict[str, Any]] = []
+    try:
+        listings = search_listings_by_intent(intent, limit=limit) or []
+    except Exception as e:
+        logger.error("unified listings: %s", e, exc_info=True)
+    try:
+        catalog = search_ethiopia_vehicles_by_intent(intent, limit=limit) or []
+    except Exception as e:
+        logger.error("unified catalog: %s", e, exc_info=True)
+
+    for it in listings:
+        it["source"] = "listing"
+        it["target_type"] = "listing"
+        it["is_clean_market"] = False
+    for it in catalog:
+        it["source"] = "clean_market"
+        it["target_type"] = "clean_market"
+        it["is_clean_market"] = True
+        if not it.get("price"):
+            it["price"] = it.get("current_price_range_etb") or ""
+
+    # Interleave by score, diversify sources
+    merged: List[Dict[str, Any]] = []
+    i = j = 0
+    while len(merged) < limit and (i < len(listings) or j < len(catalog)):
+        take_listing = True
+        if i >= len(listings):
+            take_listing = False
+        elif j >= len(catalog):
+            take_listing = True
+        else:
+            ls = int(listings[i].get("_score") or 0)
+            cs = int(catalog[j].get("_score") or 0)
+            if cs > ls:
+                take_listing = False
+            elif cs == ls:
+                take_listing = (len(merged) % 2 == 0)
+        if take_listing:
+            merged.append(listings[i]); i += 1
+        else:
+            merged.append(catalog[j]); j += 1
+
     return {
         "success": True,
-        "items": items,
-        "listings": items,
-        "page": 1,
-        "prefs": {},
-        "has_more": False,
-        "counts": {"total": len(items), "listing": len(items), "clean_market": 0},
+        "intent": intent,
+        "items": merged,
+        "listings": [x for x in merged if x.get("source") == "listing"],
+        "clean_market": [x for x in merged if x.get("source") == "clean_market"],
+        "counts": {
+            "total": len(merged),
+            "listing": sum(1 for x in merged if x.get("source") == "listing"),
+            "clean_market": sum(1 for x in merged if x.get("source") == "clean_market"),
+        },
     }
 
 
@@ -1068,3 +1410,567 @@ def query_knowledge_base(topic, category=""):
             except Exception:
                 pass
     return out
+
+
+
+def _extract_image_urls(d: Dict[str, Any]) -> list:
+    urls: List[str] = []
+    def _push(val: Any) -> None:
+        if val is None:
+            return
+        if isinstance(val, (list, tuple)):
+            for x in val:
+                _push(x)
+            return
+        if isinstance(val, dict):
+            for k in ("url", "src", "image", "image_url", "photo", "href"):
+                if val.get(k):
+                    _push(val.get(k))
+            return
+        s = str(val).strip()
+        if not s or s.lower() in ("null", "none", "undefined", "[]", "{}"):
+            return
+        if s.startswith("[") and s.endswith("]"):
+            try:
+                _push(json.loads(s))
+                return
+            except Exception:
+                pass
+        if s.startswith("http://") or s.startswith("https://") or s.startswith("data:image"):
+            if s not in urls:
+                urls.append(s)
+    for key in (
+        "image_url", "image", "photo_url", "photo", "thumbnail", "thumb",
+        "cover_image", "cover", "main_image", "primary_image",
+        "telegram_image", "telegram_photo", "tg_image", "file_url",
+        "media_url", "picture", "pic",
+    ):
+        if d.get(key):
+            _push(d.get(key))
+    for key in ("images", "photos", "photo_urls", "image_urls", "media", "gallery", "attachments"):
+        if d.get(key) is not None:
+            _push(d.get(key))
+    extra = d.get("extra_data")
+    if isinstance(extra, str):
+        try:
+            extra = json.loads(extra)
+        except Exception:
+            extra = None
+    if isinstance(extra, dict):
+        for key in ("image_url", "photo_url", "telegram_image", "images", "photos", "photo_urls"):
+            if extra.get(key) is not None:
+                _push(extra.get(key))
+    return urls
+
+
+def unify_listing_images(d: Dict[str, Any]) -> Dict[str, Any]:
+    out = dict(d or {})
+    urls = _extract_image_urls(out)
+    primary = urls[0] if urls else ""
+    out["image_url"] = primary
+    out["photo_url"] = primary
+    out["images"] = urls
+    out["photos"] = urls
+    if primary and not out.get("thumbnail"):
+        out["thumbnail"] = primary
+    return out
+
+
+def _normalize_listing_row(d: Dict[str, Any], source: str = "listing") -> Dict[str, Any]:
+    out = dict(d or {})
+    out["source"] = source
+    out["target_type"] = source
+    if out.get("extra_data") and isinstance(out["extra_data"], str):
+        try:
+            out["extra_data"] = json.loads(out["extra_data"])
+        except Exception:
+            pass
+    for list_key in ("photos", "images"):
+        if out.get(list_key) and isinstance(out[list_key], str):
+            try:
+                out[list_key] = json.loads(out[list_key])
+            except Exception:
+                pass
+    if out.get("created_at") and not isinstance(out["created_at"], str):
+        try:
+            out["created_at"] = out["created_at"].isoformat()
+        except Exception:
+            out["created_at"] = str(out["created_at"])
+    if not out.get("title"):
+        bits = [
+            out.get("brand") or "",
+            out.get("model") or out.get("full_model") or out.get("name") or "",
+            out.get("sub_category") or "",
+        ]
+        out["title"] = " ".join(x for x in bits if x).strip() or str(out.get("description") or "")[:80]
+    if source == "clean_market" and not out.get("price"):
+        out["price"] = out.get("current_price_range_etb") or out.get("price_range") or ""
+    out["main_category"] = out.get("main_category") or out.get("category") or ""
+    out = unify_listing_images(out)
+    return out
+
+
+
+# =============================================================================
+# HYBRID FYP ENGINE — cold-start preferences + real-time view history
+# =============================================================================
+
+def _is_car_category(val: Any) -> bool:
+    s = str(val or "").strip().lower()
+    if not s:
+        return False
+    if any(x in s for x in ("ቤት", "house", "property", "villa", "apartment", "ንብረት", "condo")):
+        return False
+    return any(x in s for x in ("መኪና", "car", "vehicle", "auto", "sedan", "suv", "pickup"))
+
+
+def _is_house_category(val: Any) -> bool:
+    s = str(val or "").strip().lower()
+    if not s:
+        return False
+    if any(x in s for x in ("መኪና", "car", "vehicle", "auto")):
+        return False
+    return any(x in s for x in ("ቤት", "house", "property", "villa", "apartment", "ንብረት", "condo"))
+
+
+def _active_sell_sql() -> str:
+    return """
+        (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
+        AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
+    """
+
+
+def _car_sql() -> str:
+    return """
+        (
+          LOWER(COALESCE(main_category,'')) IN ('መኪና','car','cars','vehicle','vehicles','auto')
+          OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%car%%'
+          OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%መኪና%%'
+        )
+        AND LOWER(COALESCE(main_category,'')) NOT IN ('ቤት','house','houses','home','property')
+        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%house%%'
+        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%ቤት%%'
+        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%property%%'
+    """
+
+
+def _house_sql() -> str:
+    return """
+        (
+          LOWER(COALESCE(main_category,'')) IN ('ቤት','house','houses','home','property','ንብረት')
+          OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%house%%'
+          OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%ቤት%%'
+          OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%property%%'
+        )
+        AND LOWER(COALESCE(main_category,'')) NOT IN ('መኪና','car','cars','vehicle','vehicles','auto')
+        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%car%%'
+        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%መኪና%%'
+    """
+
+
+def parse_budget_range(raw: Any) -> Dict[str, float]:
+    """Parse budget strings like '1.5M - 4M ETB', 'ከ 1.5M - 4 ሚሊዮን ETB' into min/max."""
+    text = str(raw or "").strip()
+    if not text:
+        return {"minPrice": 0.0, "maxPrice": 0.0}
+
+    def token_to_num(tok: str) -> float:
+        t = tok.strip().lower().replace(",", "").replace("etb", "").replace("ብር", "")
+        t = t.replace("ሚሊዮን", "m").replace("million", "m").replace("ሺህ", "k").replace("thousand", "k")
+        mult = 1.0
+        if t.endswith("m") or "m" in t:
+            mult = 1_000_000.0
+            t = t.replace("m", "")
+        elif t.endswith("k") or "k" in t:
+            mult = 1_000.0
+            t = t.replace("k", "")
+        t = re.sub(r"[^0-9.]", "", t)
+        try:
+            return float(t) * mult if t else 0.0
+        except Exception:
+            return 0.0
+
+    # Range split
+    parts = re.split(r"\s*[-–—toእስከከ]\s*", text, flags=re.I)
+    nums = [token_to_num(p) for p in parts if p.strip()]
+    nums = [n for n in nums if n > 0]
+    if not nums:
+        # single number anywhere
+        n = token_to_num(text)
+        if n > 0:
+            if "+" in text or "በላይ" in text or "above" in text.lower():
+                return {"minPrice": n, "maxPrice": 999_999_999.0}
+            return {"minPrice": 0.0, "maxPrice": n}
+        return {"minPrice": 0.0, "maxPrice": 0.0}
+    if len(nums) == 1:
+        if "+" in text or "በላይ" in text:
+            return {"minPrice": nums[0], "maxPrice": 999_999_999.0}
+        return {"minPrice": 0.0, "maxPrice": nums[0]}
+    return {"minPrice": min(nums[0], nums[1]), "maxPrice": max(nums[0], nums[1])}
+
+
+def _fetch_listings(
+    limit: int = 40,
+    category: str = "",
+    min_price: float = 0.0,
+    max_price: float = 0.0,
+    exclude_ids: Optional[List[int]] = None,
+) -> List[Dict[str, Any]]:
+    """Newest active SELL listings with optional category + budget filters."""
+    from models import get_db_connection, is_postgres
+
+    limit = max(1, min(int(limit or 40), 80))
+    exclude_ids = exclude_ids or []
+    rows: List[Dict[str, Any]] = []
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = _ph()
+        try:
+            pg = bool(is_postgres())
+        except Exception:
+            pg = False
+
+        cat = str(category or "").strip().lower()
+        want_cars = cat in ("cars", "car", "መኪና", "vehicle", "vehicles")
+        want_houses = cat in ("houses", "house", "ቤት", "property", "properties", "ንብረት")
+
+        where = _active_sell_sql()
+        if want_cars:
+            where += " AND " + _car_sql()
+        elif want_houses:
+            where += " AND " + _house_sql()
+
+        params: List[Any] = []
+        # Price filter only when max is a real cap
+        if max_price and 0 < max_price < 999_999_999:
+            # price may be text — filter in Python for portability; SQL soft filter when numeric
+            pass
+
+        order = (
+            "ORDER BY COALESCE(created_at, TIMESTAMP '1970-01-01') DESC, id DESC"
+            if pg
+            else "ORDER BY COALESCE(created_at, '') DESC, id DESC"
+        )
+        sql = f"SELECT * FROM listings WHERE {where} {order} LIMIT {p}"
+        try:
+            cur.execute(sql, (limit * 3,))  # over-fetch for price filter
+        except Exception:
+            sql2 = f"SELECT * FROM listings WHERE {where} ORDER BY id DESC LIMIT {p}"
+            cur.execute(sql2, (limit * 3,))
+
+        ex = set(int(x) for x in exclude_ids if x is not None)
+        for r in cur.fetchall() or []:
+            d = _normalize_listing_row(dict(r), source="listing")
+            try:
+                lid = int(d.get("id") or 0)
+            except Exception:
+                lid = 0
+            if lid and lid in ex:
+                continue
+            mc = d.get("main_category") or d.get("category") or ""
+            if want_cars and _is_house_category(mc):
+                continue
+            if want_houses and _is_car_category(mc):
+                continue
+            price = _parse_price(d.get("price"))
+            if max_price and 0 < max_price < 999_999_999 and price > 0:
+                if price > max_price:
+                    continue
+                if min_price > 0 and price < min_price:
+                    continue
+            rows.append(d)
+            if len(rows) >= limit:
+                break
+    except Exception as e:
+        logger.error("_fetch_listings: %s", e, exc_info=True)
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    return rows
+
+
+def _load_listings_by_ids(ids: List[int]) -> List[Dict[str, Any]]:
+    if not ids:
+        return []
+    from models import get_db_connection
+
+    out: List[Dict[str, Any]] = []
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        p = _ph()
+        # Preserve order of ids
+        for lid in ids:
+            try:
+                cur.execute(f"SELECT * FROM listings WHERE id = {p} LIMIT 1", (int(lid),))
+                r = cur.fetchone()
+                if r:
+                    out.append(_normalize_listing_row(dict(r), source="listing"))
+            except Exception:
+                continue
+    except Exception as e:
+        logger.warning("_load_listings_by_ids: %s", e)
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    return out
+
+
+def _similar_to_seed(
+    seed: Dict[str, Any],
+    limit: int = 12,
+    exclude_ids: Optional[List[int]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Same spirit as product-detail 'ተቀራራቢ / Similar Items':
+    same category, nearby price band, newest first.
+    """
+    exclude_ids = list(exclude_ids or [])
+    try:
+        seed_id = int(seed.get("id") or 0)
+        if seed_id:
+            exclude_ids.append(seed_id)
+    except Exception:
+        pass
+
+    mc = seed.get("main_category") or seed.get("category") or ""
+    if _is_house_category(mc):
+        cat = "houses"
+    else:
+        cat = "cars"
+
+    seed_price = _parse_price(seed.get("price"))
+    min_p = 0.0
+    max_p = 0.0
+    if seed_price > 0:
+        min_p = seed_price * 0.55
+        max_p = seed_price * 1.55
+
+    return _fetch_listings(
+        limit=limit,
+        category=cat,
+        min_price=min_p,
+        max_price=max_p if max_p > 0 else 0.0,
+        exclude_ids=exclude_ids,
+    )
+
+
+def fetch_for_you_feed(
+    user_id: int = 0,
+    limit: int = 24,
+    page: int = 1,
+    category: str = "",
+    recently_viewed_ids: Optional[List[int]] = None,
+    last_category: str = "",
+    last_price: Any = None,
+    budget_range: str = "",
+    main_category: str = "",
+) -> Dict[str, Any]:
+    """
+    HYBRID FYP:
+      STEP 1 Cold start  — user_preferences main_category + budget_range
+      STEP 2 Real-time   — recently_viewed_ids / last_category / last_price override
+      STEP 3 Fallback    — newest cars + houses by created_at DESC
+
+    Every item is image-normalized (image_url || images[0] || photo_url || telegram_image).
+    """
+    uid = int(user_id or 0)
+    limit = max(1, min(int(limit or 24), 60))
+    page = max(1, int(page or 1))
+    viewed = []
+    for x in (recently_viewed_ids or []):
+        try:
+            viewed.append(int(x))
+        except Exception:
+            pass
+    viewed = list(dict.fromkeys(viewed))  # unique, preserve order
+
+    # ---- Load saved preferences (cold start) ----
+    prefs: Dict[str, Any] = {}
+    try:
+        if uid:
+            prefs = get_user_preferences(uid) or {}
+    except Exception:
+        prefs = {}
+
+    pref_cat = (
+        main_category
+        or category
+        or (prefs.get("categories") or [None])[0]
+        or prefs.get("category")
+        or prefs.get("main_category")
+        or ""
+    )
+    pref_budget_raw = (
+        budget_range
+        or prefs.get("budget")
+        or prefs.get("budget_range")
+        or prefs.get("budgetRange")
+        or ""
+    )
+    budget = parse_budget_range(pref_budget_raw)
+    if not budget.get("maxPrice") and prefs.get("budget_max"):
+        try:
+            budget["maxPrice"] = float(prefs.get("budget_max") or 0)
+            budget["minPrice"] = float(prefs.get("budget_min") or 0)
+        except Exception:
+            pass
+
+    # ---- STEP 2: real-time behavioral override ----
+    behavior_cat = last_category or ""
+    behavior_price = _parse_price(last_price) if last_price is not None else 0.0
+    mode = "fallback_newest"
+    items: List[Dict[str, Any]] = []
+    exclude = viewed[:]  # don't re-show just-viewed at top as duplicates later
+
+    if viewed or behavior_cat or behavior_price > 0:
+        mode = "realtime_behavior"
+        # Load viewed seeds for similar-items expansion
+        seeds = _load_listings_by_ids(viewed[:8])
+        if not seeds and behavior_cat:
+            # Synthetic seed from last_category + last_price
+            seeds = [{
+                "id": 0,
+                "main_category": behavior_cat,
+                "category": behavior_cat,
+                "price": behavior_price or None,
+            }]
+        similar: List[Dict[str, Any]] = []
+        seen = set(exclude)
+        for seed in seeds:
+            for s in _similar_to_seed(seed, limit=max(8, limit // 2), exclude_ids=list(seen)):
+                try:
+                    sid = int(s.get("id") or 0)
+                except Exception:
+                    sid = 0
+                if sid and sid in seen:
+                    continue
+                if sid:
+                    seen.add(sid)
+                similar.append(s)
+        # Prefer similar; if thin, fill with category+budget cold start
+        items = similar
+        if len(items) < limit:
+            cat = behavior_cat or pref_cat
+            if _is_house_category(cat):
+                cat_key = "houses"
+            elif _is_car_category(cat) or cat:
+                cat_key = "cars" if (_is_car_category(cat) or not _is_house_category(cat)) else ""
+            else:
+                cat_key = ""
+            if behavior_price > 0:
+                min_p = behavior_price * 0.5
+                max_p = behavior_price * 1.6
+            else:
+                min_p = float(budget.get("minPrice") or 0)
+                max_p = float(budget.get("maxPrice") or 0)
+            filler = _fetch_listings(
+                limit=limit,
+                category=cat_key,
+                min_price=min_p,
+                max_price=max_p,
+                exclude_ids=list(seen),
+            )
+            for f in filler:
+                try:
+                    fid = int(f.get("id") or 0)
+                except Exception:
+                    fid = 0
+                if fid and fid in seen:
+                    continue
+                if fid:
+                    seen.add(fid)
+                items.append(f)
+                if len(items) >= limit * 2:
+                    break
+
+    elif pref_cat or budget.get("maxPrice"):
+        # ---- STEP 1: cold start from preferences ----
+        mode = "cold_start_prefs"
+        if _is_house_category(pref_cat):
+            cat_key = "houses"
+        elif _is_car_category(pref_cat) or str(pref_cat).strip():
+            cat_key = "cars" if (_is_car_category(pref_cat) or str(pref_cat) in ("መኪና", "Cars", "cars")) else (
+                "houses" if _is_house_category(pref_cat) else ""
+            )
+            if not cat_key:
+                # raw mapping
+                pl = str(pref_cat).lower()
+                if any(x in pl for x in ("ቤት", "house")):
+                    cat_key = "houses"
+                elif any(x in pl for x in ("መኪና", "car")):
+                    cat_key = "cars"
+        else:
+            cat_key = ""
+        items = _fetch_listings(
+            limit=limit * 2,
+            category=cat_key,
+            min_price=float(budget.get("minPrice") or 0),
+            max_price=float(budget.get("maxPrice") or 0),
+            exclude_ids=exclude,
+        )
+
+    else:
+        # ---- STEP 3: fallback newest cars + houses 50/50 ----
+        mode = "fallback_newest"
+        half = max(1, limit)
+        cars = _fetch_listings(limit=half, category="cars", exclude_ids=exclude)
+        houses = _fetch_listings(limit=half, category="houses", exclude_ids=exclude)
+
+        def _ck(d: Dict[str, Any]) -> str:
+            for k in ("created_at", "created", "updated_at"):
+                if d.get(k):
+                    return str(d.get(k))
+            try:
+                return f"{int(d.get('id') or 0):012d}"
+            except Exception:
+                return "0"
+
+        merged = cars + houses
+        merged.sort(key=_ck, reverse=True)
+        items = merged
+
+    # Page slice
+    offset = max(0, (page - 1) * limit)
+    window = items
+    page_items = window[offset: offset + limit]
+
+    # Final unified image schema
+    page_items = [unify_listing_images(x) for x in page_items]
+
+    return {
+        "success": True,
+        "items": page_items,
+        "listings": page_items,
+        "clean_market": [],
+        "page": page,
+        "limit": limit,
+        "prefs": prefs,
+        "intent": {
+            "category": pref_cat or last_category or "",
+            "budget_range": pref_budget_raw,
+            "minPrice": budget.get("minPrice") or 0,
+            "maxPrice": budget.get("maxPrice") or 0,
+            "last_category": last_category or "",
+            "last_price": behavior_price,
+            "viewed_count": len(viewed),
+        },
+        "has_more": len(window) > offset + limit,
+        "mode": mode,
+        "user_id": uid,
+        "counts": {
+            "total": len(page_items),
+            "listing": len(page_items),
+            "clean_market": 0,
+        },
+    }
+
