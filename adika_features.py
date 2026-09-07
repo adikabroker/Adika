@@ -624,19 +624,8 @@ def score_listing_for_user(item: Dict[str, Any], prefs: Dict[str, Any]) -> int:
     return score
 
 
-def _category_bucket(raw: Any) -> str:
-    s = str(raw or "").lower().strip()
-    if not s:
-        return "other"
-    if any(tok in s for tok in ("ቤት", "house", "home", "apartment", "property", "ቪላ", "አፓርታ", "መሬት", "land", "condo")):
-        return "house"
-    if any(tok in s for tok in ("መኪና", "car", "vehicle", "auto", "truck", "toyota", "hyundai", "ቶዮታ")):
-        return "car"
-    return "other"
-
-
-def _first_image_url(item: Dict[str, Any]) -> str:
-    """Same photo mapping used by Similar Items cards (manual posts + Telegram scrapes)."""
+def _unify_image_url(item):
+    """Primary image: image_url -> images[0] -> photo_url -> telegram_image."""
     extra = item.get("extra_data") or {}
     if isinstance(extra, str):
         try:
@@ -646,342 +635,99 @@ def _first_image_url(item: Dict[str, Any]) -> str:
     if not isinstance(extra, dict):
         extra = {}
 
-    candidates: List[Any] = [
-        item.get("image_url"),
-        item.get("photo_url"),
-        item.get("cover_url"),
-        item.get("thumbnail"),
-        item.get("photo_id"),
-        item.get("photo_urls"),
-        item.get("photos"),
-        item.get("listing_photos"),
-        extra.get("image_url"),
-        extra.get("photo_url"),
-        extra.get("photos"),
-        extra.get("photo_urls"),
-        extra.get("images"),
-        extra.get("telegram_file_id"),
-        extra.get("file_id"),
-    ]
-    for c in candidates:
-        if not c:
-            continue
-        if isinstance(c, list) and c:
-            first = c[0]
+    def _from(val):
+        if not val:
+            return ""
+        if isinstance(val, list) and val:
+            first = val[0]
             if isinstance(first, dict):
-                url = first.get("url") or first.get("src") or first.get("file_id") or ""
-            else:
-                url = str(first)
-            if url:
-                return str(url)
-        if isinstance(c, dict):
-            url = c.get("url") or c.get("src") or c.get("file_id") or ""
-            if url:
-                return str(url)
-        s = str(c).strip()
-        if s and s not in ("None", "null", "[]", "{}"):
+                return str(first.get("url") or first.get("src") or first.get("file_id") or "")
+            return str(first)
+        if isinstance(val, dict):
+            return str(val.get("url") or val.get("src") or val.get("file_id") or "")
+        s = str(val).strip()
+        if s and s.lower() not in ("none", "null", "[]", "{}"):
             return s
+        return ""
+
+    for key in (
+        "image_url",
+        "images",
+        "photo_url",
+        "telegram_image",
+        "photo_urls",
+        "photos",
+        "photo_id",
+        "cover_url",
+        "thumbnail",
+    ):
+        url = _from(item.get(key)) or _from(extra.get(key))
+        if url:
+            return url
     return ""
 
 
-def normalize_listing_card(it: Dict[str, Any], source: str = "listing") -> Dict[str, Any]:
-    """1:1 card fields matching Similar Items / recommendations payload."""
-    extra = it.get("extra_data") or {}
-    if isinstance(extra, str):
-        try:
-            extra = json.loads(extra)
-        except Exception:
-            extra = {}
-    if not isinstance(extra, dict):
-        extra = {}
-    image_url = _first_image_url(it)
-    created = it.get("created_at")
-    if created and not isinstance(created, str):
-        try:
-            created = created.isoformat()
-        except Exception:
-            created = str(created)
-    title = (
-        it.get("title")
-        or it.get("sub_category")
-        or extra.get("title")
-        or extra.get("brand")
-        or extra.get("model")
-        or it.get("main_category")
-        or "ንብረት"
-    )
-    photo_urls = it.get("photo_urls") or it.get("photos") or extra.get("photo_urls") or extra.get("photos")
-    if image_url and not photo_urls:
-        photo_urls = [image_url]
-    out = dict(it)
-    out.update({
-        "id": it.get("id"),
-        "title": title,
-        "main_category": it.get("main_category") or it.get("category") or extra.get("category"),
-        "sub_category": it.get("sub_category") or extra.get("model") or extra.get("car_model"),
-        "category": it.get("category") or it.get("main_category"),
-        "price": it.get("price") or extra.get("price"),
-        "image_url": image_url,
-        "photo_urls": photo_urls or it.get("photo_id"),
-        "listing_photos": it.get("photo_id") or photo_urls,
-        "photos": photo_urls,
-        "created_at": created or "",
-        "extra_data": extra,
-        "req_type": it.get("req_type"),
-        "action_type": it.get("action_type"),
-        "description": str(it.get("description") or extra.get("description") or "")[:400],
-        "source": source,
-        "target_type": source,
-    })
-    return out
-
-
-def fetch_similar_listings(
-    *,
-    category: str = "",
-    sub_category: str = "",
-    price: Any = 0,
-    exclude_id: Any = None,
-    view_history: Optional[List[Dict[str, Any]]] = None,
-    limit: int = 24,
-) -> Tuple[List[Dict[str, Any]], str, str]:
-    """
-    Exact Similar Items / /api/recommendations query:
-    model-focus → price-focus (±15%) → category → created_at DESC fallback.
-    """
-    from models import get_db_connection, is_postgres
-    from collections import Counter
-
-    history = list(view_history or [])
-    like = "ILIKE" if is_postgres() else "LIKE"
-    p = _ph()
-    intent = "recent"
-    intent_label = "የቅርብ ጊዜ ዝርዝሮች"
-
-    prices = [_parse_price(h.get("price")) for h in history if h]
-    prices = [x for x in prices if x > 0]
-    if price:
-        cur_p = _parse_price(price)
-        if cur_p > 0:
-            prices.append(cur_p)
-    categories = [str(h.get("category") or "") for h in history if h and h.get("category")]
-    if category:
-        categories.insert(0, str(category))
-    models = [str(h.get("model") or h.get("brand") or "").strip() for h in history if h]
-    if sub_category:
-        models.insert(0, str(sub_category).strip())
-    models = [m for m in models if m]
-
-    avg_price = sum(prices) / len(prices) if prices else _parse_price(price)
-    price_focus = False
-    model_focus = False
-    if len(prices) >= 2:
-        mn, mx = min(prices), max(prices)
-        mid = (mn + mx) / 2 or 1
-        if (mx - mn) / mid <= 0.15:
-            price_focus = True
-    mc = Counter([m.lower() for m in models])
-    top_model = None
-    if mc:
-        top_model, cnt = mc.most_common(1)[0]
-        if cnt >= 1 and sub_category:
-            model_focus = True
-        if cnt >= 2:
-            model_focus = True
-    target_cat = None
-    if categories:
-        target_cat = Counter(categories).most_common(1)[0][0]
-    elif category:
-        target_cat = category
-
-    where = [
-        "(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))"
-    ]
-    params: List[Any] = []
-    if exclude_id:
-        where.append(f"id <> {p}")
-        params.append(exclude_id)
-
-    if model_focus and top_model:
-        intent = "model"
-        intent_label = "በተመሳሳይ ሞዴል/ብራንድ"
-        where.append(
-            f"(CAST(COALESCE(sub_category,'') AS TEXT) {like} {p} "
-            f"OR CAST(COALESCE(description,'') AS TEXT) {like} {p} "
-            f"OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p})"
-        )
-        params.extend([f"%{top_model}%"] * 3)
-    elif price_focus and avg_price > 0:
-        intent = "price"
-        intent_label = "በተመሳሳይ የዋጋ ክልል"
-        if target_cat:
-            where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
-            params.extend([target_cat, f"%{target_cat}%"])
-        lo = int(avg_price * 0.85)
-        hi = int(avg_price * 1.15)
-        try:
-            if is_postgres():
-                where.append(
-                    f"(NULLIF(regexp_replace(CAST(COALESCE(price,'') AS TEXT), '[^0-9]', '', 'g'), '')::BIGINT "
-                    f"BETWEEN {p} AND {p})"
-                )
-                params.extend([lo, hi])
-        except Exception:
-            pass
-    elif target_cat:
-        intent = "category"
-        intent_label = "በተመሳሳይ ምድብ"
-        where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
-        params.extend([target_cat, f"%{target_cat}%"])
-
+def fetch_for_you_feed(user_id: int = 0, limit: int = 30, page: int = 1) -> Dict[str, Any]:
+    """Simple FYP: newest listings only. No history, scoring, or dual-table merge."""
+    from models import get_db_connection
     items: List[Dict[str, Any]] = []
     conn = None
+    lim = 30 if not limit else max(1, min(int(limit), 30))
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        where_sql = " AND ".join(where)
-        try:
-            cur.execute(
-                f"SELECT * FROM listings WHERE {where_sql} ORDER BY created_at DESC, id DESC LIMIT {p}",
-                list(params) + [max(40, limit * 3)],
+        cur.execute("SELECT * FROM listings ORDER BY created_at DESC LIMIT 30")
+        rows = cur.fetchall() or []
+        for r in rows:
+            d = dict(r) if not isinstance(r, dict) else dict(r)
+            extra = d.get("extra_data")
+            if isinstance(extra, str):
+                try:
+                    extra = json.loads(extra)
+                    d["extra_data"] = extra
+                except Exception:
+                    extra = {}
+            image_url = _unify_image_url(d)
+            d["image_url"] = image_url
+            if image_url:
+                if not d.get("photo_urls"):
+                    d["photo_urls"] = [image_url]
+                if not d.get("photos"):
+                    d["photos"] = [image_url]
+            created = d.get("created_at")
+            if created and not isinstance(created, str):
+                try:
+                    d["created_at"] = created.isoformat()
+                except Exception:
+                    d["created_at"] = str(created)
+            d["source"] = "listing"
+            d["target_type"] = "listing"
+            d["title"] = (
+                d.get("title")
+                or d.get("sub_category")
+                or d.get("main_category")
+                or "ንብረት"
             )
-            rows = cur.fetchall() or []
-        except Exception as qe:
-            logger.warning("similar listings query: %s", qe)
-            cur.execute(
-                f"SELECT * FROM listings ORDER BY created_at DESC, id DESC LIMIT {p}",
-                (max(24, limit),),
-            )
-            rows = cur.fetchall() or []
-            intent = "recent"
-            intent_label = "የቅርብ ጊዜ ዝርዝሮች"
-
-        lo = avg_price * 0.65 if avg_price else 0
-        hi = avg_price * 1.35 if avg_price else 0
-        bucket = _category_bucket(target_cat or category)
-        for row in rows:
-            d = dict(row) if not isinstance(row, dict) else dict(row)
-            if exclude_id and str(d.get("id")) == str(exclude_id):
-                continue
-            cat = d.get("main_category") or d.get("category") or ""
-            if bucket in ("car", "house") and _category_bucket(cat) not in (bucket, "other"):
-                continue
-            pr = _parse_price(d.get("price"))
-            if avg_price and lo and hi and pr:
-                if intent == "price" and not (avg_price * 0.85 <= pr <= avg_price * 1.15 * 1.2):
-                    continue
-                if intent in ("category", "model") and not (lo <= pr <= hi * 1.25):
-                    # keep some outside band for feed density
-                    pass
-            items.append(normalize_listing_card(d, "listing"))
-
-        if len(items) < limit:
-            try:
-                cur.execute(
-                    f"SELECT * FROM listings ORDER BY created_at DESC, id DESC LIMIT {p}",
-                    (limit * 2,),
-                )
-                for row in cur.fetchall() or []:
-                    d = dict(row) if not isinstance(row, dict) else dict(row)
-                    if exclude_id and str(d.get("id")) == str(exclude_id):
-                        continue
-                    if any(str(x.get("id")) == str(d.get("id")) for x in items):
-                        continue
-                    items.append(normalize_listing_card(d, "listing"))
-                    if len(items) >= limit:
-                        break
-            except Exception:
-                pass
+            items.append(d)
+            if len(items) >= lim:
+                break
     except Exception as e:
-        logger.error("fetch_similar_listings: %s", e, exc_info=True)
+        logger.error("fetch_for_you_feed: %s", e, exc_info=True)
     finally:
         if conn:
             try:
                 conn.close()
             except Exception:
                 pass
-    return items[:limit], intent, intent_label
-
-
-def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str, Any]:
-    """
-    Main FYP uses the same Similar Items / recommendations algorithm:
-    category + model + ±15–35% price band, then created_at DESC fallback.
-    Card fields (image_url, photo_urls, extra_data) match detail-page recos 1:1.
-    """
-    prefs = get_user_preferences(user_id) if user_id else {
-        "categories": ["መኪና", "ቤት"],
-        "budget_min": 0,
-        "budget_max": 999999999,
-    }
-    cats = prefs.get("categories") or ["መኪና"]
-    primary_cat = ""
-    for c in cats:
-        if c:
-            primary_cat = str(c)
-            break
-    history: List[Dict[str, Any]] = []
-    for c in cats:
-        if c:
-            history.append({
-                "category": c,
-                "price": prefs.get("budget_max") or prefs.get("budget_min") or 0,
-                "model": "",
-            })
-    mid_price = 0
-    bmin = _parse_price(prefs.get("budget_min"))
-    bmax = _parse_price(prefs.get("budget_max"))
-    if bmin and bmax and bmax < 999999999:
-        mid_price = (bmin + bmax) / 2
-    elif bmax and bmax < 999999999:
-        mid_price = bmax * 0.85
-    elif bmin:
-        mid_price = bmin * 1.15
-
-    pool_limit = max(limit * page, limit)
-    items, intent, intent_label = fetch_similar_listings(
-        category=primary_cat,
-        sub_category="",
-        price=mid_price,
-        view_history=history,
-        limit=pool_limit + limit,
-    )
-    # Score with existing pref scorer so budget still applies
-    scored = []
-    for d in items:
-        sc = score_listing_for_user(d, prefs)
-        price = _parse_price(d.get("price"))
-        if price > 0 and bmax and bmax < 999999999 and not (bmin <= price <= bmax):
-            # keep similar-band items even if slightly outside saved budget
-            sc -= 2
-        scored.append((sc, d))
-    scored.sort(key=lambda x: (-x[0], str(x[1].get("created_at") or ""), -(x[1].get("id") or 0) if isinstance(x[1].get("id"), int) else 0))
-    offset = max(0, (page - 1) * limit)
-    slice_ = scored[offset : offset + limit]
-    out_items = []
-    for sc, d in slice_:
-        d["_score"] = sc
-        d["source"] = d.get("source") or "listing"
-        d["target_type"] = d["source"]
-        out_items.append(d)
-
     return {
         "success": True,
-        "items": out_items,
-        "listings": out_items,
-        "clean_market": [],
-        "page": page,
-        "prefs": prefs,
-        "intent": {"kind": intent, "label": intent_label, "category": primary_cat},
-        "intent_label": intent_label,
-        "has_more": len(scored) > offset + limit,
-        "counts": {
-            "total": len(out_items),
-            "listing": len(out_items),
-            "clean_market": 0,
-        },
+        "items": items,
+        "listings": items,
+        "page": 1,
+        "prefs": {},
+        "has_more": False,
+        "counts": {"total": len(items), "listing": len(items), "clean_market": 0},
     }
-
 
 
 def ensure_favorites_and_alerts_tables():
