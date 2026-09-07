@@ -503,19 +503,63 @@ def verify_telegram_otp(telegram_id: int, code: str, purpose: str = "verify") ->
 
 def save_user_preferences(
     user_id: int,
-    categories: List[str],
+    categories: List[str] = None,
     budget_min: int = 0,
     budget_max: int = 999_999_999,
+    budget: str = "",
+    budget_range: str = "",
+    min_price: int = None,
+    max_price: int = None,
+    **kwargs,
 ) -> bool:
+    """
+    Upsert user_preferences with CLEAN INTEGER bounds.
+    Accepts either numeric min/max or a text range like "ከ 1.5M - 4 ሚሊዮን ETB".
+    Stores: budget_min, budget_max (and min_price/max_price aliases when columns exist).
+    """
     from models import get_db_connection, is_postgres
     ensure_feature_tables()
+
+    # Prefer explicit integer args
+    bmin = int(budget_min or 0)
+    bmax = int(budget_max or 0) if budget_max not in (None, "") else 0
+    if min_price is not None:
+        try:
+            bmin = int(min_price)
+        except Exception:
+            pass
+    if max_price is not None:
+        try:
+            bmax = int(max_price)
+        except Exception:
+            pass
+
+    # Parse text budget when integers missing / default
+    raw = budget or budget_range or kwargs.get("budget_text") or ""
+    if raw and (bmax <= 0 or bmax >= 999_999_999):
+        parsed = parse_budget_range(raw)
+        if parsed.get("minPrice"):
+            bmin = int(parsed["minPrice"])
+        if parsed.get("maxPrice"):
+            bmax = int(parsed["maxPrice"])
+
+    if bmax <= 0:
+        bmax = 999_999_999
+    bmin = max(0, int(bmin))
+    bmax = max(0, int(bmax))
+
+    cats = categories or kwargs.get("categories") or []
+    if isinstance(cats, str):
+        cats = [c.strip() for c in cats.split(",") if c.strip()]
+
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         p = _ph()
-        cats = json.dumps(categories or [], ensure_ascii=False)
+        cats_json = json.dumps(cats or [], ensure_ascii=False)
         if is_postgres():
+            # Core columns
             cur.execute(
                 f"""
                 INSERT INTO user_preferences (user_id, categories, budget_min, budget_max, onboarding_done, updated_at)
@@ -527,17 +571,51 @@ def save_user_preferences(
                   onboarding_done=TRUE,
                   updated_at=NOW()
                 """,
-                (int(user_id), cats, int(budget_min or 0), int(budget_max or 999999999)),
+                (int(user_id), cats_json, bmin, bmax),
             )
+            # Optional alias columns min_price / max_price / budget text
+            for col, val in (
+                ("min_price", bmin),
+                ("max_price", bmax),
+                ("budget", str(raw or "")[:120]),
+                ("budget_range", str(raw or "")[:120]),
+            ):
+                try:
+                    cur.execute(
+                        f"""
+                        UPDATE user_preferences SET {col} = {p}
+                        WHERE user_id = {p}
+                        """,
+                        (val, int(user_id)),
+                    )
+                except Exception:
+                    pass
+            try:
+                conn.commit()
+            except Exception:
+                pass
         else:
             cur.execute(
                 f"""
                 INSERT OR REPLACE INTO user_preferences (user_id, categories, budget_min, budget_max, onboarding_done)
                 VALUES ({p},{p},{p},{p},1)
                 """,
-                (int(user_id), cats, int(budget_min or 0), int(budget_max or 999999999)),
+                (int(user_id), cats_json, bmin, bmax),
             )
             conn.commit()
+            for col, val in (("min_price", bmin), ("max_price", bmax)):
+                try:
+                    cur.execute(
+                        f"UPDATE user_preferences SET {col} = {p} WHERE user_id = {p}",
+                        (val, int(user_id)),
+                    )
+                    conn.commit()
+                except Exception:
+                    pass
+        logger.info(
+            "save_user_preferences uid=%s cats=%s min=%s max=%s",
+            user_id, cats, bmin, bmax,
+        )
         return True
     except Exception as e:
         logger.error("save_user_preferences: %s", e)
@@ -561,7 +639,14 @@ def get_user_preferences(user_id: int) -> Dict[str, Any]:
         cur.execute(f"SELECT * FROM user_preferences WHERE user_id={p}", (int(user_id),))
         row = cur.fetchone()
         if not row:
-            return {"categories": [], "budget_min": 0, "budget_max": 999999999, "onboarding_done": False}
+            return {
+                "categories": [],
+                "budget_min": 0,
+                "budget_max": 999999999,
+                "min_price": 0,
+                "max_price": 999999999,
+                "onboarding_done": False,
+            }
         d = dict(row)
         cats = d.get("categories") or []
         if isinstance(cats, str):
@@ -569,15 +654,35 @@ def get_user_preferences(user_id: int) -> Dict[str, Any]:
                 cats = json.loads(cats)
             except Exception:
                 cats = []
+        bmin = int(d.get("budget_min") or d.get("min_price") or 0)
+        bmax = int(d.get("budget_max") or d.get("max_price") or 999999999)
+        # If only text budget stored, parse once
+        if (bmax <= 0 or bmax >= 999999999) and (d.get("budget") or d.get("budget_range")):
+            parsed = parse_budget_range(d.get("budget") or d.get("budget_range"))
+            if parsed.get("minPrice"):
+                bmin = int(parsed["minPrice"])
+            if parsed.get("maxPrice"):
+                bmax = int(parsed["maxPrice"])
         return {
             "categories": cats,
-            "budget_min": int(d.get("budget_min") or 0),
-            "budget_max": int(d.get("budget_max") or 999999999),
+            "budget_min": bmin,
+            "budget_max": bmax,
+            "min_price": bmin,
+            "max_price": bmax,
+            "budget": d.get("budget") or d.get("budget_range") or "",
+            "budget_range": d.get("budget_range") or d.get("budget") or "",
             "onboarding_done": bool(d.get("onboarding_done")),
         }
     except Exception as e:
         logger.warning("get_user_preferences: %s", e)
-        return {"categories": [], "budget_min": 0, "budget_max": 999999999, "onboarding_done": False}
+        return {
+            "categories": [],
+            "budget_min": 0,
+            "budget_max": 999999999,
+            "min_price": 0,
+            "max_price": 999999999,
+            "onboarding_done": False,
+        }
     finally:
         if conn:
             try:
@@ -1616,11 +1721,18 @@ def _fetch_listings(
     max_price: float = 0.0,
     exclude_ids: Optional[List[int]] = None,
 ) -> List[Dict[str, Any]]:
-    """Newest active SELL listings with optional category + budget filters."""
+    """
+    Newest active SELL rows from `listings` only.
+    STRICT numeric budget (same idea as Detail-page similar items):
+      CAST(regexp_replace(price,'[^0-9]','','g') AS NUMERIC) BETWEEN min_price AND max_price
+    Python re-check guarantees items above max_price are NEVER returned.
+    """
     from models import get_db_connection, is_postgres
 
     limit = max(1, min(int(limit or 40), 80))
     exclude_ids = exclude_ids or []
+    min_price = float(min_price or 0)
+    max_price = float(max_price or 0)
     rows: List[Dict[str, Any]] = []
     conn = None
     try:
@@ -1643,22 +1755,48 @@ def _fetch_listings(
             where += " AND " + _house_sql()
 
         params: List[Any] = []
-        # Price filter only when max is a real cap
+        # Numeric price expression (Postgres + SQLite-ish fallbacks)
+        if pg:
+            price_expr = "NULLIF(regexp_replace(COALESCE(CAST(price AS TEXT), '0'), '[^0-9]', '', 'g'), '')::NUMERIC"
+        else:
+            # SQLite: strip non-digits poorly — still filter in Python
+            price_expr = "CAST(price AS REAL)"
+
         if max_price and 0 < max_price < 999_999_999:
-            # price may be text — filter in Python for portability; SQL soft filter when numeric
-            pass
+            where += f" AND ({price_expr} IS NOT NULL) AND ({price_expr} <= {p})"
+            params.append(max_price)
+            if min_price > 0:
+                where += f" AND ({price_expr} >= {p})"
+                params.append(min_price)
 
         order = (
             "ORDER BY COALESCE(created_at, TIMESTAMP '1970-01-01') DESC, id DESC"
             if pg
             else "ORDER BY COALESCE(created_at, '') DESC, id DESC"
         )
+        fetch_n = limit * 3
+        params.append(fetch_n)
         sql = f"SELECT * FROM listings WHERE {where} {order} LIMIT {p}"
         try:
-            cur.execute(sql, (limit * 3,))  # over-fetch for price filter
-        except Exception:
-            sql2 = f"SELECT * FROM listings WHERE {where} ORDER BY id DESC LIMIT {p}"
-            cur.execute(sql2, (limit * 3,))
+            cur.execute(sql, tuple(params))
+        except Exception as sql_err:
+            logger.warning("_fetch_listings SQL soft-fallback: %s", sql_err)
+            # Retry without SQL price filter; Python will enforce
+            where2 = _active_sell_sql()
+            if want_cars:
+                where2 += " AND " + _car_sql()
+            elif want_houses:
+                where2 += " AND " + _house_sql()
+            try:
+                cur.execute(
+                    f"SELECT * FROM listings WHERE {where2} {order} LIMIT {p}",
+                    (fetch_n,),
+                )
+            except Exception:
+                cur.execute(
+                    f"SELECT * FROM listings WHERE {where2} ORDER BY id DESC LIMIT {p}",
+                    (fetch_n,),
+                )
 
         ex = set(int(x) for x in exclude_ids if x is not None)
         for r in cur.fetchall() or []:
@@ -1674,12 +1812,18 @@ def _fetch_listings(
                 continue
             if want_houses and _is_car_category(mc):
                 continue
+
+            # STRICT numeric re-check (Detail-page style) — never leak over-budget
             price = _parse_price(d.get("price"))
-            if max_price and 0 < max_price < 999_999_999 and price > 0:
+            if max_price and 0 < max_price < 999_999_999:
+                if price <= 0:
+                    # unknown price: exclude when user set a hard cap
+                    continue
                 if price > max_price:
                     continue
                 if min_price > 0 and price < min_price:
                     continue
+
             rows.append(d)
             if len(rows) >= limit:
                 break
@@ -1819,13 +1963,24 @@ def fetch_for_you_feed(
         or prefs.get("budgetRange")
         or ""
     )
-    budget = parse_budget_range(pref_budget_raw)
-    if not budget.get("maxPrice") and prefs.get("budget_max"):
-        try:
-            budget["maxPrice"] = float(prefs.get("budget_max") or 0)
-            budget["minPrice"] = float(prefs.get("budget_min") or 0)
-        except Exception:
-            pass
+    # Prefer CLEAN integers from user_preferences (Detail-page style)
+    budget = {"minPrice": 0.0, "maxPrice": 0.0}
+    try:
+        bmin = int(prefs.get("min_price") or prefs.get("budget_min") or 0)
+        bmax = int(prefs.get("max_price") or prefs.get("budget_max") or 0)
+        if bmax and bmax < 999_999_999:
+            budget = {"minPrice": float(bmin), "maxPrice": float(bmax)}
+    except Exception:
+        pass
+    if not budget.get("maxPrice") or budget["maxPrice"] >= 999_999_999:
+        parsed = parse_budget_range(pref_budget_raw)
+        if parsed.get("maxPrice"):
+            budget = parsed
+    # Request overrides
+    if budget_range:
+        parsed = parse_budget_range(budget_range)
+        if parsed.get("maxPrice"):
+            budget = parsed
 
     # ---- STEP 2: real-time behavioral override ----
     behavior_cat = last_category or ""
