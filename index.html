@@ -3425,7 +3425,7 @@
 
     var state = window.__adikaState = {
       tab: "marketplace",
-      feedMode: "all", // foryou | all | category
+      feedMode: "foryou", // foryou | all | category
       roleChosen: false,
       category: "",
       q: "",
@@ -11591,6 +11591,54 @@
     setTimeout(startup, 320);
   }
   setTimeout(bindSearch, 800);
+})();
+</script>
+
+
+<script>
+/* MASTER: default tab = ለእርስዎ (For You) + refresh on focus */
+(function () {
+  function activateForYouTab() {
+    try {
+      if (window.state) {
+        state.feedMode = "foryou";
+        state.category = "";
+        state.q = "";
+      }
+    } catch (e) {}
+    try {
+      document.querySelectorAll(".adika-tab, .cat-pill, [data-tab], [data-feed]").forEach(function (el) {
+        el.classList.remove("active");
+        var t = (el.getAttribute("data-tab") || el.getAttribute("data-feed") || el.textContent || "").toLowerCase();
+        if (t.indexOf("for") >= 0 || t.indexOf("ለእርስዎ") >= 0 || t.indexOf("foryou") >= 0 || t.indexOf("fyp") >= 0) {
+          el.classList.add("active");
+        }
+      });
+    } catch (e2) {}
+  }
+  function bootFYP() {
+    activateForYouTab();
+    try {
+      if (typeof window.renderFYP === "function") window.renderFYP();
+      else if (typeof window.loadSmartFYP === "function") window.loadSmartFYP();
+      else if (typeof window.adikaFetchTabFeed === "function") window.adikaFetchTabFeed("for_you");
+    } catch (e3) {}
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () { setTimeout(bootFYP, 400); });
+  } else {
+    setTimeout(bootFYP, 400);
+  }
+  // Real-time-ish refresh when user returns to the Mini App
+  try {
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) {
+        try {
+          if (window.state && state.feedMode === "foryou") bootFYP();
+        } catch (e) {}
+      }
+    });
+  } catch (e4) {}
 })();
 </script>
 
