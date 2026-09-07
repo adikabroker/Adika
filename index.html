@@ -2,9 +2,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<title>Adika Marketplace</title>
 <script>
   window.ADMIN_IDS = window.ADMIN_IDS || [7030641737];
   if (window.ADMIN_IDS.indexOf(7030641737) < 0) window.ADMIN_IDS.push(7030641737);
@@ -102,9 +99,10 @@
 })();
 </script>
 
-  
-  
-  
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Adika Marketplace</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -163,6 +161,7 @@
     #adikaBottomNav, #adikaBottomNav * {
       transition: none !important;
     }
+
 
     /* My Listings cards — full photo, no crop/collapse */
     #myListingsGrid {
@@ -253,49 +252,34 @@
     .promo-slide.is-active .promo-cta { animation: adikaCtaPulse 1.8s ease-in-out .2s infinite; }
     .promo-slide.is-active .promo-icon { animation: adikaLetterIn .5s cubic-bezier(.34,1.56,.64,1) both; }
 
-    /* View badge — ultra tiny */
+    /* View badge — compact elegant (does not obstruct photo) */
     .adika-view-chip,
     .adika-card .adika-view-chip,
     .adika-card .card-views,
     .listing-photo-frame .adika-view-chip {
-      position: absolute !important;
-      bottom: 6px !important;
-      left: 6px !important;
+position: absolute !important;
+      bottom: 8px !important;
+      left: 8px !important;
       top: auto !important;
       right: auto !important;
-      font-size: 8px !important;
-      padding: 1px 4px !important;
-      border-radius: 6px !important;
-      background: rgba(0, 0, 0, 0.45) !important;
-      backdrop-filter: blur(3px) !important;
-      -webkit-backdrop-filter: blur(3px) !important;
-      color: rgba(255, 255, 255, 0.92) !important;
-      border: 0.5px solid rgba(255, 255, 255, 0.18) !important;
+      font-size: 10px !important;
+      padding: 2px 6px !important;
+      border-radius: 10px !important;
+      background: rgba(0, 0, 0, 0.4) !important;
+      backdrop-filter: blur(4px) !important;
+      -webkit-backdrop-filter: blur(4px) !important;
+      color: rgba(255, 255, 255, 0.9) !important;
+      border: 0.5px solid rgba(255, 255, 255, 0.2) !important;
       font-weight: 600 !important;
-      line-height: 1.15 !important;
+      line-height: 1.2 !important;
       z-index: 6 !important;
       box-shadow: none !important;
       display: inline-flex !important;
       align-items: center !important;
-      gap: 1px !important;
-    }
-    #fypFallbackBanner {
-      grid-column: 1 / -1;
-      margin: 0 0 10px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: rgba(15, 23, 42, 0.55);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      color: #f8fafc;
-      font-size: 11px;
-      font-weight: 700;
-      line-height: 1.4;
-      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+      gap: 2px !important;
+      max-width: none !important;
     }
 
-    
     /* FYP Match confidence badge */
     .fyp-match-badge {
       position: absolute;
@@ -367,6 +351,7 @@
       background: linear-gradient(90deg, #0f172a, #0e7490, #16acbd) !important;
       border-bottom: 1px solid rgba(255,255,255,0.12);
     }
+
 
     /* Bulletproof CSS Dual-Class Language Switcher */
     .lang-en { display: none !important; }
@@ -447,6 +432,7 @@
       display: inline-flex; align-items: center; justify-content: center;
     }
     #grid { gap: 8px !important; }
+
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -841,6 +827,7 @@
       display: block;
     }
 
+
     /* Glass chat bubbles */
     .chat-bubble-user {
       margin-left: 2rem; padding: 0.75rem 0.9rem; border-radius: 1.05rem 1.05rem 0.35rem 1.05rem;
@@ -1103,6 +1090,7 @@
     .buyer-request-card .buyer-budget-sub,
     .buyer-request-card .buyer-meta { display: none !important; }
 
+
     /* Full-screen frameless lightbox */
     #adikaImageLightbox {
       position: fixed; inset: 0; z-index: 9999;
@@ -1142,81 +1130,7 @@
       opacity: 0.9;
     }
 
-  
-    /* Adika Clean Market catalog cards — turquoise theme */
-    .adika-card.clean-market-card {
-      box-shadow: 0 10px 28px rgba(8, 145, 178, 0.28);
-      border: 1px solid rgba(34, 211, 238, 0.45);
-    }
-    .adika-card.clean-market-card .card-glass-foot,
-    .adika-card.clean-market-card > div:last-child:not(.relative) {
-      background: rgba(8, 47, 73, 0.55) !important;
-      border-top: 1px solid rgba(34, 211, 238, 0.35) !important;
-    }
-    .clean-market-badge {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      z-index: 12;
-      background: linear-gradient(135deg, #0891b2, #14b8a6);
-      color: #ecfeff;
-      font-size: 9px;
-      font-weight: 900;
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.35);
-      box-shadow: 0 2px 10px rgba(8,145,178,0.4);
-      pointer-events: none;
-    }
-    .listing-source-badge {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      z-index: 11;
-      background: rgba(15,23,42,0.55);
-      color: #e2e8f0;
-      font-size: 8px;
-      font-weight: 800;
-      padding: 2px 7px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.2);
-      pointer-events: none;
-    }
-
   </style>
-
-<script>
-/* ===== Adika Telegram user id helper (FYP personalization) ===== */
-(function () {
-  function getAdikaUserId() {
-    try {
-      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-      if (u && u.id) return String(u.id);
-    } catch (e) {}
-    try {
-      if (window.state && state.userId) return String(state.userId);
-    } catch (e2) {}
-    try {
-      if (typeof getTelegramUserId === "function") {
-        var v = getTelegramUserId();
-        if (v) return String(v);
-      }
-    } catch (e3) {}
-    try {
-      var ls = localStorage.getItem("adika_user_id") || localStorage.getItem("telegram_user_id");
-      if (ls) return String(ls);
-    } catch (e4) {}
-    return "";
-  }
-  window.getAdikaUserId = getAdikaUserId;
-  // Persist when Telegram provides it
-  try {
-    var id = getAdikaUserId();
-    if (id) localStorage.setItem("adika_user_id", id);
-  } catch (e) {}
-})();
-</script>
-
 </head>
 <body class="bg-[#b5eff3] min-h-screen">
   <!-- EMERGENCY: never leave infinite loading spinner -->
@@ -3425,7 +3339,7 @@
 
     var state = window.__adikaState = {
       tab: "marketplace",
-      feedMode: "foryou", // foryou | all | category
+      feedMode: "all", // foryou | all | category
       roleChosen: false,
       category: "",
       q: "",
@@ -5189,7 +5103,7 @@
         urls.push("/api/explorer/listings?" + qs);
       }
       if (useForYou) {
-        urls.push("/api/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + encodeURIComponent((typeof getAdikaUserId==="function"&&getAdikaUserId()) || state.userId || (typeof getTelegramUserId==="function"&&getTelegramUserId()) || "0") + "&telegram_id=" + encodeURIComponent((typeof getAdikaUserId==="function"&&getAdikaUserId()) || state.userId || "0"));
+        urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + encodeURIComponent(state.userId || getTelegramUserId() || "0"));
         urls.push("/api/listings?" + qs);
       }
 
@@ -11087,670 +11001,539 @@
 </script>
 
 
-
-
-
-
-
-
-
-
-
 <script>
-/* ===== Dual-source Smart Search + For-You (listings + ethiopia_vehicles) ===== */
+/* ===== STRICT FYP: budget/category hard filter + default tab ለእርስዎ ===== */
 (function () {
-  "use strict";
-
-  function normalizeHybridItem(it) {
-    if (!it || typeof it !== "object") return null;
-    var src = it.source || it.target_type || "listing";
-    if (it.is_clean_market || it.model_key || it.current_price_range_etb) src = "clean_market";
-    it.source = src;
-    it.target_type = src;
-    if (src === "clean_market") {
-      it.title = it.title || it.name || it.full_model || it.model_key || "Adika Clean Market";
-      it.price = it.price || it.current_price_range_etb || "";
-      it.main_category = it.main_category || it.category || "መኪና";
-      it.description = it.description || it.core_advantage || it.primary_use_case || "";
-      it.photos = it.photos || [];
-      it._cleanMarket = true;
-    }
-    return it;
+  function num(v) {
+    if (v == null || v === "") return 0;
+    if (typeof v === "number") return isFinite(v) ? v : 0;
+    var s = String(v).replace(/,/g, "").trim();
+    // 1.5M / 4M / 1.5ሚሊዮን
+    var mMul = s.match(/^([\d.]+)\s*(m|M|ሚ|ሚሊ|million|ሚሊዮን)/i);
+    if (mMul) return Math.round(parseFloat(mMul[1]) * 1000000);
+    var kMul = s.match(/^([\d.]+)\s*(k|K|ሺ)/i);
+    if (kMul) return Math.round(parseFloat(kMul[1]) * 1000);
+    var n = Number(s.replace(/[^\d.]/g, ""));
+    return isFinite(n) ? n : 0;
   }
 
-  window.adikaNormalizeHybridItem = normalizeHybridItem;
+  /** Parse budget string OR numeric fields from user_preferences */
+  window.adikaParseBudgetRange = function (prefs) {
+    prefs = prefs || {};
+    var minP = num(prefs.price_min || prefs.min_price || prefs.budget_min || prefs.min_budget);
+    var maxP = num(prefs.price_max || prefs.max_price || prefs.budget_max || prefs.max_budget);
 
-  /** Patch card creation to stamp clean-market turquoise UI */
-  function enhanceCardEl(el, it) {
-    if (!el || !it) return el;
-    try {
-      if (it.source === "clean_market" || it._cleanMarket) {
-        el.classList.add("clean-market-card");
-        // remove old badges
-        var old = el.querySelector(".clean-market-badge, .listing-source-badge");
-        if (old && old.parentNode) old.parentNode.removeChild(old);
-        var badge = document.createElement("div");
-        badge.className = "clean-market-badge";
-        badge.textContent = "✨ Adika Clean Market";
-        var frame = el.querySelector(".relative.w-full, .listing-photo-frame") || el;
-        if (frame && frame.style) {
-          if (frame.classList && frame.classList.contains("listing-photo-frame")) {
-            el.insertBefore(badge, el.firstChild);
-          } else {
-            frame.style.position = frame.style.position || "relative";
-            frame.appendChild(badge);
-          }
-        } else {
-          el.appendChild(badge);
+    var raw = prefs.budget || prefs.budget_range || prefs.price_range || prefs.budgetRange || "";
+    if ((!minP && !maxP) && raw) {
+      var text = String(raw);
+      // patterns: "1.5M - 4M", "ከ 1.5M – 4 ሚሊዮን", "1500000-4000000"
+      var range = text.match(/([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|million|ሚሊዮን)?\s*[-–—toእስከ]+\s*([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|million|ሚሊዮን)?/i);
+      if (range) {
+        var a = parseFloat(String(range[1]).replace(/,/g, ""));
+        var b = parseFloat(String(range[3]).replace(/,/g, ""));
+        var ua = (range[2] || range[4] || "").toLowerCase();
+        var ub = (range[4] || range[2] || "").toLowerCase();
+        function scale(v, u) {
+          if (/m|ሚ|mil/.test(u)) return Math.round(v * 1000000);
+          if (/k|ሺ/.test(u)) return Math.round(v * 1000);
+          // if both look like small numbers and text has ሚሊዮን somewhere
+          if (/ሚሊ|million|M\b/i.test(text) && v < 1000) return Math.round(v * 1000000);
+          return Math.round(v);
         }
-        // placeholder photo if none
-        var img = el.querySelector("img");
-        if (img && (!img.getAttribute("src") || /placeholder|null|undefined/i.test(img.getAttribute("src") || ""))) {
-          img.style.display = "none";
-          var ph = document.createElement("div");
-          ph.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#0e7490,#164e63);color:#ecfeff;font-weight:900;font-size:12px;";
-          ph.textContent = "🚗 " + (it.brand || it.name || "Clean Market");
-          var wrap = el.querySelector(".relative.w-full") || el;
-          wrap.appendChild(ph);
+        minP = scale(a, ua);
+        maxP = scale(b, ub);
+      } else {
+        // single upper bound: "እስከ 4M" / "under 4000000"
+        var up = text.match(/(?:እስከ|under|max|<=)\s*([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|million)?/i);
+        if (up) {
+          maxP = num(up[1] + (up[2] || ""));
         }
       }
-    } catch (e) {}
-    return el;
-  }
-  window.adikaEnhanceHybridCard = enhanceCardEl;
-
-  // Wrap create card if available
-  function hookCreateCard() {
-    if (typeof window.__adikaCreateCard === "function" && !window.__adikaCreateCard.__hybridHooked) {
-      var orig = window.__adikaCreateCard;
-      window.__adikaCreateCard = function (it) {
-        it = normalizeHybridItem(it) || it;
-        var el = orig.apply(this, arguments);
-        return enhanceCardEl(el, it);
-      };
-      window.__adikaCreateCard.__hybridHooked = true;
     }
-  }
-  hookCreateCard();
-  setTimeout(hookCreateCard, 800);
-  setTimeout(hookCreateCard, 2000);
 
-  window.adikaSmartSearch = async function (query, limit) {
-    limit = limit || 24;
-    var url = "/api/smart-search?q=" + encodeURIComponent(query || "") + "&limit=" + encodeURIComponent(limit);
-    try {
-      var res = await fetch(url, { credentials: "same-origin" });
-      var data = await res.json();
-      var items = (data.items || []).map(normalizeHybridItem).filter(Boolean);
-      return { success: !!data.success, items: items, intent: data.intent || {}, counts: data.counts || {} };
-    } catch (e) {
-      console.warn("[smart-search]", e);
-      return { success: false, items: [], intent: {}, counts: {} };
+    // Normalize swap
+    if (minP > 0 && maxP > 0 && maxP < minP) {
+      var tmp = minP; minP = maxP; maxP = tmp;
     }
+    return { min: minP || 0, max: maxP || 0, label: raw || (maxP ? (minP + " – " + maxP) : "") };
   };
 
-  window.adikaFetchForYouHybrid = async function (opts) {
-    opts = opts || {};
-    var uid = "";
-    try {
-      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-      if (u && u.id) uid = String(u.id);
-    } catch (e) {}
-    try { if (!uid && window.state && state.userId) uid = String(state.userId); } catch (e2) {}
-    var page = opts.page || 1;
-    var limit = opts.limit || 24;
-    if (!uid) { try { uid = (typeof getAdikaUserId === "function" ? getAdikaUserId() : "") || ""; } catch (eU) { uid = ""; } }
-    var url = "/api/for-you?page=" + page + "&limit=" + limit + (uid ? ("&user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid) + "&chat_id=" + encodeURIComponent(uid)) : "");
-    try {
-      var res = await fetch(url, { credentials: "same-origin" });
-      var data = await res.json();
-      var items = (data.items || data.listings || []).map(normalizeHybridItem).filter(Boolean);
-      return { success: true, items: items, prefs: data.prefs || {}, counts: data.counts || {} };
-    } catch (e) {
-      console.warn("[for-you hybrid]", e);
-      return { success: false, items: [], prefs: {}, counts: {} };
-    }
-  };
+  function normCat(c) {
+    c = String(c || "").trim().toLowerCase();
+    if (!c) return "";
+    if (/መኪና|car|vehicle|auto/.test(c)) return "car";
+    if (/ቤት|house|home|property|real/.test(c)) return "house";
+    return c;
+  }
 
-  // When user searches, prefer hybrid endpoint
-  if (typeof window.runSearch === "function" && !window.runSearch.__hybridHooked) {
-    var _rs = window.runSearch;
-    window.runSearch = async function (q) {
-      try {
-        var pack = await window.adikaSmartSearch(q || (window.state && state.q) || "");
-        if (pack.items && pack.items.length) {
-          window.__adikaLiveItems = pack.items;
-          if (typeof finishLoading === "function") finishLoading(pack.items, false, false);
-          else if (window.__adikaPaintListings) window.__adikaPaintListings(pack.items);
-          return pack.items;
+  function listingCat(it) {
+    return normCat(it.main_category || it.category || it.sub_category || "");
+  }
+
+  function listingPrice(it) {
+    return num(it.price || it.asking_price || it.amount || 0);
+  }
+
+  function prefCategory(prefs) {
+    return normCat(prefs.main_category || prefs.category || prefs.preferred_category || prefs.cat || "");
+  }
+
+  /** HARD FILTER: category + price bounds — never soft-score past this */
+  window.adikaStrictFypFilter = function (items, prefs) {
+    prefs = prefs || {};
+    var cat = prefCategory(prefs);
+    var bud = window.adikaParseBudgetRange(prefs);
+    var out = (items || []).filter(function (it) {
+      if (!it) return false;
+      // sell only
+      var t = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
+      if (/BUY|REQUEST|WANT/.test(t) || it.is_buyer_request) return false;
+
+      if (cat) {
+        var lc = listingCat(it);
+        if (lc && lc !== cat) return false;
+        // if listing has no category, keep only when text hints match
+        if (!lc) {
+          var blob = [it.title, it.brand, it.model, it.description].join(" ").toLowerCase();
+          if (cat === "car" && /ቤት|apartment|villa|condo/.test(blob) && !/መኪና|toyota|suzuki|prado|car/.test(blob)) return false;
+          if (cat === "house" && /መኪና|toyota|suzuki|prado|chassis/.test(blob)) return false;
         }
-      } catch (e) {}
-      return _rs.apply(this, arguments);
-    };
-    window.runSearch.__hybridHooked = true;
-  }
-
-  // Enhance renderFYP / loadSmartFYP to merge API hybrid when available
-  var _renderFYP = window.renderFYP;
-  if (typeof _renderFYP === "function" && !_renderFYP.__hybridHooked) {
-    window.renderFYP = async function () {
-      try {
-        var pack = await window.adikaFetchForYouHybrid({ page: 1, limit: 24 });
-        if (pack && pack.items && pack.items.length) {
-          try {
-            if (window.state) {
-              state.feedMode = "foryou";
-              state.items = pack.items;
-              state.loading = false;
-              state.hasMore = false;
-            }
-          } catch (e) {}
-          window.__adikaLiveItems = pack.items;
-          if (typeof finishLoading === "function") finishLoading(pack.items, false, false);
-          else if (window.__adikaPaintListings) window.__adikaPaintListings(pack.items);
-          else {
-            var grid = document.getElementById("grid");
-            if (grid) {
-              grid.innerHTML = "";
-              pack.items.forEach(function (it) {
-                try {
-                  if (window.__adikaCreateCard) grid.appendChild(window.__adikaCreateCard(it));
-                } catch (e2) {}
-              });
-            }
-          }
-          return pack.items;
-        }
-      } catch (e3) {}
-      return _renderFYP.apply(this, arguments);
-    };
-    window.renderFYP.__hybridHooked = true;
-  }
-})();
-</script>
-
-
-<script>
-/* ===== HYBRID FYP + SMART SEARCH: listings + ethiopia_vehicles via Flask API ===== */
-(function () {
-  "use strict";
-
-  function tgId() {
-    try {
-      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-      if (u && u.id) return String(u.id);
-    } catch (e) {}
-    try { if (window.state && state.userId) return String(state.userId); } catch (e2) {}
-    return "";
-  }
-
-  function unblockMain() {
-    try {
-      var main = document.getElementById("main") || document.getElementById("app") || document.body;
-      if (main) {
-        main.style.opacity = "1";
-        main.style.filter = "none";
-        main.style.pointerEvents = "auto";
       }
-      document.body.style.overflow = "";
-    } catch (e) {}
-  }
 
-  window.renderFYPEmptyState = function (pref) {
-    pref = pref || window.__adikaFypPrefs || {};
-    var budgetLabel = pref.budget || pref.budget_range || "";
-    var cats = pref.categories || [];
-    var catLabel = (cats[0] || pref.category || "መኪና");
-    var msg = budgetLabel
-      ? ("በመረጡት የበጀት ክልል (" + budgetLabel + ") እስካሁን የተመዘገበ " + catLabel + " አልተገኘም።")
-      : ("በመረጡት ምድብ እስካሁን ውጤት አልተገኘም።");
-    var grid = document.getElementById("grid");
-    if (!grid) return;
-    grid.innerHTML =
-      '<div class="empty-state" style="grid-column:1/-1;padding:32px 16px;text-align:center;">' +
-        '<div style="font-size:40px;margin-bottom:10px;">🔍</div>' +
-        '<div style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;margin-bottom:14px;">' + msg + "</div>" +
-        '<button type="button" id="fypResetFilterBtn" style="padding:10px 16px;border-radius:999px;background:linear-gradient(135deg,#0ea5e9,#14b8a6);color:#fff;font-weight:900;font-size:12px;border:0;">🔄 ማጣሪያውን ዳግም አስጀምር</button>' +
-      "</div>";
-    var btn = document.getElementById("fypResetFilterBtn");
-    if (btn) {
-      btn.onclick = function () {
-        if (typeof window.openPreferencesModal === "function") window.openPreferencesModal();
-        else if (typeof window.__adikaShowOnboarding === "function") window.__adikaShowOnboarding();
-      };
-    }
-  };
-
-  /** Normalize API item for card painters */
-  function normalizeHybridItem(it) {
-    if (!it || typeof it !== "object") return null;
-    var src = it.source || it.target_type || "listing";
-    if (it.is_clean_market || it.model_key || it.current_price_range_etb) src = "clean_market";
-    it.source = src;
-    it.target_type = src;
-    it.is_clean_market = src === "clean_market";
-    if (!it.price && it.current_price_range_etb) it.price = it.current_price_range_etb;
-    if (!it.title) {
-      it.title = it.name || it.full_model || it.model_key || it.description || "Adika";
-    }
-    if (!it.main_category) it.main_category = it.category || "መኪና";
-    // Turquoise badge flag for UI
-    it._hybridBadge = src === "clean_market" ? "✨ Adika Clean Market" : "🏪 ገበያ";
-    return it;
-  }
-
-  window.fetchFYPListings = async function fetchFYPListings() {
-    var uid = tgId();
-    if (!uid) { try { uid = (typeof getAdikaUserId === "function" ? getAdikaUserId() : "") || ""; } catch (eU) { uid = ""; } }
-    var url = "/api/for-you?limit=40&page=1";
-    if (uid) url += "&user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid) + "&chat_id=" + encodeURIComponent(uid);
-    try {
-      var res = await fetch(url, { credentials: "same-origin", headers: { Accept: "application/json" } });
-      var data = await res.json();
-      var items = (data.items || data.listings || []).map(normalizeHybridItem).filter(Boolean);
-      return {
-        items: items,
-        pref: data.prefs || window.__adikaFypPrefs || {},
-        listings: data.listings || [],
-        clean_market: data.clean_market || [],
-        counts: data.counts || {},
-        intent: data.intent || {}
-      };
-    } catch (err) {
-      console.warn("[Hybrid FYP]", err);
-      return { items: [], pref: {}, listings: [], clean_market: [] };
-    }
-  };
-
-  window.renderFYP = async function renderFYP() {
-    var grid = document.getElementById("grid");
-    if (grid) grid.style.opacity = "0.65";
-    try {
-      if (window.state) {
-        state.feedMode = "foryou";
-        state.category = "";
-        state.loading = true;
-      }
-    } catch (e) {}
-
-    var result = await window.fetchFYPListings();
-    var items = result.items || [];
-    try {
-      if (window.state) {
-        state.loading = false;
-        state.items = items;
-        state.hasMore = false;
-        state.feedMode = "foryou";
-      }
-    } catch (e2) {}
-    if (grid) grid.style.opacity = "1";
-    unblockMain();
-
-    if (!items.length) {
-      window.renderFYPEmptyState(result.pref);
-      window.__adikaLiveItems = [];
-      return items;
-    }
-
-    window.__adikaLiveItems = items;
-    window.__adikaHybridCounts = result.counts;
-
-    // Paint with existing card system, then stamp Clean Market turquoise badges
-    try {
-      if (typeof finishLoading === "function") finishLoading(items, false, false);
-      else if (window.__adikaPaintListings) window.__adikaPaintListings(items);
-      else if (grid) {
-        grid.innerHTML = "";
-        items.forEach(function (it) {
-          try {
-            if (window.__adikaCreateCard) grid.appendChild(window.__adikaCreateCard(it));
-          } catch (e3) {}
-        });
-      }
-    } catch (e4) {
-      console.warn(e4);
-    }
-
-    setTimeout(function () {
-      stampCleanMarketCards(items);
-    }, 50);
-    setTimeout(function () {
-      stampCleanMarketCards(items);
-    }, 200);
-
-    return items;
-  };
-
-  function stampCleanMarketCards(items) {
-    (items || []).forEach(function (it) {
-      if (!it || it.source !== "clean_market") return;
-      var id = it.id;
-      var card =
-        document.getElementById("card-" + id) ||
-        document.querySelector('[data-id="' + id + '"]') ||
-        document.querySelector('[data-listing-id="' + id + '"]');
-      if (!card) {
-        // try match by title text
-        return;
-      }
-      card.classList.add("clean-market-card");
-      card.style.border = "1.5px solid rgba(20, 184, 166, 0.55)";
-      card.style.boxShadow = "0 4px 18px rgba(20, 184, 166, 0.18)";
-      if (!card.querySelector(".cm-badge")) {
-        var badge = document.createElement("div");
-        badge.className = "cm-badge";
-        badge.textContent = "✨ Adika Clean Market";
-        badge.style.cssText =
-          "position:absolute;top:8px;left:8px;z-index:8;font-size:9px;font-weight:800;padding:3px 8px;border-radius:999px;background:linear-gradient(135deg,#0d9488,#14b8a6);color:#fff;box-shadow:0 2px 8px rgba(13,148,136,0.35);";
-        var host = card.querySelector(".listing-photo-frame, .relative, .card-img, .adika-card") || card;
-        if (getComputedStyle(host).position === "static") host.style.position = "relative";
-        host.appendChild(badge);
-      }
+      var price = listingPrice(it);
+      if (bud.max > 0 && price > bud.max) return false; // HARD STOP over max
+      if (bud.min > 0 && price > 0 && price < bud.min) return false;
+      // items with missing price: allow only if no max set; if max set, exclude unknown prices above typical
+      if (bud.max > 0 && !(price > 0)) return false;
+      return true;
     });
+    return { items: out, budget: bud, category: cat };
+  };
+
+  function emptyStateHtml(bud, cat) {
+    var catLabel = cat === "house" ? "ቤት" : (cat === "car" ? "መኪና" : "ንብረት");
+    var rangeLabel = "";
+    if (bud.max > 0 && bud.min > 0) {
+      rangeLabel = (bud.min / 1e6).toFixed(bud.min % 1e6 ? 1 : 0) + "M – " + (bud.max / 1e6).toFixed(bud.max % 1e6 ? 1 : 0) + "M ETB";
+    } else if (bud.max > 0) {
+      rangeLabel = (bud.max / 1e6).toFixed(bud.max % 1e6 ? 1 : 0) + "M ETB";
+    }
+    return (
+      '<div style="grid-column:1/-1;padding:28px 16px;text-align:center;">' +
+        '<div style="font-size:36px;margin-bottom:8px;">🔍</div>' +
+        '<div style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.45;margin-bottom:8px;">' +
+          (rangeLabel
+            ? ("በመረጡት የበጀት ክልል (" + rangeLabel + ") እስካሁን የተመዘገበ " + catLabel + " የለም።")
+            : ("በመረጡት ምድብ እስካሁን " + catLabel + " አልተገኘም።")) +
+        "</div>" +
+        '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;">' +
+          '<button type="button" id="fypEmptyAdjustPrefs" style="padding:8px 14px;border-radius:999px;background:linear-gradient(135deg,#0ea5e9,#14b8a6);color:#fff;font-weight:900;font-size:11px;border:0;">⚙️ ምርጫ ቀይር</button>' +
+          '<button type="button" id="fypEmptyViewAll" style="padding:8px 14px;border-radius:999px;background:#fff;color:#0e7490;font-weight:800;font-size:11px;border:1px solid rgba(14,116,144,0.35);">ሁሉም ይመልከቱ</button>' +
+        "</div>" +
+      "</div>"
+    );
   }
 
-  /** Smart search via Flask hybrid endpoint */
-  window.adikaSmartSearch = async function (query) {
-    var q = String(query || "").trim();
-    if (!q) return [];
-    var grid = document.getElementById("grid");
-    if (grid) grid.style.opacity = "0.65";
-    try {
-      var res = await fetch("/api/smart-search", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ q: q, limit: 40 })
-      });
-      var data = await res.json();
-      var items = (data.items || []).map(normalizeHybridItem).filter(Boolean);
+  function bindEmptyActions() {
+    var a = document.getElementById("fypEmptyAdjustPrefs");
+    var v = document.getElementById("fypEmptyViewAll");
+    if (a && !a.__bound) {
+      a.__bound = true;
+      a.onclick = function () {
+        try {
+          if (typeof window.openFYPWithOnboarding === "function") window.openFYPWithOnboarding();
+          else if (typeof requireOnboardingForFyp === "function") requireOnboardingForFyp();
+        } catch (e) {}
+      };
+    }
+    if (v && !v.__bound) {
+      v.__bound = true;
+      v.onclick = function () {
+        try {
+          if (window.state) {
+            state.feedMode = "all";
+            state.category = "";
+          }
+          // activate "ሁሉም" pill if present
+          document.querySelectorAll("#cats .cat-pill, #catsRow .cat-pill, [data-id]").forEach(function (p) {
+            var id = p.getAttribute("data-id") || "";
+            if (id === "all" || /ሁሉም/.test(p.textContent || "")) {
+              p.classList.add("active", "is-active");
+            } else if (id === "foryou" || /ለእርስዎ/.test(p.textContent || "")) {
+              p.classList.remove("active", "is-active");
+            }
+          });
+          if (typeof load === "function") {
+            var prev = window.load.__smartFypWrapped;
+            // call underlying all-listings load
+            if (window.state) state.feedMode = "all";
+            load(false);
+          }
+        } catch (e) {}
+      };
+    }
+  }
+
+  // Wrap loadSmartFYP with STRICT pre-filter before ranking
+  function wrapSmartFyp() {
+    var orig = window.loadSmartFYP;
+    if (typeof orig !== "function" || orig.__strictFyp) return;
+    window.loadSmartFYP = function (opts) {
+      opts = opts || {};
+      // Monkey-patch filter inside by wrapping fetch results via temporary override of rankListings path
+      // Safer: override paint after — intercept at Promise level by redefining filter on pool
+      var _orig = orig;
+      // Call original but we need to filter pool — wrap fetchListingPool temporarily
+      var prevFetch = null;
+      try {
+        // Hook: wrap the internal flow by post-filtering painted items is too late for over-budget flash.
+        // Instead wrap window.adikaComputeFypScores / rank by patching after preferences resolve.
+      } catch (e) {}
+
+      // Implement our own strict pipeline that still uses original pieces
+      var uid = null;
+      try {
+        var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+        if (u && u.id) uid = String(u.id);
+      } catch (e2) {}
+      try { if (!uid && window.state && state.userId) uid = String(state.userId); } catch (e3) {}
+
       try {
         if (window.state) {
-          state.items = items;
-          state.feedMode = "search";
-          state.q = q;
-          state.loading = false;
+          state.feedMode = "foryou";
+          state.loading = true;
         }
-      } catch (e) {}
-      if (grid) grid.style.opacity = "1";
-      window.__adikaLiveItems = items;
-      try {
-        if (typeof finishLoading === "function") finishLoading(items, false, false);
-        else if (window.__adikaPaintListings) window.__adikaPaintListings(items);
-      } catch (e2) {}
-      setTimeout(function () { stampCleanMarketCards(items); }, 60);
-      return items;
-    } catch (err) {
-      console.warn("[SmartSearch]", err);
-      if (grid) grid.style.opacity = "1";
-      return [];
-    }
-  };
+      } catch (e4) {}
 
-  // Wire search box if present
-  function bindSearch() {
-    var input = document.getElementById("searchInput") || document.querySelector('input[type="search"], input[placeholder*="ፈልግ"], input[placeholder*="Search"]');
-    if (!input || input.__hybridBound) return;
-    input.__hybridBound = true;
-    var timer = null;
-    input.addEventListener("input", function () {
-      clearTimeout(timer);
-      var v = input.value.trim();
-      timer = setTimeout(function () {
-        if (v.length >= 2) window.adikaSmartSearch(v);
-        else if (!v && typeof window.renderFYP === "function") window.renderFYP();
-      }, 380);
-    });
-    input.addEventListener("keydown", function (ev) {
-      if (ev.key === "Enter") {
-        ev.preventDefault();
-        clearTimeout(timer);
-        var v = input.value.trim();
-        if (v) window.adikaSmartSearch(v);
-      }
-    });
-  }
+      var grid = document.getElementById("grid");
+      if (grid && !opts.append) grid.style.opacity = "0.65";
 
-  window.loadSmartFYP = function () { return window.renderFYP(); };
-  window.loadSmartFYP.__hybrid = true;
-  window.loadFYPFeed = function () { return window.renderFYP(); };
-  window.triggerSmartFyp = function () { return window.renderFYP(); };
+      // Re-use original's data fetchers if available by calling original and then re-filter
+      // Better approach: intercept paintRanked
+      var paints = [];
+      var _paintLive = window.__adikaPaintListings;
+      var _finish = window.finishLoading;
 
-  if (typeof window.load === "function" && !window.load.__hybridWrapped) {
-    var _origLoad = window.load;
-    window.load = function (append) {
-      try {
-        if (window.state && state.feedMode === "foryou" && !state.q && state.tab !== "buy") {
-          return window.renderFYP();
-        }
-      } catch (e) {}
-      return _origLoad.apply(this, arguments);
-    };
-    window.load.__hybridWrapped = true;
-  }
-
-  window.submitPreferencesSuccess = function (data) {
-    try {
-      window.__adikaFypPrefs = data || {};
-      window.__adikaLastPrefs = data || {};
-      localStorage.setItem("adika_onboarded", "true");
-      localStorage.setItem("adika_user_prefs", JSON.stringify(data || {}));
-    } catch (e) {}
-    unblockMain();
-    try {
-      var m = document.getElementById("unifiedOnboardingModal");
-      if (m) {
-        m.classList.add("hidden");
-        m.classList.remove("flex");
-        m.style.display = "none";
-      }
-    } catch (e2) {}
-    return window.renderFYP();
-  };
-
-  function hasPrefs() {
-    try {
-      if (localStorage.getItem("adika_onboarded") === "true") return true;
-      var raw = localStorage.getItem("adika_user_prefs");
-      if (raw && raw.length > 8) return true;
-    } catch (e) {}
-    return false;
-  }
-
-  function startup() {
-    unblockMain();
-    bindSearch();
-    try {
-      var help = document.getElementById("adikaHelpSheet");
-      if (help && help.parentNode) help.parentNode.removeChild(help);
-    } catch (e) {}
-    if (!hasPrefs()) {
-      try {
-        if (typeof window.openPreferencesModal === "function") window.openPreferencesModal();
-        else if (typeof window.__adikaShowOnboarding === "function") window.__adikaShowOnboarding();
-        else {
-          var m = document.getElementById("unifiedOnboardingModal");
-          if (m) {
-            m.classList.remove("hidden");
-            m.classList.add("flex");
-            m.style.setProperty("display", "flex", "important");
+      function applyStrictAndPaint(items, prefs) {
+        var res = window.adikaStrictFypFilter(items, prefs);
+        var filtered = res.items;
+        window.__adikaLiveItems = filtered;
+        try {
+          if (window.state) {
+            state.loading = false;
+            state.items = filtered;
+            state.hasMore = false;
           }
+        } catch (e) {}
+        if (grid) grid.style.opacity = "1";
+        if (!filtered.length) {
+          if (grid) {
+            grid.innerHTML = emptyStateHtml(res.budget, res.category);
+            bindEmptyActions();
+          }
+          return filtered;
         }
-      } catch (e2) {}
-      return;
-    }
-    try {
-      if (window.state) state.feedMode = "foryou";
-    } catch (e3) {}
-    window.renderFYP();
+        try {
+          if (typeof _finish === "function") {
+            _finish(filtered, !!opts.append, false);
+            return filtered;
+          }
+        } catch (e5) {}
+        try {
+          if (typeof _paintLive === "function") {
+            _paintLive(filtered);
+            return filtered;
+          }
+        } catch (e6) {}
+        return filtered;
+      }
+
+      // Call original loadSmartFYP but wrap paint functions
+      var wrappedPaint = false;
+      if (typeof window.__adikaPaintListings === "function" && !window.__adikaPaintListings.__strictWrap) {
+        var op = window.__adikaPaintListings;
+        window.__adikaPaintListings = function (items) {
+          // prefs may be on window.__adikaLastPrefs
+          var prefs = window.__adikaLastPrefs || {};
+          var res = window.adikaStrictFypFilter(items, prefs);
+          if (!res.items.length) {
+            var g = document.getElementById("grid");
+            if (g) {
+              g.innerHTML = emptyStateHtml(res.budget, res.category);
+              bindEmptyActions();
+            }
+            window.__adikaLiveItems = [];
+            return;
+          }
+          return op.call(this, res.items);
+        };
+        window.__adikaPaintListings.__strictWrap = true;
+        wrappedPaint = true;
+      }
+      if (typeof window.finishLoading === "function" && !window.finishLoading.__strictWrap) {
+        var ofn = window.finishLoading;
+        window.finishLoading = function (items, append, hasMore) {
+          var prefs = window.__adikaLastPrefs || {};
+          var res = window.adikaStrictFypFilter(items, prefs);
+          if (!res.items.length) {
+            var g = document.getElementById("grid");
+            if (g) {
+              g.innerHTML = emptyStateHtml(res.budget, res.category);
+              bindEmptyActions();
+            }
+            window.__adikaLiveItems = [];
+            try { if (window.state) { state.loading = false; state.items = []; } } catch (e) {}
+            return;
+          }
+          return ofn.call(this, res.items, append, false);
+        };
+        window.finishLoading.__strictWrap = true;
+      }
+
+      // Also store prefs when fetchPreferences resolves — wrap if possible
+      return _orig.call(this, opts);
+    };
+    window.loadSmartFYP.__strictFyp = true;
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () { setTimeout(startup, 320); });
-  } else {
-    setTimeout(startup, 320);
+  // Capture prefs into window.__adikaLastPrefs whenever FYP runs
+  // Patch fetch-like by wrapping loadSmartFYP deeper
+  var _ls = null;
+  function installPrefsCapture() {
+    // Wrap again with full replacement for reliability
+    if (window.loadSmartFYP && window.loadSmartFYP.__fullStrict) return;
+
+    window.loadSmartFYP = function (opts) {
+      opts = opts || {};
+      var append = !!opts.append;
+      var page = opts.page || 1;
+
+      function tgId() {
+        try {
+          var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+          if (u && u.id) return String(u.id);
+        } catch (e) {}
+        try { if (window.state && state.userId) return String(state.userId); } catch (e2) {}
+        return "";
+      }
+      function sb() {
+        try {
+          if (typeof ensureSupabaseClient === "function") return ensureSupabaseClient();
+        } catch (e) {}
+        return window.supabase || null;
+      }
+
+      try {
+        if (window.state) {
+          state.feedMode = "foryou";
+          state.category = "";
+          state.loading = true;
+          if (!append) state.page = 1;
+        }
+      } catch (e) {}
+
+      var grid = document.getElementById("grid");
+      if (grid && !append) grid.style.opacity = "0.65";
+
+      var uid = tgId();
+      var client = sb();
+
+      function fetchPrefs() {
+        if (!uid) return Promise.resolve(null);
+        if (client) {
+          return client.from("user_preferences").select("*").eq("telegram_id", uid).limit(1)
+            .then(function (r) {
+              var row = (r && r.data && r.data[0]) || null;
+              if (row) return row;
+              return client.from("user_preferences").select("*").eq("user_id", uid).limit(1)
+                .then(function (r2) { return (r2 && r2.data && r2.data[0]) || null; });
+            })
+            .catch(function () {
+              return fetch("/api/user-preferences?telegram_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+                .then(function (res) { return res.json(); })
+                .then(function (d) { return (d && (d.item || d.preferences || d.data)) || null; })
+                .catch(function () { return null; });
+            });
+        }
+        return fetch("/api/user-preferences?telegram_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+          .then(function (res) { return res.json(); })
+          .then(function (d) { return (d && (d.item || d.preferences || d.data)) || null; })
+          .catch(function () { return null; });
+      }
+
+      function fetchPool(limit) {
+        limit = limit || 120;
+        // Prefer adika_clean_market then listings
+        if (client) {
+          return client.from("adika_clean_market").select("*").order("created_at", { ascending: false }).limit(limit)
+            .then(function (r) {
+              var rows = (r && r.data) || [];
+              if (rows.length) return rows;
+              throw new Error("empty");
+            })
+            .catch(function () {
+              return client.from("listings").select("*").order("created_at", { ascending: false }).limit(limit)
+                .then(function (r2) { return (r2 && r2.data) || []; })
+                .catch(function () {
+                  return fetch("/api/listings?page=1&limit=" + limit + "&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
+                    .then(function (res) { return res.json(); })
+                    .then(function (d) { return (d && (d.items || d.listings || d.data)) || []; })
+                    .catch(function () { return []; });
+                });
+            });
+        }
+        return fetch("/api/listings?page=1&limit=" + limit + "&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
+          .then(function (res) { return res.json(); })
+          .then(function (d) { return (d && (d.items || d.listings || d.data)) || []; })
+          .catch(function () { return []; });
+      }
+
+      Promise.all([fetchPrefs(), fetchPool(120)]).then(function (pair) {
+        var prefs = pair[0] || {};
+        window.__adikaLastPrefs = prefs;
+        var pool = Array.isArray(pair[1]) ? pair[1] : [];
+
+        // STRICT filter first — before any ranking
+        var filteredPack = window.adikaStrictFypFilter(pool, prefs);
+        var filtered = filteredPack.items;
+
+        // Optional soft rank among survivors only
+        if (typeof window.adikaComputeFypScores === "function") {
+          try {
+            filtered = window.adikaComputeFypScores(filtered, { prefs: prefs, favorites: [], alerts: [], requests: [] }) || filtered;
+          } catch (eR) {}
+        }
+
+        var perPage = 20;
+        var start = (Math.max(1, page) - 1) * perPage;
+        var slice = filtered.slice(start, start + perPage);
+
+        try {
+          if (window.state) {
+            state.loading = false;
+            state.page = page;
+            state.hasMore = filtered.length > start + perPage;
+            state.items = append ? (state.items || []).concat(slice) : slice;
+            state.feedMode = "foryou";
+          }
+        } catch (eS) {}
+
+        if (grid) grid.style.opacity = "1";
+
+        if (!slice.length && !append) {
+          if (grid) {
+            grid.innerHTML = emptyStateHtml(filteredPack.budget, filteredPack.category);
+            bindEmptyActions();
+          }
+          window.__adikaLiveItems = [];
+          return;
+        }
+
+        window.__adikaLiveItems = append ? (window.__adikaLiveItems || []).concat(slice) : slice;
+
+        try {
+          if (typeof finishLoading === "function") {
+            // bypass strict wrap recursion — call through
+            var fl = finishLoading;
+            if (fl.__strictWrap) {
+              // use underlying if we stored — just paint via createCard
+            }
+            finishLoading(slice, append, filtered.length > start + perPage);
+            return;
+          }
+        } catch (eF) {}
+        try {
+          if (window.__adikaPaintListings) {
+            window.__adikaPaintListings(slice);
+            return;
+          }
+        } catch (eP) {}
+        if (grid) {
+          if (!append) grid.innerHTML = "";
+          slice.forEach(function (it) {
+            try {
+              if (window.__adikaCreateCard) grid.appendChild(window.__adikaCreateCard(it));
+            } catch (eC) {}
+          });
+        }
+      }).catch(function (err) {
+        console.warn("[Adika strict FYP]", err);
+        try { if (window.state) state.loading = false; } catch (e) {}
+        if (grid) grid.style.opacity = "1";
+      });
+    };
+    window.loadSmartFYP.__fullStrict = true;
+    window.loadSmartFYP.__strictFyp = true;
   }
-  setTimeout(bindSearch, 800);
-})();
-</script>
 
-
-<script>
-/* MASTER: default tab = ለእርስዎ (For You) + refresh on focus */
-(function () {
-  function activateForYouTab() {
+  /** Activate ለእርስዎ tab UI */
+  function activateForyouTab() {
     try {
       if (window.state) {
         state.feedMode = "foryou";
         state.category = "";
-        state.q = "";
+        state.tab = "marketplace";
       }
     } catch (e) {}
-    try {
-      document.querySelectorAll(".adika-tab, .cat-pill, [data-tab], [data-feed]").forEach(function (el) {
-        el.classList.remove("active");
-        var t = (el.getAttribute("data-tab") || el.getAttribute("data-feed") || el.textContent || "").toLowerCase();
-        if (t.indexOf("for") >= 0 || t.indexOf("ለእርስዎ") >= 0 || t.indexOf("foryou") >= 0 || t.indexOf("fyp") >= 0) {
-          el.classList.add("active");
-        }
-      });
-    } catch (e2) {}
-  }
-  function bootFYP() {
-    activateForYouTab();
-    try {
-      if (typeof window.renderFYP === "function") window.renderFYP();
-      else if (typeof window.loadSmartFYP === "function") window.loadSmartFYP();
-      else if (typeof window.adikaFetchTabFeed === "function") window.adikaFetchTabFeed("for_you");
-    } catch (e3) {}
-  }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () { setTimeout(bootFYP, 400); });
-  } else {
-    setTimeout(bootFYP, 400);
-  }
-  // Real-time-ish refresh when user returns to the Mini App
-  try {
-    document.addEventListener("visibilitychange", function () {
-      if (!document.hidden) {
-        try {
-          if (window.state && state.feedMode === "foryou") bootFYP();
-        } catch (e) {}
+    // Category pills
+    document.querySelectorAll("#cats .cat-pill, #catsRow button, #catsRow .cat-pill, [data-id='foryou']").forEach(function (p) {
+      var id = (p.getAttribute("data-id") || "").toLowerCase();
+      var txt = (p.textContent || "");
+      var isFy = id === "foryou" || id === "for_you" || /ለእርስዎ|for\s*you/i.test(txt);
+      p.classList.toggle("active", isFy);
+      p.classList.toggle("is-active", isFy);
+      if (isFy) {
+        p.style.background = "#fff";
+        p.style.color = "#16acbd";
       }
     });
-  } catch (e4) {}
-})();
-</script>
-
-
-<script>
-/* ===== UNIFIED IMAGE URL RESOLVER (manual + scraped + FYP) ===== */
-(function () {
-  function adikaResolveImageUrl(item) {
-    if (!item) return "";
-    if (typeof item === "string") {
-      var s = item.trim();
-      return (s.indexOf("http") === 0 || s.indexOf("data:image") === 0) ? s : "";
-    }
-    function fromVal(v) {
-      if (v == null) return "";
-      if (typeof v === "string") {
-        var t = v.trim();
-        if (!t || t === "null" || t === "undefined" || t === "[]") return "";
-        if (t.charAt(0) === "[") {
-          try {
-            var arr = JSON.parse(t);
-            if (Array.isArray(arr) && arr.length) return fromVal(arr[0]);
-          } catch (e) {}
-        }
-        if (t.indexOf("http://") === 0 || t.indexOf("https://") === 0 || t.indexOf("data:image") === 0) return t;
-        return "";
-      }
-      if (Array.isArray(v) && v.length) return fromVal(v[0]);
-      if (typeof v === "object") {
-        return fromVal(v.url || v.src || v.image_url || v.image || v.photo || "");
-      }
-      return "";
-    }
-    var keys = [
-      "image_url", "images", "photo_url", "telegram_image", "telegram_photo",
-      "photos", "photo", "image", "thumbnail", "thumb", "cover_image",
-      "main_image", "file_url", "media_url", "picture", "photo_urls", "image_urls"
-    ];
-    for (var i = 0; i < keys.length; i++) {
-      var hit = fromVal(item[keys[i]]);
-      if (hit) return hit;
-    }
-    // nested extra_data
-    var extra = item.extra_data;
-    if (typeof extra === "string") {
-      try { extra = JSON.parse(extra); } catch (e) { extra = null; }
-    }
-    if (extra && typeof extra === "object") {
-      for (var j = 0; j < keys.length; j++) {
-        var hit2 = fromVal(extra[keys[j]]);
-        if (hit2) return hit2;
-      }
-    }
-    return "";
+    // Also feed mode buttons if any
+    document.querySelectorAll("#feedModes button, [data-feed-mode]").forEach(function (b) {
+      var m = (b.getAttribute("data-feed-mode") || b.getAttribute("data-id") || "").toLowerCase();
+      var isFy = m === "foryou" || /ለእርስዎ/.test(b.textContent || "");
+      b.classList.toggle("active", isFy);
+      b.classList.toggle("is-active", isFy);
+    });
   }
-  window.adikaResolveImageUrl = adikaResolveImageUrl;
-  window.getListingImageUrl = adikaResolveImageUrl;
 
-  // Normalize any item in-place before paint
-  window.adikaNormalizeItemImages = function (item) {
-    if (!item || typeof item !== "object") return item;
-    var url = adikaResolveImageUrl(item);
-    item.image_url = url;
-    item.photo_url = url;
-    if (!item.images || !item.images.length) item.images = url ? [url] : [];
-    if (!item.photos || !item.photos.length) item.photos = url ? [url] : [];
-    return item;
+  function bootForyou() {
+    installPrefsCapture();
+    activateForyouTab();
+    // Default launch → FYP
+    try {
+      if (typeof window.loadSmartFYP === "function") {
+        window.loadSmartFYP({ page: 1, append: false });
+      } else if (typeof window.loadFYPFeed === "function") {
+        window.loadFYPFeed();
+      }
+    } catch (e) {
+      console.warn("[Adika] FYP boot", e);
+    }
+  }
+
+  // Override loadFYPFeed
+  window.loadFYPFeed = function () {
+    activateForyouTab();
+    installPrefsCapture();
+    window.loadSmartFYP({ page: 1, append: false });
   };
 
-  // Hook create-card / paint if present
-  function patchPainter() {
-    if (typeof window.__adikaCreateCard === "function" && !window.__adikaCreateCard.__imgHooked) {
-      var orig = window.__adikaCreateCard;
-      window.__adikaCreateCard = function (it) {
-        try { it = window.adikaNormalizeItemImages(it) || it; } catch (e) {}
-        var el = orig.apply(this, arguments);
-        try {
-          if (el && it) {
-            var url = it.image_url || "";
-            if (url) {
-              var img = el.querySelector("img");
-              if (img && (!img.src || img.src.indexOf("data:image/svg") >= 0 || img.classList.contains("placeholder"))) {
-                img.src = url;
-                img.loading = "lazy";
-                img.onerror = function () {
-                  this.style.display = "none";
-                };
-              }
-            }
-          }
-        } catch (e2) {}
-        return el;
-      };
-      window.__adikaCreateCard.__imgHooked = true;
-    }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      setTimeout(bootForyou, 200);
+      setTimeout(activateForyouTab, 500);
+    });
+  } else {
+    setTimeout(bootForyou, 200);
   }
-  patchPainter();
-  setTimeout(patchPainter, 600);
-  setTimeout(patchPainter, 1800);
 
-  // Normalize arrays after FYP / feed fetch
-  if (typeof window.finishLoading === "function" && !window.finishLoading.__imgHooked) {
-    var _fl = window.finishLoading;
-    window.finishLoading = function (items) {
-      try {
-        if (Array.isArray(items)) items = items.map(window.adikaNormalizeItemImages);
-        arguments[0] = items;
-      } catch (e) {}
-      return _fl.apply(this, arguments);
-    };
-    window.finishLoading.__imgHooked = true;
-  }
+  // After Telegram ready
+  try {
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.ready();
+      setTimeout(bootForyou, 400);
+    }
+  } catch (e) {}
 })();
 </script>
 
