@@ -2999,16 +2999,60 @@ function shareContract() {{
                 return jsonify({"success": True, "prefs": af.get_user_preferences(uid)}), 200
             data = request.json or {}
             uid = int(data.get('user_id') or 0)
-            cats = data.get('categories') or []
+            cats = data.get('categories') or data.get('main_category') or []
             if isinstance(cats, str):
-                cats = [c.strip() for c in cats.split(',') if c.strip()]
+                cats = [c.strip() for c in cats.split(',') if c.strip() and c.strip() != '']
+            if data.get('main_category') and not cats:
+                cats = [str(data.get('main_category'))]
+            # Accept text budget and/or integer min/max
+            bmin = data.get('budget_min') or data.get('min_price') or 0
+            bmax = data.get('budget_max') or data.get('max_price') or 0
+            budget_text = (
+                data.get('budget')
+                or data.get('budget_range')
+                or data.get('budgetRange')
+                or ""
+            )
+            try:
+                bmin = int(float(bmin or 0))
+            except Exception:
+                bmin = 0
+            try:
+                bmax = int(float(bmax or 0))
+            except Exception:
+                bmax = 0
+            if (not bmax or bmax >= 999999999) and budget_text:
+                try:
+                    parsed = af.parse_budget_range(budget_text)
+                    if parsed.get("minPrice"):
+                        bmin = int(parsed["minPrice"])
+                    if parsed.get("maxPrice"):
+                        bmax = int(parsed["maxPrice"])
+                except Exception:
+                    pass
+            if not bmax:
+                bmax = 999999999
             ok = af.save_user_preferences(
                 uid,
                 cats,
-                int(data.get('budget_min') or 0),
-                int(data.get('budget_max') or 999999999),
+                budget_min=bmin,
+                budget_max=bmax,
+                budget=str(budget_text or ""),
+                budget_range=str(budget_text or ""),
+                min_price=bmin,
+                max_price=bmax,
             )
-            return jsonify({"success": ok}), 200
+            return jsonify({
+                "success": ok,
+                "prefs": {
+                    "categories": cats,
+                    "budget_min": bmin,
+                    "budget_max": bmax,
+                    "min_price": bmin,
+                    "max_price": bmax,
+                    "budget": budget_text,
+                },
+            }), 200
         except Exception as e:
             return jsonify({"success": False, "message": str(e)}), 500
 
