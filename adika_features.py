@@ -856,6 +856,87 @@ except Exception:
     requests = None  # type: ignore
 
 
+def _extract_image_urls(d: Dict[str, Any]) -> list:
+    """Collect image URLs from every known manual / scraped field name."""
+    urls = []
+
+    def _push(val):
+        if val is None:
+            return
+        if isinstance(val, (list, tuple)):
+            for x in val:
+                _push(x)
+            return
+        if isinstance(val, dict):
+            for k in ("url", "src", "image", "image_url", "photo", "href"):
+                if val.get(k):
+                    _push(val.get(k))
+            return
+        s = str(val).strip()
+        if not s or s.lower() in ("null", "none", "undefined", "[]", "{}"):
+            return
+        # JSON string of list
+        if s.startswith("[") and s.endswith("]"):
+            try:
+                parsed = json.loads(s)
+                _push(parsed)
+                return
+            except Exception:
+                pass
+        # only accept http(s) or data: URLs
+        if s.startswith("http://") or s.startswith("https://") or s.startswith("data:image"):
+            if s not in urls:
+                urls.append(s)
+
+    for key in (
+        "image_url", "image", "photo_url", "photo", "thumbnail", "thumb",
+        "cover_image", "cover", "main_image", "primary_image",
+        "telegram_image", "telegram_photo", "tg_image", "file_url",
+        "media_url", "picture", "pic",
+    ):
+        if d.get(key):
+            _push(d.get(key))
+
+    for key in ("images", "photos", "photo_urls", "image_urls", "media", "gallery", "attachments"):
+        if d.get(key) is not None:
+            _push(d.get(key))
+
+    # Nested extra_data
+    extra = d.get("extra_data")
+    if isinstance(extra, str):
+        try:
+            extra = json.loads(extra)
+        except Exception:
+            extra = None
+    if isinstance(extra, dict):
+        for key in ("image_url", "photo_url", "telegram_image", "images", "photos", "photo_urls"):
+            if extra.get(key) is not None:
+                _push(extra.get(key))
+
+    return urls
+
+
+def unify_listing_images(d: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Guarantee every listing exposes the SAME image schema:
+      image_url  (string, primary)
+      images     (list)
+      photos     (list)
+      photo_url  (string, alias)
+    Works for manual inserts and Telegram-scraped rows.
+    """
+    out = dict(d or {})
+    urls = _extract_image_urls(out)
+    primary = urls[0] if urls else ""
+    out["image_url"] = primary
+    out["photo_url"] = primary
+    out["images"] = urls
+    out["photos"] = urls
+    if primary and not out.get("thumbnail"):
+        out["thumbnail"] = primary
+    return out
+
+
 def _normalize_listing_row(d: Dict[str, Any], source: str = "listing") -> Dict[str, Any]:
     out = dict(d or {})
     out["source"] = source
@@ -868,6 +949,11 @@ def _normalize_listing_row(d: Dict[str, Any], source: str = "listing") -> Dict[s
     if out.get("photos") and isinstance(out["photos"], str):
         try:
             out["photos"] = json.loads(out["photos"])
+        except Exception:
+            pass
+    if out.get("images") and isinstance(out["images"], str):
+        try:
+            out["images"] = json.loads(out["images"])
         except Exception:
             pass
     if out.get("created_at") and not isinstance(out["created_at"], str):
@@ -886,6 +972,8 @@ def _normalize_listing_row(d: Dict[str, Any], source: str = "listing") -> Dict[s
     if source == "clean_market" and not out.get("price"):
         out["price"] = out.get("current_price_range_etb") or out.get("price_range") or ""
     out["main_category"] = out.get("main_category") or out.get("category") or ""
+    # UNIFIED image keys for FYP + feed + cards
+    out = unify_listing_images(out)
     return out
 
 
