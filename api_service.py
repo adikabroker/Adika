@@ -81,174 +81,9 @@ except Exception:
 
 logger = logging.getLogger(__name__)
 
-
-def normalize_listing_main_category(data: Optional[Dict[str, Any]] = None, category: str = "", **hints) -> str:
-    """
-    Strict main_category assignment for listings inserts.
-    Returns canonical Amharic tags used across the app filters:
-      - 'መኪና' for any vehicle / car payload
-      - 'ቤት' for any property / house payload
-    Never returns mixed or empty values when signals exist.
-    """
-    data = data or {}
-    raw = (
-        category
-        or data.get("category")
-        or data.get("main_category")
-        or data.get("type")
-        or data.get("listing_category")
-        or ""
-    )
-    raw_l = str(raw).strip().lower()
-
-    # Explicit field signals from the form
-    car_signals = [
-        data.get("car_model"), data.get("car_type"), data.get("fuel_type"),
-        data.get("transmission"), data.get("mileage"), data.get("chassis_number"),
-        data.get("vin"), data.get("engine_cc"), hints.get("car_model"),
-        hints.get("fuel_type"), hints.get("transmission"), hints.get("chassis_number"),
-    ]
-    house_signals = [
-        data.get("house_type"), data.get("bedrooms"), data.get("bathrooms"),
-        data.get("parking"), data.get("property_type"), data.get("location_area"),
-        hints.get("house_type"), hints.get("bedrooms"), hints.get("property_type"),
-    ]
-    has_car = any(str(x or "").strip() for x in car_signals)
-    has_house = any(str(x or "").strip() for x in house_signals)
-
-    # Keyword blobs
-    blob = " ".join(
-        str(x or "") for x in (
-            raw,
-            data.get("sub_category"), data.get("title"), data.get("description"),
-            data.get("details"), data.get("car_model"), data.get("house_type"),
-            data.get("property_type"),
-        )
-    ).lower()
-
-    vehicle_kw = (
-        "መኪና", "car", "cars", "vehicle", "auto", "toyota", "suzuki", "hyundai",
-        "vin", "chassis", "mileage", "transmission", "fuel", "sedan", "suv", "pickup"
-    )
-    property_kw = (
-        "ቤት", "house", "houses", "home", "property", "villa", "apartment",
-        "condo", "real estate", "bedroom", "bathroom", "ንብረት", "አፓርታማ"
-    )
-
-    is_vehicle = (
-        raw_l in ("መኪና", "car", "cars", "vehicle", "vehicles", "auto")
-        or has_car
-        or any(k in blob for k in vehicle_kw)
-    )
-    is_property = (
-        raw_l in ("ቤት", "house", "houses", "home", "property", "realestate", "real_estate", "ንብረት")
-        or has_house
-        or any(k in blob for k in property_kw)
-    )
-
-    # Prefer explicit form fields over ambiguous blob
-    if has_car and not has_house:
-        return "መኪና"
-    if has_house and not has_car:
-        return "ቤት"
-    if is_vehicle and not is_property:
-        return "መኪና"
-    if is_property and not is_vehicle:
-        return "ቤት"
-    if is_vehicle:
-        return "መኪና"
-    if is_property:
-        return "ቤት"
-    # Default marketplace inventory is cars
-    if raw_l in ("cars", "car"):
-        return "መኪና"
-    if raw_l in ("houses", "house"):
-        return "ቤት"
-    return "መኪና" if not raw else ("መኪና" if "መኪና" in raw or "car" in raw_l else ("ቤት" if "ቤት" in raw or "house" in raw_l else "መኪና"))
-
-
-
-
 # Optional bot globals (set by webapp at runtime)
 bot_app = None
 bot_loop = None
-
-
-
-def unify_listing_images(item):
-    """Normalize image keys for every API listing payload (manual + scraped)."""
-    if not isinstance(item, dict):
-        return item
-    try:
-        import adika_features as _af
-        if hasattr(_af, "unify_listing_images"):
-            return _af.unify_listing_images(item)
-    except Exception:
-        pass
-    urls = []
-
-    def _push(val):
-        if val is None:
-            return
-        if isinstance(val, (list, tuple)):
-            for x in val:
-                _push(x)
-            return
-        if isinstance(val, dict):
-            for k in ("url", "src", "image", "image_url", "photo"):
-                if val.get(k):
-                    _push(val.get(k))
-            return
-        s = str(val).strip()
-        if not s or s.lower() in ("null", "none", "undefined"):
-            return
-        if s.startswith("[") and s.endswith("]"):
-            try:
-                import json as _json
-                _push(_json.loads(s))
-                return
-            except Exception:
-                pass
-        if s.startswith("http://") or s.startswith("https://") or s.startswith("data:image"):
-            if s not in urls:
-                urls.append(s)
-
-    for key in (
-        "image_url", "image", "photo_url", "photo", "thumbnail", "thumb",
-        "cover_image", "telegram_image", "telegram_photo", "tg_image", "file_url",
-        "media_url", "picture",
-    ):
-        if item.get(key):
-            _push(item.get(key))
-    for key in ("images", "photos", "photo_urls", "image_urls", "media", "gallery"):
-        if item.get(key) is not None:
-            _push(item.get(key))
-    extra = item.get("extra_data")
-    if isinstance(extra, str):
-        try:
-            import json as _json
-            extra = _json.loads(extra)
-        except Exception:
-            extra = None
-    if isinstance(extra, dict):
-        for key in ("image_url", "photo_url", "telegram_image", "images", "photos", "photo_urls"):
-            if extra.get(key) is not None:
-                _push(extra.get(key))
-    primary = urls[0] if urls else ""
-    item["image_url"] = primary
-    item["photo_url"] = primary
-    item["images"] = urls
-    item["photos"] = urls
-    if primary and not item.get("thumbnail"):
-        item["thumbnail"] = primary
-    return item
-
-
-def unify_listings_payload(items):
-    if not isinstance(items, list):
-        return items
-    return [unify_listing_images(dict(x)) if isinstance(x, dict) else x for x in items]
-
 
 def _auth_secret() -> str:
     return (
@@ -1836,10 +1671,7 @@ def register_api_routes(web_app):
                 # Route buyer payloads that hit post-listing by mistake
                 data['_force_buy'] = True
             user_id = data.get('user_id')
-            # STRICT category: Cars -> መኪና, Houses -> ቤት (never trust mixed client tags)
-            category = normalize_listing_main_category(data, category=data.get('category') or data.get('main_category') or '')
-            data['category'] = category
-            data['main_category'] = category
+            category = data.get('category', 'መኪና')
             sub_category = data.get('sub_category', '')
             car_model = data.get('car_model', '')
             location_area = data.get('location_area', '')
@@ -3066,7 +2898,7 @@ function shareContract() {{
                 "success": bool(result.get("success", True)),
                 "query": q,
                 "intent": result.get("intent") or intent or {},
-                "items": unify_listings_payload(items),
+                "items": items,
                 "listings": [x for x in items if x.get("source") == "listing"],
                 "clean_market": [x for x in items if x.get("source") == "clean_market"],
                 "counts": result.get("counts") or {
@@ -3098,23 +2930,9 @@ function shareContract() {{
                 uid = 0
             if not uid:
                 try:
-                    body = request.get_json(silent=True) or {}
-                    uid = int(body.get('user_id') or body.get('telegram_id') or body.get('chat_id') or 0)
-                except Exception:
-                    uid = 0
-            if not uid:
-                try:
                     user, _err = require_device_auth_response()
                     if user:
                         uid = int(user.get("user_id") or user.get("id") or 0)
-                except Exception:
-                    pass
-            if not uid:
-                try:
-                    # Telegram WebApp sometimes sends initData user id header
-                    hdr = request.headers.get("X-Telegram-User-Id") or request.headers.get("X-User-Id") or ""
-                    if hdr:
-                        uid = int(str(hdr).strip())
                 except Exception:
                     pass
             try:
@@ -3128,7 +2946,6 @@ function shareContract() {{
             limit = max(1, min(limit, 60))
             page = max(1, page)
 
-            data = {}
             data = {}
             try:
                 import adika_features as af
@@ -3146,52 +2963,16 @@ function shareContract() {{
                     src = "clean_market"
                 it["source"] = src
                 it["target_type"] = src
-                it = unify_listing_images(it)
                 items.append(it)
-
-            # FALLBACK: never return empty FYP — load popular/recent SELL listings
-            if not items:
-                try:
-                    conn = get_db_connection()
-                    cur = conn.cursor()
-                    p = get_placeholder()
-                    cur.execute(
-                        f"""
-                        SELECT * FROM listings
-                        WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
-                          AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
-                        ORDER BY id DESC
-                        LIMIT {p}
-                        """,
-                        (limit,),
-                    )
-                    for row in cur.fetchall() or []:
-                        it = dict(row) if isinstance(row, dict) else {}
-                        if not it:
-                            continue
-                        it["source"] = "listing"
-                        it["target_type"] = "listing"
-                        it["_fallback"] = True
-                        it = unify_listing_images(it)
-                        items.append(it)
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
-                    data["mode"] = data.get("mode") or "api_recent_fallback"
-                except Exception as fb_err:
-                    logger.warning("for-you empty fallback: %s", fb_err)
 
             return jsonify({
                 "success": True,
-                "items": unify_listings_payload(items),
+                "items": items,
                 "listings": [x for x in items if x.get("source") == "listing"],
                 "clean_market": [x for x in items if x.get("source") == "clean_market"],
                 "page": page,
                 "prefs": data.get("prefs") or {},
                 "intent": data.get("intent") or {},
-                "mode": data.get("mode") or ("personalized" if uid else "popular_fallback"),
-                "user_id": uid,
                 "has_more": bool(data.get("has_more")),
                 "counts": data.get("counts") or {
                     "total": len(items),
@@ -4076,39 +3857,11 @@ function shareContract() {{
             params.extend(['sold', 'rented', 'expired'])
 
             if category == "cars":
-                # STRICT cars only — block house leakage
-                where.append(
-                    f"""(
-                        (
-                            LOWER(COALESCE(main_category,'')) IN ('መኪና','car','cars','vehicle','vehicles','auto')
-                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%car%'
-                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%መኪና%'
-                            OR LOWER(COALESCE(CAST(category AS TEXT),'')) LIKE '%car%'
-                            OR LOWER(COALESCE(CAST(category AS TEXT),'')) LIKE '%መኪና%'
-                        )
-                        AND LOWER(COALESCE(main_category,'')) NOT IN ('ቤት','house','houses','home','property')
-                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%house%'
-                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%ቤት%'
-                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%property%'
-                    )"""
-                )
+                where.append(f"(main_category = {p} OR category = {p})")
+                params.extend(["መኪና", "መኪና"])
             elif category == "property":
-                # STRICT houses only — block car leakage
-                where.append(
-                    f"""(
-                        (
-                            LOWER(COALESCE(main_category,'')) IN ('ቤት','house','houses','home','property','ንብረት')
-                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%house%'
-                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%ቤት%'
-                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%property%'
-                            OR LOWER(COALESCE(CAST(category AS TEXT),'')) LIKE '%house%'
-                            OR LOWER(COALESCE(CAST(category AS TEXT),'')) LIKE '%ቤት%'
-                        )
-                        AND LOWER(COALESCE(main_category,'')) NOT IN ('መኪና','car','cars','vehicle','vehicles','auto')
-                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%car%'
-                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%መኪና%'
-                    )"""
-                )
+                where.append(f"(main_category = {p} OR category = {p})")
+                params.extend(["ቤት", "ቤት"])
 
             # If keyword becomes empty after cleaning, do NOT apply LIKE %keyword%
             if keyword:
