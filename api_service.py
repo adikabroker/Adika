@@ -3170,21 +3170,25 @@ function shareContract() {{
             offset = (page - 1) * limit
             req_type = (request.args.get('type') or '').upper()
             category = request.args.get('category') or ''
-            # Honour explicit tab= parameter from UI (for_you | all | cars | houses | commercial)
-            tab = (request.args.get('tab') or '').strip().lower()
-            if not category and tab in ('cars', 'car', 'vehicles', 'vehicle'):
-                category = 'መኪና'
-            elif not category and tab in ('houses', 'house', 'property', 'home'):
-                category = 'ቤት'
-            elif not category and tab in ('commercial', 'business'):
-                category = 'ንግድ'
-            # tab=all or tab=for_you leave category empty → no category constraint
+            tab = (request.args.get('tab') or request.args.get('feed') or '').strip().lower()
+            # Map UI tabs -> category filters (Cars / Houses)
+            if tab in ('cars', 'car', 'መኪና', 'vehicles'):
+                category = category or 'መኪና'
+            elif tab in ('houses', 'house', 'ቤት', 'property', 'home'):
+                category = category or 'ቤት'
+            elif tab in ('all', 'ሁሉም'):
+                category = ''
             search = (request.args.get('q') or '').strip()
             chassis_only = (request.args.get('chassis_only') == '1' or request.args.get('has_chassis') == '1')
             order = (request.args.get('order') or 'DESC').upper()
             active_only = request.args.get('active_only', '1') == '1'
             if order not in ('ASC', 'DESC'):
                 order = 'DESC'
+            _strict_category = bool(
+                category
+                and str(category).strip().lower()
+                not in ('', 'all', 'null', 'none', 'undefined', '✨ ሁሉም', '✨ all', 'ሁሉም', 'foryou', 'for_you')
+            )
 
             conn = None
             try:
@@ -3264,9 +3268,10 @@ function shareContract() {{
                         list(params) + [limit, offset],
                     )
                     rows = cur.fetchall() or []
-                    # If SELL filters returned empty, soft fallback (legacy Telegram posts).
-                    # NEVER fallback for BUY — that incorrectly mixes seller cards into Buyers tab.
-                    if not rows and page == 1 and req_type != 'BUY':
+                    # Soft fallback ONLY when no category/tab filter was requested.
+                    # NEVER drop category filters — that makes Cars/Houses tabs show identical unfiltered cards.
+                    # NEVER fallback for BUY — mixes seller cards into Buyers tab.
+                    if not rows and page == 1 and req_type != 'BUY' and not _strict_category:
                         try:
                             cur.execute(
                                 f"SELECT COUNT(*) AS cnt FROM listings WHERE "
@@ -3290,6 +3295,8 @@ function shareContract() {{
                             logger.info("explorer SELL empty-filter fallback returned %s rows", len(rows))
                         except Exception as _fb0:
                             logger.warning("explorer empty fallback: %s", _fb0)
+                    elif not rows and _strict_category:
+                        logger.info("explorer strict category '%s' returned 0 rows — no unfiltered fallback", category)
                 except Exception as qerr:
                     logger.warning(f"api_explorer_listings primary query failed, fallback: {qerr}")
                     try:
@@ -3313,10 +3320,33 @@ function shareContract() {{
                     except Exception as qerr2:
                         logger.error(f"api_explorer_listings fallback failed: {qerr2}")
                         try:
-                            cur.execute(
-                                f"SELECT * FROM listings WHERE (status IS NULL OR status != 'deleted') ORDER BY id DESC LIMIT {p} OFFSET {p}",
-                                [limit, offset],
-                            )
+                            if _strict_category:
+                                # Keep category constraint even in last-resort
+                                like = "ILIKE" if is_postgres() else "LIKE"
+                                cat_raw = str(category).strip()
+                                cat_l = cat_raw.lower()
+                                aliases = [cat_raw]
+                                if cat_l in ('መኪና', 'car', 'cars', 'vehicle', 'vehicles', 'auto'):
+                                    aliases = ['መኪና', 'car', 'cars', 'vehicle', 'መኪኖች']
+                                elif cat_l in ('ቤት', 'house', 'home', 'property', 'realestate', 'real_estate', 'ንብረት'):
+                                    aliases = ['ቤት', 'house', 'property', 'home', 'ንብረት']
+                                parts = []
+                                fp = []
+                                for a in aliases:
+                                    parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
+                                    fp.append(f"%{a}%")
+                                    parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
+                                    fp.append(f"%{a}%")
+                                cat_sql = "(" + " OR ".join(parts) + ")"
+                                cur.execute(
+                                    f"SELECT * FROM listings WHERE (status IS NULL OR status != 'deleted') AND {cat_sql} ORDER BY id DESC LIMIT {p} OFFSET {p}",
+                                    fp + [limit, offset],
+                                )
+                            else:
+                                cur.execute(
+                                    f"SELECT * FROM listings WHERE (status IS NULL OR status != 'deleted') ORDER BY id DESC LIMIT {p} OFFSET {p}",
+                                    [limit, offset],
+                                )
                             rows = cur.fetchall() or []
                             total = len(rows)
                         except Exception as qerr3:
@@ -4323,6 +4353,143 @@ function shareContract() {{
             })
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
+
+
+
+    @web_app.route('/api/feed', methods=['GET', 'OPTIONS'])
+    def api_unified_feed():
+        """
+        Unified tab feed:
+          tab=for_you|foryou -> hybrid scoring (listings + ethiopia_vehicles)
+          tab=all -> all active SELL listings
+          tab=cars|መኪና -> cars only
+          tab=houses|ቤት -> houses only
+        """
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            tab = (request.args.get('tab') or request.args.get('category') or 'all').strip().lower()
+            try:
+                page = max(1, int(request.args.get('page') or 1))
+            except Exception:
+                page = 1
+            try:
+                limit = min(50, max(1, int(request.args.get('limit') or 24)))
+            except Exception:
+                limit = 24
+            uid = 0
+            try:
+                uid = int(request.args.get('user_id') or request.args.get('telegram_id') or 0)
+            except Exception:
+                uid = 0
+
+            # for_you hybrid
+            if tab in ('for_you', 'foryou', 'ለእርስዎ'):
+                try:
+                    import adika_features as af
+                    data = af.fetch_for_you_feed(uid, limit=limit, page=page) or {}
+                except Exception as fe:
+                    logger.warning("api_unified_feed for_you: %s", fe)
+                    data = {"success": True, "items": [], "listings": [], "clean_market": []}
+                items = []
+                for it in (data.get("items") or []):
+                    if not isinstance(it, dict):
+                        continue
+                    src = it.get("source") or it.get("target_type") or "listing"
+                    if it.get("is_clean_market") or it.get("model_key") or it.get("current_price_range_etb"):
+                        src = "clean_market"
+                    it["source"] = src
+                    it["target_type"] = src
+                    items.append(it)
+                return jsonify({
+                    "success": True,
+                    "tab": "for_you",
+                    "items": items,
+                    "listings": [x for x in items if x.get("source") == "listing"],
+                    "clean_market": [x for x in items if x.get("source") == "clean_market"],
+                    "page": page,
+                    "prefs": data.get("prefs") or {},
+                    "has_more": bool(data.get("has_more")),
+                })
+
+            # Map tab -> category for explorer
+            cat = ""
+            if tab in ('cars', 'car', 'መኪና', 'vehicles'):
+                cat = "መኪና"
+            elif tab in ('houses', 'house', 'ቤት', 'property', 'home'):
+                cat = "ቤት"
+            # all / unknown -> no category
+
+            # Delegate to explorer logic via internal query args
+            # Reuse DB path by temporarily setting request-like params is hard;
+            # call the same SQL building inline via a mini query:
+            from models import get_db_connection, is_postgres, get_placeholder
+            conn = None
+            try:
+                conn = get_db_connection()
+                cur = conn.cursor()
+                p = get_placeholder()
+                like = "ILIKE" if is_postgres() else "LIKE"
+                where = [
+                    "(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))",
+                    "(UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')",
+                ]
+                params = []
+                if cat:
+                    aliases = [cat]
+                    if cat == "መኪና":
+                        aliases = ["መኪና", "car", "cars", "vehicle", "መኪኖች"]
+                    elif cat == "ቤት":
+                        aliases = ["ቤት", "house", "property", "home", "ንብረት"]
+                    parts = []
+                    for a in aliases:
+                        parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(sub_category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(req_type,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                    where.append("(" + " OR ".join(parts) + ")")
+                where_sql = " AND ".join(where)
+                offset = (page - 1) * limit
+                cur.execute(
+                    f"SELECT * FROM listings WHERE {where_sql} ORDER BY id DESC LIMIT {p} OFFSET {p}",
+                    list(params) + [limit, offset],
+                )
+                rows = cur.fetchall() or []
+                items = []
+                for row in rows:
+                    item = dict(row) if isinstance(row, dict) else {}
+                    if not item and row is not None:
+                        try:
+                            item = dict(row)
+                        except Exception:
+                            continue
+                    item["source"] = "listing"
+                    item["target_type"] = "listing"
+                    items.append(item)
+                return jsonify({
+                    "success": True,
+                    "tab": tab or "all",
+                    "category": cat or None,
+                    "items": items,
+                    "listings": items,
+                    "page": page,
+                    "has_more": len(items) >= limit,
+                    "counts": {"total": len(items), "listing": len(items), "clean_market": 0},
+                })
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.error("api_unified_feed: %s", e, exc_info=True)
+            return jsonify({"success": True, "items": [], "listings": [], "message": str(e)}), 200
+
 
 
     @web_app.route('/api/listings', methods=['GET'])
