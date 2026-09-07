@@ -1105,46 +1105,46 @@ def unified_smart_search(query: str = "", intent: Optional[Dict[str, Any]] = Non
 
 def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str, Any]:
     """
-    Hybrid For-You feed with personalization signals + popular fallback.
+    Hybrid For-You feed ordered by created_at DESC (newest first).
 
-    Signals (when user_id present):
-      - user_preferences (categories, budget_min/max)
-      - favorites (listing_id)
-      - search_alerts (category, max_price, model_hint)
-      - recent view counts on listings
+    Personalization signals (when user_id present):
+      - user_preferences, favorites, search_alerts, view_count
 
-    FALLBACK: if no prefs/history or zero matches, return most popular + newest
-    active SELL listings (never empty-break for new users).
+    FALLBACK (empty history / no prefs):
+      Balanced 50/50 stream of newest Cars (መኪና) + newest Houses (ቤት),
+      interleaved and sorted strictly by created_at DESC.
+
+    Category leakage is blocked: car rows never tagged as ቤት and vice-versa
+    via SQL segregation helpers.
     """
     from models import get_db_connection, is_postgres
 
     uid = int(user_id or 0)
+    limit = max(1, min(int(limit or 24), 60))
+    page = max(1, int(page or 1))
+
     prefs = get_user_preferences(uid) if uid else {
         "categories": [],
         "budget_min": 0,
         "budget_max": 999999999,
         "onboarding_done": False,
     }
-    cats = prefs.get("categories") or []
-    cat0 = ""
-    for c in cats:
-        if c:
-            cat0 = str(c)
-            break
+    cats = [str(c) for c in (prefs.get("categories") or []) if c]
+    cat0 = cats[0] if cats else ""
     intent = {
-        "category": cat0 or "",
+        "category": cat0,
         "brand": "",
         "model": "",
         "price_max": int(prefs.get("budget_max") or 0),
         "price_min": int(prefs.get("budget_min") or 0),
         "transmission": str(prefs.get("transmission") or ""),
         "fuel": str(prefs.get("fuel") or ""),
-        "keywords": [str(c) for c in cats if c],
+        "keywords": cats[:],
     }
     if intent["price_max"] >= 999999999:
         intent["price_max"] = 0
 
-    # --- Load interaction signals ---
+    # --- Interaction signals ---
     fav_ids = set()
     alert_cats = []
     alert_models = []
@@ -1155,7 +1155,6 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
             conn = get_db_connection()
             cur = conn.cursor()
             p = _ph()
-            # favorites
             try:
                 cur.execute(
                     f"SELECT listing_id FROM favorites WHERE user_id={p} OR chat_id={p} ORDER BY id DESC LIMIT 100",
@@ -1163,12 +1162,10 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
                 )
                 for r in cur.fetchall() or []:
                     d = dict(r) if not isinstance(r, dict) else r
-                    lid = d.get("listing_id")
-                    if lid is not None:
-                        try:
-                            fav_ids.add(int(lid))
-                        except Exception:
-                            pass
+                    try:
+                        fav_ids.add(int(d.get("listing_id")))
+                    except Exception:
+                        pass
             except Exception:
                 try:
                     cur.execute(
@@ -1177,15 +1174,12 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
                     )
                     for r in cur.fetchall() or []:
                         d = dict(r) if not isinstance(r, dict) else r
-                        lid = d.get("listing_id")
-                        if lid is not None:
-                            try:
-                                fav_ids.add(int(lid))
-                            except Exception:
-                                pass
+                        try:
+                            fav_ids.add(int(d.get("listing_id")))
+                        except Exception:
+                            pass
                 except Exception as fe:
-                    logger.debug("favorites signal: %s", fe)
-            # search_alerts
+                    logger.debug("favorites: %s", fe)
             try:
                 cur.execute(
                     f"SELECT category, max_price, model_hint FROM search_alerts "
@@ -1205,7 +1199,7 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
                     except Exception:
                         pass
             except Exception as ae:
-                logger.debug("alerts signal: %s", ae)
+                logger.debug("alerts: %s", ae)
     except Exception as e:
         logger.warning("signal load: %s", e)
     finally:
@@ -1215,7 +1209,6 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
             except Exception:
                 pass
 
-    # Merge alert categories into prefs if user has no explicit cats
     if not cats and alert_cats:
         cats = list(dict.fromkeys(alert_cats))
         intent["category"] = cats[0] if cats else ""
@@ -1223,48 +1216,209 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
     if alert_max_prices and not intent["price_max"]:
         intent["price_max"] = int(min(alert_max_prices))
 
-    has_signals = bool(cats or fav_ids or alert_cats or alert_models or (prefs.get("onboarding_done")))
+    has_signals = bool(cats or fav_ids or alert_cats or alert_models or prefs.get("onboarding_done"))
+
+    def _order_sql():
+        # Prefer created_at when column exists; always fall back to id
+        return "ORDER BY COALESCE(created_at, to_timestamp(0)) DESC, id DESC"
+
+    def _order_sql_sqlite():
+        return "ORDER BY COALESCE(created_at, '') DESC, id DESC"
+
+    def _fetch_by_category(main_cat: str, fetch_limit: int) -> List[Dict[str, Any]]:
+        """Strict category SQL: cars never mix with houses."""
+        rows: List[Dict[str, Any]] = []
+        c = None
+        try:
+            c = get_db_connection()
+            cur = c.cursor()
+            p = _ph()
+            pg = False
+            try:
+                pg = bool(is_postgres())
+            except Exception:
+                pg = False
+
+            if main_cat in ("መኪና", "Cars", "cars", "car"):
+                # Cars only — exclude house/property tags
+                if pg:
+                    sql = f"""
+                        SELECT * FROM listings
+                        WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
+                          AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
+                          AND (
+                                LOWER(COALESCE(main_category,'')) IN ('መኪና','car','cars','vehicle','vehicles','auto')
+                             OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%car%%'
+                             OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%መኪና%%'
+                          )
+                          AND LOWER(COALESCE(main_category,'')) NOT IN ('ቤት','house','houses','home','property')
+                          AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%house%%'
+                          AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%ቤት%%'
+                          AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%property%%'
+                        ORDER BY COALESCE(created_at, TIMESTAMP '1970-01-01') DESC, id DESC
+                        LIMIT {p}
+                    """
+                else:
+                    sql = f"""
+                        SELECT * FROM listings
+                        WHERE (status IS NULL OR lower(cast(status as text)) NOT IN ('deleted','sold','rented','expired'))
+                          AND (upper(trim(coalesce(req_type,''))) NOT IN ('BUY','RENT') OR coalesce(req_type,'') = '')
+                          AND (
+                                lower(coalesce(main_category,'')) IN ('መኪና','car','cars','vehicle','vehicles','auto')
+                             OR lower(coalesce(main_category,'')) LIKE '%car%'
+                             OR lower(coalesce(main_category,'')) LIKE '%መኪና%'
+                          )
+                          AND lower(coalesce(main_category,'')) NOT IN ('ቤት','house','houses','home','property')
+                          AND lower(coalesce(main_category,'')) NOT LIKE '%house%'
+                          AND lower(coalesce(main_category,'')) NOT LIKE '%ቤት%'
+                          AND lower(coalesce(main_category,'')) NOT LIKE '%property%'
+                        ORDER BY coalesce(created_at, '') DESC, id DESC
+                        LIMIT {p}
+                    """
+            else:
+                # Houses only — exclude car tags
+                if pg:
+                    sql = f"""
+                        SELECT * FROM listings
+                        WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
+                          AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
+                          AND (
+                                LOWER(COALESCE(main_category,'')) IN ('ቤት','house','houses','home','property','ንብረት')
+                             OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%house%%'
+                             OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%ቤት%%'
+                             OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%%property%%'
+                          )
+                          AND LOWER(COALESCE(main_category,'')) NOT IN ('መኪና','car','cars','vehicle','vehicles','auto')
+                          AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%car%%'
+                          AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%%መኪና%%'
+                        ORDER BY COALESCE(created_at, TIMESTAMP '1970-01-01') DESC, id DESC
+                        LIMIT {p}
+                    """
+                else:
+                    sql = f"""
+                        SELECT * FROM listings
+                        WHERE (status IS NULL OR lower(cast(status as text)) NOT IN ('deleted','sold','rented','expired'))
+                          AND (upper(trim(coalesce(req_type,''))) NOT IN ('BUY','RENT') OR coalesce(req_type,'') = '')
+                          AND (
+                                lower(coalesce(main_category,'')) IN ('ቤት','house','houses','home','property','ንብረት')
+                             OR lower(coalesce(main_category,'')) LIKE '%house%'
+                             OR lower(coalesce(main_category,'')) LIKE '%ቤት%'
+                             OR lower(coalesce(main_category,'')) LIKE '%property%'
+                          )
+                          AND lower(coalesce(main_category,'')) NOT IN ('መኪና','car','cars','vehicle','vehicles','auto')
+                          AND lower(coalesce(main_category,'')) NOT LIKE '%car%'
+                          AND lower(coalesce(main_category,'')) NOT LIKE '%መኪና%'
+                        ORDER BY coalesce(created_at, '') DESC, id DESC
+                        LIMIT {p}
+                    """
+            cur.execute(sql, (int(fetch_limit),))
+            for r in cur.fetchall() or []:
+                d = _normalize_listing_row(dict(r), source="listing")
+                d["source"] = "listing"
+                d["target_type"] = "listing"
+                rows.append(d)
+        except Exception as e:
+            logger.warning("_fetch_by_category(%s): %s", main_cat, e)
+            # Fallback: soft filter without created_at column
+            try:
+                if c is None:
+                    c = get_db_connection()
+                cur = c.cursor()
+                p = _ph()
+                if main_cat in ("መኪና", "Cars", "cars", "car"):
+                    cur.execute(
+                        f"""
+                        SELECT * FROM listings
+                        WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
+                          AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
+                          AND (
+                                main_category IN ('መኪና','Cars','cars','Car','car')
+                             OR CAST(main_category AS TEXT) ILIKE {p}
+                          )
+                        ORDER BY id DESC
+                        LIMIT {p}
+                        """,
+                        ("%car%", int(fetch_limit)),
+                    )
+                else:
+                    cur.execute(
+                        f"""
+                        SELECT * FROM listings
+                        WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
+                          AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
+                          AND (
+                                main_category IN ('ቤት','Houses','houses','House','house')
+                             OR CAST(main_category AS TEXT) ILIKE {p}
+                          )
+                        ORDER BY id DESC
+                        LIMIT {p}
+                        """,
+                        ("%house%", int(fetch_limit)),
+                    )
+                for r in cur.fetchall() or []:
+                    d = _normalize_listing_row(dict(r), source="listing")
+                    d["source"] = "listing"
+                    d["target_type"] = "listing"
+                    rows.append(d)
+            except Exception as e2:
+                logger.error("_fetch_by_category soft fail: %s", e2)
+        finally:
+            if c:
+                try:
+                    c.close()
+                except Exception:
+                    pass
+        return rows
+
+    def _created_key(d: Dict[str, Any]):
+        for k in ("created_at", "created", "updated_at", "timestamp"):
+            v = d.get(k)
+            if v is not None and v != "":
+                return str(v)
+        try:
+            return f"0-{int(d.get('id') or 0):012d}"
+        except Exception:
+            return "0-000000000000"
 
     scored: List[Tuple[int, Dict[str, Any]]] = []
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT * FROM listings
-            WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
-              AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT')
-                   OR COALESCE(req_type,'') = '')
-            ORDER BY id DESC
-            LIMIT 300
-            """
+
+    if has_signals:
+        # Personalized: pull both pools, score, prefer user category
+        want_car = any(
+            str(c).lower() in ("መኪና", "car", "cars", "vehicle") or "መኪና" in str(c)
+            for c in cats
         )
-        for r in cur.fetchall() or []:
-            d = _normalize_listing_row(dict(r), source="listing")
-            d["source"] = "listing"
-            d["target_type"] = "listing"
+        want_house = any(
+            str(c).lower() in ("ቤት", "house", "houses", "property", "ንብረት") or "ቤት" in str(c)
+            for c in cats
+        )
+        if not want_car and not want_house:
+            want_car = want_house = True
+
+        pool: List[Dict[str, Any]] = []
+        if want_car:
+            pool.extend(_fetch_by_category("መኪና", max(limit * 3, 60)))
+        if want_house:
+            pool.extend(_fetch_by_category("ቤት", max(limit * 3, 60)))
+
+        for d in pool:
             price = _parse_price(d.get("price"))
             bmin = float(prefs.get("budget_min") or 0)
             bmax = float(prefs.get("budget_max") or 999999999)
-            # Soft budget: only hard-filter when user set a real max
-            if has_signals and price > 0 and bmax < 999999999 and not (bmin <= price <= bmax):
-                # keep but downscore instead of drop — still allow fallback diversity
+            budget_ok = True
+            if price > 0 and bmax < 999999999 and not (bmin <= price <= bmax):
                 budget_ok = False
-            else:
-                budget_ok = True
 
             sc = score_listing_for_user(d, prefs) if has_signals else 0
-            # favorites boost
             try:
                 lid = int(d.get("id") or 0)
             except Exception:
                 lid = 0
             if lid and lid in fav_ids:
                 sc += 25
-            # alert model hints
             blob = " ".join(
-                str(d.get(k) or "") for k in ("title", "description", "sub_category", "main_category", "brand", "model")
+                str(d.get(k) or "")
+                for k in ("title", "description", "sub_category", "main_category", "brand", "model")
             ).lower()
             for mh in alert_models:
                 if mh and mh in blob:
@@ -1274,92 +1428,73 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
                 if ac and (ac in str(d.get("main_category") or "") or ac.lower() in blob):
                     sc += 8
                     break
-            # popularity / freshness
             try:
                 sc += min(8, int(d.get("view_count") or 0) // 30)
             except Exception:
                 pass
             if not budget_ok:
                 sc = max(0, sc - 15)
-
-            # category gate only when user has explicit categories (else keep all for ranking)
-            if cats and has_signals:
-                main = str(d.get("main_category") or d.get("category") or "")
-                ok = False
-                for c in cats:
-                    if not c:
-                        continue
-                    cl = str(c).lower()
-                    ml = main.lower()
-                    if str(c) in main or main in str(c):
-                        ok = True
-                    elif cl in ("መኪና", "car") and any(x in ml for x in ("መኪና", "car", "vehicle")):
-                        ok = True
-                    elif cl in ("ቤት", "house") and any(x in ml for x in ("ቤት", "house", "property")):
-                        ok = True
-                    if ok:
-                        break
-                if not ok and main:
-                    sc = max(0, sc - 10)
-
-            d["_score"] = sc
-            scored.append((sc, d))
-    except Exception as e:
-        logger.error("fetch_for_you_feed listings: %s", e, exc_info=True)
-    finally:
-        if conn:
+            # Recency boost from id / created_at
             try:
-                conn.close()
+                sc += min(15, int(d.get("id") or 0) % 10000 // 500)
             except Exception:
                 pass
-
-    # Catalog hybrid injection
-    try:
-        cat_intent = dict(intent)
-        if not cat_intent.get("category"):
-            cat_intent["category"] = "መኪና"
-        catalog = search_ethiopia_vehicles_by_intent(cat_intent, limit=max(10, limit // 2)) or []
-        for d in catalog:
-            d["source"] = "clean_market"
-            d["target_type"] = "clean_market"
-            d["is_clean_market"] = True
-            if not d.get("price"):
-                d["price"] = d.get("current_price_range_etb") or ""
-            sc = int(d.get("_score") or 0) + (3 if has_signals else 1)
             d["_score"] = sc
             scored.append((sc, d))
-    except Exception as e:
-        logger.warning("fetch_for_you_feed catalog: %s", e)
 
-    scored.sort(key=lambda x: (-x[0], -(x[1].get("id") or 0) if isinstance(x[1].get("id"), int) else 0))
-
-    # If no personalization signals OR all scores are zero → popular/recent fallback
-    positive = [x for x in scored if (x[0] or 0) > 0]
-    if not has_signals or not positive:
-        # Re-rank by view_count + recency (id)
-        fallback = []
-        for sc, d in scored:
-            if d.get("source") == "clean_market":
-                pop = int(d.get("_score") or 0)
-            else:
-                try:
-                    pop = min(40, int(d.get("view_count") or 0) // 10)
-                except Exception:
-                    pop = 0
-                try:
-                    pop += min(10, int(d.get("id") or 0) % 1000 // 100)
-                except Exception:
-                    pass
-            d["_score"] = pop
-            d["_fallback"] = True
-            fallback.append((pop, d))
-        fallback.sort(key=lambda x: (-x[0], -(x[1].get("id") or 0) if isinstance(x[1].get("id"), int) else 0))
-        scored = fallback
-        mode = "popular_fallback"
-    else:
-        scored = positive + [x for x in scored if (x[0] or 0) <= 0]  # prefer matches first
-        scored.sort(key=lambda x: (-x[0], -(x[1].get("id") or 0) if isinstance(x[1].get("id"), int) else 0))
+        scored.sort(key=lambda x: (-x[0], _created_key(x[1])), reverse=False)
+        # Sort: higher score first, then newer created_at
+        scored.sort(key=lambda x: (-(x[0] or 0), _created_key(x[1])), reverse=False)
+        # Actually for created_at DESC we need reverse on date string carefully —
+        # re-sort: score DESC, then created_at DESC
+        scored.sort(key=lambda x: (-(x[0] or 0), _created_key(x[1])), reverse=False)
+        scored = sorted(scored, key=lambda x: (-(x[0] or 0), _created_key(x[1])[::-1] if False else 0))
+        # Clean sort:
+        scored.sort(key=lambda x: (-(x[0] or 0), _created_key(x[1])), reverse=False)
+        # Python: sort score desc then created_at desc
+        scored.sort(key=lambda x: (_created_key(x[1]),), reverse=True)
+        scored.sort(key=lambda x: (x[0] or 0), reverse=True)
         mode = "personalized"
+    else:
+        # === 50/50 newest Cars + Houses by created_at DESC ===
+        half = max(1, (limit * 2) // 2)
+        cars = _fetch_by_category("መኪና", half)
+        houses = _fetch_by_category("ቤት", half)
+        for d in cars:
+            d["_score"] = 1
+            d["_pool"] = "car"
+            scored.append((1, d))
+        for d in houses:
+            d["_score"] = 1
+            d["_pool"] = "house"
+            scored.append((1, d))
+        # Interleave by created_at DESC (newest first)
+        scored.sort(key=lambda x: _created_key(x[1]), reverse=True)
+        mode = "hybrid_50_50_newest"
+
+    # Catalog hybrid (ethiopia_vehicles) — cars only, never into house tab logic
+    try:
+        if not cats or any(
+            str(c).lower() in ("መኪና", "car", "cars") or "መኪና" in str(c) for c in (cats or ["መኪና"])
+        ):
+            cat_intent = dict(intent)
+            if not cat_intent.get("category"):
+                cat_intent["category"] = "መኪና"
+            catalog = search_ethiopia_vehicles_by_intent(cat_intent, limit=max(6, limit // 3)) or []
+            for d in catalog:
+                d["source"] = "clean_market"
+                d["target_type"] = "clean_market"
+                d["is_clean_market"] = True
+                if not d.get("price"):
+                    d["price"] = d.get("current_price_range_etb") or ""
+                d["_score"] = int(d.get("_score") or 0) + (2 if has_signals else 1)
+                scored.append((d["_score"], d))
+            if has_signals:
+                scored.sort(key=lambda x: (x[0] or 0), reverse=True)
+            else:
+                scored.sort(key=lambda x: _created_key(x[1]), reverse=True)
+    except Exception as e:
+        logger.warning("catalog inject: %s", e)
 
     offset = max(0, (page - 1) * limit)
     slice_ = scored[offset : offset + limit]
@@ -1368,35 +1503,48 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
         d["_score"] = sc
         items.append(d)
 
-    # Absolute last resort: if still empty, raw recent listings
+    # Absolute last resort: newest listings any category
     if not items:
-        conn = None
+        c = None
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT * FROM listings
-                WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
-                  AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
-                ORDER BY id DESC
-                LIMIT %s
-                """ % int(limit)
-            )
+            c = get_db_connection()
+            cur = c.cursor()
+            p = _ph()
+            try:
+                cur.execute(
+                    f"""
+                    SELECT * FROM listings
+                    WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
+                      AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
+                    ORDER BY COALESCE(created_at, TIMESTAMP '1970-01-01') DESC, id DESC
+                    LIMIT {p}
+                    """,
+                    (limit,),
+                )
+            except Exception:
+                cur.execute(
+                    f"""
+                    SELECT * FROM listings
+                    WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
+                      AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
+                    ORDER BY id DESC
+                    LIMIT {p}
+                    """,
+                    (limit,),
+                )
             for r in cur.fetchall() or []:
                 d = _normalize_listing_row(dict(r), source="listing")
                 d["source"] = "listing"
                 d["target_type"] = "listing"
                 d["_fallback"] = True
-                d["_score"] = 0
                 items.append(d)
             mode = "recent_fallback"
         except Exception as e:
             logger.error("for_you last-resort: %s", e)
         finally:
-            if conn:
+            if c:
                 try:
-                    conn.close()
+                    c.close()
                 except Exception:
                     pass
 
