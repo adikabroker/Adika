@@ -5139,8 +5139,10 @@ position: absolute !important;
         urls.push("/api/explorer/listings?" + qs);
       }
       if (useForYou) {
-        urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + encodeURIComponent(state.userId || getTelegramUserId() || "0"));
-        urls.push("/api/listings?" + qs);
+        var _uid = encodeURIComponent(state.userId || (typeof getTelegramUserId === "function" ? getTelegramUserId() : "") || "0");
+        urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + _uid + "&telegram_id=" + _uid);
+        urls.push("/api/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + _uid + "&telegram_id=" + _uid);
+        // DO NOT fall back to unfiltered /api/listings for For You — keeps budget filter
       }
 
       var done = false;
@@ -7859,7 +7861,9 @@ position: absolute !important;
               state.category = "";
               paintFeedModes();
               if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) return;
-              load(false);
+              if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
+              else if (typeof window.loadSmartFYP === "function") window.loadSmartFYP({ page: 1, append: false });
+              else load(false);
               return;
             }
             if (m.id === "all") { state.feedMode = "all"; state.category = ""; }
@@ -8190,27 +8194,39 @@ position: absolute !important;
 
 
     setTabs();
-    try { state.feedMode = "all"; state.category = ""; } catch (e) {}
+    // Default to For You when user already completed onboarding
+    try {
+      var onboarded = false;
+      try { onboarded = localStorage.getItem("adika_onboarded") === "true"; } catch (eO) {}
+      state.feedMode = onboarded ? "foryou" : "all";
+      state.category = "";
+    } catch (e) { try { state.feedMode = "all"; state.category = ""; } catch (e2) {} }
     try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e) {}
 
     try {
       state.loading = false;
-      load(false);
+      if (state.feedMode === "foryou" && typeof window.loadFYPFeed === "function") {
+        window.loadFYPFeed();
+      } else if (state.feedMode === "foryou" && typeof window.loadSmartFYP === "function") {
+        window.loadSmartFYP({ page: 1, append: false });
+      } else {
+        load(false);
+      }
     } catch (e) {
       console.error("[Adika] initial load", e);
       try { state.loading = false; } catch (e2) {}
       try { if(window.__adikaPaintListings) window.__adikaPaintListings([]); } catch (e3) {}
     }
 
-    // If after 5s still only demos / empty, force explorer once more
+    // If after 5s still only demos / empty, retry (keep current feedMode)
     setTimeout(function () {
       try {
         var onlyDemo = state.items && state.items.length && String(state.items[0].id || "").indexOf("demo") === 0;
         var empty = !state.items || !state.items.length;
         if (onlyDemo || empty) {
-          state.feedMode = "all";
           state.loading = false;
-          load(false);
+          if (state.feedMode === "foryou" && typeof window.loadFYPFeed === "function") window.loadFYPFeed();
+          else load(false);
         }
       } catch (e) {}
       try { if (statusEl) statusEl.style.display = "none"; } catch (e) {}
@@ -8536,7 +8552,10 @@ position: absolute !important;
         markCats(cid);
         if(cid==="foryou"){
           if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) return;
-          if (typeof load === "function") { try { state.feedMode = "foryou"; state.category = ""; load(false); return; } catch (eL) {} }
+          try { state.feedMode = "foryou"; state.category = ""; } catch (eSt) {}
+          if (typeof window.loadFYPFeed === "function") { window.loadFYPFeed(); return; }
+          if (typeof window.loadSmartFYP === "function") { window.loadSmartFYP({ page: 1, append: false }); return; }
+          if (typeof load === "function") { try { load(false); return; } catch (eL) {} }
           fetch("/api/feed/for-you",{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
             var items=(d&& (d.items||d.listings||d.results))||[];
             if(Array.isArray(items) && items.length) paintLive(items);
@@ -10927,6 +10946,29 @@ position: absolute !important;
       });
 
       var ranked = rankListings(pool, ctx);
+
+      // HARD FILTER: never show items above user budget_max on For You
+      if (prefs && meaningful) {
+        var bud = (typeof window.adikaParseBudgetRange === "function")
+          ? window.adikaParseBudgetRange(prefs)
+          : { min: num(prefs.budget_min || prefs.min_price), max: num(prefs.budget_max || prefs.max_price) };
+        var maxP = bud.max || num(prefs.budget_max || prefs.max_price || prefs.price_max) || 0;
+        var minP = bud.min || num(prefs.budget_min || prefs.min_price || prefs.price_min) || 0;
+        var prefCat = normCat(prefs.main_category || prefs.category || (prefs.categories && prefs.categories[0]) || "");
+        if (maxP > 0 && maxP < 999999999) {
+          ranked = ranked.filter(function (it) {
+            var price = listingPrice(it);
+            if (price <= 0) return false; // unknown price exclude when hard cap set
+            if (price > maxP) return false;
+            if (minP > 0 && price < minP) return false;
+            if (prefCat === "car" || prefCat === "house") {
+              var lc = listingCat(it);
+              if (lc && lc !== prefCat) return false;
+            }
+            return true;
+          });
+        }
+      }
 
       // If no meaningful prefs, still show ranked by fav/alerts/demand/fresh + views
       // but surface CTA
