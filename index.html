@@ -5143,24 +5143,36 @@
 
       var page = append ? (state.page + 1) : 1;
       var isBuy = state.tab !== "marketplace";
-      // Prefer explorer (known-good) unless user explicitly chose For You
-      var useForYou = (!isBuy && state.feedMode === "foryou" && !state.q);
-      var qs = "page=" + page + "&limit=" + itemsPerPage + "&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
       var cat = (state.category || "").trim();
-      if (!useForYou && cat && !/^(all|ሁሉም|✨|foryou)/i.test(cat)) {
+      // Only pure For-You (no category filter, no search) uses hybrid endpoint
+      var useForYou = (!isBuy && state.feedMode === "foryou" && !state.q && !cat);
+      var qs = "page=" + page + "&limit=" + itemsPerPage + "&order=DESC&active_only=1&type=" + (isBuy ? "BUY" : "SELL");
+
+      // Explicit tab parameter for API contract alignment
+      if (state.feedMode === "foryou" && !cat) {
+        qs += "&tab=for_you";
+      } else if (state.feedMode === "all") {
+        qs += "&tab=all";
+      } else if (state.feedMode === "cat" && cat) {
+        if (/መኪና|car|cars|vehicle/i.test(cat)) qs += "&tab=cars";
+        else if (/ቤት|house|property|home/i.test(cat)) qs += "&tab=houses";
+        else if (/ንግድ|commercial|business/i.test(cat)) qs += "&tab=commercial";
+        else qs += "&tab=all";
+        qs += "&category=" + encodeURIComponent(cat);
+      } else if (cat && !/^(all|ሁሉም|✨|foryou)/i.test(cat)) {
         qs += "&category=" + encodeURIComponent(cat);
       }
       if (state.q) qs += "&q=" + encodeURIComponent(state.q);
       if (state.chassisOnly) qs += "&chassis_only=1";
 
       var urls = [];
-      if (!useForYou) {
+      if (useForYou) {
+        urls.push("/api/feed/for-you?" + qs + "&user_id=" + encodeURIComponent(state.userId || getTelegramUserId() || "0"));
+        urls.push("/api/for-you?" + qs + "&user_id=" + encodeURIComponent(state.userId || getTelegramUserId() || "0"));
+        urls.push("/api/listings?" + qs);
+      } else {
         urls.push("/api/listings?" + qs);
         urls.push("/api/explorer/listings?" + qs);
-      }
-      if (useForYou) {
-        urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + encodeURIComponent(state.userId || getTelegramUserId() || "0"));
-        urls.push("/api/listings?" + qs);
       }
 
       var done = false;
@@ -8545,34 +8557,47 @@
 
     if(t.classList.contains("cat-pill") || (t.closest && t.closest("#cats"))){
       var pill = t.classList.contains("cat-pill") ? t : t.closest(".cat-pill");
-      if(pill && pill.getAttribute("data-filter")==="chassis"){
-        e.preventDefault(); e.stopPropagation();
-        loadListings("&has_chassis=1");
+      if(!pill) return;
+      e.preventDefault(); e.stopPropagation();
+
+      if(pill.getAttribute("data-filter")==="chassis"){
+        try {
+          state.chassisOnly = !state.chassisOnly;
+          pill.classList.toggle("active", !!state.chassisOnly);
+          if (typeof load === "function") load(false);
+        } catch (err) {}
         return;
       }
-      if(pill){
-        e.preventDefault(); e.stopPropagation();
-        var cid = pill.getAttribute("data-id") || "all";
-        markCats(cid);
-        if(cid==="foryou"){
+
+      var cid = (pill.getAttribute("data-id") || "all").trim();
+      if (typeof markCats === "function") markCats(cid);
+
+      try {
+        if (cid === "foryou") {
+          state.feedMode = "foryou";
+          state.category = "";
+          state.q = "";
           if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) return;
-          if (typeof load === "function") { try { state.feedMode = "foryou"; state.category = ""; load(false); return; } catch (eL) {} }
-          fetch("/api/feed/for-you",{credentials:"same-origin"}).then(function(r){return r.json();}).then(function(d){
-            var items=(d&& (d.items||d.listings||d.results))||[];
-            if(Array.isArray(items) && items.length) paintLive(items);
-            else loadListings("");
-          }).catch(function(){ loadListings(""); });
-        } else if(cid==="all"){
-          loadListings("");
+        } else if (cid === "all" || cid === "") {
+          state.feedMode = "all";
+          state.category = "";
         } else {
-          loadListings("&category="+encodeURIComponent(cid));
+          // cars / houses / commercial — explicit category filter
+          state.feedMode = "cat";
+          state.category = cid;          // "መኪና" | "ቤት" | "ንግድ"
         }
-        return;
+        state.page = 1;
+        state.hasMore = true;
+        if (typeof paintFeedModes === "function") paintFeedModes();
+        if (typeof load === "function") load(false);
+      } catch (err) {
+        console.warn("[Adika tabs]", err);
       }
+      return;
     }
 
-    if(id==="tabBuy"){ e.preventDefault(); e.stopPropagation(); markTabs(true); loadListings("&type=BUY"); return; }
-    if(id==="tabSell"){ e.preventDefault(); e.stopPropagation(); markTabs(false); loadListings("&type=SELL"); return; }
+    if(id==="tabBuy"){ e.preventDefault(); e.stopPropagation(); markTabs(true); try{state.tab="requests";}catch(e){} if(typeof load==="function")load(false); else loadListings("&type=BUY"); return; }
+    if(id==="tabSell"){ e.preventDefault(); e.stopPropagation(); markTabs(false); try{state.tab="marketplace";}catch(e){} if(typeof load==="function")load(false); else loadListings("&type=SELL"); return; }
     if(id==="langAmBtn"){ e.preventDefault(); e.stopPropagation(); setLang(false); return; }
     if(id==="langEnBtn"){ e.preventDefault(); e.stopPropagation(); setLang(true); return; }
 
@@ -11031,12 +11056,17 @@
     window.loadSmartFYP({ page: 1, append: false });
   };
 
-  // Hook the main load() when feedMode is foryou so infinite scroll / category also benefit
+  // Hook the main load() when feedMode is foryou — only pure For-You (no category)
   if (typeof window.load === "function" && !window.load.__smartFypWrapped) {
     var _origLoad = window.load;
     window.load = function (append) {
       try {
-        if (window.state && state.feedMode === "foryou" && !state.q && state.tab !== "buy") {
+        if (window.state
+            && state.feedMode === "foryou"
+            && !state.q
+            && !state.category
+            && state.tab !== "buy"
+            && state.tab !== "requests") {
           var page = append ? ((state.page || 1) + 1) : 1;
           window.loadSmartFYP({ page: page, append: !!append });
           return;
@@ -11488,7 +11518,13 @@
     var _origLoad = window.load;
     window.load = function (append) {
       try {
-        if (window.state && state.feedMode === "foryou" && !state.q && state.tab !== "buy") {
+        // Only hijack pure For-You tab (no active category filter)
+        if (window.state
+            && state.feedMode === "foryou"
+            && !state.q
+            && !state.category
+            && state.tab !== "buy"
+            && state.tab !== "requests") {
           return window.renderFYP();
         }
       } catch (e) {}
