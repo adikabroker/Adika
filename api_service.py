@@ -3170,6 +3170,15 @@ function shareContract() {{
             offset = (page - 1) * limit
             req_type = (request.args.get('type') or '').upper()
             category = request.args.get('category') or ''
+            # Honour explicit tab= parameter from UI (for_you | all | cars | houses | commercial)
+            tab = (request.args.get('tab') or '').strip().lower()
+            if not category and tab in ('cars', 'car', 'vehicles', 'vehicle'):
+                category = 'መኪና'
+            elif not category and tab in ('houses', 'house', 'property', 'home'):
+                category = 'ቤት'
+            elif not category and tab in ('commercial', 'business'):
+                category = 'ንግድ'
+            # tab=all or tab=for_you leave category empty → no category constraint
             search = (request.args.get('q') or '').strip()
             chassis_only = (request.args.get('chassis_only') == '1' or request.args.get('has_chassis') == '1')
             order = (request.args.get('order') or 'DESC').upper()
