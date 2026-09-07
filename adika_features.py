@@ -1105,17 +1105,25 @@ def unified_smart_search(query: str = "", intent: Optional[Dict[str, Any]] = Non
 
 def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str, Any]:
     """
-    Hybrid For-You feed:
-      1) Score active SELL rows from `listings` by user_preferences
-      2) Inject matching `ethiopia_vehicles` (Adika Clean Market) catalog rows
-    Each item carries source: "listing" | "clean_market".
+    Hybrid For-You feed with personalization signals + popular fallback.
+
+    Signals (when user_id present):
+      - user_preferences (categories, budget_min/max)
+      - favorites (listing_id)
+      - search_alerts (category, max_price, model_hint)
+      - recent view counts on listings
+
+    FALLBACK: if no prefs/history or zero matches, return most popular + newest
+    active SELL listings (never empty-break for new users).
     """
     from models import get_db_connection, is_postgres
 
-    prefs = get_user_preferences(user_id) if user_id else {
-        "categories": ["መኪና", "ቤት"],
+    uid = int(user_id or 0)
+    prefs = get_user_preferences(uid) if uid else {
+        "categories": [],
         "budget_min": 0,
         "budget_max": 999999999,
+        "onboarding_done": False,
     }
     cats = prefs.get("categories") or []
     cat0 = ""
@@ -1124,7 +1132,7 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
             cat0 = str(c)
             break
     intent = {
-        "category": cat0 or "መኪና",
+        "category": cat0 or "",
         "brand": "",
         "model": "",
         "price_max": int(prefs.get("budget_max") or 0),
@@ -1135,6 +1143,87 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
     }
     if intent["price_max"] >= 999999999:
         intent["price_max"] = 0
+
+    # --- Load interaction signals ---
+    fav_ids = set()
+    alert_cats = []
+    alert_models = []
+    alert_max_prices = []
+    conn = None
+    try:
+        if uid:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            p = _ph()
+            # favorites
+            try:
+                cur.execute(
+                    f"SELECT listing_id FROM favorites WHERE user_id={p} OR chat_id={p} ORDER BY id DESC LIMIT 100",
+                    (uid, uid),
+                )
+                for r in cur.fetchall() or []:
+                    d = dict(r) if not isinstance(r, dict) else r
+                    lid = d.get("listing_id")
+                    if lid is not None:
+                        try:
+                            fav_ids.add(int(lid))
+                        except Exception:
+                            pass
+            except Exception:
+                try:
+                    cur.execute(
+                        f"SELECT listing_id FROM favorites WHERE user_id={p} ORDER BY id DESC LIMIT 100",
+                        (uid,),
+                    )
+                    for r in cur.fetchall() or []:
+                        d = dict(r) if not isinstance(r, dict) else r
+                        lid = d.get("listing_id")
+                        if lid is not None:
+                            try:
+                                fav_ids.add(int(lid))
+                            except Exception:
+                                pass
+                except Exception as fe:
+                    logger.debug("favorites signal: %s", fe)
+            # search_alerts
+            try:
+                cur.execute(
+                    f"SELECT category, max_price, model_hint FROM search_alerts "
+                    f"WHERE user_chat_id={p} OR chat_id={p} ORDER BY id DESC LIMIT 50",
+                    (uid, uid),
+                )
+                for r in cur.fetchall() or []:
+                    d = dict(r) if not isinstance(r, dict) else r
+                    if d.get("category"):
+                        alert_cats.append(str(d["category"]))
+                    if d.get("model_hint"):
+                        alert_models.append(str(d["model_hint"]).lower())
+                    try:
+                        mp = float(d.get("max_price") or 0)
+                        if mp > 0:
+                            alert_max_prices.append(mp)
+                    except Exception:
+                        pass
+            except Exception as ae:
+                logger.debug("alerts signal: %s", ae)
+    except Exception as e:
+        logger.warning("signal load: %s", e)
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    # Merge alert categories into prefs if user has no explicit cats
+    if not cats and alert_cats:
+        cats = list(dict.fromkeys(alert_cats))
+        intent["category"] = cats[0] if cats else ""
+        intent["keywords"] = cats[:]
+    if alert_max_prices and not intent["price_max"]:
+        intent["price_max"] = int(min(alert_max_prices))
+
+    has_signals = bool(cats or fav_ids or alert_cats or alert_models or (prefs.get("onboarding_done")))
 
     scored: List[Tuple[int, Dict[str, Any]]] = []
     conn = None
@@ -1148,7 +1237,7 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
               AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT')
                    OR COALESCE(req_type,'') = '')
             ORDER BY id DESC
-            LIMIT 250
+            LIMIT 300
             """
         )
         for r in cur.fetchall() or []:
@@ -1158,9 +1247,43 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
             price = _parse_price(d.get("price"))
             bmin = float(prefs.get("budget_min") or 0)
             bmax = float(prefs.get("budget_max") or 999999999)
-            if price > 0 and bmax < 999999999 and not (bmin <= price <= bmax):
-                continue
-            if cats:
+            # Soft budget: only hard-filter when user set a real max
+            if has_signals and price > 0 and bmax < 999999999 and not (bmin <= price <= bmax):
+                # keep but downscore instead of drop — still allow fallback diversity
+                budget_ok = False
+            else:
+                budget_ok = True
+
+            sc = score_listing_for_user(d, prefs) if has_signals else 0
+            # favorites boost
+            try:
+                lid = int(d.get("id") or 0)
+            except Exception:
+                lid = 0
+            if lid and lid in fav_ids:
+                sc += 25
+            # alert model hints
+            blob = " ".join(
+                str(d.get(k) or "") for k in ("title", "description", "sub_category", "main_category", "brand", "model")
+            ).lower()
+            for mh in alert_models:
+                if mh and mh in blob:
+                    sc += 12
+                    break
+            for ac in alert_cats:
+                if ac and (ac in str(d.get("main_category") or "") or ac.lower() in blob):
+                    sc += 8
+                    break
+            # popularity / freshness
+            try:
+                sc += min(8, int(d.get("view_count") or 0) // 30)
+            except Exception:
+                pass
+            if not budget_ok:
+                sc = max(0, sc - 15)
+
+            # category gate only when user has explicit categories (else keep all for ranking)
+            if cats and has_signals:
                 main = str(d.get("main_category") or d.get("category") or "")
                 ok = False
                 for c in cats:
@@ -1177,8 +1300,8 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
                     if ok:
                         break
                 if not ok and main:
-                    continue
-            sc = score_listing_for_user(d, prefs)
+                    sc = max(0, sc - 10)
+
             d["_score"] = sc
             scored.append((sc, d))
     except Exception as e:
@@ -1190,28 +1313,92 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
             except Exception:
                 pass
 
-    # Always inject Clean Market catalog hybrid
+    # Catalog hybrid injection
     try:
-        catalog = search_ethiopia_vehicles_by_intent(intent, limit=max(10, limit // 2)) or []
+        cat_intent = dict(intent)
+        if not cat_intent.get("category"):
+            cat_intent["category"] = "መኪና"
+        catalog = search_ethiopia_vehicles_by_intent(cat_intent, limit=max(10, limit // 2)) or []
         for d in catalog:
             d["source"] = "clean_market"
             d["target_type"] = "clean_market"
             d["is_clean_market"] = True
             if not d.get("price"):
                 d["price"] = d.get("current_price_range_etb") or ""
-            sc = int(d.get("_score") or 0) + 3
+            sc = int(d.get("_score") or 0) + (3 if has_signals else 1)
             d["_score"] = sc
             scored.append((sc, d))
     except Exception as e:
         logger.warning("fetch_for_you_feed catalog: %s", e)
 
     scored.sort(key=lambda x: (-x[0], -(x[1].get("id") or 0) if isinstance(x[1].get("id"), int) else 0))
+
+    # If no personalization signals OR all scores are zero → popular/recent fallback
+    positive = [x for x in scored if (x[0] or 0) > 0]
+    if not has_signals or not positive:
+        # Re-rank by view_count + recency (id)
+        fallback = []
+        for sc, d in scored:
+            if d.get("source") == "clean_market":
+                pop = int(d.get("_score") or 0)
+            else:
+                try:
+                    pop = min(40, int(d.get("view_count") or 0) // 10)
+                except Exception:
+                    pop = 0
+                try:
+                    pop += min(10, int(d.get("id") or 0) % 1000 // 100)
+                except Exception:
+                    pass
+            d["_score"] = pop
+            d["_fallback"] = True
+            fallback.append((pop, d))
+        fallback.sort(key=lambda x: (-x[0], -(x[1].get("id") or 0) if isinstance(x[1].get("id"), int) else 0))
+        scored = fallback
+        mode = "popular_fallback"
+    else:
+        scored = positive + [x for x in scored if (x[0] or 0) <= 0]  # prefer matches first
+        scored.sort(key=lambda x: (-x[0], -(x[1].get("id") or 0) if isinstance(x[1].get("id"), int) else 0))
+        mode = "personalized"
+
     offset = max(0, (page - 1) * limit)
     slice_ = scored[offset : offset + limit]
     items: List[Dict[str, Any]] = []
     for sc, d in slice_:
         d["_score"] = sc
         items.append(d)
+
+    # Absolute last resort: if still empty, raw recent listings
+    if not items:
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT * FROM listings
+                WHERE (status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))
+                  AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') OR COALESCE(req_type,'') = '')
+                ORDER BY id DESC
+                LIMIT %s
+                """ % int(limit)
+            )
+            for r in cur.fetchall() or []:
+                d = _normalize_listing_row(dict(r), source="listing")
+                d["source"] = "listing"
+                d["target_type"] = "listing"
+                d["_fallback"] = True
+                d["_score"] = 0
+                items.append(d)
+            mode = "recent_fallback"
+        except Exception as e:
+            logger.error("for_you last-resort: %s", e)
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     return {
         "success": True,
@@ -1222,6 +1409,13 @@ def fetch_for_you_feed(user_id: int, limit: int = 24, page: int = 1) -> Dict[str
         "prefs": prefs,
         "intent": intent,
         "has_more": len(scored) > offset + limit,
+        "mode": mode,
+        "user_id": uid,
+        "signals": {
+            "favorites": len(fav_ids),
+            "alerts": len(alert_cats) + len(alert_models),
+            "has_prefs": bool(cats),
+        },
         "counts": {
             "total": len(items),
             "listing": sum(1 for x in items if x.get("source") == "listing"),
