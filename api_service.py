@@ -173,6 +173,83 @@ def normalize_listing_main_category(data: Optional[Dict[str, Any]] = None, categ
 bot_app = None
 bot_loop = None
 
+
+
+def unify_listing_images(item):
+    """Normalize image keys for every API listing payload (manual + scraped)."""
+    if not isinstance(item, dict):
+        return item
+    try:
+        import adika_features as _af
+        if hasattr(_af, "unify_listing_images"):
+            return _af.unify_listing_images(item)
+    except Exception:
+        pass
+    urls = []
+
+    def _push(val):
+        if val is None:
+            return
+        if isinstance(val, (list, tuple)):
+            for x in val:
+                _push(x)
+            return
+        if isinstance(val, dict):
+            for k in ("url", "src", "image", "image_url", "photo"):
+                if val.get(k):
+                    _push(val.get(k))
+            return
+        s = str(val).strip()
+        if not s or s.lower() in ("null", "none", "undefined"):
+            return
+        if s.startswith("[") and s.endswith("]"):
+            try:
+                import json as _json
+                _push(_json.loads(s))
+                return
+            except Exception:
+                pass
+        if s.startswith("http://") or s.startswith("https://") or s.startswith("data:image"):
+            if s not in urls:
+                urls.append(s)
+
+    for key in (
+        "image_url", "image", "photo_url", "photo", "thumbnail", "thumb",
+        "cover_image", "telegram_image", "telegram_photo", "tg_image", "file_url",
+        "media_url", "picture",
+    ):
+        if item.get(key):
+            _push(item.get(key))
+    for key in ("images", "photos", "photo_urls", "image_urls", "media", "gallery"):
+        if item.get(key) is not None:
+            _push(item.get(key))
+    extra = item.get("extra_data")
+    if isinstance(extra, str):
+        try:
+            import json as _json
+            extra = _json.loads(extra)
+        except Exception:
+            extra = None
+    if isinstance(extra, dict):
+        for key in ("image_url", "photo_url", "telegram_image", "images", "photos", "photo_urls"):
+            if extra.get(key) is not None:
+                _push(extra.get(key))
+    primary = urls[0] if urls else ""
+    item["image_url"] = primary
+    item["photo_url"] = primary
+    item["images"] = urls
+    item["photos"] = urls
+    if primary and not item.get("thumbnail"):
+        item["thumbnail"] = primary
+    return item
+
+
+def unify_listings_payload(items):
+    if not isinstance(items, list):
+        return items
+    return [unify_listing_images(dict(x)) if isinstance(x, dict) else x for x in items]
+
+
 def _auth_secret() -> str:
     return (
         os.environ.get("JWT_SECRET")
@@ -2989,7 +3066,7 @@ function shareContract() {{
                 "success": bool(result.get("success", True)),
                 "query": q,
                 "intent": result.get("intent") or intent or {},
-                "items": items,
+                "items": unify_listings_payload(items),
                 "listings": [x for x in items if x.get("source") == "listing"],
                 "clean_market": [x for x in items if x.get("source") == "clean_market"],
                 "counts": result.get("counts") or {
@@ -3069,6 +3146,7 @@ function shareContract() {{
                     src = "clean_market"
                 it["source"] = src
                 it["target_type"] = src
+                it = unify_listing_images(it)
                 items.append(it)
 
             # FALLBACK: never return empty FYP — load popular/recent SELL listings
@@ -3094,6 +3172,7 @@ function shareContract() {{
                         it["source"] = "listing"
                         it["target_type"] = "listing"
                         it["_fallback"] = True
+                        it = unify_listing_images(it)
                         items.append(it)
                     try:
                         conn.close()
@@ -3105,7 +3184,7 @@ function shareContract() {{
 
             return jsonify({
                 "success": True,
-                "items": items,
+                "items": unify_listings_payload(items),
                 "listings": [x for x in items if x.get("source") == "listing"],
                 "clean_market": [x for x in items if x.get("source") == "clean_market"],
                 "page": page,
