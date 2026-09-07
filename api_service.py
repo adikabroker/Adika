@@ -3997,11 +3997,39 @@ function shareContract() {{
             params.extend(['sold', 'rented', 'expired'])
 
             if category == "cars":
-                where.append(f"(main_category = {p} OR category = {p})")
-                params.extend(["መኪና", "መኪና"])
+                # STRICT cars only — block house leakage
+                where.append(
+                    f"""(
+                        (
+                            LOWER(COALESCE(main_category,'')) IN ('መኪና','car','cars','vehicle','vehicles','auto')
+                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%car%'
+                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%መኪና%'
+                            OR LOWER(COALESCE(CAST(category AS TEXT),'')) LIKE '%car%'
+                            OR LOWER(COALESCE(CAST(category AS TEXT),'')) LIKE '%መኪና%'
+                        )
+                        AND LOWER(COALESCE(main_category,'')) NOT IN ('ቤት','house','houses','home','property')
+                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%house%'
+                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%ቤት%'
+                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%property%'
+                    )"""
+                )
             elif category == "property":
-                where.append(f"(main_category = {p} OR category = {p})")
-                params.extend(["ቤት", "ቤት"])
+                # STRICT houses only — block car leakage
+                where.append(
+                    f"""(
+                        (
+                            LOWER(COALESCE(main_category,'')) IN ('ቤት','house','houses','home','property','ንብረት')
+                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%house%'
+                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%ቤት%'
+                            OR LOWER(COALESCE(CAST(main_category AS TEXT),'')) LIKE '%property%'
+                            OR LOWER(COALESCE(CAST(category AS TEXT),'')) LIKE '%house%'
+                            OR LOWER(COALESCE(CAST(category AS TEXT),'')) LIKE '%ቤት%'
+                        )
+                        AND LOWER(COALESCE(main_category,'')) NOT IN ('መኪና','car','cars','vehicle','vehicles','auto')
+                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%car%'
+                        AND LOWER(COALESCE(CAST(main_category AS TEXT),'')) NOT LIKE '%መኪና%'
+                    )"""
+                )
 
             # If keyword becomes empty after cleaning, do NOT apply LIKE %keyword%
             if keyword:
