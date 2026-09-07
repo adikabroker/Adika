@@ -3083,7 +3083,7 @@ function shareContract() {{
     @web_app.route('/api/feed/for-you', methods=['GET', 'OPTIONS'])
     def api_feed_for_you():
         """
-        REBUILT /api/for-you — newest listings by created_at DESC,
+        HYBRID /api/for-you — single-table `listings` only, created_at DESC,
         unified image_url schema, optional strict category isolation.
         Always HTTP 200 with a clean home-feed payload.
         """
@@ -4423,7 +4423,7 @@ function shareContract() {{
     def api_delete_item(listing_id):
         """
         HARD delete from the same table the feed uses: `listings`.
-        Also cleans `listing_photos` and optionally `adika_clean_market`.
+        Also cleans `listing_photos` (single-table mode: listings only).
         Returns success ONLY when at least one row was actually removed/updated.
         """
         try:
@@ -4485,8 +4485,8 @@ function shareContract() {{
                 n = _sb_delete("listings", str(clean_id))
             # Optional mirror table (if user has it)
             try:
-                _sb_delete("adika_clean_market", clean_id)
-                _sb_delete("adika_clean_market", str(clean_id))
+# PURGED single-table:                 pass  # adika_clean_market dropped
+# PURGED single-table:                 pass  # adika_clean_market dropped
             except Exception:
                 pass
             _sb_delete_photos(clean_id)
@@ -4604,11 +4604,11 @@ function shareContract() {{
 
                 # Optional mirror table
                 try:
-                    cur.execute(f"DELETE FROM adika_clean_market WHERE id = {p}", (clean_id,))
+# PURGED single-table:                     pass  # adika_clean_market dropped — single listings table
                     rc = cur.rowcount if hasattr(cur, "rowcount") else 0
                     if rc and rc > 0:
                         deleted_rows += rc
-                        deleted_via.append("sql:adika_clean_market")
+# PURGED single-table:                         pass  # adika_clean_market dropped
                 except Exception:
                     try:
                         conn.rollback()
