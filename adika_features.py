@@ -1776,12 +1776,14 @@ def fetch_for_you_feed(
     main_category: str = "",
 ) -> Dict[str, Any]:
     """
-    HYBRID FYP:
+    HYBRID FYP — SINGLE TABLE (`listings` only; adika_clean_market removed).
+
       STEP 1 Cold start  — user_preferences main_category + budget_range
       STEP 2 Real-time   — recently_viewed_ids / last_category / last_price override
-      STEP 3 Fallback    — newest cars + houses by created_at DESC
+      STEP 3 Fallback    — ORDER BY created_at DESC LIMIT 30 (cars + houses)
 
-    Every item is image-normalized (image_url || images[0] || photo_url || telegram_image).
+    Images: image_url || images[0] || photo_url || telegram_image
+    Category isolation: cars never leak into houses and vice-versa.
     """
     uid = int(user_id or 0)
     limit = max(1, min(int(limit or 24), 60))
@@ -1922,7 +1924,7 @@ def fetch_for_you_feed(
     else:
         # ---- STEP 3: fallback newest cars + houses 50/50 ----
         mode = "fallback_newest"
-        half = max(1, limit)
+        half = max(1, min(30, limit))
         cars = _fetch_listings(limit=half, category="cars", exclude_ids=exclude)
         houses = _fetch_listings(limit=half, category="houses", exclude_ids=exclude)
 
@@ -1951,7 +1953,7 @@ def fetch_for_you_feed(
         "success": True,
         "items": page_items,
         "listings": page_items,
-        "clean_market": [],
+        "clean_market": [],  # deprecated — single-table listings only
         "page": page,
         "limit": limit,
         "prefs": prefs,
