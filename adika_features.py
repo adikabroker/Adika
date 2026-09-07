@@ -513,14 +513,13 @@ def save_user_preferences(
     **kwargs,
 ) -> bool:
     """
-    Upsert user_preferences with CLEAN INTEGER bounds.
-    Accepts either numeric min/max or a text range like "ከ 1.5M - 4 ሚሊዮን ETB".
-    Stores: budget_min, budget_max (and min_price/max_price aliases when columns exist).
+    Upsert user_preferences — supports real Supabase schema:
+    user_id, telegram_id, categories, budget_min, budget_max,
+    full_name, phone_number, telegram_username, onboarding_done
     """
     from models import get_db_connection, is_postgres
     ensure_feature_tables()
 
-    # Prefer explicit integer args
     bmin = int(budget_min or 0)
     bmax = int(budget_max or 0) if budget_max not in (None, "") else 0
     if min_price is not None:
@@ -534,7 +533,6 @@ def save_user_preferences(
         except Exception:
             pass
 
-    # Parse text budget when integers missing / default
     raw = budget or budget_range or kwargs.get("budget_text") or ""
     if raw and (bmax <= 0 or bmax >= 999_999_999):
         parsed = parse_budget_range(raw)
@@ -552,44 +550,54 @@ def save_user_preferences(
     if isinstance(cats, str):
         cats = [c.strip() for c in cats.split(",") if c.strip()]
 
+    tid = int(user_id or 0)
+    full_name = str(kwargs.get("full_name") or kwargs.get("name") or "")[:120]
+    phone = str(kwargs.get("phone") or kwargs.get("phone_number") or "")[:40]
+    tg_user = str(kwargs.get("telegram_username") or kwargs.get("username") or "").lstrip("@")[:64]
+
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         p = _ph()
         cats_json = json.dumps(cats or [], ensure_ascii=False)
+
         if is_postgres():
-            # Core columns
-            cur.execute(
-                f"""
-                INSERT INTO user_preferences (user_id, categories, budget_min, budget_max, onboarding_done, updated_at)
-                VALUES ({p},{p}::jsonb,{p},{p}, TRUE, NOW())
-                ON CONFLICT (user_id) DO UPDATE SET
-                  categories=EXCLUDED.categories,
-                  budget_min=EXCLUDED.budget_min,
-                  budget_max=EXCLUDED.budget_max,
-                  onboarding_done=TRUE,
-                  updated_at=NOW()
-                """,
-                (int(user_id), cats_json, bmin, bmax),
-            )
-            # Optional alias columns min_price / max_price / budget text
-            for col, val in (
-                ("min_price", bmin),
-                ("max_price", bmax),
-                ("budget", str(raw or "")[:120]),
-                ("budget_range", str(raw or "")[:120]),
-            ):
-                try:
-                    cur.execute(
-                        f"""
-                        UPDATE user_preferences SET {col} = {p}
-                        WHERE user_id = {p}
-                        """,
-                        (val, int(user_id)),
-                    )
-                except Exception:
-                    pass
+            try:
+                cur.execute(
+                    f"""
+                    INSERT INTO user_preferences
+                      (user_id, telegram_id, categories, budget_min, budget_max,
+                       full_name, phone_number, telegram_username, onboarding_done, updated_at)
+                    VALUES ({p},{p},{p}::jsonb,{p},{p},{p},{p},{p}, TRUE, NOW())
+                    ON CONFLICT (user_id) DO UPDATE SET
+                      telegram_id = EXCLUDED.telegram_id,
+                      categories = EXCLUDED.categories,
+                      budget_min = EXCLUDED.budget_min,
+                      budget_max = EXCLUDED.budget_max,
+                      full_name = COALESCE(EXCLUDED.full_name, user_preferences.full_name),
+                      phone_number = COALESCE(EXCLUDED.phone_number, user_preferences.phone_number),
+                      telegram_username = COALESCE(EXCLUDED.telegram_username, user_preferences.telegram_username),
+                      onboarding_done = TRUE,
+                      updated_at = NOW()
+                    """,
+                    (tid, tid, cats_json, bmin, bmax, full_name or None, phone or None, tg_user or None),
+                )
+            except Exception as e1:
+                logger.warning("save_user_preferences full schema failed, fallback: %s", e1)
+                cur.execute(
+                    f"""
+                    INSERT INTO user_preferences (user_id, categories, budget_min, budget_max, onboarding_done, updated_at)
+                    VALUES ({p},{p}::jsonb,{p},{p}, TRUE, NOW())
+                    ON CONFLICT (user_id) DO UPDATE SET
+                      categories=EXCLUDED.categories,
+                      budget_min=EXCLUDED.budget_min,
+                      budget_max=EXCLUDED.budget_max,
+                      onboarding_done=TRUE,
+                      updated_at=NOW()
+                    """,
+                    (tid, cats_json, bmin, bmax),
+                )
             try:
                 conn.commit()
             except Exception:
@@ -597,28 +605,18 @@ def save_user_preferences(
         else:
             cur.execute(
                 f"""
-                INSERT OR REPLACE INTO user_preferences (user_id, categories, budget_min, budget_max, onboarding_done)
+                INSERT OR REPLACE INTO user_preferences
+                  (user_id, categories, budget_min, budget_max, onboarding_done)
                 VALUES ({p},{p},{p},{p},1)
                 """,
-                (int(user_id), cats_json, bmin, bmax),
+                (tid, cats_json, bmin, bmax),
             )
             conn.commit()
-            for col, val in (("min_price", bmin), ("max_price", bmax)):
-                try:
-                    cur.execute(
-                        f"UPDATE user_preferences SET {col} = {p} WHERE user_id = {p}",
-                        (val, int(user_id)),
-                    )
-                    conn.commit()
-                except Exception:
-                    pass
-        logger.info(
-            "save_user_preferences uid=%s cats=%s min=%s max=%s",
-            user_id, cats, bmin, bmax,
-        )
+
+        logger.info("save_user_preferences uid=%s cats=%s min=%s max=%s", tid, cats, bmin, bmax)
         return True
     except Exception as e:
-        logger.error("save_user_preferences: %s", e)
+        logger.error("save_user_preferences: %s", e, exc_info=True)
         return False
     finally:
         if conn:
@@ -636,8 +634,14 @@ def get_user_preferences(user_id: int) -> Dict[str, Any]:
         conn = get_db_connection()
         cur = conn.cursor()
         p = _ph()
-        cur.execute(f"SELECT * FROM user_preferences WHERE user_id={p}", (int(user_id),))
+        cur.execute(f"SELECT * FROM user_preferences WHERE user_id={p} LIMIT 1", (int(user_id),))
         row = cur.fetchone()
+        if not row:
+            try:
+                cur.execute(f"SELECT * FROM user_preferences WHERE telegram_id={p} LIMIT 1", (int(user_id),))
+                row = cur.fetchone()
+            except Exception:
+                pass
         if not row:
             return {
                 "categories": [],
@@ -647,7 +651,7 @@ def get_user_preferences(user_id: int) -> Dict[str, Any]:
                 "max_price": 999999999,
                 "onboarding_done": False,
             }
-        d = dict(row)
+        d = dict(row) if not isinstance(row, dict) else row
         cats = d.get("categories") or []
         if isinstance(cats, str):
             try:
@@ -656,7 +660,6 @@ def get_user_preferences(user_id: int) -> Dict[str, Any]:
                 cats = []
         bmin = int(d.get("budget_min") or d.get("min_price") or 0)
         bmax = int(d.get("budget_max") or d.get("max_price") or 999999999)
-        # If only text budget stored, parse once
         if (bmax <= 0 or bmax >= 999999999) and (d.get("budget") or d.get("budget_range")):
             parsed = parse_budget_range(d.get("budget") or d.get("budget_range"))
             if parsed.get("minPrice"):
@@ -672,6 +675,10 @@ def get_user_preferences(user_id: int) -> Dict[str, Any]:
             "budget": d.get("budget") or d.get("budget_range") or "",
             "budget_range": d.get("budget_range") or d.get("budget") or "",
             "onboarding_done": bool(d.get("onboarding_done")),
+            "full_name": d.get("full_name") or "",
+            "phone_number": d.get("phone_number") or d.get("phone") or "",
+            "telegram_username": d.get("telegram_username") or "",
+            "telegram_id": d.get("telegram_id") or d.get("user_id"),
         }
     except Exception as e:
         logger.warning("get_user_preferences: %s", e)
