@@ -3237,7 +3237,21 @@ position: absolute !important;
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data)
-          }).then(function () { return true; }).catch(function () { return false; });
+          }).then(function (r) {
+            if (r && r.ok) return true;
+            // fallback alternate path
+            return fetch("/api/preferences", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data)
+            }).then(function (r2) { return !!(r2 && r2.ok); });
+          }).catch(function () {
+            return fetch("/api/preferences", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data)
+            }).then(function (r2) { return !!(r2 && r2.ok); }).catch(function () { return false; });
+          });
         }
 
         savePromise.then(function () {
