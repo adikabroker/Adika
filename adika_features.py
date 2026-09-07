@@ -1,5 +1,3 @@
-import logging
-logger = logging.getLogger(__name__)
 """
 adika_features.py — Broker match, Telegram OTP, For-You feed
 Shared by Flask api_service routes.
@@ -8,17 +6,24 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import random
 import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 try:
     import requests
 except Exception:
     requests = None  # type: ignore
 
-from config import logger
+try:
+    from config import logger as _cfg_logger
+    logger = _cfg_logger
+except Exception:
+    pass
 
 # In-memory OTP store (production: Redis preferred; survives single-instance Render)
 _OTP_STORE: Dict[str, Dict[str, Any]] = {}
@@ -28,7 +33,6 @@ _OTP_TTL_SEC = 600
 def _ph():
     from models import get_placeholder
     return get_placeholder()
-
 
 def ensure_feature_tables():
     """Create otp_codes + user_preferences if missing (PG + SQLite)."""
