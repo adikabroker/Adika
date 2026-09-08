@@ -11544,49 +11544,35 @@
           Object.keys(parsed).forEach(function (k) { if (parsed[k]) likedIds[String(k)] = 1; });
         }
       } catch (eL) {}
-      var highIntent = 0;
-      (items || []).forEach(function (it) {
-        if (!it) return;
-        var id = String(it.id || "");
-        var pr = parsePrice(it.price || it.asking_price || 0);
-        if (pr > highIntent && likedIds[id]) highIntent = pr;
+     var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
+
+    fetch(listingsUrl, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var base = (data && (data.items || data.listings || data.data)) || [];
+        if (!Array.isArray(base)) base = [];
+        base = base.map(normalizeImages);
+
+        var likedIds = {};
+        try {
+          Object.keys(favorites || {}).forEach(function (k) {
+            if (favorites[k]) likedIds[String(k)] = 1;
+          });
+        } catch (eL) {}
+
+        var filtered = hardFilter(base, prefs);
+        filtered.sort(function (a, b) {
+          var al = likedIds[String(a && a.id)] ? 1 : 0;
+          var bl = likedIds[String(b && b.id)] ? 1 : 0;
+          if (al !== bl) return bl - al;
+          return 0;
+        });
+        paint(filtered);
+      })
+      .catch(function (err) {
+        console.warn("[Adika FYP]", err);
+        paint([]);
       });
-      if (highIntent > maxP && maxP > 0) {
-        maxP = Math.round(highIntent * 1.25);
-      }
-
-      var cats = prefs.categories || [];
-      var wantCar = false, wantHouse = false;
-      cats.forEach(function (c) {
-        var cl = String(c).toLowerCase();
-        if (/መኪና|car/.test(cl)) wantCar = true;
-        if (/ቤት|house|property/.test(cl)) wantHouse = true;
-      });
-      var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
-      if (/መኪና|car/.test(mc)) wantCar = true;
-      if (/ቤት|house/.test(mc)) wantHouse = true;
-
-      return items.filter(function (it) {
-        if (!it) return false;
-        var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
-        if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
-        var price = parsePrice(it.price || it.asking_price || 0);
-        if (maxP > 0 && maxP < 999999999) {
-          if (price <= 0) return false;
-          if (price > maxP) return false;
-          if (minP > 0 && price < minP) return false;
-        }
-        var blob = [it.main_category, it.category, it.sub_category, it.title, it.brand, it.model, it.description].join(" ").toLowerCase();
-        if (wantCar && !wantHouse) {
-          if (/ቤት|house|apartment|villa|ንብረት/.test(blob) && !/መኪና|car|toyota|vits|vehicle/.test(blob)) return false;
-        }
-        if (wantHouse && !wantCar) {
-          if (/መኪና|car|toyota|vits|vehicle|chassis/.test(blob)) return false;
-        }
-        return true;
-      }).map(normalizeImages);
-    }
-
     function paint(items) {
       items = (items || []).map(normalizeImages);
       try { if (window.state) { state.loading = false; state.items = items; state.feedMode = "foryou"; } } catch (e) {}
