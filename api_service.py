@@ -3628,41 +3628,41 @@ function shareContract() {{
                     cat_l = cat_raw.lower()
                     if cat_l in ('መኪና', 'car', 'cars', 'vehicle', 'vehicles', 'auto', 'መኪኖች'):
                         cat_mode = "car"
-                        aliases = ['መኪና', 'car', 'cars', 'vehicle', 'መኪኖች']
-                        # Include car aliases on main_category/category; exclude house tags
+                        aliases = ['መኪና', 'car', 'cars', 'vehicle', 'መኪኖች', 'vits', 'vitz', 'toyota', 'chassis']
                         parts = []
                         for a in aliases:
                             parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
                             params.append(f"%{a}%")
                             parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
                             params.append(f"%{a}%")
+                            parts.append(f"CAST(COALESCE(sub_category,'') AS TEXT) {like} {p}")
+                            params.append(f"%{a}%")
                         where.append("(" + " OR ".join(parts) + ")")
-                        # Hard-exclude house-tagged rows
+                        # Exclude rows whose content clearly says house
                         where.append(
-                            f"(CAST(COALESCE(main_category,'') AS TEXT) NOT {like} {p} "
-                            f"AND CAST(COALESCE(main_category,'') AS TEXT) NOT {like} {p} "
-                            f"AND CAST(COALESCE(category,'') AS TEXT) NOT {like} {p} "
-                            f"AND CAST(COALESCE(category,'') AS TEXT) NOT {like} {p})"
+                            f"(CAST(COALESCE(sub_category,'') AS TEXT) NOT {like} {p} "
+                            f"AND CAST(COALESCE(sub_category,'') AS TEXT) NOT {like} {p} "
+                            f"AND CAST(COALESCE(description,'') AS TEXT) NOT {like} {p} "
+                            f"AND CAST(COALESCE(description,'') AS TEXT) NOT {like} {p})"
                         )
                         params.extend(['%ቤት%', '%house%', '%ቤት%', '%house%'])
                     elif cat_l in ('ቤት', 'house', 'home', 'property', 'realestate', 'real_estate', 'ንብረት'):
                         cat_mode = "house"
-                        aliases = ['ቤት', 'house', 'property', 'home', 'ንብረት', 'real_estate']
+                        # Match house signals in tags OR content (handles wrong main_category=መኪና)
+                        aliases = ['ቤት', 'house', 'property', 'home', 'ንብረት', 'real_estate', 'apartment', 'villa', 'አፓርታማ', 'መሬት']
                         parts = []
                         for a in aliases:
                             parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
                             params.append(f"%{a}%")
                             parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
                             params.append(f"%{a}%")
+                            parts.append(f"CAST(COALESCE(sub_category,'') AS TEXT) {like} {p}")
+                            params.append(f"%{a}%")
+                            parts.append(f"CAST(COALESCE(description,'') AS TEXT) {like} {p}")
+                            params.append(f"%{a}%")
                         where.append("(" + " OR ".join(parts) + ")")
-                        # Hard-exclude car-tagged rows
-                        where.append(
-                            f"(CAST(COALESCE(main_category,'') AS TEXT) NOT {like} {p} "
-                            f"AND CAST(COALESCE(main_category,'') AS TEXT) NOT {like} {p} "
-                            f"AND CAST(COALESCE(category,'') AS TEXT) NOT {like} {p} "
-                            f"AND CAST(COALESCE(category,'') AS TEXT) NOT {like} {p})"
-                        )
-                        params.extend(['%መኪና%', '%car%', '%መኪና%', '%car%'])
+                        # Do NOT hard-exclude main_category=መኪና here — content may still be a house.
+                        # Python post-filter (content-first) will drop real cars.
                     elif cat_l in ('ንግድ', 'commercial', 'business', 'biz'):
                         cat_mode = "biz"
                         aliases = ['ንግድ', 'commercial', 'business']
@@ -3829,47 +3829,58 @@ function shareContract() {{
                     item['telegram_username'] = uname or ''
                     items.append(item)
 
-                # STRICT Python post-filter (never leak cars into ቤት or vice-versa)
+                # STRICT Python post-filter — CONTENT beats wrong main_category tags
                 cat_l2 = str(category or "").strip().lower()
-                def _is_car_row(it):
+                def _row_signals(it):
                     main = str(it.get("main_category") or "").lower()
                     catv = str(it.get("category") or "").lower()
                     sub = str(it.get("sub_category") or "").lower()
                     brand = str(it.get("brand") or "").lower()
                     model = str(it.get("model") or "").lower()
-                    title = str(it.get("title") or "").lower()
+                    title = str(it.get("title") or it.get("name") or "").lower()
                     desc = str(it.get("description") or "").lower()
-                    blob = " ".join([main, catv, sub, brand, model, title, desc])
-                    if any(x in main for x in ("መኪና", "car", "vehicle")):
-                        return True
-                    if any(x in main for x in ("ቤት", "house", "property", "ንብረት")):
-                        return False
-                    if any(x in catv for x in ("መኪና", "car", "vehicle")):
-                        return True
-                    if any(x in catv for x in ("ቤት", "house", "property", "ንብረት")):
-                        return False
-                    car_kw = ("toyota", "hyundai", "suzuki", "vits", "vitz", "chassis", "sedan", "suv", "pickup", "corolla", "raize", "yaris", "vehicle", "መኪና")
-                    if any(k in blob for k in car_kw):
-                        return True
-                    return False
-                def _is_house_row(it):
-                    if _is_car_row(it):
-                        return False
-                    main = str(it.get("main_category") or "").lower()
-                    catv = str(it.get("category") or "").lower()
-                    blob = " ".join([
-                        main, catv,
-                        str(it.get("sub_category") or ""),
-                        str(it.get("title") or ""),
-                        str(it.get("description") or ""),
-                    ]).lower()
-                    house_kw = ("ቤት", "house", "property", "ንብረት", "apartment", "villa", "condo", "መሬት", "land", "real_estate")
-                    return any(k in main or k in catv or k in blob for k in house_kw)
+                    extra = it.get("extra_data") or {}
+                    if isinstance(extra, str):
+                        try:
+                            import json as _json
+                            extra = _json.loads(extra)
+                        except Exception:
+                            extra = {}
+                    if not isinstance(extra, dict):
+                        extra = {}
+                    house_type = str(extra.get("house_type") or extra.get("property_type") or extra.get("location_area") or "").lower()
+                    content = " ".join([sub, brand, model, title, desc, house_type])
+                    tags = " ".join([main, catv])
+                    house_kw = ("ቤት", "house", "apartment", "villa", "ንብረት", "property", "condo", "መሬት", "land", "አፓርታማ", "የማሸጫ ቤት")
+                    car_kw = ("toyota", "hyundai", "suzuki", "vits", "vitz", "chassis", "sedan", "suv", "pickup", "corolla", "raize", "yaris", "vehicle", "መኪና", "የመኪና")
+                    content_house = any(k in content for k in house_kw)
+                    content_car = any(k in content for k in car_kw)
+                    tag_house = any(k in tags for k in ("ቤት", "house", "property", "ንብረት", "apartment", "villa", "condo", "መሬት", "land"))
+                    tag_car = any(k in tags for k in ("መኪና", "car", "vehicle", "auto"))
+                    is_house = False
+                    is_car = False
+                    if content_house and not content_car:
+                        is_house = True
+                    elif content_car and not content_house:
+                        is_car = True
+                    elif content_house and content_car:
+                        is_house = any(k in (sub + " " + title) for k in ("ቤት", "house", "apartment", "villa", "አፓርታማ", "ንብረት"))
+                        is_car = not is_house
+                    else:
+                        if tag_house and not tag_car:
+                            is_house = True
+                        elif tag_car and not tag_house:
+                            is_car = True
+                        elif tag_house:
+                            is_house = True
+                        elif tag_car:
+                            is_car = True
+                    return is_car, is_house
 
                 if cat_l2 in ("ቤት", "house", "home", "property", "realestate", "real_estate", "ንብረት"):
-                    items = [it for it in items if _is_house_row(it)]
+                    items = [it for it in items if _row_signals(it)[1]]
                 elif cat_l2 in ("መኪና", "car", "cars", "vehicle", "vehicles", "auto", "መኪኖች"):
-                    items = [it for it in items if _is_car_row(it) and not _is_house_row(it)]
+                    items = [it for it in items if _row_signals(it)[0]]
 
                 safe_items = [_safe(it) for it in items]
                 # When strict category yields zero rows, return empty (do NOT fall back to all)
