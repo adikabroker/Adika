@@ -11605,20 +11605,19 @@
     var uid = getUid();
     var prefs = readLocalPrefs() || {};
 
-    var listingsUrl = "/api/listings?page=1&limit=150&order=DESC&active_only=1&type=SELL";
-
-    fetch(listingsUrl, { credentials: "same-origin" })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var base = (data && (data.items || data.listings || data.data)) || [];
-        if (!Array.isArray(base)) base = [];
-        base = base.map(normalizeImages);
-        var likedIds = {};
-        try {
-          Object.keys(favorites || {}).forEach(function (k) {
-            if (favorites[k]) likedIds[String(k)] = 1;
-          });
-        } catch (eL) {}
+       var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
+    var fypUrl = "/api/for-you?page=1&limit=60";
+    if (uid) fypUrl += "&user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid);
+    try {
+      var liked = Object.keys(favorites || {}).filter(function (k) { return favorites[k]; });
+      if (liked.length) fypUrl += "&liked_ids=" + encodeURIComponent(liked.join(","));
+      var hist = [];
+      try { hist = JSON.parse(_lsGet("viewHistory") || "[]") || []; } catch (eH) {}
+      var vids = hist.map(function (h) { return h && h.id; }).filter(Boolean);
+      if (vids.length) fypUrl += "&recently_viewed_ids=" + encodeURIComponent(vids.join(","));
+      if (hist[0] && hist[0].category) fypUrl += "&last_category=" + encodeURIComponent(hist[0].category);
+      if (hist[0] && hist[0].price) fypUrl += "&last_price=" + encodeURIComponent(hist[0].price);
+    } catch (eQ) {}
         var filtered = hardFilter(base, prefs);
         var likedBrands = [];
         try {
