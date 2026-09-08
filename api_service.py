@@ -2262,7 +2262,31 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_favorites_toggle: {e}", exc_info=True)
             return jsonify({"success": False, "message": str(e)}), 500
-
+    @web_app.route('/api/favorites', methods=['GET', 'OPTIONS'])
+    def api_favorites_list():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            uid = int(
+                request.args.get('user_id')
+                or request.args.get('telegram_id')
+                or request.args.get('chat_id')
+                or 0
+            )
+            if not uid:
+                return jsonify({"success": True, "items": [], "ids": []})
+            import adika_features as _af
+            ids = []
+            if hasattr(_af, "get_user_favorite_listing_ids"):
+                ids = _af.get_user_favorite_listing_ids(uid, limit=80) or []
+            return jsonify({
+                "success": True,
+                "items": [{"listing_id": i} for i in ids],
+                "ids": ids,
+            })
+        except Exception as e:
+            logger.error("api_favorites_list: %s", e)
+            return jsonify({"success": False, "items": [], "ids": [], "message": str(e)}), 500
     @web_app.route('/api/update-listing', methods=['POST', 'OPTIONS'])
     def api_update_listing():
         """Update listing fields; on price drop notify all users who favorited it."""
