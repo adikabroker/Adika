@@ -3416,6 +3416,29 @@
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
       try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
+      try {
+        var meta = {};
+        try { meta = JSON.parse(_lsGet("adika_fav_meta") || "{}") || {}; } catch (eM) { meta = {}; }
+        if (wasFav) {
+          delete meta[String(id)];
+        } else {
+          var src = null;
+          try {
+            var pool = (window.state && state.items) || [];
+            for (var i = 0; i < pool.length; i++) {
+              if (pool[i] && String(pool[i].id) === String(id)) { src = pool[i]; break; }
+            }
+          } catch (eP) {}
+          var price = 0;
+          var brand = "";
+          if (src) {
+            price = Number(String(src.price || "").replace(/[^0-9.]/g, "")) || 0;
+            brand = String(src.brand || src.sub_category || src.title || "");
+          }
+          meta[String(id)] = { price: price, brand: brand, ts: Date.now() };
+        }
+        _lsSet("adika_fav_meta", JSON.stringify(meta));
+      } catch (eMeta) {}
       renderFavoritesUI();
       try {
         var uid = 0;
@@ -11514,6 +11537,7 @@
         else if (nums.length === 1) { maxP = nums[0]; }
       }
       var likedIds = {};
+      var likedMeta = {};
       try {
         var favObj = (typeof favorites === "object" && favorites) ? favorites : {};
         Object.keys(favObj).forEach(function (k) { if (favObj[k]) likedIds[String(k)] = 1; });
@@ -11525,7 +11549,15 @@
           Object.keys(parsed).forEach(function (k) { if (parsed[k]) likedIds[String(k)] = 1; });
         }
       } catch (eL) {}
+      try {
+        likedMeta = JSON.parse(localStorage.getItem("adika_fav_meta") || "{}") || {};
+      } catch (eMeta) { likedMeta = {}; }
       var highIntent = 0;
+      Object.keys(likedMeta).forEach(function (k) {
+        if (!likedIds[String(k)]) return;
+        var pr = parsePrice((likedMeta[k] && likedMeta[k].price) || 0);
+        if (pr > highIntent) highIntent = pr;
+      });
       (items || []).forEach(function (it) {
         if (!it) return;
         var id = String(it.id || "");
@@ -11608,10 +11640,24 @@
           });
         } catch (eL) {}
         var filtered = hardFilter(base, prefs);
+        var likedBrands = [];
+        try {
+          var meta = JSON.parse(localStorage.getItem("adika_fav_meta") || "{}") || {};
+          Object.keys(likedIds).forEach(function (k) {
+            var b = String((meta[k] && meta[k].brand) || "").toLowerCase();
+            if (b) likedBrands.push(b);
+          });
+        } catch (eB) {}
         filtered.sort(function (a, b) {
-          var al = likedIds[String(a && a.id)] ? 1 : 0;
-          var bl = likedIds[String(b && b.id)] ? 1 : 0;
-          return bl - al;
+          function score(it) {
+            var s = likedIds[String(it && it.id)] ? 100 : 0;
+            var blob = [it && it.title, it && it.brand, it && it.sub_category, it && it.model].join(" ").toLowerCase();
+            likedBrands.forEach(function (br) {
+              if (br && blob.indexOf(br.split(" ")[0]) >= 0) s += 20;
+            });
+            return s;
+          }
+          return score(b) - score(a);
         });
         paint(filtered);
       })
