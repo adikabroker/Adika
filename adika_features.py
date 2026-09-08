@@ -1301,49 +1301,6 @@ def toggle_favorite(user_id, listing_id, chat_id=None, action=None):
                 pass
 
 
-
-def get_user_favorite_ids(user_id: int, limit: int = 40) -> List[int]:
-    """Return the user's favorite listing IDs for real-time FYP personalization.
-
-    This deliberately uses only the columns that exist in the current favorites
-    schema: user_id, chat_id, listing_id, created_at.
-    """
-    from models import get_db_connection
-    ensure_favorites_and_alerts_tables()
-    uid = int(user_id or 0)
-    if uid <= 0:
-        return []
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        p = _ph()
-        cur.execute(
-            f"SELECT listing_id FROM favorites WHERE user_id={p} OR chat_id={p} "
-            f"ORDER BY created_at DESC LIMIT {int(max(1, min(limit, 200)))}",
-            (uid, uid),
-        )
-        out = []
-        for r in cur.fetchall() or []:
-            val = r.get("listing_id") if isinstance(r, dict) else r[0]
-            try:
-                lid = int(val)
-                if lid > 0 and lid not in out:
-                    out.append(lid)
-            except Exception:
-                pass
-        return out
-    except Exception as e:
-        logger.warning("get_user_favorite_ids: %s", e)
-        return []
-    finally:
-        if conn:
-            try:
-                conn.close()
-            except Exception:
-                pass
-
-
 def update_listing_price(listing_id, new_price):
     """Update listings.price (TEXT). Returns (ok, old_price, title, category)."""
     from models import get_db_connection, is_postgres
@@ -1994,15 +1951,6 @@ def fetch_for_you_feed(
             pass
     viewed = list(dict.fromkeys(viewed))  # unique, preserve order
 
-    # ---- Real-time favorite behavior ----
-    # A newly liked listing must become a recommendation seed on the next FYP load.
-    favorite_ids: List[int] = []
-    try:
-        if uid:
-            favorite_ids = get_user_favorite_ids(uid, limit=40)
-    except Exception:
-        favorite_ids = []
-
     # ---- Load saved preferences (cold start) ----
     prefs: Dict[str, Any] = {}
     try:
@@ -2052,19 +2000,10 @@ def fetch_for_you_feed(
     items: List[Dict[str, Any]] = []
     exclude = viewed[:]  # don't re-show just-viewed at top as duplicates later
 
-    if favorite_ids or viewed or behavior_cat or behavior_price > 0:
-        mode = "favorite_behavior" if favorite_ids else "realtime_behavior"
-        # Favorites are stronger long-term intent signals than a single view.
-        # Combine them with recent views, newest signals first, without duplicates.
-        seed_ids = []
-        for sid in favorite_ids[:12] + viewed[:8]:
-            try:
-                sid = int(sid)
-                if sid > 0 and sid not in seed_ids:
-                    seed_ids.append(sid)
-            except Exception:
-                pass
-        seeds = _load_listings_by_ids(seed_ids)
+    if viewed or behavior_cat or behavior_price > 0:
+        mode = "realtime_behavior"
+        # Load viewed seeds for similar-items expansion
+        seeds = _load_listings_by_ids(viewed[:8])
         if not seeds and behavior_cat:
             # Synthetic seed from last_category + last_price
             seeds = [{
@@ -2168,84 +2107,92 @@ def fetch_for_you_feed(
         merged.sort(key=_ck, reverse=True)
         items = merged
 
-    # ---- Final preference + favorite guard/ranking ----
-    # Never allow a liked car to make a house FYP (or vice versa), and keep
-    # the user's saved budget as the hard boundary.
-    def _cat_key(v: Any) -> str:
-        x = str(v or "").lower()
-        if _is_house_category(x) or "house" in x or "property" in x or "ቤት" in x:
-            return "houses"
-        if _is_car_category(x) or "car" in x or "vehicle" in x or "መኪና" in x:
-            return "cars"
-        return ""
+    # Never leave FYP empty — but do not leak the other category
+    if not items:
+        mode = "fallback_newest"
+        only_house = _is_house_category(pref_cat) and not _is_car_category(pref_cat)
+        only_car = _is_car_category(pref_cat) and not _is_house_category(pref_cat)
+        both = (not only_house and not only_car) or str(pref_cat).lower() in ("both", "ሁለቱም")
+        if only_house:
+            items = _fetch_listings(limit=30, category="houses", exclude_ids=exclude)
+        elif only_car or str(pref_cat).lower() in ("car", "cars", "መኪና"):
+            items = _fetch_listings(limit=30, category="cars", exclude_ids=exclude)
+        else:
+            cars = _fetch_listings(limit=max(15, limit // 2), category="cars", exclude_ids=exclude)
+            houses = _fetch_listings(limit=max(15, limit // 2), category="houses", exclude_ids=exclude)
+            items = cars + houses
+        if not items:
+            items = _fetch_listings(
+                limit=30,
+                category="houses" if only_house else ("cars" if only_car else ""),
+                exclude_ids=exclude,
+            )
 
-    pref_key = _cat_key(pref_cat)
-    bmin = float(budget.get("minPrice") or 0)
-    bmax = float(budget.get("maxPrice") or 0)
-    if pref_key or bmin > 0 or (bmax > 0 and bmax < 999_999_999):
-        guarded = []
-        for it in items:
-            price = _parse_price(it.get("price"))
-            ikey = _cat_key(it.get("main_category") or it.get("category") or it.get("sub_category"))
-            if pref_key and ikey and ikey != pref_key:
-                continue
-            if bmax > 0 and bmax < 999_999_999:
-                if price <= 0 or price > bmax:
-                    continue
-            if bmin > 0 and price > 0 and price < bmin:
-                continue
-            guarded.append(it)
-        items = guarded
+    def _fyp_score(d: Dict[str, Any]) -> int:
+        score = 0
+        blob = " ".join(
+            str(d.get(k) or "")
+            for k in ("main_category", "category", "sub_category", "title", "description", "brand", "model")
+        )
+        extra = d.get("extra_data") if isinstance(d.get("extra_data"), dict) else {}
+        blob_l = (blob + " " + str(extra.get("transmission") or "") + " " + str(extra.get("house_type") or "")).lower()
+        want_car = _is_car_category(pref_cat) or _is_car_category(behavior_cat)
+        want_house = _is_house_category(pref_cat) or _is_house_category(behavior_cat)
+        both = (want_car and want_house) or (not want_car and not want_house)
+        is_car = _is_car_category(d.get("main_category") or d.get("category") or blob)
+        is_house = _is_house_category(d.get("main_category") or d.get("category") or blob)
+        if both:
+            if is_car or is_house:
+                score += 30
+        elif want_car and is_car:
+            score += 30
+        elif want_house and is_house:
+            score += 30
+        price = _parse_price(d.get("price"))
+        bmin = float(budget.get("minPrice") or 0)
+        bmax = float(budget.get("maxPrice") or 0)
+        if behavior_price > 0:
+            if price > 0 and behavior_price * 0.65 <= price <= behavior_price * 1.35:
+                score += 25
+            elif price > 0 and behavior_price * 0.5 <= price <= behavior_price * 1.6:
+                score += 12
+        elif bmax and 0 < bmax < 999_999_999 and price > 0 and bmin <= price <= bmax:
+            score += 25
+        trans = str((prefs.get("transmission") if prefs else "") or "").lower()
+        if trans and trans not in ("both", "ሁለቱም", "any", ""):
+            if trans[:4] in blob_l:
+                score += 8
+        ptype = str((prefs.get("property_type") if prefs else "") or prefs.get("house_type") or "")
+        if ptype and ptype.lower() in blob_l:
+            score += 8
+        try:
+            views = int(d.get("view_count") or 0)
+            score += min(10, views // 40)
+        except Exception:
+            pass
+        created = str(d.get("created_at") or "")
+        if created:
+            score += 8
+        return score
 
-    favorite_set = set(favorite_ids)
-    if favorite_set and items:
-        def _fav_score(it: Dict[str, Any]) -> float:
-            try:
-                iid = int(it.get("id") or 0)
-            except Exception:
-                iid = 0
-            score = 0.0
-            if iid in favorite_set:
-                # Do not display the exact liked item as a recommendation seed.
-                score -= 10000
-            text = " ".join(str(it.get(k) or "") for k in ("brand", "model", "sub_category", "title", "description")).lower()
-            cat = str(it.get("main_category") or it.get("category") or "").lower()
-            for fid in favorite_set:
-                seed = next((x for x in _load_listings_by_ids([fid]) if x), None)
-                if not seed:
-                    continue
-                seed_text = " ".join(str(seed.get(k) or "") for k in ("brand", "model", "sub_category", "title", "description")).lower()
-                seed_cat = str(seed.get("main_category") or seed.get("category") or "").lower()
-                if seed_cat and cat and _cat_key(seed_cat) == _cat_key(cat):
-                    score += 8
-                # Token overlap gives brand/model affinity without requiring a fixed schema.
-                toks = [t for t in re.findall(r"[a-z0-9]+|[\u1200-\u137f]+", seed_text) if len(t) >= 3]
-                for t in set(toks):
-                    if t in text:
-                        score += 4
-            return score
-        # Avoid repeated DB calls in the loop by keeping this ranking modest.
-        seed_cache = {fid: (_load_listings_by_ids([fid]) or [None])[0] for fid in list(favorite_set)[:12]}
-        def _fast_fav_score(it):
-            try: iid = int(it.get("id") or 0)
-            except Exception: iid = 0
-            if iid in favorite_set: return -10000
-            text = " ".join(str(it.get(k) or "") for k in ("brand", "model", "sub_category", "title", "description")).lower()
-            cat = _cat_key(it.get("main_category") or it.get("category") or "")
-            score = 0
-            for seed in seed_cache.values():
-                if not seed: continue
-                scat = _cat_key(seed.get("main_category") or seed.get("category") or "")
-                if scat and cat and scat == cat: score += 8
-                seed_text = " ".join(str(seed.get(k) or "") for k in ("brand", "model", "sub_category", "title", "description")).lower()
-                toks = set(t for t in re.findall(r"[a-z0-9]+|[\u1200-\u137f]+", seed_text) if len(t) >= 3)
-                score += min(24, sum(4 for t in toks if t in text))
-            return score
-        items.sort(key=lambda x: (_fast_fav_score(x), str(x.get("created_at") or x.get("updated_at") or "")), reverse=True)
+    scored = []
+    for d in items:
+        sc = _fyp_score(d)
+        d["_score"] = sc
+        if sc >= 45:
+            d["_match"] = "high"
+        elif sc >= 25:
+            d["_match"] = "mid"
+        else:
+            d["_match"] = "low"
+        scored.append(d)
+    scored.sort(key=lambda x: (-int(x.get("_score") or 0), str(x.get("created_at") or ""), int(x.get("id") or 0)), reverse=False)
+    scored.sort(key=lambda x: (-int(x.get("_score") or 0), str(x.get("created_at") or "")), reverse=False)
+    scored.sort(key=lambda x: -int(x.get("_score") or 0))
 
     # Page slice
     offset = max(0, (page - 1) * limit)
-    window = items
+    window = scored
     page_items = window[offset: offset + limit]
 
     # Final unified image schema
