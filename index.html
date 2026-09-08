@@ -3411,13 +3411,12 @@
       favorites = JSON.parse(_lsGet('adika_favs') || '{}');
     } catch(e) {}
 
-    function toggleFav(id) {
+        function toggleFav(id) {
       var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
       try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
       renderFavoritesUI();
-      // Persist bookmark for price-drop alerts (Telegram chat_id)
       try {
         var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
         if (uid && id) {
@@ -3430,11 +3429,16 @@
               listing_id: id,
               action: wasFav ? "remove" : "add"
             })
+          }).then(function () {
+            try {
+              if (window.state && state.feedMode === "foryou" && typeof window.loadFYPFeed === "function") {
+                window.loadFYPFeed();
+              }
+            } catch (e2) {}
           }).catch(function(){});
         }
       } catch (e) {}
     }
-
     var state = window.__adikaState = {
       tab: "marketplace",
       feedMode: "foryou", // foryou | all | category
@@ -11476,7 +11480,7 @@
       return it;
     }
 
-    function hardFilter(items, prefs) {
+       function hardFilter(items, prefs) {
       if (!items || !items.length) return [];
       prefs = prefs || {};
       var maxP = parsePrice(prefs.budget_max || prefs.max_price || prefs.price_max);
@@ -11488,6 +11492,30 @@
         if (nums.length >= 2) { minP = Math.min(nums[0], nums[1]); maxP = Math.max(nums[0], nums[1]); }
         else if (nums.length === 1) { maxP = nums[0]; }
       }
+
+      var likedIds = {};
+      try {
+        var favObj = (typeof favorites === "object" && favorites) ? favorites : {};
+        Object.keys(favObj).forEach(function (k) { if (favObj[k]) likedIds[String(k)] = 1; });
+      } catch (eF) {}
+      try {
+        var rawFav = localStorage.getItem("adika_favs") || "{}";
+        var parsed = JSON.parse(rawFav);
+        if (parsed && typeof parsed === "object") {
+          Object.keys(parsed).forEach(function (k) { if (parsed[k]) likedIds[String(k)] = 1; });
+        }
+      } catch (eL) {}
+      var highIntent = 0;
+      (items || []).forEach(function (it) {
+        if (!it) return;
+        var id = String(it.id || "");
+        var pr = parsePrice(it.price || it.asking_price || 0);
+        if (pr > highIntent && likedIds[id]) highIntent = pr;
+      });
+      if (highIntent > maxP && maxP > 0) {
+        maxP = Math.round(highIntent * 1.25);
+      }
+
       var cats = prefs.categories || [];
       var wantCar = false, wantHouse = false;
       cats.forEach(function (c) {
