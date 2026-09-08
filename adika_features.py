@@ -1923,6 +1923,65 @@ def _load_listings_by_ids(ids: List[int]) -> List[Dict[str, Any]]:
     return out
 
 
+SIGNAL_VIEW = 1.0
+SIGNAL_LIKE = 2.0
+SIGNAL_SHARE = 3.0
+
+
+def _pref_cat_key(val: Any) -> str:
+    """Strict isolation: cars never mix into ቤት and vice-versa."""
+    if _is_house_category(val):
+        return "houses"
+    if _is_car_category(val):
+        return "cars"
+    s = str(val or "").strip().lower()
+    if any(x in s for x in ("ቤት", "house", "property", "ንብረት")):
+        return "houses"
+    if any(x in s for x in ("መኪና", "car", "vehicle")):
+        return "cars"
+    return ""
+
+
+def _elastic_budget(
+    form_min: float,
+    form_max: float,
+    interaction_prices: List[Tuple[float, float]],
+) -> Tuple[float, float, float]:
+    """
+    form_max is the cold-start ceiling.
+    High-intent prices above the form cap expand the ceiling:
+      view  +20%, like +25%, share +30% of the highest interacted price.
+    Returns (min_price, elastic_max, expand_ratio).
+    """
+    base_min = float(form_min or 0)
+    base_max = float(form_max or 0)
+    if not interaction_prices:
+        return base_min, base_max, 0.0
+    top_price, top_w = 0.0, 0.0
+    for price, weight in interaction_prices:
+        if price <= 0:
+            continue
+        if weight > top_w or (weight == top_w and price > top_price):
+            top_w, top_price = weight, price
+    if top_price <= 0:
+        return base_min, base_max, 0.0
+    if top_w >= SIGNAL_SHARE:
+        ratio = 0.30
+    elif top_w >= SIGNAL_LIKE:
+        ratio = 0.25
+    else:
+        ratio = 0.20
+    stretched = top_price * (1.0 + ratio)
+    if base_max and 0 < base_max < 999_999_999:
+        if top_price > base_max:
+            elastic_max = max(base_max, stretched)
+        else:
+            elastic_max = base_max
+    else:
+        elastic_max = stretched
+    return base_min, elastic_max, ratio
+
+
 def _similar_to_seed(
     seed: Dict[str, Any],
     limit: int = 12,
@@ -1930,7 +1989,7 @@ def _similar_to_seed(
     budget_max: float = 0.0,
     budget_min: float = 0.0,
 ) -> List[Dict[str, Any]]:
-    """Same category + nearby price. User budget_max is a HARD cap."""
+    """Same category + nearby price. budget_max here is the ELASTIC cap."""
     exclude_ids = list(exclude_ids or [])
     try:
         seed_id = int(seed.get("id") or 0)
@@ -1940,7 +1999,7 @@ def _similar_to_seed(
         pass
 
     mc = seed.get("main_category") or seed.get("category") or ""
-    cat = "houses" if _is_house_category(mc) else "cars"
+    cat = _pref_cat_key(mc) or ("houses" if _is_house_category(mc) else "cars")
 
     seed_price = _parse_price(seed.get("price"))
     min_p = float(budget_min or 0)
@@ -1950,7 +2009,7 @@ def _similar_to_seed(
         band_hi = seed_price * 1.55
         min_p = max(min_p, band_lo) if min_p else band_lo
         if max_p and 0 < max_p < 999_999_999:
-            max_p = min(max_p, band_hi)
+            max_p = min(max_p, band_hi) if band_hi >= max_p * 0.5 else max_p
         else:
             max_p = band_hi
     if max_p and 0 < max_p < 999_999_999 and min_p > max_p:
@@ -1975,37 +2034,46 @@ def fetch_for_you_feed(
     last_price: Any = None,
     budget_range: str = "",
     main_category: str = "",
+    liked_ids: Optional[List[int]] = None,
+    shared_ids: Optional[List[int]] = None,
 ) -> Dict[str, Any]:
     """
-    HYBRID FYP — SINGLE TABLE (`listings` only; adika_clean_market removed).
-
-      STEP 1 Cold start  — user_preferences main_category + budget_range
-      STEP 2 Real-time   — recently_viewed_ids / last_category / last_price override
-      STEP 3 Fallback    — ORDER BY created_at DESC LIMIT 30 (cars + houses)
-
-    Images: image_url || images[0] || photo_url || telegram_image
-    Category isolation: cars never leak into houses and vice-versa.
+    Elastic hybrid FYP:
+      Cold start = form main_category + budget_range
+      Signals    = view 1x, like 2x, share 3x
+      Elastic    = if interacted price > form max, raise ceiling +20%..+30%
+    Category isolation stays strict (መኪና / ቤት never mix).
     """
     uid = int(user_id or 0)
     limit = max(1, min(int(limit or 24), 60))
     page = max(1, int(page or 1))
-    viewed = []
-    for x in (recently_viewed_ids or []):
-        try:
-            viewed.append(int(x))
-        except Exception:
-            pass
-    viewed = list(dict.fromkeys(viewed))  # unique, preserve order
 
+    def _ids(raw):
+        out = []
+        for x in (raw or []):
+            try:
+                out.append(int(x))
+            except Exception:
+                pass
+        return list(dict.fromkeys(out))
+
+    viewed = _ids(recently_viewed_ids)
+    liked = _ids(liked_ids)
+    shared = _ids(shared_ids)
     try:
-        if uid:
-            for fid in get_user_favorite_listing_ids(uid, limit=20):
-                if fid not in viewed:
-                    viewed.append(fid)
+        if uid and not liked:
+            liked = get_user_favorite_listing_ids(uid, limit=20)
     except Exception:
         pass
 
-    # ---- Load saved preferences (cold start) ----
+    # last 10 interactions, share > like > view
+    recent10: List[int] = []
+    for lid in (shared + liked + viewed):
+        if lid not in recent10:
+            recent10.append(lid)
+        if len(recent10) >= 10:
+            break
+
     prefs: Dict[str, Any] = {}
     try:
         if uid:
@@ -2028,7 +2096,6 @@ def fetch_for_you_feed(
         or prefs.get("budgetRange")
         or ""
     )
-    # Prefer CLEAN integers from user_preferences (Detail-page style)
     budget = {"minPrice": 0.0, "maxPrice": 0.0}
     try:
         bmin = int(prefs.get("min_price") or prefs.get("budget_min") or 0)
@@ -2041,40 +2108,67 @@ def fetch_for_you_feed(
         parsed = parse_budget_range(pref_budget_raw)
         if parsed.get("maxPrice"):
             budget = parsed
-    # Request overrides
     if budget_range:
         parsed = parse_budget_range(budget_range)
         if parsed.get("maxPrice"):
             budget = parsed
 
-    # ---- STEP 2: real-time behavioral override ----
     behavior_cat = last_category or ""
     behavior_price = _parse_price(last_price) if last_price is not None else 0.0
+
+    seed_ids = list(dict.fromkeys(shared + liked + viewed))[:12]
+    seeds = _load_listings_by_ids(seed_ids)
+    if not seeds and behavior_cat:
+        seeds = [{
+            "id": 0,
+            "main_category": behavior_cat,
+            "category": behavior_cat,
+            "price": behavior_price or None,
+            "_w": SIGNAL_VIEW,
+        }]
+
+    weight_by_id = {}
+    for lid in viewed:
+        weight_by_id[lid] = max(weight_by_id.get(lid, 0), SIGNAL_VIEW)
+    for lid in liked:
+        weight_by_id[lid] = max(weight_by_id.get(lid, 0), SIGNAL_LIKE)
+    for lid in shared:
+        weight_by_id[lid] = max(weight_by_id.get(lid, 0), SIGNAL_SHARE)
+
+    interaction_prices: List[Tuple[float, float]] = []
+    if behavior_price > 0:
+        interaction_prices.append((behavior_price, SIGNAL_VIEW))
+    for seed in seeds:
+        try:
+            sid = int(seed.get("id") or 0)
+        except Exception:
+            sid = 0
+        w = float(weight_by_id.get(sid) or seed.get("_w") or SIGNAL_VIEW)
+        seed["_w"] = w
+        interaction_prices.append((_parse_price(seed.get("price")), w))
+
+    form_min = float(budget.get("minPrice") or 0)
+    form_max = float(budget.get("maxPrice") or 0)
+    elastic_min, elastic_max, expand_ratio = _elastic_budget(
+        form_min, form_max, interaction_prices
+    )
+
     mode = "fallback_newest"
     items: List[Dict[str, Any]] = []
-    exclude = viewed[:]  # don't re-show just-viewed at top as duplicates later
+    exclude = recent10[:]
 
-    if viewed or behavior_cat or behavior_price > 0:
-        mode = "realtime_behavior"
-        # Load viewed seeds for similar-items expansion
-        seeds = _load_listings_by_ids(viewed[:8])
-        if not seeds and behavior_cat:
-            # Synthetic seed from last_category + last_price
-            seeds = [{
-                "id": 0,
-                "main_category": behavior_cat,
-                "category": behavior_cat,
-                "price": behavior_price or None,
-            }]
+    if seeds or behavior_cat or behavior_price > 0 or liked or shared:
+        mode = "elastic_behavior" if expand_ratio else "realtime_behavior"
         similar: List[Dict[str, Any]] = []
         seen = set(exclude)
-        for seed in seeds:
+        seeds_sorted = sorted(seeds, key=lambda s: float(s.get("_w") or 0), reverse=True)
+        for seed in seeds_sorted[:8]:
             for s in _similar_to_seed(
                 seed,
                 limit=max(8, limit // 2),
                 exclude_ids=list(seen),
-                budget_max=float(budget.get("maxPrice") or 0),
-                budget_min=float(budget.get("minPrice") or 0),
+                budget_max=elastic_max,
+                budget_min=elastic_min,
             ):
                 try:
                     sid = int(s.get("id") or 0)
@@ -2084,28 +2178,16 @@ def fetch_for_you_feed(
                     continue
                 if sid:
                     seen.add(sid)
+                s["_boost"] = float(seed.get("_w") or 0)
                 similar.append(s)
-        # Prefer similar; if thin, fill with category+budget cold start
         items = similar
         if len(items) < limit:
-            cat = behavior_cat or pref_cat
-            if _is_house_category(cat):
-                cat_key = "houses"
-            elif _is_car_category(cat) or cat:
-                cat_key = "cars" if (_is_car_category(cat) or not _is_house_category(cat)) else ""
-            else:
-                cat_key = ""
-            if behavior_price > 0:
-                min_p = behavior_price * 0.5
-                max_p = behavior_price * 1.6
-            else:
-                min_p = float(budget.get("minPrice") or 0)
-                max_p = float(budget.get("maxPrice") or 0)
+            cat = _pref_cat_key(behavior_cat or pref_cat)
             filler = _fetch_listings(
                 limit=limit,
-                category=cat_key,
-                min_price=min_p,
-                max_price=max_p,
+                category=cat,
+                min_price=elastic_min,
+                max_price=elastic_max,
                 exclude_ids=list(seen),
             )
             for f in filler:
@@ -2120,35 +2202,25 @@ def fetch_for_you_feed(
                 items.append(f)
                 if len(items) >= limit * 2:
                     break
+        items.sort(
+            key=lambda d: (
+                float(d.get("_boost") or 0),
+                str(d.get("created_at") or ""),
+            ),
+            reverse=True,
+        )
 
-    elif pref_cat or budget.get("maxPrice"):
-        # ---- STEP 1: cold start from preferences ----
+    elif pref_cat or form_max:
         mode = "cold_start_prefs"
-        if _is_house_category(pref_cat):
-            cat_key = "houses"
-        elif _is_car_category(pref_cat) or str(pref_cat).strip():
-            cat_key = "cars" if (_is_car_category(pref_cat) or str(pref_cat) in ("መኪና", "Cars", "cars")) else (
-                "houses" if _is_house_category(pref_cat) else ""
-            )
-            if not cat_key:
-                # raw mapping
-                pl = str(pref_cat).lower()
-                if any(x in pl for x in ("ቤት", "house")):
-                    cat_key = "houses"
-                elif any(x in pl for x in ("መኪና", "car")):
-                    cat_key = "cars"
-        else:
-            cat_key = ""
         items = _fetch_listings(
             limit=limit * 2,
-            category=cat_key,
-            min_price=float(budget.get("minPrice") or 0),
-            max_price=float(budget.get("maxPrice") or 0),
+            category=_pref_cat_key(pref_cat),
+            min_price=form_min,
+            max_price=form_max,
             exclude_ids=exclude,
         )
 
     else:
-        # ---- STEP 3: fallback newest cars + houses 50/50 ----
         mode = "fallback_newest"
         half = max(1, min(30, limit))
         cars = _fetch_listings(limit=half, category="cars", exclude_ids=exclude)
@@ -2167,32 +2239,31 @@ def fetch_for_you_feed(
         merged.sort(key=_ck, reverse=True)
         items = merged
 
-    # Page slice
     offset = max(0, (page - 1) * limit)
-    window = items
-    page_items = window[offset: offset + limit]
-
-    # Final unified image schema
-    page_items = [unify_listing_images(x) for x in page_items]
+    page_items = [unify_listing_images(x) for x in items[offset: offset + limit]]
 
     return {
         "success": True,
         "items": page_items,
         "listings": page_items,
-        "clean_market": [],  # deprecated — single-table listings only
+        "clean_market": [],
         "page": page,
         "limit": limit,
         "prefs": prefs,
         "intent": {
             "category": pref_cat or last_category or "",
             "budget_range": pref_budget_raw,
-            "minPrice": budget.get("minPrice") or 0,
-            "maxPrice": budget.get("maxPrice") or 0,
+            "minPrice": form_min,
+            "maxPrice": form_max,
+            "elasticMaxPrice": elastic_max,
+            "expand_ratio": expand_ratio,
             "last_category": last_category or "",
             "last_price": behavior_price,
             "viewed_count": len(viewed),
+            "liked_count": len(liked),
+            "shared_count": len(shared),
         },
-        "has_more": len(window) > offset + limit,
+        "has_more": len(items) > offset + limit,
         "mode": mode,
         "user_id": uid,
         "counts": {
@@ -2201,4 +2272,3 @@ def fetch_for_you_feed(
             "clean_market": 0,
         },
     }
-
