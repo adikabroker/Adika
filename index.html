@@ -3410,7 +3410,8 @@
     try {
       favorites = JSON.parse(_lsGet('adika_favs') || '{}');
     } catch(e) {}
-       function toggleFav(id) {
+
+    function toggleFav(id) {
       var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
@@ -3423,6 +3424,9 @@
           var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
           if (u && u.id) uid = Number(u.id) || 0;
         }
+        if (!uid && tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+          uid = Number(tg.initDataUnsafe.user.id) || 0;
+        }
         if (!uid) { console.warn("[Adika] like skipped — no telegram user id"); return; }
         fetch("/api/favorites/toggle", {
           method: "POST",
@@ -3434,11 +3438,8 @@
             listing_id: id,
             action: wasFav ? "remove" : "add"
           })
-        }).then(function (r) { return r.json(); }).then(function (d) {
-          if (d && d.success === false) console.warn("[Adika] like DB fail", d);
-          try {
-            if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
-          } catch (e2) {}
+        }).then(function (r) { return r.json(); }).then(function () {
+          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); } catch (e2) {}
         }).catch(function (err) { console.warn("[Adika] like network", err); });
       } catch (e) {}
     }
@@ -3457,7 +3458,7 @@
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var ids = (d && (d.ids || [])) || [];
-          (d && d.items || []).forEach(function (it) {
+          ((d && d.items) || []).forEach(function (it) {
             var lid = it && (it.listing_id || it.id);
             if (lid) ids.push(lid);
           });
@@ -3468,6 +3469,7 @@
     }
     setTimeout(hydrateFavoritesFromServer, 400);
     setTimeout(hydrateFavoritesFromServer, 1600);
+
     var state = window.__adikaState = {
       tab: "marketplace",
       feedMode: "foryou", // foryou | all | category
@@ -5319,10 +5321,8 @@
         urls.push("/api/explorer/listings?" + qs);
       }
       if (useForYou) {
-        var _uid = encodeURIComponent(state.userId || (typeof getTelegramUserId === "function" ? getTelegramUserId() : "") || "0");
-        urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + _uid + "&telegram_id=" + _uid);
-        urls.push("/api/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + _uid + "&telegram_id=" + _uid);
-        // DO NOT fall back to unfiltered /api/listings for For You — keeps budget filter
+        urls.push("/api/listings?" + qs);
+        urls.push("/api/explorer/listings?" + qs);
       }
 
       var done = false;
@@ -8092,19 +8092,11 @@
               state.feedMode = "foryou";
               state.category = "";
               state.page = 1;
-              state.items = [];
               state.hasMore = true;
-              state.loading = false;
               state.q = "";
-              // Clear stale "All" cards immediately
-              try {
-                var g = document.getElementById("grid");
-                if (g) { g.innerHTML = ""; g.style.opacity = "0.55"; }
-              } catch (eG) {}
+              state.loading = false;
               paintFeedModes();
-              if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) return;
               if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
-              else if (typeof window.loadSmartFYP === "function") window.loadSmartFYP({ page: 1, append: false });
               else load(false);
               return;
             }
@@ -11509,19 +11501,9 @@
       return it;
     }
 
-         var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
-    var fypUrl = "/api/for-you?page=1&limit=60";
-    if (uid) fypUrl += "&user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid);
-    try {
-      var liked = Object.keys(favorites || {}).filter(function (k) { return favorites[k]; });
-      if (liked.length) fypUrl += "&liked_ids=" + encodeURIComponent(liked.join(","));
-      var hist = [];
-      try { hist = JSON.parse(_lsGet("viewHistory") || "[]") || []; } catch (eH) {}
-      var vids = hist.map(function (h) { return h && h.id; }).filter(Boolean);
-      if (vids.length) fypUrl += "&recently_viewed_ids=" + encodeURIComponent(vids.join(","));
-      if (hist[0] && hist[0].category) fypUrl += "&last_category=" + encodeURIComponent(hist[0].category);
-      if (hist[0] && hist[0].price) fypUrl += "&last_price=" + encodeURIComponent(hist[0].price);
-    } catch (eQ) {}
+    function hardFilter(items, prefs) {
+      if (!items || !items.length) return [];
+      prefs = prefs || {};
       var maxP = parsePrice(prefs.budget_max || prefs.max_price || prefs.price_max);
       var minP = parsePrice(prefs.budget_min || prefs.min_price || prefs.price_min);
       if ((!maxP || maxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
@@ -11531,7 +11513,6 @@
         if (nums.length >= 2) { minP = Math.min(nums[0], nums[1]); maxP = Math.max(nums[0], nums[1]); }
         else if (nums.length === 1) { maxP = nums[0]; }
       }
-
       var likedIds = {};
       try {
         var favObj = (typeof favorites === "object" && favorites) ? favorites : {};
@@ -11544,35 +11525,48 @@
           Object.keys(parsed).forEach(function (k) { if (parsed[k]) likedIds[String(k)] = 1; });
         }
       } catch (eL) {}
-     var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
-
-    fetch(listingsUrl, { credentials: "same-origin" })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var base = (data && (data.items || data.listings || data.data)) || [];
-        if (!Array.isArray(base)) base = [];
-        base = base.map(normalizeImages);
-
-        var likedIds = {};
-        try {
-          Object.keys(favorites || {}).forEach(function (k) {
-            if (favorites[k]) likedIds[String(k)] = 1;
-          });
-        } catch (eL) {}
-
-        var filtered = hardFilter(base, prefs);
-        filtered.sort(function (a, b) {
-          var al = likedIds[String(a && a.id)] ? 1 : 0;
-          var bl = likedIds[String(b && b.id)] ? 1 : 0;
-          if (al !== bl) return bl - al;
-          return 0;
-        });
-        paint(filtered);
-      })
-      .catch(function (err) {
-        console.warn("[Adika FYP]", err);
-        paint([]);
+      var highIntent = 0;
+      (items || []).forEach(function (it) {
+        if (!it) return;
+        var id = String(it.id || "");
+        var pr = parsePrice(it.price || it.asking_price || 0);
+        if (pr > highIntent && likedIds[id]) highIntent = pr;
       });
+      if (highIntent > maxP && maxP > 0) {
+        maxP = Math.round(highIntent * 1.25);
+      }
+      var cats = prefs.categories || [];
+      var wantCar = false, wantHouse = false;
+      cats.forEach(function (c) {
+        var cl = String(c).toLowerCase();
+        if (/መኪና|car/.test(cl)) wantCar = true;
+        if (/ቤት|house|property/.test(cl)) wantHouse = true;
+      });
+      var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
+      if (/መኪና|car/.test(mc)) wantCar = true;
+      if (/ቤት|house/.test(mc)) wantHouse = true;
+
+      return items.filter(function (it) {
+        if (!it) return false;
+        var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
+        if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
+        var price = parsePrice(it.price || it.asking_price || 0);
+        if (maxP > 0 && maxP < 999999999) {
+          if (price <= 0) return false;
+          if (price > maxP) return false;
+          if (minP > 0 && price < minP) return false;
+        }
+        var blob = [it.main_category, it.category, it.sub_category, it.title, it.brand, it.model, it.description].join(" ").toLowerCase();
+        if (wantCar && !wantHouse) {
+          if (/ቤት|house|apartment|villa|ንብረት/.test(blob) && !/መኪና|car|toyota|vits|vehicle/.test(blob)) return false;
+        }
+        if (wantHouse && !wantCar) {
+          if (/መኪና|car|toyota|vits|vehicle|chassis/.test(blob)) return false;
+        }
+        return true;
+      }).map(normalizeImages);
+    }
+
     function paint(items) {
       items = (items || []).map(normalizeImages);
       try { if (window.state) { state.loading = false; state.items = items; state.feedMode = "foryou"; } } catch (e) {}
@@ -11599,55 +11593,32 @@
     var uid = getUid();
     var prefs = readLocalPrefs() || {};
 
-    // PRIMARY: /api/listings (same image pipeline as ሁሉም) then client budget filter
-    // SECONDARY: /api/for-you (may lack images) — merge photos by id if needed
     var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
-    var fypUrl = "/api/for-you?page=1&limit=60";
-    if (uid) fypUrl += "&user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid);
 
-    Promise.all([
-      fetch(listingsUrl, { credentials: "same-origin" }).then(function (r) { return r.json(); }).catch(function () { return {}; }),
-      fetch(fypUrl, { credentials: "same-origin" }).then(function (r) { return r.json(); }).catch(function () { return {}; })
-    ]).then(function (results) {
-      var listA = (results[0] && (results[0].items || results[0].listings || results[0].data)) || [];
-      var listB = (results[1] && (results[1].items || results[1].listings || results[1].data)) || [];
-      if (!Array.isArray(listA)) listA = [];
-      if (!Array.isArray(listB)) listB = [];
-
-      // Index listings by id for image merge
-      var byId = {};
-      listA.forEach(function (it) {
-        if (it && it.id != null) byId[String(it.id)] = normalizeImages(it);
-      });
-      // Prefer listings (images) as base; if empty use for-you and merge images
-      var base = listA.length ? listA : listB;
-      if (listA.length && listB.length) {
-        // Enrich for-you ranking order if available, but take image from listings
-        var ordered = [];
-        var seen = {};
-        listB.forEach(function (it) {
-          if (!it || it.id == null) return;
-          var id = String(it.id);
-          var rich = byId[id] || normalizeImages(it);
-          ordered.push(rich);
-          seen[id] = 1;
-        });
-        listA.forEach(function (it) {
-          if (!it || it.id == null) return;
-          var id = String(it.id);
-          if (!seen[id]) ordered.push(normalizeImages(it));
-        });
-        base = ordered.length ? ordered : listA;
-      } else {
+    fetch(listingsUrl, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var base = (data && (data.items || data.listings || data.data)) || [];
+        if (!Array.isArray(base)) base = [];
         base = base.map(normalizeImages);
-      }
-
-      var filtered = hardFilter(base, prefs);
-      paint(filtered);
-    }).catch(function (err) {
-      console.warn("[Adika FYP]", err);
-      paint([]);
-    });
+        var likedIds = {};
+        try {
+          Object.keys(favorites || {}).forEach(function (k) {
+            if (favorites[k]) likedIds[String(k)] = 1;
+          });
+        } catch (eL) {}
+        var filtered = hardFilter(base, prefs);
+        filtered.sort(function (a, b) {
+          var al = likedIds[String(a && a.id)] ? 1 : 0;
+          var bl = likedIds[String(b && b.id)] ? 1 : 0;
+          return bl - al;
+        });
+        paint(filtered);
+      })
+      .catch(function (err) {
+        console.warn("[Adika FYP]", err);
+        paint([]);
+      });
   };
 
   window.loadFYPFeed = window.__adikaLoadFYP;
