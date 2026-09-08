@@ -3621,23 +3621,64 @@ function shareContract() {{
                     )
                     params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ', 'Request'])
                 like = "ILIKE" if is_postgres() else "LIKE"
-                if category and str(category).strip().lower() not in ('', 'all', 'null', 'none', 'undefined', '✨ ሁሉም', '✨ all', 'ሁሉም'):
-                    # Map EN/AM aliases so Cars/Property tabs never return empty when data exists
+                # STRICT category isolation: ቤት never mixes with መኪና
+                cat_mode = ""  # "", "car", "house", "biz"
+                if category and str(category).strip().lower() not in ('', 'all', 'null', 'none', 'undefined', '✨ ሁሉም', '✨ all', 'ሁሉም', 'foryou', 'for_you'):
                     cat_raw = str(category).strip()
                     cat_l = cat_raw.lower()
-                    aliases = [cat_raw]
-                    if cat_l in ('መኪና', 'car', 'cars', 'vehicle', 'vehicles', 'auto'):
+                    if cat_l in ('መኪና', 'car', 'cars', 'vehicle', 'vehicles', 'auto', 'መኪኖች'):
+                        cat_mode = "car"
                         aliases = ['መኪና', 'car', 'cars', 'vehicle', 'መኪኖች']
+                        # Include car aliases on main_category/category; exclude house tags
+                        parts = []
+                        for a in aliases:
+                            parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
+                            params.append(f"%{a}%")
+                            parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
+                            params.append(f"%{a}%")
+                        where.append("(" + " OR ".join(parts) + ")")
+                        # Hard-exclude house-tagged rows
+                        where.append(
+                            f"(CAST(COALESCE(main_category,'') AS TEXT) NOT {like} {p} "
+                            f"AND CAST(COALESCE(main_category,'') AS TEXT) NOT {like} {p} "
+                            f"AND CAST(COALESCE(category,'') AS TEXT) NOT {like} {p} "
+                            f"AND CAST(COALESCE(category,'') AS TEXT) NOT {like} {p})"
+                        )
+                        params.extend(['%ቤት%', '%house%', '%ቤት%', '%house%'])
                     elif cat_l in ('ቤት', 'house', 'home', 'property', 'realestate', 'real_estate', 'ንብረት'):
-                        aliases = ['ቤት', 'house', 'property', 'home', 'ንብረት']
-                    # Match main_category OR category (legacy rows)
-                    parts = []
-                    for a in aliases:
-                        parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
-                        params.append(f"%{a}%")
-                        parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
-                        params.append(f"%{a}%")
-                    where.append("(" + " OR ".join(parts) + ")")
+                        cat_mode = "house"
+                        aliases = ['ቤት', 'house', 'property', 'home', 'ንብረት', 'real_estate']
+                        parts = []
+                        for a in aliases:
+                            parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
+                            params.append(f"%{a}%")
+                            parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
+                            params.append(f"%{a}%")
+                        where.append("(" + " OR ".join(parts) + ")")
+                        # Hard-exclude car-tagged rows
+                        where.append(
+                            f"(CAST(COALESCE(main_category,'') AS TEXT) NOT {like} {p} "
+                            f"AND CAST(COALESCE(main_category,'') AS TEXT) NOT {like} {p} "
+                            f"AND CAST(COALESCE(category,'') AS TEXT) NOT {like} {p} "
+                            f"AND CAST(COALESCE(category,'') AS TEXT) NOT {like} {p})"
+                        )
+                        params.extend(['%መኪና%', '%car%', '%መኪና%', '%car%'])
+                    elif cat_l in ('ንግድ', 'commercial', 'business', 'biz'):
+                        cat_mode = "biz"
+                        aliases = ['ንግድ', 'commercial', 'business']
+                        parts = []
+                        for a in aliases:
+                            parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
+                            params.append(f"%{a}%")
+                            parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
+                            params.append(f"%{a}%")
+                        where.append("(" + " OR ".join(parts) + ")")
+                    else:
+                        where.append(
+                            f"(CAST(COALESCE(main_category,'') AS TEXT) {like} {p} "
+                            f"OR CAST(COALESCE(category,'') AS TEXT) {like} {p})"
+                        )
+                        params.extend([f"%{cat_raw}%", f"%{cat_raw}%"])
                 if chassis_only:
                     where.append(
                         f"(CAST(COALESCE(extra_data,'') AS TEXT) {like} {p} "
@@ -3669,9 +3710,15 @@ function shareContract() {{
                         list(params) + [limit, offset],
                     )
                     rows = cur.fetchall() or []
-                    # If SELL filters returned empty, soft fallback (legacy Telegram posts).
-                    # NEVER fallback for BUY — that incorrectly mixes seller cards into Buyers tab.
-                    if not rows and page == 1 and req_type != 'BUY':
+                    # If SELL filters returned empty: only soft-fallback when NO category
+                    # was requested. NEVER dump all cars into ቤት / መኪና tabs.
+                    _cat_req = str(category or "").strip().lower()
+                    _strict_cat = _cat_req in (
+                        "ቤት", "house", "home", "property", "realestate", "real_estate", "ንብረት",
+                        "መኪና", "car", "cars", "vehicle", "vehicles", "auto", "መኪኖች",
+                        "ንግድ", "commercial", "business", "biz",
+                    )
+                    if not rows and page == 1 and req_type != 'BUY' and not _strict_cat:
                         try:
                             cur.execute(
                                 f"SELECT COUNT(*) AS cnt FROM listings WHERE "
@@ -3695,6 +3742,8 @@ function shareContract() {{
                             logger.info("explorer SELL empty-filter fallback returned %s rows", len(rows))
                         except Exception as _fb0:
                             logger.warning("explorer empty fallback: %s", _fb0)
+                    elif not rows and _strict_cat:
+                        logger.info("explorer strict category %r returned 0 rows — no cross-category fallback", _cat_req)
                 except Exception as qerr:
                     logger.warning(f"api_explorer_listings primary query failed, fallback: {qerr}")
                     try:
@@ -3780,7 +3829,53 @@ function shareContract() {{
                     item['telegram_username'] = uname or ''
                     items.append(item)
 
+                # STRICT Python post-filter (never leak cars into ቤት or vice-versa)
+                cat_l2 = str(category or "").strip().lower()
+                def _is_car_row(it):
+                    main = str(it.get("main_category") or "").lower()
+                    catv = str(it.get("category") or "").lower()
+                    sub = str(it.get("sub_category") or "").lower()
+                    brand = str(it.get("brand") or "").lower()
+                    model = str(it.get("model") or "").lower()
+                    title = str(it.get("title") or "").lower()
+                    desc = str(it.get("description") or "").lower()
+                    blob = " ".join([main, catv, sub, brand, model, title, desc])
+                    if any(x in main for x in ("መኪና", "car", "vehicle")):
+                        return True
+                    if any(x in main for x in ("ቤት", "house", "property", "ንብረት")):
+                        return False
+                    if any(x in catv for x in ("መኪና", "car", "vehicle")):
+                        return True
+                    if any(x in catv for x in ("ቤት", "house", "property", "ንብረት")):
+                        return False
+                    car_kw = ("toyota", "hyundai", "suzuki", "vits", "vitz", "chassis", "sedan", "suv", "pickup", "corolla", "raize", "yaris", "vehicle", "መኪና")
+                    if any(k in blob for k in car_kw):
+                        return True
+                    return False
+                def _is_house_row(it):
+                    if _is_car_row(it):
+                        return False
+                    main = str(it.get("main_category") or "").lower()
+                    catv = str(it.get("category") or "").lower()
+                    blob = " ".join([
+                        main, catv,
+                        str(it.get("sub_category") or ""),
+                        str(it.get("title") or ""),
+                        str(it.get("description") or ""),
+                    ]).lower()
+                    house_kw = ("ቤት", "house", "property", "ንብረት", "apartment", "villa", "condo", "መሬት", "land", "real_estate")
+                    return any(k in main or k in catv or k in blob for k in house_kw)
+
+                if cat_l2 in ("ቤት", "house", "home", "property", "realestate", "real_estate", "ንብረት"):
+                    items = [it for it in items if _is_house_row(it)]
+                elif cat_l2 in ("መኪና", "car", "cars", "vehicle", "vehicles", "auto", "መኪኖች"):
+                    items = [it for it in items if _is_car_row(it) and not _is_house_row(it)]
+
                 safe_items = [_safe(it) for it in items]
+                # When strict category yields zero rows, return empty (do NOT fall back to all)
+                if cat_l2 in ("ቤት", "house", "home", "property", "realestate", "real_estate", "ንብረት",
+                              "መኪና", "car", "cars", "vehicle", "vehicles", "auto", "መኪኖች"):
+                    total = len(safe_items)
             finally:
                 if conn:
                     try:
