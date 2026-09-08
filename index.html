@@ -3411,13 +3411,31 @@
       favorites = JSON.parse(_lsGet('adika_favs') || '{}');
     } catch(e) {}
 
+    var fypRefreshTimer = null;
+    function scheduleFypRefresh(reason) {
+      try { window.__adikaFypDirty = true; window.__adikaFypDirtyReason = reason || "favorite"; } catch (e) {}
+      try {
+        if (!state || state.feedMode !== "foryou") return;
+        if (fypRefreshTimer) clearTimeout(fypRefreshTimer);
+        fypRefreshTimer = setTimeout(function () {
+          fypRefreshTimer = null;
+          try {
+            if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
+            else if (typeof window.loadSmartFYP === "function") window.loadSmartFYP({page:1, append:false});
+          } catch (e2) {}
+        }, 180);
+      } catch (e3) {}
+    }
+
     function toggleFav(id) {
       var wasFav = Boolean(favorites[id]);
-      if (favorites[id]) delete favorites[id];
-      else favorites[id] = true;
+      var nextFav = !wasFav;
+      if (nextFav) favorites[id] = true;
+      else delete favorites[id];
       try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
       renderFavoritesUI();
-      // Persist bookmark for price-drop alerts (Telegram chat_id)
+
+      // Persist first; only refresh FYP after the backend confirms the signal.
       try {
         var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
         if (uid && id) {
@@ -3428,11 +3446,30 @@
               user_id: uid,
               chat_id: uid,
               listing_id: id,
-              action: wasFav ? "remove" : "add"
+              action: nextFav ? "add" : "remove"
             })
-          }).catch(function(){});
+          }).then(function(r) {
+            return r.json().then(function(d){ return {ok:r.ok, data:d}; });
+          }).then(function(result) {
+            if (!result.ok || !result.data || result.data.success === false || result.data.action === "error") {
+              // Roll back optimistic UI when persistence failed.
+              if (wasFav) favorites[id] = true; else delete favorites[id];
+              try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e3){}
+              renderFavoritesUI();
+              return;
+            }
+            scheduleFypRefresh(nextFav ? "favorite_added" : "favorite_removed");
+          }).catch(function() {
+            if (wasFav) favorites[id] = true; else delete favorites[id];
+            try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e4){}
+            renderFavoritesUI();
+          });
+        } else {
+          scheduleFypRefresh(nextFav ? "favorite_added_local" : "favorite_removed_local");
         }
-      } catch (e) {}
+      } catch (e) {
+        scheduleFypRefresh(nextFav ? "favorite_added_local" : "favorite_removed_local");
+      }
     }
 
     var state = window.__adikaState = {
@@ -10818,19 +10855,26 @@
   }
 
   function fetchFavorites(uid) {
+    if (!uid) return Promise.resolve([]);
     var client = sb();
-    if (!client || !uid) return Promise.resolve([]);
+    var apiFallback = function () {
+      return fetch("/api/favorites?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { return (d && (d.items || d.favorites || d.data)) || []; })
+        .catch(function () { return []; });
+    };
+    if (!client) return apiFallback();
+    // Current favorites schema: user_id, chat_id, listing_id, created_at.
     return client.from("favorites")
-      .select("listing_id, category, tags, created_at")
-      .or("user_id.eq." + uid + ",telegram_id.eq." + uid)
+      .select("listing_id, created_at")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false })
       .limit(80)
-      .then(function (res) { return (res && res.data) || []; })
-      .catch(function () {
-        return fetch("/api/favorites?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
-          .then(function (r) { return r.json(); })
-          .then(function (d) { return (d && (d.items || d.favorites || d.data)) || []; })
-          .catch(function () { return []; });
-      });
+      .then(function (res) {
+        if (res && res.error) throw res.error;
+        return (res && res.data) || [];
+      })
+      .catch(function () { return apiFallback(); });
   }
 
   function fetchSearchAlerts(uid) {
@@ -10951,14 +10995,25 @@
     // Favorites category / brand affinity
     var favCatHits = 0;
     var favBrandHits = 0;
+    var favExactHits = 0;
+    var favModelHits = 0;
     (favorites || []).forEach(function (f) {
       var fc = normCat(f.category || f.main_category || "");
       if (fc && fc === lCat) favCatHits++;
-      var tags = String(f.tags || f.brand || f.model || "").toLowerCase();
+      var fid = String(f.listing_id || f.id || "");
+      if (fid && fid === String(listing.id || "")) favExactHits++;
+      var tags = String(f.tags || f.brand || f.model || f.sub_category || f.title || "").toLowerCase();
       if (tags && bm && (bm.indexOf(tags.slice(0, 4)) >= 0 || tags.indexOf(bm.slice(0, 4)) >= 0)) favBrandHits++;
+      var fbrand = String(f.brand || "").toLowerCase().trim();
+      var fmodel = String(f.model || f.sub_category || "").toLowerCase().trim();
+      if (fbrand && bm.indexOf(fbrand) >= 0) favModelHits += 2;
+      if (fmodel && bm.indexOf(fmodel) >= 0) favModelHits += 3;
     });
-    if (favCatHits > 0) pts += Math.min(12, 6 + favCatHits * 2);
+    if (favCatHits > 0) pts += Math.min(8, 4 + favCatHits * 2);
     if (favBrandHits > 0) pts += Math.min(8, 4 + favBrandHits * 2);
+    if (favModelHits > 0) pts += Math.min(8, favModelHits);
+    // Exact favorite is not a recommendation target; related items receive the affinity.
+    if (favExactHits > 0) pts -= 8;
 
     // Search alerts query match
     (alerts || []).forEach(function (a) {
@@ -11166,6 +11221,25 @@
       var alerts = results[2] || [];
       var requests = results[3] || [];
       var pool = results[4] || [];
+
+      // Enrich favorite rows from the same listing pool. This makes a like on
+      // Toyota Rivo teach the ranker the actual brand/model/category immediately.
+      var poolById = {};
+      pool.forEach(function(it) { if (it && it.id != null) poolById[String(it.id)] = it; });
+      favorites = favorites.map(function(f) {
+        var rich = poolById[String(f.listing_id)] || {};
+        return Object.assign({}, rich, f, {
+          id: f.listing_id || rich.id,
+          main_category: f.main_category || rich.main_category,
+          category: f.category || rich.category,
+          sub_category: f.sub_category || rich.sub_category,
+          price: f.price || rich.price,
+          brand: f.brand || rich.brand,
+          model: f.model || rich.model,
+          title: f.title || rich.title,
+          description: f.description || rich.description
+        });
+      });
 
       var ctx = { prefs: prefs, favorites: favorites, alerts: alerts, requests: requests };
       var meaningful = hasMeaningfulPrefs(prefs);
