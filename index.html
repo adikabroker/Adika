@@ -3436,6 +3436,10 @@
             brand = String(src.brand || src.sub_category || src.title || "");
           }
           meta[String(id)] = { price: price, brand: brand, ts: Date.now() };
+          if (price > 0) {
+            try { _lsSet("adika_last_like_price", String(price)); } catch (eLP) {}
+            try { _lsSet("adika_last_like_brand", brand || ""); } catch (eLB) {}
+          }
         }
         _lsSet("adika_fav_meta", JSON.stringify(meta));
       } catch (eMeta) {}
@@ -11564,6 +11568,10 @@
         var pr = parsePrice(it.price || it.asking_price || 0);
         if (pr > highIntent && likedIds[id]) highIntent = pr;
       });
+      try {
+        var lastLike = parsePrice(localStorage.getItem("adika_last_like_price") || _lsGet("adika_last_like_price") || 0);
+        if (lastLike > highIntent) highIntent = lastLike;
+      } catch (eLL) {}
       if (highIntent > maxP && maxP > 0) {
         maxP = Math.round(highIntent * 1.25);
       }
@@ -11625,7 +11633,7 @@
     var uid = getUid();
     var prefs = readLocalPrefs() || {};
 
-    var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
+    var listingsUrl = "/api/listings?page=1&limit=150&order=DESC&active_only=1&type=SELL";
 
     fetch(listingsUrl, { credentials: "same-origin" })
       .then(function (r) { return r.json(); })
