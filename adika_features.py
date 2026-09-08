@@ -1386,6 +1386,49 @@ def get_favorite_subscribers(listing_id):
     return out
 
 
+def get_user_favorite_listing_ids(user_id: int, limit: int = 20) -> List[int]:
+    """favorites.listing_id for this Telegram user_id OR chat_id. Newest first."""
+    from models import get_db_connection
+    ensure_favorites_and_alerts_tables()
+    out: List[int] = []
+    uid = int(user_id or 0)
+    if uid <= 0:
+        return out
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        ph = _ph()
+        cur.execute(
+            f"""
+            SELECT listing_id FROM favorites
+            WHERE user_id = {ph} OR chat_id = {ph}
+            ORDER BY id DESC
+            LIMIT {ph}
+            """,
+            (uid, uid, int(limit or 20)),
+        )
+        seen = set()
+        for r in cur.fetchall() or []:
+            d = dict(r) if not isinstance(r, dict) else r
+            try:
+                lid = int(d.get("listing_id") or 0)
+            except Exception:
+                lid = 0
+            if lid and lid not in seen:
+                seen.add(lid)
+                out.append(lid)
+    except Exception as e:
+        logger.warning("get_user_favorite_listing_ids: %s", e)
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    return out
+
+
 def get_matching_alerts(category, price, model_hint=""):
     """Match search_alerts using user_chat_id, chat_id, category, max_price, model_hint."""
     from models import get_db_connection
@@ -1884,10 +1927,13 @@ def _similar_to_seed(
     seed: Dict[str, Any],
     limit: int = 12,
     exclude_ids: Optional[List[int]] = None,
+    budget_max: float = 0.0,
+    budget_min: float = 0.0,
 ) -> List[Dict[str, Any]]:
     """
     Same spirit as product-detail 'ተቀራራቢ / Similar Items':
     same category, nearby price band, newest first.
+    HARD budget_max always wins over seed price band.
     """
     exclude_ids = list(exclude_ids or [])
     try:
@@ -1904,11 +1950,18 @@ def _similar_to_seed(
         cat = "cars"
 
     seed_price = _parse_price(seed.get("price"))
-    min_p = 0.0
-    max_p = 0.0
+    min_p = float(budget_min or 0)
+    max_p = float(budget_max or 0)
     if seed_price > 0:
-        min_p = seed_price * 0.55
-        max_p = seed_price * 1.55
+        band_lo = seed_price * 0.55
+        band_hi = seed_price * 1.55
+        min_p = max(min_p, band_lo) if min_p else band_lo
+        if max_p and 0 < max_p < 999_999_999:
+            max_p = min(max_p, band_hi)
+        else:
+            max_p = band_hi
+    if max_p and 0 < max_p < 999_999_999 and min_p > max_p:
+        min_p = 0.0
 
     return _fetch_listings(
         limit=limit,
@@ -1950,6 +2003,17 @@ def fetch_for_you_feed(
         except Exception:
             pass
     viewed = list(dict.fromkeys(viewed))  # unique, preserve order
+
+    # Favorites from DB (source of truth across sessions)
+    fav_ids: List[int] = []
+    try:
+        if uid:
+            fav_ids = get_user_favorite_listing_ids(uid, limit=20)
+    except Exception:
+        fav_ids = []
+    for fid in fav_ids:
+        if fid not in viewed:
+            viewed.append(fid)
 
     # ---- Load saved preferences (cold start) ----
     prefs: Dict[str, Any] = {}
@@ -2015,7 +2079,13 @@ def fetch_for_you_feed(
         similar: List[Dict[str, Any]] = []
         seen = set(exclude)
         for seed in seeds:
-            for s in _similar_to_seed(seed, limit=max(8, limit // 2), exclude_ids=list(seen)):
+            for s in _similar_to_seed(
+                seed,
+                limit=max(8, limit // 2),
+                exclude_ids=list(seen),
+                budget_max=float(budget.get("maxPrice") or 0),
+                budget_min=float(budget.get("minPrice") or 0),
+            ):
                 try:
                     sid = int(s.get("id") or 0)
                 except Exception:
@@ -2107,92 +2177,9 @@ def fetch_for_you_feed(
         merged.sort(key=_ck, reverse=True)
         items = merged
 
-    # Never leave FYP empty — but do not leak the other category
-    if not items:
-        mode = "fallback_newest"
-        only_house = _is_house_category(pref_cat) and not _is_car_category(pref_cat)
-        only_car = _is_car_category(pref_cat) and not _is_house_category(pref_cat)
-        both = (not only_house and not only_car) or str(pref_cat).lower() in ("both", "ሁለቱም")
-        if only_house:
-            items = _fetch_listings(limit=30, category="houses", exclude_ids=exclude)
-        elif only_car or str(pref_cat).lower() in ("car", "cars", "መኪና"):
-            items = _fetch_listings(limit=30, category="cars", exclude_ids=exclude)
-        else:
-            cars = _fetch_listings(limit=max(15, limit // 2), category="cars", exclude_ids=exclude)
-            houses = _fetch_listings(limit=max(15, limit // 2), category="houses", exclude_ids=exclude)
-            items = cars + houses
-        if not items:
-            items = _fetch_listings(
-                limit=30,
-                category="houses" if only_house else ("cars" if only_car else ""),
-                exclude_ids=exclude,
-            )
-
-    def _fyp_score(d: Dict[str, Any]) -> int:
-        score = 0
-        blob = " ".join(
-            str(d.get(k) or "")
-            for k in ("main_category", "category", "sub_category", "title", "description", "brand", "model")
-        )
-        extra = d.get("extra_data") if isinstance(d.get("extra_data"), dict) else {}
-        blob_l = (blob + " " + str(extra.get("transmission") or "") + " " + str(extra.get("house_type") or "")).lower()
-        want_car = _is_car_category(pref_cat) or _is_car_category(behavior_cat)
-        want_house = _is_house_category(pref_cat) or _is_house_category(behavior_cat)
-        both = (want_car and want_house) or (not want_car and not want_house)
-        is_car = _is_car_category(d.get("main_category") or d.get("category") or blob)
-        is_house = _is_house_category(d.get("main_category") or d.get("category") or blob)
-        if both:
-            if is_car or is_house:
-                score += 30
-        elif want_car and is_car:
-            score += 30
-        elif want_house and is_house:
-            score += 30
-        price = _parse_price(d.get("price"))
-        bmin = float(budget.get("minPrice") or 0)
-        bmax = float(budget.get("maxPrice") or 0)
-        if behavior_price > 0:
-            if price > 0 and behavior_price * 0.65 <= price <= behavior_price * 1.35:
-                score += 25
-            elif price > 0 and behavior_price * 0.5 <= price <= behavior_price * 1.6:
-                score += 12
-        elif bmax and 0 < bmax < 999_999_999 and price > 0 and bmin <= price <= bmax:
-            score += 25
-        trans = str((prefs.get("transmission") if prefs else "") or "").lower()
-        if trans and trans not in ("both", "ሁለቱም", "any", ""):
-            if trans[:4] in blob_l:
-                score += 8
-        ptype = str((prefs.get("property_type") if prefs else "") or prefs.get("house_type") or "")
-        if ptype and ptype.lower() in blob_l:
-            score += 8
-        try:
-            views = int(d.get("view_count") or 0)
-            score += min(10, views // 40)
-        except Exception:
-            pass
-        created = str(d.get("created_at") or "")
-        if created:
-            score += 8
-        return score
-
-    scored = []
-    for d in items:
-        sc = _fyp_score(d)
-        d["_score"] = sc
-        if sc >= 45:
-            d["_match"] = "high"
-        elif sc >= 25:
-            d["_match"] = "mid"
-        else:
-            d["_match"] = "low"
-        scored.append(d)
-    scored.sort(key=lambda x: (-int(x.get("_score") or 0), str(x.get("created_at") or ""), int(x.get("id") or 0)), reverse=False)
-    scored.sort(key=lambda x: (-int(x.get("_score") or 0), str(x.get("created_at") or "")), reverse=False)
-    scored.sort(key=lambda x: -int(x.get("_score") or 0))
-
     # Page slice
     offset = max(0, (page - 1) * limit)
-    window = scored
+    window = items
     page_items = window[offset: offset + limit]
 
     # Final unified image schema
