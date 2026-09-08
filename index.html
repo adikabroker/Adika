@@ -2769,36 +2769,42 @@
           </div>
         </div>
         <div>
-          <label class="block text-[11px] font-medium text-slate-300 mb-1">የሚሰሩበት / የሚፈልጉት ምድብ</label>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">ምድብ — አንዱን ወይም ሁለቱን ይምረጡ</label>
           <div class="flex flex-wrap gap-2">
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
-              <input type="radio" name="mainCat" value="Car" checked class="accent-teal-400">
+              <input type="checkbox" name="mainCat" id="catCar" value="Car" checked class="accent-teal-400" onchange="window.toggleSpecFields&&toggleSpecFields()">
               <span>🚗 መኪና</span>
             </label>
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
-              <input type="radio" name="mainCat" value="House" class="accent-teal-400">
+              <input type="checkbox" name="mainCat" id="catHouse" value="House" class="accent-teal-400" onchange="window.toggleSpecFields&&toggleSpecFields()">
               <span>🏠 ቤት</span>
             </label>
           </div>
         </div>
         <div id="carSpecs" class="space-y-2 bg-white/5 p-2.5 rounded-2xl border border-white/10">
-          <div class="grid grid-cols-2 gap-2">
-            <select id="carTrans" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
-              <option value="Automatic">አውቶማቲክ</option>
-              <option value="Manual">ማኑዋል</option>
-            </select>
-            <select id="carFuel" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
-              <option value="Fuel">ነዳጅ</option>
-              <option value="EV">ኤሌክትሪክ</option>
-              <option value="Hybrid">ሃይብሪድ</option>
-            </select>
+          <div class="text-[10px] text-slate-400 font-bold">መኪና — ማርሽ (ሁለቱም ይቻላል)</div>
+          <div class="flex flex-wrap gap-2">
+            <label class="flex items-center gap-1 text-[11px]"><input type="checkbox" id="transAuto" checked class="accent-teal-400"> አውቶ</label>
+            <label class="flex items-center gap-1 text-[11px]"><input type="checkbox" id="transManual" class="accent-teal-400"> ማንዋል</label>
           </div>
+          <select id="carType" class="w-full bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
+            <option value="">አይነት (አማራጭ)</option>
+            <option value="Sedan">ሴዳን</option>
+            <option value="SUV">SUV</option>
+            <option value="Pickup">ፒክአፕ</option>
+          </select>
+          <select id="carTrans" class="hidden"><option value="both">both</option></select>
+          <select id="carFuel" class="hidden"><option value=""></option></select>
         </div>
         <div id="houseSpecs" class="space-y-2 bg-white/5 p-2.5 rounded-2xl border border-white/10 hidden">
-          <div class="grid grid-cols-2 gap-2">
-            <input type="text" id="houseType" placeholder="አፓርታማ / ቪላ / ኮንዶ" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-500">
-            <input type="text" id="houseLoc" placeholder="አካባቢ (ቦሌ፣ አያት...)" class="bg-slate-800 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500">
-          </div>
+          <div class="text-[10px] text-slate-400 font-bold">ቤት — አይነት (አማራጭ)</div>
+          <select id="houseType" class="w-full bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
+            <option value="">ሁሉም</option>
+            <option value="Apartment">አፓርታማ</option>
+            <option value="Villa">ቪላ</option>
+            <option value="Land">መሬት</option>
+          </select>
+          <input type="hidden" id="houseLoc" value="">
         </div>
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">የቦጀት መጠን (ETB)</label>
@@ -3147,15 +3153,19 @@
           state.category = "";
           if (typeof paintFeedModes === "function") paintFeedModes();
         } catch (e) {}
-        try { if (typeof load === "function") load(false); } catch (e2) {}
+        try {
+          if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
+          else if (typeof load === "function") load(false);
+        } catch (e2) {}
       };
 
-      window.toggleSpecFields = function (cat) {
+      window.toggleSpecFields = function () {
         var car = document.getElementById("carSpecs");
         var house = document.getElementById("houseSpecs");
-        var isHouse = String(cat || "") === "House";
-        if (car) car.classList.toggle("hidden", isHouse);
-        if (house) house.classList.toggle("hidden", !isHouse);
+        var wantCar = !!(document.getElementById("catCar") || {}).checked;
+        var wantHouse = !!(document.getElementById("catHouse") || {}).checked;
+        if (car) car.classList.toggle("hidden", !wantCar);
+        if (house) house.classList.toggle("hidden", !wantHouse);
       };
 
       function parseBudgetRange(val) {
@@ -3193,19 +3203,25 @@
         var phone = (document.getElementById("phoneNum") || {}).value || "";
         var tg = (document.getElementById("tgUsername") || {}).value || "";
         tg = String(tg).replace(/^@/, "").trim();
-        var catEl = document.querySelector('input[name="mainCat"]:checked');
-        var mainCat = catEl ? catEl.value : "Car";
+        var wantCar = !!(document.getElementById("catCar") || {}).checked;
+        var wantHouse = !!(document.getElementById("catHouse") || {}).checked;
+        if (!wantCar && !wantHouse) wantCar = true;
+        var mainCat = (wantCar && wantHouse) ? "Both" : (wantHouse ? "House" : "Car");
         var budget = parseBudgetRange((document.getElementById("budgetRange") || {}).value);
         var isBroker = !!(document.getElementById("isBroker") || {}).checked;
         var specs = {};
-        if (mainCat === "House") {
-          specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
-          specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
-        } else {
-          specs.transmission = ((document.getElementById("carTrans") || {}).value || "").trim();
-          specs.fuel = ((document.getElementById("carFuel") || {}).value || "").trim();
-        }
-        var categories = mainCat === "House" ? ["ቤት", "House"] : ["መኪና", "Car"];
+        var autoOn = !!(document.getElementById("transAuto") || {}).checked;
+        var manOn = !!(document.getElementById("transManual") || {}).checked;
+        if (autoOn && manOn) specs.transmission = "both";
+        else if (manOn) specs.transmission = "Manual";
+        else if (autoOn) specs.transmission = "Automatic";
+        else specs.transmission = "both";
+        specs.car_type = ((document.getElementById("carType") || {}).value || "").trim();
+        specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
+        specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
+        var categories = [];
+        if (wantCar) { categories.push("መኪና"); categories.push("Car"); }
+        if (wantHouse) { categories.push("ቤት"); categories.push("House"); }
         return {
           full_name: String(fullName).trim(),
           phone: String(phone).trim(),
@@ -3411,31 +3427,13 @@
       favorites = JSON.parse(_lsGet('adika_favs') || '{}');
     } catch(e) {}
 
-    var fypRefreshTimer = null;
-    function scheduleFypRefresh(reason) {
-      try { window.__adikaFypDirty = true; window.__adikaFypDirtyReason = reason || "favorite"; } catch (e) {}
-      try {
-        if (!state || state.feedMode !== "foryou") return;
-        if (fypRefreshTimer) clearTimeout(fypRefreshTimer);
-        fypRefreshTimer = setTimeout(function () {
-          fypRefreshTimer = null;
-          try {
-            if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
-            else if (typeof window.loadSmartFYP === "function") window.loadSmartFYP({page:1, append:false});
-          } catch (e2) {}
-        }, 180);
-      } catch (e3) {}
-    }
-
     function toggleFav(id) {
       var wasFav = Boolean(favorites[id]);
-      var nextFav = !wasFav;
-      if (nextFav) favorites[id] = true;
-      else delete favorites[id];
+      if (favorites[id]) delete favorites[id];
+      else favorites[id] = true;
       try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
       renderFavoritesUI();
-
-      // Persist first; only refresh FYP after the backend confirms the signal.
+      // Persist bookmark for price-drop alerts (Telegram chat_id)
       try {
         var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
         if (uid && id) {
@@ -3446,30 +3444,11 @@
               user_id: uid,
               chat_id: uid,
               listing_id: id,
-              action: nextFav ? "add" : "remove"
+              action: wasFav ? "remove" : "add"
             })
-          }).then(function(r) {
-            return r.json().then(function(d){ return {ok:r.ok, data:d}; });
-          }).then(function(result) {
-            if (!result.ok || !result.data || result.data.success === false || result.data.action === "error") {
-              // Roll back optimistic UI when persistence failed.
-              if (wasFav) favorites[id] = true; else delete favorites[id];
-              try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e3){}
-              renderFavoritesUI();
-              return;
-            }
-            scheduleFypRefresh(nextFav ? "favorite_added" : "favorite_removed");
-          }).catch(function() {
-            if (wasFav) favorites[id] = true; else delete favorites[id];
-            try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e4){}
-            renderFavoritesUI();
-          });
-        } else {
-          scheduleFypRefresh(nextFav ? "favorite_added_local" : "favorite_removed_local");
+          }).catch(function(){});
         }
-      } catch (e) {
-        scheduleFypRefresh(nextFav ? "favorite_added_local" : "favorite_removed_local");
-      }
+      } catch (e) {}
     }
 
     var state = window.__adikaState = {
@@ -3514,6 +3493,8 @@
         hist.unshift(entry);
         hist = hist.slice(0, 3);
         _lsSet("viewHistory", JSON.stringify(hist));
+        try { localStorage.setItem("viewHistory", JSON.stringify(hist)); } catch (eLS) {}
+        try { window.__adikaFypDirty = true; } catch (eD) {}
         // Zero-cost intent key (last 3 categories + prices)
         try {
           var intent = hist.map(function(h) {
@@ -4923,6 +4904,7 @@
         try { fetch("/api/views/" + item.id, { method: "POST" }).catch(function(){}); } catch(e){}
       }
       loadRecommendations(item);
+      try { window.__adikaFypDirty = true; } catch (eDirty) {}
     }
 
     window.openDetailModal = openDetailModal;
@@ -9755,6 +9737,12 @@
     setTimeout(forceShowChrome, 0);
     setTimeout(forceShowChrome, 30);
     setTimeout(forceShowChrome, 100);
+    try {
+      if (window.__adikaFypDirty && window.state && state.feedMode === "foryou" && typeof window.__adikaLoadFYP === "function") {
+        window.__adikaFypDirty = false;
+        setTimeout(function () { window.__adikaLoadFYP(); }, 80);
+      }
+    } catch (eF) {}
   };
 
   // Any back/close that hides modal
@@ -10855,26 +10843,19 @@
   }
 
   function fetchFavorites(uid) {
-    if (!uid) return Promise.resolve([]);
     var client = sb();
-    var apiFallback = function () {
-      return fetch("/api/favorites?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
-        .then(function (r) { return r.json(); })
-        .then(function (d) { return (d && (d.items || d.favorites || d.data)) || []; })
-        .catch(function () { return []; });
-    };
-    if (!client) return apiFallback();
-    // Current favorites schema: user_id, chat_id, listing_id, created_at.
+    if (!client || !uid) return Promise.resolve([]);
     return client.from("favorites")
-      .select("listing_id, created_at")
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false })
+      .select("listing_id, category, tags, created_at")
+      .or("user_id.eq." + uid + ",telegram_id.eq." + uid)
       .limit(80)
-      .then(function (res) {
-        if (res && res.error) throw res.error;
-        return (res && res.data) || [];
-      })
-      .catch(function () { return apiFallback(); });
+      .then(function (res) { return (res && res.data) || []; })
+      .catch(function () {
+        return fetch("/api/favorites?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && (d.items || d.favorites || d.data)) || []; })
+          .catch(function () { return []; });
+      });
   }
 
   function fetchSearchAlerts(uid) {
@@ -10995,25 +10976,14 @@
     // Favorites category / brand affinity
     var favCatHits = 0;
     var favBrandHits = 0;
-    var favExactHits = 0;
-    var favModelHits = 0;
     (favorites || []).forEach(function (f) {
       var fc = normCat(f.category || f.main_category || "");
       if (fc && fc === lCat) favCatHits++;
-      var fid = String(f.listing_id || f.id || "");
-      if (fid && fid === String(listing.id || "")) favExactHits++;
-      var tags = String(f.tags || f.brand || f.model || f.sub_category || f.title || "").toLowerCase();
+      var tags = String(f.tags || f.brand || f.model || "").toLowerCase();
       if (tags && bm && (bm.indexOf(tags.slice(0, 4)) >= 0 || tags.indexOf(bm.slice(0, 4)) >= 0)) favBrandHits++;
-      var fbrand = String(f.brand || "").toLowerCase().trim();
-      var fmodel = String(f.model || f.sub_category || "").toLowerCase().trim();
-      if (fbrand && bm.indexOf(fbrand) >= 0) favModelHits += 2;
-      if (fmodel && bm.indexOf(fmodel) >= 0) favModelHits += 3;
     });
-    if (favCatHits > 0) pts += Math.min(8, 4 + favCatHits * 2);
+    if (favCatHits > 0) pts += Math.min(12, 6 + favCatHits * 2);
     if (favBrandHits > 0) pts += Math.min(8, 4 + favBrandHits * 2);
-    if (favModelHits > 0) pts += Math.min(8, favModelHits);
-    // Exact favorite is not a recommendation target; related items receive the affinity.
-    if (favExactHits > 0) pts -= 8;
 
     // Search alerts query match
     (alerts || []).forEach(function (a) {
@@ -11221,25 +11191,6 @@
       var alerts = results[2] || [];
       var requests = results[3] || [];
       var pool = results[4] || [];
-
-      // Enrich favorite rows from the same listing pool. This makes a like on
-      // Toyota Rivo teach the ranker the actual brand/model/category immediately.
-      var poolById = {};
-      pool.forEach(function(it) { if (it && it.id != null) poolById[String(it.id)] = it; });
-      favorites = favorites.map(function(f) {
-        var rich = poolById[String(f.listing_id)] || {};
-        return Object.assign({}, rich, f, {
-          id: f.listing_id || rich.id,
-          main_category: f.main_category || rich.main_category,
-          category: f.category || rich.category,
-          sub_category: f.sub_category || rich.sub_category,
-          price: f.price || rich.price,
-          brand: f.brand || rich.brand,
-          model: f.model || rich.model,
-          title: f.title || rich.title,
-          description: f.description || rich.description
-        });
-      });
 
       var ctx = { prefs: prefs, favorites: favorites, alerts: alerts, requests: requests };
       var meaningful = hasMeaningfulPrefs(prefs);
@@ -11550,6 +11501,20 @@
       return it;
     }
 
+    function listingKind(it) {
+      try {
+        if (typeof adikaListingSignals === "function") {
+          var sig = adikaListingSignals(it);
+          if (sig && sig.isHouse) return "house";
+          if (sig && sig.isCar) return "car";
+        }
+      } catch (e) {}
+      var blob = [it && it.main_category, it && it.category, it && it.sub_category, it && it.title, it && it.brand, it && it.model].join(" ");
+      if (/ቤት|house|apartment|villa|አፓርታማ|መሬት|ንብረት/i.test(blob) && !/መኪና|car|toyota|hyundai/i.test(blob)) return "house";
+      if (/መኪና|car|vehicle|toyota|hyundai|chassis/i.test(blob)) return "car";
+      return "other";
+    }
+
     function hardFilter(items, prefs) {
       if (!items || !items.length) return [];
       prefs = prefs || {};
@@ -11570,28 +11535,51 @@
         if (/ቤት|house|property/.test(cl)) wantHouse = true;
       });
       var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
-      if (/መኪና|car/.test(mc)) wantCar = true;
+      if (/መኪና|car/.test(mc) && mc.indexOf("both") < 0) wantCar = true;
       if (/ቤት|house/.test(mc)) wantHouse = true;
+      if (/both|ሁለት/.test(mc)) { wantCar = true; wantHouse = true; }
 
-      return items.filter(function (it) {
+      var hist = [];
+      try {
+        hist = JSON.parse((typeof _lsGet === "function" ? _lsGet("viewHistory") : null) || localStorage.getItem("viewHistory") || "[]") || [];
+      } catch (eH) { hist = []; }
+      var seed = hist[0] || {};
+      var seedKind = listingKind(seed);
+      if (seedKind === "car") { wantCar = true; wantHouse = false; }
+      if (seedKind === "house") { wantHouse = true; wantCar = false; }
+
+      var out = items.filter(function (it) {
         if (!it) return false;
         var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
         if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
+        var kind = listingKind(it);
+        if (wantCar && !wantHouse && kind === "house") return false;
+        if (wantHouse && !wantCar && kind === "car") return false;
+        if (wantCar && !wantHouse && kind === "other") return false;
+        if (wantHouse && !wantCar && kind === "other") return false;
         var price = parsePrice(it.price || it.asking_price || 0);
         if (maxP > 0 && maxP < 999999999) {
           if (price <= 0) return false;
-          if (price > maxP) return false;
-          if (minP > 0 && price < minP) return false;
-        }
-        var blob = [it.main_category, it.category, it.sub_category, it.title, it.brand, it.model, it.description].join(" ").toLowerCase();
-        if (wantCar && !wantHouse) {
-          if (/ቤት|house|apartment|villa|ንብረት/.test(blob) && !/መኪና|car|toyota|vits|vehicle/.test(blob)) return false;
-        }
-        if (wantHouse && !wantCar) {
-          if (/መኪና|car|toyota|vits|vehicle|chassis/.test(blob)) return false;
+          if (price > maxP * 1.05) return false;
         }
         return true;
       }).map(normalizeImages);
+
+      function simScore(it) {
+        var s = 0;
+        var kind = listingKind(it);
+        if (seedKind && kind === seedKind) s += 40;
+        var seedModel = String(seed.model || seed.brand || "").toLowerCase();
+        var blob = [it.brand, it.model, it.title, it.sub_category].join(" ").toLowerCase();
+        if (seedModel && blob.indexOf(seedModel.split(" ")[0]) >= 0) s += 35;
+        var ip = parsePrice(it.price);
+        var sp = parsePrice(seed.price);
+        if (sp > 0 && ip > 0 && ip >= sp * 0.65 && ip <= sp * 1.35) s += 25;
+        if (String(it.id) === String(seed.id)) s -= 80;
+        return s;
+      }
+      out.sort(function (a, b) { return simScore(b) - simScore(a); });
+      return out;
     }
 
     function paint(items) {
@@ -11622,9 +11610,21 @@
 
     // PRIMARY: /api/listings (same image pipeline as ሁሉም) then client budget filter
     // SECONDARY: /api/for-you (may lack images) — merge photos by id if needed
+    var hist = [];
+    try {
+      var rawH = (typeof _lsGet === "function" && _lsGet("viewHistory")) || localStorage.getItem("viewHistory") || "[]";
+      hist = JSON.parse(rawH || "[]") || [];
+    } catch (eH) { hist = []; }
+    var viewedIds = hist.map(function (h) { return h && h.id; }).filter(Boolean).slice(0, 8);
+    var last = hist[0] || {};
     var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
     var fypUrl = "/api/for-you?page=1&limit=60";
     if (uid) fypUrl += "&user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid);
+    if (prefs.main_category) fypUrl += "&main_category=" + encodeURIComponent(prefs.main_category);
+    if (prefs.budget_range) fypUrl += "&budget_range=" + encodeURIComponent(prefs.budget_range);
+    if (viewedIds.length) fypUrl += "&recently_viewed_ids=" + encodeURIComponent(viewedIds.join(","));
+    if (last.category) fypUrl += "&last_category=" + encodeURIComponent(last.category);
+    if (last.price) fypUrl += "&last_price=" + encodeURIComponent(last.price);
 
     Promise.all([
       fetch(listingsUrl, { credentials: "same-origin" }).then(function (r) { return r.json(); }).catch(function () { return {}; }),
@@ -11664,6 +11664,18 @@
       }
 
       var filtered = hardFilter(base, prefs);
+      if (!filtered.length && base.length) {
+        // Same-category newest only — never mix the other category
+        filtered = base.map(normalizeImages).filter(function (it) {
+          var kind = listingKind(it);
+          var mc = String((prefs && (prefs.main_category || prefs.category)) || "").toLowerCase();
+          var onlyCar = /መኪና|car/.test(mc) && !/ቤት|house|both/.test(mc);
+          var onlyHouse = /ቤት|house/.test(mc) && !/መኪና|car|both/.test(mc);
+          if (onlyCar) return kind === "car";
+          if (onlyHouse) return kind === "house";
+          return kind === "car" || kind === "house";
+        }).slice(0, 30);
+      }
       paint(filtered);
     }).catch(function (err) {
       console.warn("[Adika FYP]", err);
