@@ -1386,6 +1386,49 @@ def get_favorite_subscribers(listing_id):
     return out
 
 
+def get_user_favorite_listing_ids(user_id: int, limit: int = 20) -> List[int]:
+    """Load favorites.listing_id for this Telegram user (user_id or chat_id)."""
+    from models import get_db_connection
+    ensure_favorites_and_alerts_tables()
+    out: List[int] = []
+    uid = int(user_id or 0)
+    if uid <= 0:
+        return out
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        ph = _ph()
+        cur.execute(
+            f"""
+            SELECT listing_id FROM favorites
+            WHERE user_id = {ph} OR chat_id = {ph}
+            ORDER BY id DESC
+            LIMIT {ph}
+            """,
+            (uid, uid, int(limit or 20)),
+        )
+        seen = set()
+        for r in cur.fetchall() or []:
+            d = dict(r) if not isinstance(r, dict) else r
+            try:
+                lid = int(d.get("listing_id") or 0)
+            except Exception:
+                lid = 0
+            if lid and lid not in seen:
+                seen.add(lid)
+                out.append(lid)
+    except Exception as e:
+        logger.warning("get_user_favorite_listing_ids: %s", e)
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    return out
+
+
 def get_matching_alerts(category, price, model_hint=""):
     """Match search_alerts using user_chat_id, chat_id, category, max_price, model_hint."""
     from models import get_db_connection
@@ -1884,11 +1927,10 @@ def _similar_to_seed(
     seed: Dict[str, Any],
     limit: int = 12,
     exclude_ids: Optional[List[int]] = None,
+    budget_max: float = 0.0,
+    budget_min: float = 0.0,
 ) -> List[Dict[str, Any]]:
-    """
-    Same spirit as product-detail 'ተቀራራቢ / Similar Items':
-    same category, nearby price band, newest first.
-    """
+    """Same category + nearby price. User budget_max is a HARD cap."""
     exclude_ids = list(exclude_ids or [])
     try:
         seed_id = int(seed.get("id") or 0)
@@ -1898,17 +1940,21 @@ def _similar_to_seed(
         pass
 
     mc = seed.get("main_category") or seed.get("category") or ""
-    if _is_house_category(mc):
-        cat = "houses"
-    else:
-        cat = "cars"
+    cat = "houses" if _is_house_category(mc) else "cars"
 
     seed_price = _parse_price(seed.get("price"))
-    min_p = 0.0
-    max_p = 0.0
+    min_p = float(budget_min or 0)
+    max_p = float(budget_max or 0)
     if seed_price > 0:
-        min_p = seed_price * 0.55
-        max_p = seed_price * 1.55
+        band_lo = seed_price * 0.55
+        band_hi = seed_price * 1.55
+        min_p = max(min_p, band_lo) if min_p else band_lo
+        if max_p and 0 < max_p < 999_999_999:
+            max_p = min(max_p, band_hi)
+        else:
+            max_p = band_hi
+    if max_p and 0 < max_p < 999_999_999 and min_p > max_p:
+        min_p = 0.0
 
     return _fetch_listings(
         limit=limit,
@@ -1950,6 +1996,14 @@ def fetch_for_you_feed(
         except Exception:
             pass
     viewed = list(dict.fromkeys(viewed))  # unique, preserve order
+
+    try:
+        if uid:
+            for fid in get_user_favorite_listing_ids(uid, limit=20):
+                if fid not in viewed:
+                    viewed.append(fid)
+    except Exception:
+        pass
 
     # ---- Load saved preferences (cold start) ----
     prefs: Dict[str, Any] = {}
@@ -2015,7 +2069,13 @@ def fetch_for_you_feed(
         similar: List[Dict[str, Any]] = []
         seen = set(exclude)
         for seed in seeds:
-            for s in _similar_to_seed(seed, limit=max(8, limit // 2), exclude_ids=list(seen)):
+            for s in _similar_to_seed(
+                seed,
+                limit=max(8, limit // 2),
+                exclude_ids=list(seen),
+                budget_max=float(budget.get("maxPrice") or 0),
+                budget_min=float(budget.get("minPrice") or 0),
+            ):
                 try:
                     sid = int(s.get("id") or 0)
                 except Exception:
