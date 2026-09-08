@@ -2236,6 +2236,76 @@ def register_api_routes(web_app):
             return jsonify({"success": False, "message": str(e)}), 500
 
 
+    @web_app.route('/api/favorites', methods=['GET', 'OPTIONS'])
+    def api_favorites_list():
+        """Return the current user's favorites, enriched with listing metadata.
+
+        The favorites table only stores user/listing IDs.  FYP needs the
+        listing's category/brand/model/price to learn from a like, so we join
+        it here instead of asking Supabase for non-existent favorites columns.
+        """
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        conn = None
+        try:
+            uid = 0
+            try:
+                uid = int(request.args.get('user_id') or request.args.get('telegram_id') or request.args.get('chat_id') or 0)
+            except Exception:
+                uid = 0
+            if not uid:
+                try:
+                    user, _err = require_device_auth_response()
+                    if user:
+                        uid = int(user.get('user_id') or user.get('id') or 0)
+                except Exception:
+                    pass
+            if uid <= 0:
+                return jsonify({'success': True, 'items': [], 'favorites': [], 'user_id': uid})
+
+            conn = get_db_connection()
+            cur = conn.cursor()
+            p = get_placeholder()
+            cur.execute(
+                f"SELECT f.listing_id, f.created_at, l.main_category, l.category, "
+                f"l.sub_category, l.price, l.description, l.extra_data "
+                f"FROM favorites f LEFT JOIN listings l ON l.id=f.listing_id "
+                f"WHERE f.user_id={p} OR f.chat_id={p} "
+                f"ORDER BY f.created_at DESC LIMIT 100",
+                (uid, uid),
+            )
+            rows = cur.fetchall() or []
+            cols = [c[0] for c in cur.description] if cur.description else []
+            items = []
+            for row in rows:
+                d = dict(row) if isinstance(row, dict) else dict(zip(cols, row))
+                extra = d.get('extra_data') or {}
+                if isinstance(extra, str):
+                    try: extra = json.loads(extra)
+                    except Exception: extra = {}
+                extra = extra if isinstance(extra, dict) else {}
+                item = {
+                    'listing_id': d.get('listing_id'),
+                    'created_at': d.get('created_at'),
+                    'main_category': d.get('main_category') or d.get('category') or '',
+                    'category': d.get('category') or d.get('main_category') or '',
+                    'sub_category': d.get('sub_category') or '',
+                    'price': d.get('price'),
+                    'description': d.get('description') or '',
+                    'brand': extra.get('brand') or '',
+                    'model': extra.get('model') or extra.get('car_model') or '',
+                    'tags': ' '.join(str(x) for x in [extra.get('brand'), extra.get('model'), extra.get('car_model')] if x),
+                }
+                items.append(item)
+            return jsonify({'success': True, 'items': items, 'favorites': items, 'user_id': uid})
+        except Exception as e:
+            logger.error('api_favorites_list: %s', e, exc_info=True)
+            return jsonify({'success': False, 'items': [], 'favorites': [], 'message': str(e)}), 200
+        finally:
+            if conn:
+                try: conn.close()
+                except Exception: pass
+
     @web_app.route('/api/favorites/toggle', methods=['POST', 'OPTIONS'])
     def api_favorites_toggle():
         if request.method == 'OPTIONS':
