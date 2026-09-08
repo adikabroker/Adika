@@ -68,33 +68,60 @@
   window.alert = function (msg) { showToast(msg, "info"); };
 
   window.openHelpContact = function () {
-    var phone = ADMIN_SUPPORT_PHONE;
-    var html =
-      '<div id="adikaHelpSheet" style="position:fixed;inset:0;z-index:2147483645;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,23,42,0.45);backdrop-filter:blur(8px);">' +
-        '<div style="width:100%;max-width:420px;background:rgba(15,23,42,0.92);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.14);border-radius:22px 22px 0 0;padding:18px 16px 22px;color:#fff;box-shadow:0 -12px 40px rgba(0,0,0,0.35);">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
-            '<div style="font-weight:900;font-size:15px;">🆘 እርዳታ / Help</div>' +
-            '<button type="button" id="adikaHelpClose" style="width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,0.12);border:0;color:#fff;font-weight:900;cursor:pointer;">✕</button>' +
-          '</div>' +
-          '<p style="font-size:12px;color:#cbd5e1;margin:0 0 14px;line-height:1.45;">Adika Marketplace ድጋፍ — ይደውሉ ወይም ቴሌግራም ይጻፉ።</p>' +
-          '<a href="tel:' + phone + '" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:14px;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#0f172a;font-weight:900;font-size:14px;text-decoration:none;margin-bottom:10px;">📞 ' + phone + '</a>' +
-          '<a href="https://t.me/AdikaMarketplaceBot" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);color:#e2e8f0;font-weight:800;font-size:12px;text-decoration:none;">✈️ @AdikaMarketplaceBot</a>' +
-        '</div>' +
-      '</div>';
+    var phone = String(window.ADIKA_SUPPORT_PHONE || window.__ADIKA_SUPPORT_PHONE || ADMIN_SUPPORT_PHONE || "0911959585");
     var old = document.getElementById("adikaHelpSheet");
     if (old && old.parentNode) old.parentNode.removeChild(old);
-    var wrap = document.createElement("div");
-    wrap.innerHTML = html;
-    var sheet = wrap.firstChild;
+
+    var sheet = document.createElement("div");
+    sheet.id = "adikaHelpSheet";
+    sheet.style.cssText = "position:fixed;inset:0;z-index:2147483645;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,23,42,0.45);backdrop-filter:blur(8px);";
+
+    var panel = document.createElement("div");
+    panel.style.cssText = "width:100%;max-width:420px;background:rgba(15,23,42,0.92);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.14);border-radius:22px 22px 0 0;padding:18px 16px 22px;color:#fff;box-shadow:0 -12px 40px rgba(0,0,0,0.35);";
+
+    var head = document.createElement("div");
+    head.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;";
+    var title = document.createElement("div");
+    title.style.cssText = "font-weight:900;font-size:15px;";
+    title.textContent = "🆘 እርዳታ / Help";
+    var closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.id = "adikaHelpClose";
+    closeBtn.textContent = "✕";
+    closeBtn.style.cssText = "width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,0.12);border:0;color:#fff;font-weight:900;cursor:pointer;";
+    head.appendChild(title);
+    head.appendChild(closeBtn);
+
+    var p = document.createElement("p");
+    p.style.cssText = "font-size:12px;color:#cbd5e1;margin:0 0 14px;line-height:1.45;";
+    p.textContent = "Adika Marketplace ድጋፍ — ይደውሉ ወይም ቴሌግራም ይጻፉ።";
+
+    var call = document.createElement("a");
+    call.href = "tel:" + phone;
+    call.style.cssText = "display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:14px;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#0f172a;font-weight:900;font-size:14px;text-decoration:none;margin-bottom:10px;";
+    call.textContent = "📞 " + phone;
+
+    var tg = document.createElement("a");
+    tg.href = "https://t.me/AdikaMarketplaceBot";
+    tg.target = "_blank";
+    tg.rel = "noopener";
+    tg.style.cssText = "display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);color:#e2e8f0;font-weight:800;font-size:12px;text-decoration:none;";
+    tg.textContent = "✈️ @AdikaMarketplaceBot";
+
+    panel.appendChild(head);
+    panel.appendChild(p);
+    panel.appendChild(call);
+    panel.appendChild(tg);
+    sheet.appendChild(panel);
     document.body.appendChild(sheet);
+
     function close() {
       if (sheet && sheet.parentNode) sheet.parentNode.removeChild(sheet);
     }
     sheet.addEventListener("click", function (e) {
       if (e.target === sheet) close();
     });
-    var c = document.getElementById("adikaHelpClose");
-    if (c) c.onclick = close;
+    closeBtn.onclick = close;
   };
 })();
 </script>
@@ -5012,9 +5039,9 @@
     };
 
 
-    // ===== STRICT category gate (last line of defense before paint) =====
-    function adikaIsCarListing(it) {
-      if (!it) return false;
+    // ===== STRICT category gate (content beats wrong main_category) =====
+    function adikaListingSignals(it) {
+      if (!it) return { isCar: false, isHouse: false, isBiz: false };
       var main = String(it.main_category || "").toLowerCase();
       var cat = String(it.category || "").toLowerCase();
       var sub = String(it.sub_category || "").toLowerCase();
@@ -5022,23 +5049,41 @@
       var model = String(it.model || "").toLowerCase();
       var title = String(it.title || it.name || "").toLowerCase();
       var desc = String(it.description || "").toLowerCase();
-      var blob = [main, cat, sub, brand, model, title, desc].join(" ");
-      if (/መኪና|car|vehicle/.test(main) || /መኪና|car|vehicle/.test(cat)) return true;
-      if (/ቤት|house|property|ንብረት/.test(main) || /ቤት|house|property/.test(cat)) return false;
-      if (/toyota|hyundai|suzuki|vits|vitz|chassis|sedan|suv|pickup|corolla|raize|yaris/.test(blob)) return true;
-      if (/መኪና|vehicle|car\b/.test(blob)) return true;
-      return false;
+      var extra = it.extra_data || {};
+      if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+      var houseType = String((extra && (extra.house_type || extra.property_type || extra.location_area)) || "").toLowerCase();
+      // Content blob WITHOUT main/category tags (truth from user text)
+      var content = [sub, brand, model, title, desc, houseType].join(" ");
+      var tags = [main, cat].join(" ");
+
+      var contentHouse = /ቤት|house|apartment|villa|ንብረት|property|condo|መሬት|land|አፓርታማ|ሪል\s*እስቴት|የማሸጫ\s*ቤት|ለሽያጭ\s*ቤት|ክፍል/.test(content);
+      var contentCar = /toyota|hyundai|suzuki|vits|vitz|chassis|sedan|suv|pickup|corolla|raize|yaris|vehicle|መኪና|ሞተር|engine\s*cc|የመኪና/.test(content);
+      var tagHouse = /ቤት|house|property|ንብረት|apartment|villa|condo|መሬት|land/.test(tags);
+      var tagCar = /መኪና|car|vehicle|auto/.test(tags);
+      var tagBiz = /ንግድ|commercial|business|ሱቅ|shop|office/.test(tags + " " + content);
+
+      // CONTENT WINS when tags conflict (e.g. house posted with main_category=መኪና)
+      var isHouse = false, isCar = false;
+      if (contentHouse && !contentCar) isHouse = true;
+      else if (contentCar && !contentHouse) isCar = true;
+      else if (contentHouse && contentCar) {
+        // both signals: prefer explicit house words in title/sub
+        isHouse = /ቤት|house|apartment|villa|አፓርታማ|ንብረት/.test(sub + " " + title);
+        isCar = !isHouse;
+      } else {
+        // no content signal — fall back to tags
+        if (tagHouse && !tagCar) isHouse = true;
+        else if (tagCar && !tagHouse) isCar = true;
+        else if (tagHouse) isHouse = true;
+        else if (tagCar) isCar = true;
+      }
+      return { isCar: isCar, isHouse: isHouse, isBiz: tagBiz && !isCar && !isHouse };
+    }
+    function adikaIsCarListing(it) {
+      return !!adikaListingSignals(it).isCar;
     }
     function adikaIsHouseListing(it) {
-      if (!it) return false;
-      if (adikaIsCarListing(it)) return false;
-      var main = String(it.main_category || "").toLowerCase();
-      var cat = String(it.category || "").toLowerCase();
-      var blob = [main, cat, it.sub_category, it.title, it.description].join(" ").toLowerCase();
-      if (/ቤት|house|property|ንብረት|apartment|villa|condo|መሬት|land/.test(main)) return true;
-      if (/ቤት|house|property|ንብረት|apartment|villa|condo|መሬት|land/.test(cat)) return true;
-      if (/ቤት|house|apartment|villa|ንብረት|property|condo|መሬት/.test(blob)) return true;
-      return false;
+      return !!adikaListingSignals(it).isHouse;
     }
     function adikaFilterByActiveCategory(items) {
       items = items || [];
@@ -5234,30 +5279,10 @@
             if (wantHouse || wantCar || wantBiz) {
               items = items.filter(function (it) {
                 if (!it) return false;
-                var main = String(it.main_category || "").toLowerCase();
-                var cat2 = String(it.category || "").toLowerCase();
-                var sub = String(it.sub_category || "").toLowerCase();
-                var brand = String(it.brand || "").toLowerCase();
-                var model = String(it.model || "").toLowerCase();
-                var title = String(it.title || "").toLowerCase();
-                var blob = [main, cat2, sub, brand, model, title, String(it.description || "")].join(" ");
-
-                var isCar = /መኪና|car|vehicle|toyota|hyundai|suzuki|vits|vitz|chassis|sedan|suv|pickup/.test(blob)
-                  || /መኪና|car/.test(main) || /መኪና|car/.test(cat2);
-                var isHouse = /ቤት|house|apartment|villa|ንብረት|property|condo|real\s*estate|መሬት|land/.test(blob)
-                  || /ቤት|house|property/.test(main) || /ቤት|house/.test(cat2);
-                var isBiz = /ንግድ|commercial|business|ሱቅ|shop|office/.test(blob);
-
-                // Prefer explicit main_category when present
-                if (main) {
-                  if (/መኪና|car/.test(main)) { isCar = true; isHouse = false; }
-                  if (/ቤት|house|property|ንብረት/.test(main)) { isHouse = true; isCar = false; }
-                  if (/ንግድ|commercial/.test(main)) { isBiz = true; isCar = false; isHouse = false; }
-                }
-
-                if (wantHouse) return isHouse && !isCar;
-                if (wantCar) return isCar && !isHouse;
-                if (wantBiz) return isBiz && !isCar && !isHouse;
+                var sig = (typeof adikaListingSignals === "function") ? adikaListingSignals(it) : { isCar: false, isHouse: false, isBiz: false };
+                if (wantHouse) return !!sig.isHouse;
+                if (wantCar) return !!sig.isCar;
+                if (wantBiz) return !!sig.isBiz;
                 return true;
               });
             }
@@ -7110,9 +7135,8 @@
       else if (window.openInbox) window.openInbox();
     };
     document.getElementById("navHelp").onclick = function () {
-      var msg = "Adika Marketplace • Help Center\nContact @AdikaMarketplaceBot or call 0911000000.";
-      if (tg && tg.showAlert) tg.showAlert(msg);
-      else showToast(msg);
+      if (typeof window.openHelpContact === "function") window.openHelpContact();
+      else if (typeof showToast === "function") showToast("ድጋፍ: 0911959585 · @AdikaMarketplaceBot");
     };
 
 
