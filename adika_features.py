@@ -2107,80 +2107,9 @@ def fetch_for_you_feed(
         merged.sort(key=_ck, reverse=True)
         items = merged
 
-    # Never leave FYP empty — newest cars + houses
-    if not items:
-        mode = "fallback_newest"
-        cars = _fetch_listings(limit=max(15, limit // 2), category="cars", exclude_ids=exclude)
-        houses = _fetch_listings(limit=max(15, limit // 2), category="houses", exclude_ids=exclude)
-        items = cars + houses
-        if not items:
-            items = _fetch_listings(limit=30, category="", exclude_ids=exclude)
-
-    def _fyp_score(d: Dict[str, Any]) -> int:
-        score = 0
-        blob = " ".join(
-            str(d.get(k) or "")
-            for k in ("main_category", "category", "sub_category", "title", "description", "brand", "model")
-        )
-        extra = d.get("extra_data") if isinstance(d.get("extra_data"), dict) else {}
-        blob_l = (blob + " " + str(extra.get("transmission") or "") + " " + str(extra.get("house_type") or "")).lower()
-        want_car = _is_car_category(pref_cat) or _is_car_category(behavior_cat)
-        want_house = _is_house_category(pref_cat) or _is_house_category(behavior_cat)
-        both = (want_car and want_house) or (not want_car and not want_house)
-        is_car = _is_car_category(d.get("main_category") or d.get("category") or blob)
-        is_house = _is_house_category(d.get("main_category") or d.get("category") or blob)
-        if both:
-            if is_car or is_house:
-                score += 30
-        elif want_car and is_car:
-            score += 30
-        elif want_house and is_house:
-            score += 30
-        price = _parse_price(d.get("price"))
-        bmin = float(budget.get("minPrice") or 0)
-        bmax = float(budget.get("maxPrice") or 0)
-        if behavior_price > 0:
-            if price > 0 and behavior_price * 0.65 <= price <= behavior_price * 1.35:
-                score += 25
-            elif price > 0 and behavior_price * 0.5 <= price <= behavior_price * 1.6:
-                score += 12
-        elif bmax and 0 < bmax < 999_999_999 and price > 0 and bmin <= price <= bmax:
-            score += 25
-        trans = str((prefs.get("transmission") if prefs else "") or "").lower()
-        if trans and trans not in ("both", "ሁለቱም", "any", ""):
-            if trans[:4] in blob_l:
-                score += 8
-        ptype = str((prefs.get("property_type") if prefs else "") or prefs.get("house_type") or "")
-        if ptype and ptype.lower() in blob_l:
-            score += 8
-        try:
-            views = int(d.get("view_count") or 0)
-            score += min(10, views // 40)
-        except Exception:
-            pass
-        created = str(d.get("created_at") or "")
-        if created:
-            score += 8
-        return score
-
-    scored = []
-    for d in items:
-        sc = _fyp_score(d)
-        d["_score"] = sc
-        if sc >= 45:
-            d["_match"] = "high"
-        elif sc >= 25:
-            d["_match"] = "mid"
-        else:
-            d["_match"] = "low"
-        scored.append(d)
-    scored.sort(key=lambda x: (-int(x.get("_score") or 0), str(x.get("created_at") or ""), int(x.get("id") or 0)), reverse=False)
-    scored.sort(key=lambda x: (-int(x.get("_score") or 0), str(x.get("created_at") or "")), reverse=False)
-    scored.sort(key=lambda x: -int(x.get("_score") or 0))
-
     # Page slice
     offset = max(0, (page - 1) * limit)
-    window = scored
+    window = items
     page_items = window[offset: offset + limit]
 
     # Final unified image schema
