@@ -2769,42 +2769,36 @@
           </div>
         </div>
         <div>
-          <label class="block text-[11px] font-medium text-slate-300 mb-1">ምድብ — አንዱን ወይም ሁለቱን ይምረጡ</label>
+          <label class="block text-[11px] font-medium text-slate-300 mb-1">የሚሰሩበት / የሚፈልጉት ምድብ</label>
           <div class="flex flex-wrap gap-2">
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
-              <input type="checkbox" name="mainCat" id="catCar" value="Car" checked class="accent-teal-400" onchange="window.toggleSpecFields&&toggleSpecFields()">
+              <input type="radio" name="mainCat" value="Car" checked class="accent-teal-400">
               <span>🚗 መኪና</span>
             </label>
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
-              <input type="checkbox" name="mainCat" id="catHouse" value="House" class="accent-teal-400" onchange="window.toggleSpecFields&&toggleSpecFields()">
+              <input type="radio" name="mainCat" value="House" class="accent-teal-400">
               <span>🏠 ቤት</span>
             </label>
           </div>
         </div>
         <div id="carSpecs" class="space-y-2 bg-white/5 p-2.5 rounded-2xl border border-white/10">
-          <div class="text-[10px] text-slate-400 font-bold">መኪና — ማርሽ (ሁለቱም ይቻላል)</div>
-          <div class="flex flex-wrap gap-2">
-            <label class="flex items-center gap-1 text-[11px]"><input type="checkbox" id="transAuto" checked class="accent-teal-400"> አውቶ</label>
-            <label class="flex items-center gap-1 text-[11px]"><input type="checkbox" id="transManual" class="accent-teal-400"> ማንዋል</label>
+          <div class="grid grid-cols-2 gap-2">
+            <select id="carTrans" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
+              <option value="Automatic">አውቶማቲክ</option>
+              <option value="Manual">ማኑዋል</option>
+            </select>
+            <select id="carFuel" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
+              <option value="Fuel">ነዳጅ</option>
+              <option value="EV">ኤሌክትሪክ</option>
+              <option value="Hybrid">ሃይብሪድ</option>
+            </select>
           </div>
-          <select id="carType" class="w-full bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
-            <option value="">አይነት (አማራጭ)</option>
-            <option value="Sedan">ሴዳን</option>
-            <option value="SUV">SUV</option>
-            <option value="Pickup">ፒክአፕ</option>
-          </select>
-          <select id="carTrans" class="hidden"><option value="both">both</option></select>
-          <select id="carFuel" class="hidden"><option value=""></option></select>
         </div>
         <div id="houseSpecs" class="space-y-2 bg-white/5 p-2.5 rounded-2xl border border-white/10 hidden">
-          <div class="text-[10px] text-slate-400 font-bold">ቤት — አይነት (አማራጭ)</div>
-          <select id="houseType" class="w-full bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
-            <option value="">ሁሉም</option>
-            <option value="Apartment">አፓርታማ</option>
-            <option value="Villa">ቪላ</option>
-            <option value="Land">መሬት</option>
-          </select>
-          <input type="hidden" id="houseLoc" value="">
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="houseType" placeholder="አፓርታማ / ቪላ / ኮንዶ" class="bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-500">
+            <input type="text" id="houseLoc" placeholder="አካባቢ (ቦሌ፣ አያት...)" class="bg-slate-800 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500">
+          </div>
         </div>
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">የቦጀት መጠን (ETB)</label>
@@ -3153,19 +3147,15 @@
           state.category = "";
           if (typeof paintFeedModes === "function") paintFeedModes();
         } catch (e) {}
-        try {
-          if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
-          else if (typeof load === "function") load(false);
-        } catch (e2) {}
+        try { if (typeof load === "function") load(false); } catch (e2) {}
       };
 
-      window.toggleSpecFields = function () {
+      window.toggleSpecFields = function (cat) {
         var car = document.getElementById("carSpecs");
         var house = document.getElementById("houseSpecs");
-        var wantCar = !!(document.getElementById("catCar") || {}).checked;
-        var wantHouse = !!(document.getElementById("catHouse") || {}).checked;
-        if (car) car.classList.toggle("hidden", !wantCar);
-        if (house) house.classList.toggle("hidden", !wantHouse);
+        var isHouse = String(cat || "") === "House";
+        if (car) car.classList.toggle("hidden", isHouse);
+        if (house) house.classList.toggle("hidden", !isHouse);
       };
 
       function parseBudgetRange(val) {
@@ -3203,25 +3193,19 @@
         var phone = (document.getElementById("phoneNum") || {}).value || "";
         var tg = (document.getElementById("tgUsername") || {}).value || "";
         tg = String(tg).replace(/^@/, "").trim();
-        var wantCar = !!(document.getElementById("catCar") || {}).checked;
-        var wantHouse = !!(document.getElementById("catHouse") || {}).checked;
-        if (!wantCar && !wantHouse) wantCar = true;
-        var mainCat = (wantCar && wantHouse) ? "Both" : (wantHouse ? "House" : "Car");
+        var catEl = document.querySelector('input[name="mainCat"]:checked');
+        var mainCat = catEl ? catEl.value : "Car";
         var budget = parseBudgetRange((document.getElementById("budgetRange") || {}).value);
         var isBroker = !!(document.getElementById("isBroker") || {}).checked;
         var specs = {};
-        var autoOn = !!(document.getElementById("transAuto") || {}).checked;
-        var manOn = !!(document.getElementById("transManual") || {}).checked;
-        if (autoOn && manOn) specs.transmission = "both";
-        else if (manOn) specs.transmission = "Manual";
-        else if (autoOn) specs.transmission = "Automatic";
-        else specs.transmission = "both";
-        specs.car_type = ((document.getElementById("carType") || {}).value || "").trim();
-        specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
-        specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
-        var categories = [];
-        if (wantCar) { categories.push("መኪና"); categories.push("Car"); }
-        if (wantHouse) { categories.push("ቤት"); categories.push("House"); }
+        if (mainCat === "House") {
+          specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
+          specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
+        } else {
+          specs.transmission = ((document.getElementById("carTrans") || {}).value || "").trim();
+          specs.fuel = ((document.getElementById("carFuel") || {}).value || "").trim();
+        }
+        var categories = mainCat === "House" ? ["ቤት", "House"] : ["መኪና", "Car"];
         return {
           full_name: String(fullName).trim(),
           phone: String(phone).trim(),
@@ -11564,16 +11548,9 @@
 
     // PRIMARY: /api/listings (same image pipeline as ሁሉም) then client budget filter
     // SECONDARY: /api/for-you (may lack images) — merge photos by id if needed
-    var hist = [];
-    try { hist = JSON.parse(localStorage.getItem("viewHistory") || "[]") || []; } catch (eH) { hist = []; }
-    var viewedIds = hist.map(function (h) { return h && h.id; }).filter(Boolean).slice(0, 8);
-    var last = hist[0] || {};
     var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
     var fypUrl = "/api/for-you?page=1&limit=60";
     if (uid) fypUrl += "&user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid);
-    if (viewedIds.length) fypUrl += "&recently_viewed_ids=" + encodeURIComponent(viewedIds.join(","));
-    if (last.category) fypUrl += "&last_category=" + encodeURIComponent(last.category);
-    if (last.price) fypUrl += "&last_price=" + encodeURIComponent(last.price);
 
     Promise.all([
       fetch(listingsUrl, { credentials: "same-origin" }).then(function (r) { return r.json(); }).catch(function () { return {}; }),
@@ -11613,10 +11590,6 @@
       }
 
       var filtered = hardFilter(base, prefs);
-      if (!filtered.length && base.length) {
-        // Never leave FYP empty when inventory exists
-        filtered = base.map(normalizeImages).slice(0, 30);
-      }
       paint(filtered);
     }).catch(function (err) {
       console.warn("[Adika FYP]", err);
