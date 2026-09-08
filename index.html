@@ -190,27 +190,46 @@
     }
 
 
-    /* My Listings cards — full photo, no crop/collapse */
+    /* My Listings — 4-column grid, no overlap */
     #myListingsGrid {
-      align-content: start;
+      display: grid !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      gap: 6px !important;
+      align-content: start !important;
+      align-items: start !important;
+      position: relative !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
     }
     #myListingsGrid .my-listing-card {
       display: flex !important;
       flex-direction: column !important;
-      min-height: 0;
+      position: relative !important;
+      float: none !important;
+      min-width: 0 !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      min-height: 0 !important;
       height: auto !important;
-      overflow: visible !important;
-      background: #fff;
-      border-radius: 12px;
+      margin: 0 !important;
+      overflow: hidden !important;
+      background: #fff !important;
+      border-radius: 10px !important;
+      border: 1px solid rgba(226,232,240,0.9) !important;
+      box-shadow: 0 1px 4px rgba(15,23,42,0.06) !important;
+      z-index: 1 !important;
     }
     #myListingsGrid .my-listing-card .my-listing-photo {
       width: 100% !important;
-      aspect-ratio: 4/3 !important;
-      max-height: 120px;
+      aspect-ratio: 1 / 1 !important;
+      max-height: none !important;
       flex: 0 0 auto !important;
-      overflow: hidden;
-      border-radius: 12px 12px 0 0;
-      background: #e2e8f0;
+      overflow: hidden !important;
+      border-radius: 10px 10px 0 0 !important;
+      background: #e2e8f0 !important;
+      position: relative !important;
     }
     #myListingsGrid .my-listing-card img {
       width: 100% !important;
@@ -218,29 +237,38 @@
       object-fit: cover !important;
       object-position: center !important;
       display: block !important;
+      position: relative !important;
     }
     #myListingsGrid .my-listing-card .my-listing-body {
       flex: 0 0 auto !important;
-      padding: 8px !important;
+      padding: 5px 6px 6px !important;
       display: flex !important;
       flex-direction: column !important;
-      gap: 4px;
-      background: #fff;
+      gap: 2px !important;
+      background: #fff !important;
+      min-width: 0 !important;
+    }
+    #myListingsGrid .my-listing-card .my-listing-body > div:first-child {
+      font-size: 9px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
     #myListingsGrid .my-listing-card .my-listing-del {
       display: block !important;
       width: 100% !important;
-      margin-top: 4px !important;
-      padding: 8px 0 !important;
-      border-radius: 8px !important;
+      margin-top: 3px !important;
+      padding: 5px 0 !important;
+      border-radius: 6px !important;
       background: #f43f5e !important;
       color: #fff !important;
-      font-size: 11px !important;
+      font-size: 9px !important;
       font-weight: 900 !important;
       border: 0 !important;
       flex-shrink: 0 !important;
       visibility: visible !important;
       opacity: 1 !important;
+      line-height: 1.2 !important;
     }
 
     .adika-live-dot {
@@ -1656,7 +1684,7 @@
         <span class="lang-en">✏️ Post Listing</span>
       </button>
     </div>
-    <div id="myListingsGrid" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2 content-start"></div>
+    <div id="myListingsGrid" class="flex-1 overflow-y-auto p-2 grid grid-cols-4 gap-1.5 content-start"></div>
   </div>
 
   <div id="inboxView" class="fixed inset-0 z-[275] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
@@ -10540,7 +10568,7 @@
       var card = document.createElement("div");
       card.className = "my-listing-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col";
       card.setAttribute("data-listing-id", String(it.id != null ? it.id : ""));
-      card.style.cssText = "display:flex;flex-direction:column;min-height:0;height:auto;background:#fff;border-radius:12px;overflow:visible;border:1px solid #e2e8f0;";
+      card.style.cssText = "display:flex;flex-direction:column;position:relative;float:none;min-width:0;width:100%;max-width:100%;min-height:0;height:auto;margin:0;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;box-sizing:border-box;";
 
       var img = photoOf(it);
       var title = titleOf(it);
@@ -10549,7 +10577,7 @@
       // Photo: capped height so delete button always fits below
       var photoWrap = document.createElement("div");
       photoWrap.className = "my-listing-photo";
-      photoWrap.style.cssText = "width:100%;aspect-ratio:4/3;max-height:120px;flex:0 0 auto;overflow:hidden;background:#e2e8f0;border-radius:12px 12px 0 0;position:relative;";
+      photoWrap.style.cssText = "width:100%;aspect-ratio:1/1;flex:0 0 auto;overflow:hidden;background:#e2e8f0;border-radius:10px 10px 0 0;position:relative;";
       var imgEl = document.createElement("img");
       imgEl.src = img;
       imgEl.alt = title;
@@ -10562,16 +10590,16 @@
 
       var body = document.createElement("div");
       body.className = "my-listing-body";
-      body.style.cssText = "padding:8px;display:flex;flex-direction:column;gap:4px;flex:0 0 auto;background:#fff;";
+      body.style.cssText = "padding:5px 6px 6px;display:flex;flex-direction:column;gap:2px;flex:0 0 auto;background:#fff;min-width:0;";
       body.innerHTML =
-        '<div style="font-size:11px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;">' + esc(title) + "</div>" +
-        '<div style="font-size:11px;font-weight:900;color:#0d9488;">' + esc(price) + "</div>";
+        '<div style="font-size:9px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;">' + esc(title) + "</div>" +
+        '<div style="font-size:9px;font-weight:900;color:#0d9488;">' + esc(price) + "</div>";
 
       var delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "my-listing-del";
       delBtn.setAttribute("data-del", "1");
-      delBtn.style.cssText = "margin-top:4px;width:100%;padding:8px 0;border-radius:8px;background:#f43f5e;color:#fff;font-size:11px;font-weight:900;border:0;cursor:pointer;flex-shrink:0;display:block;visibility:visible;opacity:1;";
+      delBtn.style.cssText = "margin-top:3px;width:100%;padding:5px 0;border-radius:6px;background:#f43f5e;color:#fff;font-size:9px;font-weight:900;border:0;cursor:pointer;flex-shrink:0;display:block;visibility:visible;opacity:1;line-height:1.2;";
       delBtn.innerHTML = '🗑️ <span class="lang-am">ሰርዝ</span><span class="lang-en">Delete</span>';
       delBtn.onclick = function (e) {
         e.preventDefault();
