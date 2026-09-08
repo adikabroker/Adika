@@ -3410,35 +3410,64 @@
     try {
       favorites = JSON.parse(_lsGet('adika_favs') || '{}');
     } catch(e) {}
-
-        function toggleFav(id) {
+       function toggleFav(id) {
       var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
       try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
       renderFavoritesUI();
       try {
-        var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
-        if (uid && id) {
-          fetch("/api/favorites/toggle", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              user_id: uid,
-              chat_id: uid,
-              listing_id: id,
-              action: wasFav ? "remove" : "add"
-            })
-          }).then(function () {
-            try {
-              if (window.state && state.feedMode === "foryou" && typeof window.loadFYPFeed === "function") {
-                window.loadFYPFeed();
-              }
-            } catch (e2) {}
-          }).catch(function(){});
+        var uid = 0;
+        try { if (typeof getTelegramUserId === "function") uid = Number(getTelegramUserId()) || 0; } catch (e0) {}
+        if (!uid) {
+          var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+          if (u && u.id) uid = Number(u.id) || 0;
         }
+        if (!uid) { console.warn("[Adika] like skipped — no telegram user id"); return; }
+        fetch("/api/favorites/toggle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: uid,
+            chat_id: uid,
+            telegram_id: uid,
+            listing_id: id,
+            action: wasFav ? "remove" : "add"
+          })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+          if (d && d.success === false) console.warn("[Adika] like DB fail", d);
+          try {
+            if (typeof window.loadFYPFeed === "function") window.loadFYPFeed();
+          } catch (e2) {}
+        }).catch(function (err) { console.warn("[Adika] like network", err); });
       } catch (e) {}
     }
+
+    function hydrateFavoritesFromServer() {
+      var uid = 0;
+      try { if (typeof getTelegramUserId === "function") uid = Number(getTelegramUserId()) || 0; } catch (e) {}
+      if (!uid) {
+        try {
+          var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+          if (u && u.id) uid = Number(u.id) || 0;
+        } catch (e2) {}
+      }
+      if (!uid) return;
+      fetch("/api/favorites?user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var ids = (d && (d.ids || [])) || [];
+          (d && d.items || []).forEach(function (it) {
+            var lid = it && (it.listing_id || it.id);
+            if (lid) ids.push(lid);
+          });
+          ids.forEach(function (lid) { favorites[String(lid)] = true; favorites[lid] = true; });
+          try { _lsSet("adika_favs", JSON.stringify(favorites)); } catch (e3) {}
+          try { renderFavoritesUI(); } catch (e4) {}
+        }).catch(function () {});
+    }
+    setTimeout(hydrateFavoritesFromServer, 400);
+    setTimeout(hydrateFavoritesFromServer, 1600);
     var state = window.__adikaState = {
       tab: "marketplace",
       feedMode: "foryou", // foryou | all | category
@@ -11480,9 +11509,19 @@
       return it;
     }
 
-       function hardFilter(items, prefs) {
-      if (!items || !items.length) return [];
-      prefs = prefs || {};
+         var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
+    var fypUrl = "/api/for-you?page=1&limit=60";
+    if (uid) fypUrl += "&user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid);
+    try {
+      var liked = Object.keys(favorites || {}).filter(function (k) { return favorites[k]; });
+      if (liked.length) fypUrl += "&liked_ids=" + encodeURIComponent(liked.join(","));
+      var hist = [];
+      try { hist = JSON.parse(_lsGet("viewHistory") || "[]") || []; } catch (eH) {}
+      var vids = hist.map(function (h) { return h && h.id; }).filter(Boolean);
+      if (vids.length) fypUrl += "&recently_viewed_ids=" + encodeURIComponent(vids.join(","));
+      if (hist[0] && hist[0].category) fypUrl += "&last_category=" + encodeURIComponent(hist[0].category);
+      if (hist[0] && hist[0].price) fypUrl += "&last_price=" + encodeURIComponent(hist[0].price);
+    } catch (eQ) {}
       var maxP = parsePrice(prefs.budget_max || prefs.max_price || prefs.price_max);
       var minP = parsePrice(prefs.budget_min || prefs.min_price || prefs.price_min);
       if ((!maxP || maxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
