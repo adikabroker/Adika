@@ -1,3 +1,7 @@
+# ============================================================================== 
+# SECTION 01 — IMPORTS & DATABASE CONFIGURATION
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 # ==============================================================================
 # models.py — Database connection, schema, CRUD
 # ==============================================================================
@@ -32,6 +36,11 @@ def _normalize_pg_url(url: str) -> str:
     return u
 
 
+# ============================ END SECTION 01 ============================
+# ============================================================================== 
+# SECTION 02 — DATABASE CONNECTION & SQL HELPERS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def get_db_connection():
     """
     Hybrid connection:
@@ -92,6 +101,11 @@ def sql_like_op() -> str:
 
 
 
+# ============================ END SECTION 02 ============================
+# ============================================================================== 
+# SECTION 03 — DATABASE INITIALIZATION
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def init_db():
     conn = None
     try:
@@ -275,6 +289,11 @@ def init_db():
 # ==============================================================================
 
 
+# ============================ END SECTION 03 ============================
+# ============================================================================== 
+# SECTION 04 — CORE TABLES & LISTING SCHEMA
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def ensure_core_tables():
     """Create minimal listings/brokers tables if missing (safe to call often)."""
     conn = None
@@ -501,6 +520,11 @@ def get_listings_column_set():
 
 
 
+# ============================ END SECTION 04 ============================
+# ============================================================================== 
+# SECTION 05 — USER / LISTING OWNERSHIP HELPERS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def ensure_user_for_listing(cursor, user_id, user_name="Adika User", phone=""):
     """Upsert a minimal users row so listings.user_id FK succeeds on Supabase.
     Returns True if user exists or was created; False otherwise.
@@ -559,8 +583,13 @@ def ensure_user_for_listing(cursor, user_id, user_name="Adika User", phone=""):
             except Exception:
                 pass
     return False
+# ============================ END SECTION 05 ============================
 
 
+# ============================================================================== 
+# SECTION 06 — LISTING CRUD & MARKETPLACE QUERIES
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def add_listing(user_chat_id, user_name, req_type, main_category, sub_category,
                 action_type, property_type, description, price=None, phone=None, 
                 photo_id=None, extra_data=None, photos=None):
@@ -1036,11 +1065,16 @@ def get_public_marketplace_items(limit: int = 20, offset: int = 0):
                 conn.close()
             except:
                 pass
+# ============================ END SECTION 06 ============================
 
 
 # ========== BROKER OPERATIONS ==========
 
 
+# ============================================================================== 
+# SECTION 07 — BROKER DOCUMENT UPLOAD
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def upload_broker_document(file_bytes: bytes, filename: str, content_type: str = "image/jpeg") -> str:
     """
     Upload bytes to Supabase Storage bucket. Returns public URL or empty string.
@@ -1075,8 +1109,13 @@ def upload_broker_document(file_bytes: bytes, filename: str, content_type: str =
     except Exception as e:
         logger.error("Supabase storage upload failed: %s", e, exc_info=True)
         return ""
+# ============================ END SECTION 07 ============================
 
 
+# ============================================================================== 
+# SECTION 08 — BROKER CRUD & PROFILE OPERATIONS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def add_broker(
     chat_id,
     full_name,
@@ -1495,8 +1534,13 @@ def update_broker_notification_prefs(chat_id: int, prefs: dict) -> bool:
                 conn.close()
             except:
                 pass
+# ============================ END SECTION 08 ============================
 
 
+# ============================================================================== 
+# SECTION 09 — BROKER SCHEMA / DIRECTORY / STATS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def ensure_brokers_columns():
     """Ensure brokers table has status / is_approved columns used by the app."""
     conn = None
@@ -1783,9 +1827,14 @@ def get_platform_stats() -> dict:
                 conn.close()
             except Exception:
                 pass
+# ============================ END SECTION 09 ============================
 
 
 
+# ============================================================================== 
+# SECTION 10 — BROKER OFFERS & RATINGS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def save_broker_offer(request_id: int, broker_id: int, description: str, photo_id: str = None) -> bool:
     conn = None
     try:
@@ -1931,9 +1980,14 @@ def add_broker_rating(broker_chat_id, user_chat_id, stars) -> bool:
                 conn.close()
             except Exception:
                 pass
+# ============================ END SECTION 10 ============================
 
 
 
+# ============================================================================== 
+# SECTION 11 — VIEWS, SEARCH ALERTS & MATCHING
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def increment_listing_views(listing_id: int, amount: int = 1) -> int:
     """Increment view_count and return new value."""
     conn = None
@@ -2158,6 +2212,7 @@ def expire_old_listings(days: int = 30) -> int:
                 conn.close()
             except Exception:
                 pass
+# ============================ END SECTION 11 ============================
 
 
 
@@ -2166,6 +2221,10 @@ def expire_old_listings(days: int = 30) -> int:
 
 # ========== CONTRACTS ==========
 
+# ============================================================================== 
+# SECTION 12 — CONTRACT STORAGE & RETRIEVAL
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def ensure_contracts_table():
     conn = None
     try:
@@ -2342,10 +2401,15 @@ def get_user_contracts(user_id, limit=20):
                 conn.close()
             except Exception:
                 pass
+# ============================ END SECTION 12 ============================
 
 
 
 
+# ============================================================================== 
+# SECTION 13 — AMHARIC CONTRACT GENERATION
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def _etb_words(n):
     """Convert integer ETB amount to Amharic words (supports up to billions)."""
     try:
@@ -2607,8 +2671,13 @@ def build_amharic_house_rental_contract(lessor, lessee, prop, financial, witness
 def build_amharic_vehicle_contract(seller, buyer, vehicle, financial, witnesses=None):
     """Backward-compatible alias → vehicle sale."""
     return build_amharic_vehicle_sale_contract(seller, buyer, vehicle, financial, witnesses)
+# ============================ END SECTION 13 ============================
 
 
+# ============================================================================== 
+# SECTION 14 — CONTRACT TYPE DISPATCH
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def build_contract_by_type(contract_type, seller, buyer, vehicle=None, property_info=None, financial=None, witnesses=None):
     ct = (contract_type or "vehicle_sale").lower().strip()
     if ct in ("vehicle_rental", "car_rental", "መኪና_ኪራይ"):
@@ -2618,8 +2687,13 @@ def build_contract_by_type(contract_type, seller, buyer, vehicle=None, property_
     if ct in ("house_rental", "property_rental", "ቤት_ኪራይ"):
         return build_amharic_house_rental_contract(seller, buyer, property_info, financial, witnesses)
     return build_amharic_vehicle_sale_contract(seller, buyer, vehicle, financial, witnesses)
+# ============================ END SECTION 14 ============================
 
 
+# ============================================================================== 
+# SECTION 15 — FAVORITES & LISTING PRICE UPDATES
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def ensure_favorites_table():
     conn = None
     try:
@@ -2781,4 +2855,5 @@ def update_listing_price(listing_id, new_price):
                 conn.close()
             except Exception:
                 pass
+# ============================ END SECTION 15 ============================
 
