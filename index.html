@@ -3540,13 +3540,38 @@
       favorites = JSON.parse(_lsGet('adika_favs') || '{}');
     } catch(e) {}
 
-    function toggleFav(id) {
+      function toggleFav(id) {
       var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
       try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
       renderFavoritesUI();
-      // Persist bookmark for price-drop alerts (Telegram chat_id)
+
+      if (!wasFav) {
+        var likedItem = null;
+        try {
+          var pool = (window.state && state.items) || window.__adikaLiveItems || [];
+          for (var i = 0; i < pool.length; i++) {
+            if (String(pool[i].id) === String(id)) { likedItem = pool[i]; break; }
+          }
+        } catch (eFind) {}
+        var likePrice = 0;
+        if (likedItem) {
+          likePrice = Number(String(likedItem.price || "").replace(/[^0-9.]/g, "")) || 0;
+        }
+        try {
+          if (likePrice > 0) localStorage.setItem("adika_last_like_price", String(likePrice));
+          if (likedItem) {
+            localStorage.setItem("adika_last_like_title", String(likedItem.sub_category || likedItem.title || ""));
+          }
+        } catch (eLs) {}
+        try {
+          if (window.state && state.feedMode === "foryou" && typeof window.__adikaLoadFYP === "function") {
+            window.__adikaLoadFYP();
+          }
+        } catch (eRel) {}
+      }
+
       try {
         var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
         if (uid && id) {
@@ -3563,22 +3588,6 @@
         }
       } catch (e) {}
     }
-
-    var state = window.__adikaState = {
-      tab: "marketplace",
-      feedMode: "foryou", // foryou | all | category
-      roleChosen: false,
-      category: "",
-      q: "",
-      page: 1,
-      hasMore: true,
-      loading: false,
-      itemsPerPage: 10,
-      items: [],
-      selectedItem: null
-    };
-
-
 <!-- ======================= END SECTION 17 ======================= -->
 
 
@@ -11689,7 +11698,7 @@
       return it;
     }
 
-    function hardFilter(items, prefs) {
+       function hardFilter(items, prefs) {
       if (!items || !items.length) return [];
       prefs = prefs || {};
       var maxP = parsePrice(prefs.budget_max || prefs.max_price || prefs.price_max);
@@ -11705,6 +11714,7 @@
         var lastLike = parsePrice(localStorage.getItem("adika_last_like_price"));
         if (lastLike > maxP) maxP = Math.round(lastLike * 1.25);
       } catch (eL) {}
+
       var cats = prefs.categories || [];
       var wantCar = false, wantHouse = false;
       cats.forEach(function (c) {
@@ -11736,7 +11746,6 @@
         return true;
       }).map(normalizeImages);
     }
-
     function paint(items) {
       items = (items || []).map(normalizeImages);
       try { if (window.state) { state.loading = false; state.items = items; state.feedMode = "foryou"; } } catch (e) {}
