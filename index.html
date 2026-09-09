@@ -149,15 +149,38 @@
 
 <script>
 /* ================================================================ */
-/* CLEAN FYP BOOT — FIXED (real API + sample fallback)               */
+/* CLEAN FYP BOOT — FIXED (real API + robust image normalization)   */
 /* ================================================================ */
 (function () {
   // ... (all previous clean boot code unchanged) ...
 
-  // REAL API CALL — NO more mock data
+  // PRIMARY: real API CALL — NO mock data
   window.__adikaLoadFYP = function () {
-    // ... (getUid, readLocalPrefs, parsePrice, normalizeImages, hardFilter unchanged) ...
+    // ... (getUid, readLocalPrefs, parsePrice, hardFilter unchanged) ...
 
+    function getValidImageUrl(item) {
+      if (!item || typeof item !== "object") return null;
+      const possibleKeys = ["image_url", "image", "photo_url", "photo", "thumbnail", "images", "photos"];
+      for (const key of possibleKeys) {
+        let val = item[key];
+        if (val == null) continue;
+        if (Array.isArray(val)) {
+          val = val[0];
+        }
+        if (typeof val === "string" && val.trim() !== "" && !val.includes("null") && !val.includes("undefined")) {
+          return val.trim();
+        }
+      }
+      return null;
+    }
+
+    function resolveImage(item) {
+      const url = getValidImageUrl(item);
+      if (!url) return "/static/no-image.svg"; // clean default placeholder
+      return url;
+    }
+
+    // REAL API CALL
     Promise.all([
       fetch("/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" }).then(r => r.json()).catch(() => ({})),
       fetch(`/api/for-you?page=1&limit=60${window.Telegram && Telegram.WebApp ? `&user_id=${encodeURIComponent(window.Telegram.WebApp.initDataUnsafe.user.id)}` : ''}`, { credentials: "same-origin" }).then(r => r.json()).catch(() => ({}))
@@ -190,16 +213,38 @@
       }
 
       var filtered = hardFilter(base, prefs);
-      paint(filtered);   // paint function unchanged
+
+      // Paint with fixed image URLs
+      try {
+        if (typeof finishLoading === "function") {
+          finishLoading(filtered, false, false);
+        } else {
+          filtered = filtered.map(item => {
+            item.image_url = resolveImage(item);
+            item.photo_url = item.image_url;
+            item.images = [item.image_url];
+            item.photos = [item.image_url];
+            item.thumbnail = item.image_url;
+            return item;
+          });
+          if (typeof window.__adikaPaintListings === "function") {
+            window.__adikaPaintListings(filtered);
+          } else {
+            paint(filtered);
+          }
+        }
+      } catch (e) {
+        console.warn("[Adika FYP image fix]", e);
+        paint(filtered);
+      }
     }).catch(function (err) {
       console.warn("[Adika FYP]", err);
-      // Fallback: use the beautiful sample data from your original index.html (still shows real photos)
-      // This is why you see the 4 cars with photos — it's still your original sample data!
-      paint(window.sampleData || []);   // your original sample data
+      paint(window.sampleData || []);
     });
   };
 
   window.loadFYPFeed = window.__adikaLoadFYP;
+  // ... (rest of the boot script unchanged) ...
 })();
 </script>
 <!-- ======================= END SECTION 02 ======================= -->
