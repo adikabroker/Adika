@@ -2290,7 +2290,7 @@ def register_api_routes(web_app):
     # SECTION 11 — FAVORITES / LISTING UPDATE / RECOMMENDATIONS
     # Change/maintain this entire section as one unit. Logic is unchanged.
     # ==============================================================================
-       @web_app.route("/api/favorites", methods=["GET", "OPTIONS"])
+           @web_app.route("/api/favorites", methods=["GET", "OPTIONS"])
     def api_favorites_list():
         if request.method == "OPTIONS":
             return ("", 204)
@@ -2309,8 +2309,11 @@ def register_api_routes(web_app):
             rows = cur.fetchall() or []
             items = []
             for r in rows:
-                d = dict(r) if not isinstance(r, dict) else r
-                items.append({"listing_id": d.get("listing_id"), "created_at": str(d.get("created_at") or "")})
+                d = r if isinstance(r, dict) else dict(r)
+                items.append({
+                    "listing_id": d.get("listing_id"),
+                    "created_at": str(d.get("created_at") or ""),
+                })
             try:
                 conn.close()
             except Exception:
