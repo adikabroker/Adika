@@ -2024,29 +2024,66 @@ def _similar_to_seed(
     )
 
 
-def fetch_for_you_feed(
-    user_id: int = 0,
-    limit: int = 24,
-    page: int = 1,
-    category: str = "",
-    recently_viewed_ids: Optional[List[int]] = None,
-    last_category: str = "",
-    last_price: Any = None,
-    budget_range: str = "",
-    main_category: str = "",
-    liked_ids: Optional[List[int]] = None,
-    shared_ids: Optional[List[int]] = None,
-) -> Dict[str, Any]:
-    """
-    Elastic hybrid FYP:
-      Cold start = form main_category + budget_range
-      Signals    = view 1x, like 2x, share 3x
-      Elastic    = if interacted price > form max, raise ceiling +20%..+30%
-    Category isolation stays strict (መኪና / ቤት never mix).
-    """
-    uid = int(user_id or 0)
-    limit = max(1, min(int(limit or 24), 60))
-    page = max(1, int(page or 1))
+    def _attach_listing_photos(rows):
+        if not rows:
+            return rows
+        ids = []
+        for x in rows:
+            try:
+                ids.append(int(x.get("id") or 0))
+            except Exception:
+                pass
+        ids = [i for i in ids if i]
+        if not ids:
+            return [unify_listing_images(x) for x in rows]
+        from models import get_db_connection
+        conn2 = None
+        by_id = {}
+        try:
+            conn2 = get_db_connection()
+            cur2 = conn2.cursor()
+            p2 = _ph()
+            placeholders = ",".join([p2] * len(ids))
+            cur2.execute(
+                f"SELECT listing_id, photo_id FROM listing_photos WHERE listing_id IN ({placeholders})",
+                tuple(ids),
+            )
+            for r in cur2.fetchall() or []:
+                d = dict(r) if not isinstance(r, dict) else r
+                lid = d.get("listing_id")
+                pid = d.get("photo_id")
+                if lid is None or not pid:
+                    continue
+                by_id.setdefault(int(lid), []).append(pid)
+        except Exception as e:
+            logger.warning("attach listing_photos: %s", e)
+        finally:
+            if conn2:
+                try:
+                    conn2.close()
+                except Exception:
+                    pass
+        out = []
+        for x in rows:
+            try:
+                lid = int(x.get("id") or 0)
+            except Exception:
+                lid = 0
+            extra_photos = by_id.get(lid) or []
+            if extra_photos:
+                existing = x.get("photos") or x.get("photo_urls") or []
+                if not isinstance(existing, list):
+                    existing = [existing] if existing else []
+                merged = extra_photos + [u for u in existing if u]
+                x["photos"] = merged
+                x["photo_urls"] = merged
+                x["images"] = merged
+                x["image_url"] = merged[0]
+                x["photo_url"] = merged[0]
+            out.append(unify_listing_images(x))
+        return out
+
+    page_items = _attach_listing_photos(page_items)
 
     def _ids(raw):
         out = []
