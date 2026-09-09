@@ -11624,7 +11624,7 @@
       return it;
     }
 
-         function hardFilter(items, prefs) {
+           function hardFilter(items, prefs) {
       if (!items || !items.length) return [];
       prefs = prefs || {};
       var maxP = parsePrice(prefs.budget_max || prefs.max_price || prefs.price_max);
@@ -11641,9 +11641,13 @@
       try { lastView = parsePrice(localStorage.getItem("adika_last_view_price")); } catch (e2) {}
       try { likeModel = String(localStorage.getItem("adika_last_like_title") || "").toLowerCase(); } catch (e3) {}
       try { viewModel = String(localStorage.getItem("adika_last_view_model") || "").toLowerCase(); } catch (e4) {}
+      var likeToken = (likeModel.split(/\s+/)[0] || "").replace(/[^a-z0-9ሀ-፼]/gi, "");
+      var viewToken = (viewModel.split(/\s+/)[0] || "").replace(/[^a-z0-9ሀ-፼]/gi, "");
+
       var cap = maxP || 0;
-      if (lastLike > cap) cap = Math.round(lastLike * 1.25);
-      if (lastView > cap) cap = Math.round(lastView * 1.15);
+      if (lastLike > cap) cap = lastLike;
+      if (lastView > cap) cap = lastView;
+      if (cap && lastLike >= cap) cap = Math.round(cap * 1.15);
 
       var cats = prefs.categories || [];
       var wantCar = false, wantHouse = false;
@@ -11664,7 +11668,6 @@
         if (cap > 0 && cap < 999999999) {
           if (price <= 0) return false;
           if (price > cap) return false;
-          if (minP > 0 && price < minP) return false;
         }
         var blob = [it.main_category, it.category, it.sub_category, it.title, it.brand, it.model, it.description].join(" ").toLowerCase();
         if (wantCar && !wantHouse) {
@@ -11681,10 +11684,13 @@
           var s = 0;
           var blob = [it.sub_category, it.title, it.brand, it.model].join(" ").toLowerCase();
           var pr = parsePrice(it.price);
-          if (likeModel && blob.indexOf(likeModel) >= 0) s += 40;
-          if (viewModel && blob.indexOf(viewModel) >= 0) s += 25;
-          if (lastLike && pr && Math.abs(pr - lastLike) / lastLike < 0.3) s += 15;
-          if (lastView && pr && Math.abs(pr - lastView) / lastView < 0.3) s += 10;
+          if (likeToken && likeToken.length >= 3 && blob.indexOf(likeToken) >= 0) s += 50;
+          if (viewToken && viewToken.length >= 3 && blob.indexOf(viewToken) >= 0) s += 30;
+          if (lastLike > 0 && pr > 0) {
+            var d = Math.abs(pr - lastLike) / lastLike;
+            if (d <= 0.20) s += 35;
+            else if (d <= 0.35) s += 18;
+          }
           return s;
         }
         return score(b) - score(a);
