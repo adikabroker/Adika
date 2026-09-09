@@ -148,103 +148,250 @@
   <!-- ... (rest of root HTML unchanged) ... -->
 
 <script>
-/* ================================================================ */
-/* CLEAN FYP BOOT — FIXED (real API + robust image normalization)   */
-/* ================================================================ */
+/* ===== CLEAN FYP BOOT (no duplicate wrappers) ===== */
 (function () {
-  // ... (all previous clean boot code unchanged) ...
-
-  // PRIMARY: real API CALL — NO mock data
-  window.__adikaLoadFYP = function () {
-    // ... (getUid, readLocalPrefs, parsePrice, hardFilter unchanged) ...
-
-    function getValidImageUrl(item) {
-      if (!item || typeof item !== "object") return null;
-      const possibleKeys = ["image_url", "image", "photo_url", "photo", "thumbnail", "images", "photos"];
-      for (const key of possibleKeys) {
-        let val = item[key];
-        if (val == null) continue;
-        if (Array.isArray(val)) {
-          val = val[0];
+  window.adikaParseBudgetRange = window.adikaParseBudgetRange || function (prefs) {
+    prefs = prefs || {};
+    function num(v) {
+      if (v == null || v === "") return 0;
+      if (typeof v === "number") return isFinite(v) ? v : 0;
+      var s = String(v).replace(/,/g, "").trim();
+      var mMul = s.match(/^([\d.]+)\s*(m|M|ሚ|ሚሊ|million|ሚሊዮን)/i);
+      if (mMul) return Math.round(parseFloat(mMul[1]) * 1000000);
+      var kMul = s.match(/^([\d.]+)\s*(k|K|ሺ)/i);
+      if (kMul) return Math.round(parseFloat(kMul[1]) * 1000);
+      var n = Number(s.replace(/[^\d.]/g, ""));
+      return isFinite(n) ? n : 0;
+    }
+    var minP = num(prefs.price_min || prefs.min_price || prefs.budget_min || prefs.min_budget);
+    var maxP = num(prefs.price_max || prefs.max_price || prefs.budget_max || prefs.max_budget);
+    var raw = prefs.budget || prefs.budget_range || prefs.price_range || prefs.budgetRange || "";
+    if ((!minP && !maxP) && raw) {
+      var text = String(raw);
+      var range = text.match(/([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|million|ሚሊዮን)?\s*[-–—toእስከ]+\s*([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|million|ሚሊዮን)?/i);
+      if (range) {
+        function scale(v, u) {
+          v = parseFloat(String(v).replace(/,/g, "")) || 0;
+          u = (u || "").toLowerCase();
+          if (/m|ሚ|mil/.test(u)) return Math.round(v * 1000000);
+          if (/k|ሺ/.test(u)) return Math.round(v * 1000);
+          if (/ሚሊ|million/i.test(text) && v < 1000) return Math.round(v * 1000000);
+          return Math.round(v);
         }
-        if (typeof val === "string" && val.trim() !== "" && !val.includes("null") && !val.includes("undefined")) {
-          return val.trim();
-        }
+        minP = scale(range[1], range[2]);
+        maxP = scale(range[3], range[4]);
       }
+    }
+    if (minP > 0 && maxP > 0 && maxP < minP) { var t = minP; minP = maxP; maxP = t; }
+    return { min: minP || 0, max: maxP || 0, label: raw || "" };
+  };
+
+  window.__adikaLoadFYP = function () {
+    try {
+      if (window.state) {
+        state.feedMode = "foryou";
+        state.category = "";
+        state.page = 1;
+        state.items = [];
+        state.hasMore = false;
+        state.q = "";
+        state.loading = true;
+      }
+    } catch (e) {}
+    try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (eP) {}
+
+    var grid = document.getElementById("grid");
+    if (grid) {
+      grid.style.opacity = "0.55";
+    }
+
+    function getUid() {
+      try {
+        if (typeof getTelegramUserId === "function") {
+          var id = getTelegramUserId();
+          if (id) return String(id);
+        }
+      } catch (e) {}
+      try {
+        var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+        if (u && u.id) return String(u.id);
+      } catch (e2) {}
+      try { if (window.state && state.userId) return String(state.userId); } catch (e3) {}
+      return "";
+    }
+
+    function readLocalPrefs() {
+      try {
+        var raw = localStorage.getItem("adika_user_prefs");
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
       return null;
     }
 
-    function resolveImage(item) {
-      const url = getValidImageUrl(item);
-      if (!url) return "/static/no-image.svg"; // clean default placeholder
-      return url;
+    function parsePrice(v) {
+      if (v == null || v === "") return 0;
+      if (typeof v === "number") return isFinite(v) ? v : 0;
+      var s = String(v).replace(/,/g, "").trim();
+      var m = s.match(/^([\d.]+)\s*(m|M|ሚ|ሚሊ|million|ሚሊዮን)/i);
+      if (m) return Math.round(parseFloat(m[1]) * 1e6);
+      var k = s.match(/^([\d.]+)\s*(k|K|ሺ)/i);
+      if (k) return Math.round(parseFloat(k[1]) * 1e3);
+      var n = Number(s.replace(/[^\d.]/g, ""));
+      return isFinite(n) ? n : 0;
     }
 
-    // REAL API CALL
-    Promise.all([
-      fetch("/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" }).then(r => r.json()).catch(() => ({})),
-      fetch(`/api/for-you?page=1&limit=60${window.Telegram && Telegram.WebApp ? `&user_id=${encodeURIComponent(window.Telegram.WebApp.initDataUnsafe.user.id)}` : ''}`, { credentials: "same-origin" }).then(r => r.json()).catch(() => ({}))
-    ]).then(function (results) {
-      var listA = (results[0] && (results[0].items || results[0].listings || results[0].data)) || [];
-      var listB = (results[1] && (results[1].items || results[1].listings || results[1].data)) || [];
-
-      var byId = {};
-      listA.forEach(it => { if (it && it.id != null) byId[String(it.id)] = normalizeImages(it); });
-
-      var base = listA.length ? listA : listB;
-      if (listA.length && listB.length) {
-        var ordered = [];
-        var seen = {};
-        listB.forEach(it => {
-          if (!it || it.id == null) return;
-          var id = String(it.id);
-          var rich = byId[id] || normalizeImages(it);
-          ordered.push(rich);
-          seen[id] = 1;
-        });
-        listA.forEach(it => {
-          if (!it || it.id == null) return;
-          var id = String(it.id);
-          if (!seen[id]) ordered.push(normalizeImages(it));
-        });
-        base = ordered.length ? ordered : listA;
-      } else {
-        base = base.map(normalizeImages);
-      }
-
-      var filtered = hardFilter(base, prefs);
-
-      // Paint with fixed image URLs
-      try {
-        if (typeof finishLoading === "function") {
-          finishLoading(filtered, false, false);
-        } else {
-          filtered = filtered.map(item => {
-            item.image_url = resolveImage(item);
-            item.photo_url = item.image_url;
-            item.images = [item.image_url];
-            item.photos = [item.image_url];
-            item.thumbnail = item.image_url;
-            return item;
-          });
-          if (typeof window.__adikaPaintListings === "function") {
-            window.__adikaPaintListings(filtered);
-          } else {
-            paint(filtered);
-          }
+    function normalizeImages(it) {
+      if (!it || typeof it !== "object") return it;
+      var urls = [];
+      function add(v) {
+        if (!v) return;
+        if (Array.isArray(v)) { v.forEach(add); return; }
+        if (typeof v === "object") {
+          var u = v.url || v.src || v.image_url || v.photo_url || "";
+          if (u) add(u);
+          return;
         }
-      } catch (e) {
-        console.warn("[Adika FYP image fix]", e);
-        paint(filtered);
+        var s = String(v).trim();
+        if (!s) return;
+        if (s.charAt(0) === "[") {
+          try { add(JSON.parse(s)); return; } catch (e) {}
+        }
+        if (/^https?:\/\//i.test(s) || s.indexOf("data:image") === 0 || s.indexOf("/") === 0) {
+          if (urls.indexOf(s) < 0) urls.push(s);
+        }
       }
-    }).catch(function (err) {
-      console.warn("[Adika FYP]", err);
-      paint(window.sampleData || []);
-    });
+      add(it.image_url); add(it.photo_url); add(it.telegram_image);
+      add(it.images); add(it.photos); add(it.photo_urls); add(it.listing_photos);
+      add(it.image); add(it.photo);
+      try {
+        var ex = it.extra_data;
+        if (typeof ex === "string") { try { ex = JSON.parse(ex); } catch (e) { ex = null; } }
+        if (ex && typeof ex === "object") {
+          add(ex.image_url); add(ex.photo_url); add(ex.images); add(ex.photos); add(ex.photo_urls);
+        }
+      } catch (eE) {}
+      if (urls.length) {
+        it.image_url = urls[0];
+        it.photo_url = urls[0];
+        it.photos = urls.slice();
+        it.photo_urls = urls.slice();
+        it.images = urls.slice();
+        it._resolved_photos = urls.slice();
+      }
+      return it;
+    }
+
+    function hardFilter(items, prefs) {
+      if (!items || !items.length) return [];
+      prefs = prefs || {};
+      var maxP = parsePrice(prefs.budget_max || prefs.max_price || prefs.price_max);
+      var minP = parsePrice(prefs.budget_min || prefs.min_price || prefs.price_min);
+      if ((!maxP || maxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
+        var t = String(prefs.budget_range || prefs.budget || "");
+        var parts = t.split(/[-–—toእስከ]/i);
+        var nums = parts.map(parsePrice).filter(function (n) { return n > 0; });
+        if (nums.length >= 2) { minP = Math.min(nums[0], nums[1]); maxP = Math.max(nums[0], nums[1]); }
+        else if (nums.length === 1) { maxP = nums[0]; }
+      }
+      try {
+        var lastLike = parsePrice(localStorage.getItem("adika_last_like_price"));
+        if (lastLike > maxP) maxP = Math.round(lastLike * 1.25);
+      } catch (eL) {}
+      var cats = prefs.categories || [];
+      var wantCar = false, wantHouse = false;
+      cats.forEach(function (c) {
+        var cl = String(c).toLowerCase();
+        if (/መኪና|car/.test(cl)) wantCar = true;
+        if (/ቤት|house|property/.test(cl)) wantHouse = true;
+      });
+      var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
+      if (/መኪና|car/.test(mc)) wantCar = true;
+      if (/ቤት|house/.test(mc)) wantHouse = true;
+
+      return items.filter(function (it) {
+        if (!it) return false;
+        var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
+        if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
+        var price = parsePrice(it.price || it.asking_price || 0);
+        if (maxP > 0 && maxP < 999999999) {
+          if (price <= 0) return false;
+          if (price > maxP) return false;
+          if (minP > 0 && price < minP) return false;
+        }
+        var blob = [it.main_category, it.category, it.sub_category, it.title, it.brand, it.model, it.description].join(" ").toLowerCase();
+        if (wantCar && !wantHouse) {
+          if (/ቤት|house|apartment|villa|ንብረት/.test(blob) && !/መኪና|car|toyota|vits|vehicle/.test(blob)) return false;
+        }
+        if (wantHouse && !wantCar) {
+          if (/መኪና|car|toyota|vits|vehicle|chassis/.test(blob)) return false;
+        }
+        return true;
+      }).map(normalizeImages);
+    }
+
+    function paint(items) {
+      items = (items || []).map(normalizeImages);
+      try { if (window.state) { state.loading = false; state.items = items; state.feedMode = "foryou"; } } catch (e) {}
+      if (grid) grid.style.opacity = "1";
+      if (!items.length) {
+        if (grid) {
+          grid.innerHTML =
+            '<div style="grid-column:1/-1;padding:28px 16px;text-align:center;">' +
+            '<div style="font-size:36px;margin-bottom:8px;">🔍</div>' +
+            '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px;">በፍላጎትዎ የሚመጥን ነገር አልተገኘም።</div>' +
+            '<button type="button" onclick="window.openFYPWithOnboarding&&openFYPWithOnboarding()" ' +
+            'style="padding:8px 14px;border-radius:999px;background:linear-gradient(135deg,#0ea5e9,#14b8a6);color:#fff;font-weight:900;font-size:11px;border:0;">⚙️ ምርጫ ቀይር</button></div>';
+        }
+        return;
+      }
+      try {
+        if (typeof finishLoading === "function") { finishLoading(items, false, false); return; }
+      } catch (e1) {}
+      try {
+        if (typeof window.__adikaPaintListings === "function") { window.__adikaPaintListings(items); return; }
+      } catch (e2) {}
+    }
+
+    var prefs = readLocalPrefs() || {};
+    var listingsUrl = "/api/listings?page=1&limit=60&order=DESC&active_only=1&type=SELL";
+
+    fetch(listingsUrl, { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var base = (data && (data.items || data.listings || data.data)) || [];
+        if (!Array.isArray(base)) base = [];
+        base = base.map(normalizeImages);
+        paint(hardFilter(base, prefs));
+      })
+      .catch(function (err) {
+        console.warn("[Adika FYP]", err);
+        paint([]);
+      });
   };
 
   window.loadFYPFeed = window.__adikaLoadFYP;
-  // ... (rest of the boot script unchanged) ...
+
+  function maybeBootFyp() {
+    try {
+      var onboarded = false;
+      try { onboarded = localStorage.getItem("adika_onboarded") === "true"; } catch (e) {}
+      if (onboarded && typeof window.loadFYPFeed === "function") {
+        setTimeout(function () { window.loadFYPFeed(); }, 350);
+      }
+    } catch (e) {}
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", maybeBootFyp);
+  } else {
+    maybeBootFyp();
+  }
+  try {
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.ready();
+      setTimeout(maybeBootFyp, 500);
+    }
+  } catch (e) {}
 })();
 </script>
 <!-- ======================= END SECTION 02 ======================= -->
