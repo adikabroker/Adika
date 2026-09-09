@@ -3492,14 +3492,42 @@
 
     var favorites = {};
     try {
-      favorites = JSON.parse(_lsGet("adika_favs") || "{}");
-    } catch (e) {}
+      favorites = JSON.parse(localStorage.getItem("adika_favs") || _lsGet("adika_favs") || "{}") || {};
+    } catch (e) { favorites = {}; }
+
+    function persistFavorites() {
+      var raw = JSON.stringify(favorites);
+      try { localStorage.setItem("adika_favs", raw); } catch (e) {}
+      try { _lsSet("adika_favs", raw); } catch (e2) {}
+    }
+
+    function hydrateFavoritesFromServer() {
+      var uid = 0;
+      try {
+        uid = (typeof tg !== "undefined" && tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
+      } catch (e) {}
+      if (!uid) return;
+      fetch("/api/favorites?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var rows = (d && (d.items || d.favorites || d.data)) || [];
+          rows.forEach(function (row) {
+            var lid = row.listing_id || row.id;
+            if (lid != null) favorites[String(lid)] = true;
+          });
+          persistFavorites();
+          try { renderFavoritesUI(); } catch (e) {}
+        })
+        .catch(function () {});
+    }
+    hydrateFavoritesFromServer();
 
     function toggleFav(id) {
+      id = String(id);
       var wasFav = Boolean(favorites[id]);
-      if (favorites[id]) delete favorites[id];
+      if (wasFav) delete favorites[id];
       else favorites[id] = true;
-      try { _lsSet("adika_favs", JSON.stringify(favorites)); } catch (e) {}
+      persistFavorites();
       try { renderFavoritesUI(); } catch (e2) {}
 
       if (!wasFav) {
@@ -3507,7 +3535,7 @@
         try {
           var pool = (window.state && state.items) || window.__adikaLiveItems || [];
           for (var i = 0; i < pool.length; i++) {
-            if (String(pool[i].id) === String(id)) { likedItem = pool[i]; break; }
+            if (String(pool[i].id) === id) { likedItem = pool[i]; break; }
           }
         } catch (eFind) {}
         var likePrice = 0;
@@ -3519,9 +3547,7 @@
         } catch (eLs) {}
         setTimeout(function () {
           try {
-            if (window.state && state.feedMode === "foryou" && typeof window.__adikaLoadFYP === "function") {
-              window.__adikaLoadFYP();
-            }
+            if (typeof window.__adikaLoadFYP === "function") window.__adikaLoadFYP();
           } catch (eRel) {}
         }, 300);
       }
