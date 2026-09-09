@@ -11802,7 +11802,6 @@
 <script>
 /* ===== CLEAN FYP BOOT (no duplicate wrappers) ===== */
 (function () {
-  // Improve budget parse used by onboarding collectForm if present
   window.adikaParseBudgetRange = window.adikaParseBudgetRange || function (prefs) {
     prefs = prefs || {};
     function num(v) {
@@ -11839,7 +11838,6 @@
     return { min: minP || 0, max: maxP || 0, label: raw || "" };
   };
 
-  // ========== BULLETPROOF For You loader ==========
   window.__adikaLoadFYP = function () {
     try {
       if (window.state) {
@@ -11855,25 +11853,7 @@
     try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (eP) {}
 
     var grid = document.getElementById("grid");
-    if (grid) {
-      grid.innerHTML = "";
-      grid.style.opacity = "0.55";
-    }
-
-    function getUid() {
-      try {
-        if (typeof getTelegramUserId === "function") {
-          var id = getTelegramUserId();
-          if (id) return String(id);
-        }
-      } catch (e) {}
-      try {
-        var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-        if (u && u.id) return String(u.id);
-      } catch (e2) {}
-      try { if (window.state && state.userId) return String(state.userId); } catch (e3) {}
-      return "";
-    }
+    if (grid) grid.style.opacity = "0.55";
 
     function readLocalPrefs() {
       try {
@@ -11895,7 +11875,6 @@
       return isFinite(n) ? n : 0;
     }
 
-    // Normalize image fields so createCardElement/parsePhotosList always finds them
     function normalizeImages(it) {
       if (!it || typeof it !== "object") return it;
       var urls = [];
@@ -11949,6 +11928,10 @@
         if (nums.length >= 2) { minP = Math.min(nums[0], nums[1]); maxP = Math.max(nums[0], nums[1]); }
         else if (nums.length === 1) { maxP = nums[0]; }
       }
+      try {
+        var lastLike = parsePrice(localStorage.getItem("adika_last_like_price"));
+        if (lastLike > maxP) maxP = Math.round(lastLike * 1.25);
+      } catch (eL) {}
       var cats = prefs.categories || [];
       var wantCar = false, wantHouse = false;
       cats.forEach(function (c) {
@@ -12004,63 +11987,24 @@
       } catch (e2) {}
     }
 
-    var uid = getUid();
     var prefs = readLocalPrefs() || {};
-
-    // PRIMARY: /api/listings (same image pipeline as ሁሉም) then client budget filter
-    // SECONDARY: /api/for-you (may lack images) — merge photos by id if needed
-    var listingsUrl = "/api/listings?page=1&limit=80&order=DESC&active_only=1&type=SELL";
-    var fypUrl = "/api/for-you?page=1&limit=60";
-    if (uid) fypUrl += "&user_id=" + encodeURIComponent(uid) + "&telegram_id=" + encodeURIComponent(uid);
-
-    Promise.all([
-      fetch(listingsUrl, { credentials: "same-origin" }).then(function (r) { return r.json(); }).catch(function () { return {}; }),
-      fetch(fypUrl, { credentials: "same-origin" }).then(function (r) { return r.json(); }).catch(function () { return {}; })
-    ]).then(function (results) {
-      var listA = (results[0] && (results[0].items || results[0].listings || results[0].data)) || [];
-      var listB = (results[1] && (results[1].items || results[1].listings || results[1].data)) || [];
-      if (!Array.isArray(listA)) listA = [];
-      if (!Array.isArray(listB)) listB = [];
-
-      // Index listings by id for image merge
-      var byId = {};
-      listA.forEach(function (it) {
-        if (it && it.id != null) byId[String(it.id)] = normalizeImages(it);
+    fetch("/api/listings?page=1&limit=60&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var base = (data && (data.items || data.listings || data.data)) || [];
+        if (!Array.isArray(base)) base = [];
+        paint(hardFilter(base.map(normalizeImages), prefs));
+      })
+      .catch(function (err) {
+        console.warn("[Adika FYP]", err);
+        paint([]);
       });
-      // Prefer listings (images) as base; if empty use for-you and merge images
-      var base = listA.length ? listA : listB;
-      if (listA.length && listB.length) {
-        // Enrich for-you ranking order if available, but take image from listings
-        var ordered = [];
-        var seen = {};
-        listB.forEach(function (it) {
-          if (!it || it.id == null) return;
-          var id = String(it.id);
-          var rich = byId[id] || normalizeImages(it);
-          ordered.push(rich);
-          seen[id] = 1;
-        });
-        listA.forEach(function (it) {
-          if (!it || it.id == null) return;
-          var id = String(it.id);
-          if (!seen[id]) ordered.push(normalizeImages(it));
-        });
-        base = ordered.length ? ordered : listA;
-      } else {
-        base = base.map(normalizeImages);
-      }
-
-      var filtered = hardFilter(base, prefs);
-      paint(filtered);
-    }).catch(function (err) {
-      console.warn("[Adika FYP]", err);
-      paint([]);
-    });
   };
 
   window.loadFYPFeed = window.__adikaLoadFYP;
+  window.loadSmartFYP = function () { window.__adikaLoadFYP(); };
+  window.triggerSmartFyp = function () { window.__adikaLoadFYP(); };
 
-  // Prefer FYP tab on first open when user already onboarded
   function maybeBootFyp() {
     try {
       var onboarded = false;
@@ -12084,9 +12028,6 @@
   } catch (e) {}
 })();
 </script>
-
-</body>
-</html>
 
 
 <!-- ======================= END SECTION 32 ======================= -->
