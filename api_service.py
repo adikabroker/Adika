@@ -2286,11 +2286,38 @@ def register_api_routes(web_app):
 
 
     # ============================ END SECTION 10 ============================
-    # ==============================================================================
+     # ==============================================================================
     # SECTION 11 — FAVORITES / LISTING UPDATE / RECOMMENDATIONS
     # Change/maintain this entire section as one unit. Logic is unchanged.
     # ==============================================================================
-           @web_app.route("/api/favorites", methods=["GET", "OPTIONS"])
+    @web_app.route('/api/favorites/toggle', methods=['POST', 'OPTIONS'])
+    def api_favorites_toggle():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        try:
+            _platform = (request.headers.get('X-Adika-Platform') or '').lower()
+            _auth_h = request.headers.get('Authorization') or ''
+            if _platform in ('android', 'ios', 'expo') or _auth_h.startswith('Bearer adk1.'):
+                _user, _deny = require_device_auth_response()
+                if _deny is not None:
+                    return _deny
+            data = request.json or {}
+            auth_user = get_request_bearer_user()
+            user_id = data.get('user_id') or data.get('chat_id') or 0
+            if auth_user:
+                user_id = auth_user.get('user_id') or user_id
+            chat_id = data.get('chat_id') or user_id
+            listing_id = data.get('listing_id')
+            action = data.get('action')
+            if not user_id or not listing_id:
+                return jsonify({"success": False, "message": "user_id and listing_id required"}), 400
+            result = toggle_favorite(user_id, listing_id, chat_id=chat_id, action=action)
+            return jsonify({"success": True, **result})
+        except Exception as e:
+            logger.error(f"api_favorites_toggle: {e}", exc_info=True)
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    @web_app.route("/api/favorites", methods=["GET", "OPTIONS"])
     def api_favorites_list():
         if request.method == "OPTIONS":
             return ("", 204)
@@ -2322,32 +2349,6 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error("api_favorites_list: %s", e)
             return jsonify({"success": False, "items": []}), 200
-    @web_app.route('/api/favorites/toggle', methods=['POST', 'OPTIONS'])
-    def api_favorites_toggle():
-        if request.method == 'OPTIONS':
-            return ('', 204)
-        try:
-            _platform = (request.headers.get('X-Adika-Platform') or '').lower()
-            _auth_h = request.headers.get('Authorization') or ''
-            if _platform in ('android', 'ios', 'expo') or _auth_h.startswith('Bearer adk1.'):
-                _user, _deny = require_device_auth_response()
-                if _deny is not None:
-                    return _deny
-            data = request.json or {}
-            auth_user = get_request_bearer_user()
-            user_id = data.get('user_id') or data.get('chat_id') or 0
-            if auth_user:
-                user_id = auth_user.get('user_id') or user_id
-            chat_id = data.get('chat_id') or user_id
-            listing_id = data.get('listing_id')
-            action = data.get('action')  # add|remove|None
-            if not user_id or not listing_id:
-                return jsonify({"success": False, "message": "user_id and listing_id required"}), 400
-            result = toggle_favorite(user_id, listing_id, chat_id=chat_id, action=action)
-            return jsonify({"success": True, **result})
-        except Exception as e:
-            logger.error(f"api_favorites_toggle: {e}", exc_info=True)
-            return jsonify({"success": False, "message": str(e)}), 500
 
     @web_app.route('/api/update-listing', methods=['POST', 'OPTIONS'])
     def api_update_listing():
@@ -2415,7 +2416,6 @@ def register_api_routes(web_app):
             logger.error(f"api_update_listing: {e}", exc_info=True)
             return jsonify({"success": False, "message": str(e)}), 500
 
-
     @web_app.route('/api/recommendations', methods=['POST', 'OPTIONS'])
     def api_recommendations():
         if request.method == 'OPTIONS':
@@ -2451,7 +2451,6 @@ def register_api_routes(web_app):
             fuels = [str(h.get("fuel_type") or "").strip() for h in history if h and h.get("fuel_type")]
 
             avg_price = sum(prices) / len(prices) if prices else 0
-            # Intent detection
             price_focus = False
             model_focus = False
             if len(prices) >= 2:
@@ -2459,7 +2458,6 @@ def register_api_routes(web_app):
                 mid = (mn + mx) / 2 or 1
                 if (mx - mn) / mid <= 0.15:
                     price_focus = True
-            # same model twice
             from collections import Counter
             mc = Counter([m.lower() for m in models])
             top_model = None
@@ -2488,7 +2486,6 @@ def register_api_routes(web_app):
                 if target_cat:
                     where.append(f"(main_category = {p} OR CAST(main_category AS TEXT) {like} {p})")
                     params.extend([target_cat, f"%{target_cat}%"])
-                # Indexed-friendly numeric range (±15%) — strip non-digits in SQL when possible
                 lo = int(avg_price * 0.85)
                 hi = int(avg_price * 1.15)
                 try:
@@ -2498,9 +2495,6 @@ def register_api_routes(web_app):
                             f"BETWEEN {p} AND {p})"
                         )
                         params.extend([lo, hi])
-                    else:
-                        # SQLite: filter in Python below; keep category filter only
-                        pass
                 except Exception:
                     pass
             elif target_cat:
@@ -2529,13 +2523,11 @@ def register_api_routes(web_app):
                 pr = _price_num(it.get("price"))
                 if avg_price and (price_focus or intent in ("price", "category", "model")):
                     if lo and hi and pr and not (lo <= pr <= hi * 1.25):
-                        # soft filter: keep some outside
                         if intent == "price" and not (lo * 0.9 <= pr <= hi * 1.2):
                             continue
                 scored.append(it)
             items = scored[:6]
             if len(items) < 6:
-                # pad with latest
                 try:
                     cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p}", (12,))
                     for row in cur.fetchall() or []:
@@ -2554,7 +2546,6 @@ def register_api_routes(web_app):
             except Exception:
                 pass
 
-            # Serialize minimally for cards
             out = []
             for it in items[:6]:
                 extra = it.get("extra_data") or {}
@@ -2586,7 +2577,6 @@ def register_api_routes(web_app):
         except Exception as e:
             logger.error(f"api_recommendations: {e}", exc_info=True)
             return jsonify({"success": False, "items": [], "message": str(e)}), 500
-
 
     # ============================ END SECTION 11 ============================
     # ==============================================================================
