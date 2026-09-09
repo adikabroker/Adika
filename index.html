@@ -3227,7 +3227,6 @@
       return null;
     }
 
-    // ---- Onboarding (unified glass form → user_preferences + FYP) ----
     (function initOnboarding() {
       var KEY = "adika_onboarded";
       var PREF_KEY = "adika_user_prefs";
@@ -3288,7 +3287,6 @@
       };
 
       function parseBudgetRange(val) {
-        // Handles: "ከ 1.5M - 4 ሚሊዮን ETB", "1.5M-4M", "1500000-4000000"
         var text = String(val || "").trim().toLowerCase();
         if (!text) return { budget_min: 0, budget_max: 999999999 };
         function toNum(tok) {
@@ -3320,8 +3318,8 @@
       function collectForm() {
         var fullName = (document.getElementById("fullName") || {}).value || "";
         var phone = (document.getElementById("phoneNum") || {}).value || "";
-        var tg = (document.getElementById("tgUsername") || {}).value || "";
-        tg = String(tg).replace(/^@/, "").trim();
+        var tgU = (document.getElementById("tgUsername") || {}).value || "";
+        tgU = String(tgU).replace(/^@/, "").trim();
         var catEl = document.querySelector('input[name="mainCat"]:checked');
         var mainCat = catEl ? catEl.value : "Car";
         var budget = parseBudgetRange((document.getElementById("budgetRange") || {}).value);
@@ -3338,7 +3336,7 @@
         return {
           full_name: String(fullName).trim(),
           phone: String(phone).trim(),
-          telegram_username: tg,
+          telegram_username: tgU,
           main_category: mainCat,
           categories: categories,
           budget_min: budget.budget_min,
@@ -3367,24 +3365,7 @@
         } catch (eL) {}
         try {
           if (typeof load === "function") load(false);
-        } catch (e2) {
-          try {
-            var sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : null;
-            var tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : null;
-            if (sb && tid && typeof sb.rpc === "function") {
-              sb.rpc("get_fyp_feed", {
-                p_telegram_id: tid,
-                p_limit: 20,
-                p_offset: 0
-              }).then(function (res) {
-                var rows = (res && res.data) || [];
-                if (Array.isArray(rows) && rows.length && typeof finishLoading === "function") {
-                  finishLoading(rows, false, rows.length >= 20);
-                }
-              }).catch(function () {});
-            }
-          } catch (e3) {}
-        }
+        } catch (e2) {}
       }
 
       window.handleOnboardingSubmit = function (ev) {
@@ -3397,7 +3378,6 @@
         var data = collectForm();
         var tid = null;
         try { tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : null; } catch (e) {}
-        // Prefill telegram username from WebApp if empty
         if (!data.telegram_username) {
           try {
             var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
@@ -3409,7 +3389,6 @@
         }
         data.telegram_id = tid || null;
         data.user_id = tid || null;
-
         saveLocalPrefs(data);
 
         var sb = null;
@@ -3430,19 +3409,12 @@
             body: JSON.stringify(data)
           }).then(function (r) {
             if (r && r.ok) return true;
-            // fallback alternate path
             return fetch("/api/preferences", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(data)
             }).then(function (r2) { return !!(r2 && r2.ok); });
-          }).catch(function () {
-            return fetch("/api/preferences", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data)
-            }).then(function (r2) { return !!(r2 && r2.ok); }).catch(function () { return false; });
-          });
+          }).catch(function () { return false; });
         }
 
         savePromise.then(function () {
@@ -3459,7 +3431,6 @@
         return false;
       };
 
-      // Wire form + category radios
       function bind() {
         var form = document.getElementById("onboardingForm");
         if (form && !form.__adikaBound) {
@@ -3481,14 +3452,13 @@
             closeOnboarding(true);
           });
         }
-        // Prefill TG user
         try {
           var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
           if (u) {
             var fn = document.getElementById("fullName");
-            var tg = document.getElementById("tgUsername");
+            var tgEl = document.getElementById("tgUsername");
             if (fn && !fn.value) fn.value = [u.first_name, u.last_name].filter(Boolean).join(" ");
-            if (tg && !tg.value && u.username) tg.value = "@" + u.username;
+            if (tgEl && !tgEl.value && u.username) tgEl.value = "@" + u.username;
           }
         } catch (eP) {}
         toggleSpecFields("Car");
@@ -3508,26 +3478,11 @@
         return true;
       };
 
-      function forceOpenOnboardingForTest() {
-        bind();
-        var m = document.getElementById("unifiedOnboardingModal");
-        if (!m) return;
-        m.classList.remove("hidden");
-        m.classList.add("flex");
-        m.style.setProperty("display", "flex", "important");
-        m.style.zIndex = "10000";
-        document.body.style.overflow = "hidden";
-      }
-
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () {
-          // TESTING: show onboarding on every Mini App open
-          forceOpenOnboardingForTest();
-        });
+        document.addEventListener("DOMContentLoaded", bind);
       } else {
-        forceOpenOnboardingForTest();
+        bind();
       }
-      // Also when FYP tab is already selected without onboard
       setTimeout(function () {
         try {
           if (!isOnboarded() && state && state.feedMode === "foryou") showOb(true);
@@ -3537,15 +3492,15 @@
 
     var favorites = {};
     try {
-      favorites = JSON.parse(_lsGet('adika_favs') || '{}');
-    } catch(e) {}
+      favorites = JSON.parse(_lsGet("adika_favs") || "{}");
+    } catch (e) {}
 
-      function toggleFav(id) {
+    function toggleFav(id) {
       var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
       try { _lsSet("adika_favs", JSON.stringify(favorites)); } catch (e) {}
-      try { renderFavoritesUI(); } catch (e) {}
+      try { renderFavoritesUI(); } catch (e2) {}
 
       if (!wasFav) {
         var likedItem = null;
@@ -3568,11 +3523,11 @@
               window.__adikaLoadFYP();
             }
           } catch (eRel) {}
-        }, 250);
+        }, 300);
       }
 
       try {
-        var uid = (window.tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
+        var uid = (typeof tg !== "undefined" && tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
         if (uid && id) {
           fetch("/api/favorites/toggle", {
             method: "POST",
@@ -3587,6 +3542,21 @@
         }
       } catch (e) {}
     }
+
+    var state = window.__adikaState = {
+      tab: "marketplace",
+      feedMode: "foryou",
+      roleChosen: false,
+      category: "",
+      q: "",
+      page: 1,
+      hasMore: true,
+      loading: false,
+      itemsPerPage: 10,
+      items: [],
+      selectedItem: null
+    };
+
 <!-- ======================= END SECTION 17 ======================= -->
 
 
