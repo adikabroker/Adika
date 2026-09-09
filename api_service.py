@@ -2290,6 +2290,35 @@ def register_api_routes(web_app):
     # SECTION 11 — FAVORITES / LISTING UPDATE / RECOMMENDATIONS
     # Change/maintain this entire section as one unit. Logic is unchanged.
     # ==============================================================================
+       @web_app.route("/api/favorites", methods=["GET", "OPTIONS"])
+    def api_favorites_list():
+        if request.method == "OPTIONS":
+            return ("", 204)
+        try:
+            user_id = request.args.get("user_id") or request.args.get("telegram_id") or 0
+            if not user_id:
+                return jsonify({"success": True, "items": []})
+            from models import get_db_connection, get_placeholder
+            conn = get_db_connection()
+            cur = conn.cursor()
+            p = get_placeholder()
+            cur.execute(
+                f"SELECT listing_id, created_at FROM favorites WHERE user_id = {p} OR chat_id = {p} ORDER BY created_at DESC LIMIT 80",
+                (int(user_id), int(user_id)),
+            )
+            rows = cur.fetchall() or []
+            items = []
+            for r in rows:
+                d = dict(r) if not isinstance(r, dict) else r
+                items.append({"listing_id": d.get("listing_id"), "created_at": str(d.get("created_at") or "")})
+            try:
+                conn.close()
+            except Exception:
+                pass
+            return jsonify({"success": True, "items": items})
+        except Exception as e:
+            logger.error("api_favorites_list: %s", e)
+            return jsonify({"success": False, "items": []}), 200
     @web_app.route('/api/favorites/toggle', methods=['POST', 'OPTIONS'])
     def api_favorites_toggle():
         if request.method == 'OPTIONS':
