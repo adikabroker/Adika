@@ -3544,8 +3544,8 @@
       var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
-      try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
-      renderFavoritesUI();
+      try { _lsSet("adika_favs", JSON.stringify(favorites)); } catch (e) {}
+      try { renderFavoritesUI(); } catch (e) {}
 
       if (!wasFav) {
         var likedItem = null;
@@ -3556,24 +3556,23 @@
           }
         } catch (eFind) {}
         var likePrice = 0;
-        if (likedItem) {
-          likePrice = Number(String(likedItem.price || "").replace(/[^0-9.]/g, "")) || 0;
+        if (likedItem && likedItem.price != null) {
+          likePrice = Number(String(likedItem.price).replace(/[^0-9.]/g, "")) || 0;
         }
         try {
           if (likePrice > 0) localStorage.setItem("adika_last_like_price", String(likePrice));
-          if (likedItem) {
-            localStorage.setItem("adika_last_like_title", String(likedItem.sub_category || likedItem.title || ""));
-          }
         } catch (eLs) {}
-        try {
-          if (window.state && state.feedMode === "foryou" && typeof window.__adikaLoadFYP === "function") {
-            window.__adikaLoadFYP();
-          }
-        } catch (eRel) {}
+        setTimeout(function () {
+          try {
+            if (window.state && state.feedMode === "foryou" && typeof window.__adikaLoadFYP === "function") {
+              window.__adikaLoadFYP();
+            }
+          } catch (eRel) {}
+        }, 250);
       }
 
       try {
-        var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
+        var uid = (window.tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
         if (uid && id) {
           fetch("/api/favorites/toggle", {
             method: "POST",
@@ -3584,7 +3583,7 @@
               listing_id: id,
               action: wasFav ? "remove" : "add"
             })
-          }).catch(function(){});
+          }).catch(function () {});
         }
       } catch (e) {}
     }
