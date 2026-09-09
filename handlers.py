@@ -1,3 +1,7 @@
+# ============================================================================== 
+# SECTION 01 — IMPORTS & GLOBAL CONFIGURATION
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 # ==============================================================================
 # handlers.py — Telegram bot handlers, keyboards, conversations
 # ==============================================================================
@@ -71,6 +75,11 @@ from models import (
     BROKER_OFFER_TEXT, BROKER_OFFER_PHOTO,
 ) = range(34)
 
+# ============================ END SECTION 01 ============================
+# ============================================================================== 
+# SECTION 02 — WEBAPP URL, VALIDATION & VIN HELPERS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def mini_app_url(path: str = "") -> str:
     """Build absolute HTTPS Mini App URL."""
     base = (WEBAPP_URL or "").rstrip("/")
@@ -132,8 +141,13 @@ def get_exact_vin_year(vin_str: str) -> str:
         if year_code in VIN_YEAR_CODES:
             return str(VIN_YEAR_CODES[year_code])
     return "N/A"
+# ============================ END SECTION 02 ============================
 
 
+# ============================================================================== 
+# SECTION 03 — TEXT CLEANING & AMHARIC TIME HELPERS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def clean_description(desc: str, max_len: int = 60) -> str:
     if not desc:
         return ""
@@ -201,9 +215,14 @@ def relative_time_am(created_at) -> str:
         return f"{years}y ago"
     except Exception:
         return ""
+# ============================ END SECTION 03 ============================
 
 
 
+# ============================================================================== 
+# SECTION 04 — MARKETPLACE CARDS & KEYBOARDS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 def format_marketplace_card_professional(item: dict) -> str:
     """Text-mode card for Seller Listings and Buyer Requests."""
     item_id = item.get('id', 'N/A')
@@ -362,7 +381,12 @@ def build_marketplace_keyboard_clean(item_id: int, owner_id: int, current_user_i
 
 def build_request_keyboard_clean(req_id: int, buyer_id: int) -> InlineKeyboardMarkup:
     return build_request_keyboard(req_id, buyer_id)
+# ============================ END SECTION 04 ============================
 
+# ============================================================================== 
+# SECTION 05 — BROKER NOTIFICATION SYSTEM
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def notify_brokers(bot, message_text: str, req_id: int, buyer_id: int, photos: list = None):
     try:
         approved_brokers = get_approved_brokers()
@@ -443,11 +467,16 @@ async def notify_brokers(bot, message_text: str, req_id: int, buyer_id: int, pho
         logger.info(f"✅ Sent to {sent_count} brokers for #ADK-{req_id}")
     except Exception as e:
         logger.error(f"notify_brokers error: {e}", exc_info=True)
+# ============================ END SECTION 05 ============================
 
 # ==============================================================================
 # 8. START & HOME HANDLERS
 # ==============================================================================
 
+# ============================================================================== 
+# SECTION 06 — START & HOME NAVIGATION
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
    context.user_data.clear()
    welcome_text = (
@@ -482,12 +511,17 @@ async def go_home(update: Update, context: ContextTypes.DEFAULT_TYPE):
            reply_markup=reply_markup
        )
    return ConversationHandler.END
+# ============================ END SECTION 06 ============================
 
 
 # ==============================================================================
 # 9. BUYER FLOW
 # ==============================================================================
 
+# ============================================================================== 
+# SECTION 07 — BUYER FLOW — CATEGORY, ACTION & BUDGET
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def buyer_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     context.user_data["req_type"] = "BUY"
@@ -624,7 +658,12 @@ async def buyer_property_chosen(update: Update, context: ContextTypes.DEFAULT_TY
        parse_mode="Markdown"
    )
    return BUYER_HTYPE
+# ============================ END SECTION 07 ============================
 
+# ============================================================================== 
+# SECTION 08 — BUYER FLOW — PROPERTY, DETAILS & PHONE
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def buyer_htype_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
    query = update.callback_query
    if query.data == "flow_home":
@@ -763,8 +802,13 @@ async def buyer_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     context.user_data.clear()
     return ConversationHandler.END
+# ============================ END SECTION 08 ============================
 
 
+# ============================================================================== 
+# SECTION 09 — SELLER FLOW — VEHICLE & BASIC DETAILS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def seller_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     context.user_data["req_type"] = "SELL"
@@ -916,7 +960,12 @@ async def seller_mileage(update: Update, context: ContextTypes.DEFAULT_TYPE):
        parse_mode="Markdown"
    )
    return SELLER_DETAILS
+# ============================ END SECTION 09 ============================
 
+# ============================================================================== 
+# SECTION 10 — SELLER FLOW — PROPERTY & PRICING
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def seller_property_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
    query = update.callback_query
    if query.data == "flow_home":
@@ -1049,7 +1098,12 @@ async def seller_negotiable_chosen(update: Update, context: ContextTypes.DEFAULT
        parse_mode="Markdown"
    )
    return SELLER_URGENT
+# ============================ END SECTION 10 ============================
 
+# ============================================================================== 
+# SECTION 11 — SELLER FLOW — URGENCY, PHONE, PHOTOS & SAVE
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def seller_urgent_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE):
    query = update.callback_query
    if query.data == "flow_home":
@@ -1232,12 +1286,17 @@ async def save_seller_listing(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     context.user_data.clear()
     return ConversationHandler.END
+# ============================ END SECTION 11 ============================
 
 
 # ==============================================================================
 # 11. BROKER REGISTRATION
 # ==============================================================================
 
+# ============================================================================== 
+# SECTION 12 — BROKER REGISTRATION FLOW
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def broker_reg_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Step 1: ask for Full / Business name (manual)."""
     context.user_data.clear()
@@ -1506,8 +1565,13 @@ async def broker_reg_fayda(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
         context.user_data.clear()
         return ConversationHandler.END
+# ============================ END SECTION 12 ============================
 
 
+# ============================================================================== 
+# SECTION 13 — BROKER OFFER & BUYER INTERACTION FLOWS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def broker_have_item_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1701,6 +1765,7 @@ async def want_myself_callback(update: Update, context: ContextTypes.DEFAULT_TYP
                 text=text,
                 parse_mode="Markdown"
             )
+# ============================ END SECTION 13 ============================
 
 
 # ==============================================================================
@@ -1712,6 +1777,10 @@ async def want_myself_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 TEXT_PAGE_SIZE = 5  # items per text-mode page
 
 
+# ============================================================================== 
+# SECTION 14 — MARKETPLACE / REQUESTS / BROKER UI HELPERS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def marketplace_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     web_url = mini_app_url("/explorer")
     keyboard = [
@@ -1816,8 +1885,13 @@ def _increment_views_batch(ids, amount=1):
         except Exception:
             pass
     return out
+# ============================ END SECTION 14 ============================
 
 
+# ============================================================================== 
+# SECTION 15 — TEXT MODE & LISTING INTERACTION CALLBACKS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def text_mode_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Text-mode Seller Listings & Buyer Requests.
@@ -2008,9 +2082,14 @@ async def text_mode_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
         except Exception:
             pass
+# ============================ END SECTION 15 ============================
 
 
 # Keep old full-photo chat view available if needed later
+# ============================================================================== 
+# SECTION 16 — MARKETPLACE, REQUESTS & BROKER DIRECTORY VIEWS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def view_public_marketplace_clean(update: Update, context: ContextTypes.DEFAULT_TYPE):
     items = get_public_marketplace_items(limit=15)
     user_id = update.effective_user.id
@@ -2163,8 +2242,13 @@ def _broker_card_keyboard(b: dict, viewer_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton("🗑️ Delete Profile", callback_data=f"broker_del_{chat_id_b}")
         ])
     return InlineKeyboardMarkup(rows)
+# ============================ END SECTION 16 ============================
 
 
+# ============================================================================== 
+# SECTION 17 — BROKER FILTERING, CALLING & RATING
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def filter_brokers_by_subcity_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -2342,8 +2426,13 @@ async def broker_star_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
     else:
         await q.answer("❌ Could not save rating. Try again.", show_alert=True)
+# ============================ END SECTION 17 ============================
 
 
+# ============================================================================== 
+# SECTION 18 — ADMIN APPROVAL, DELETE & SOLD ACTIONS
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def broker_del_cb(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
@@ -2495,12 +2584,17 @@ async def mark_sold_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.answer("✅ ማስታወቂያው እንደተሸጠ ምልክት ተደርጎበታል!", show_alert=True)
     else:
         await query.answer("❌ ስህተት ተከስቷል።", show_alert=True)
+# ============================ END SECTION 18 ============================
 
 
 # ==============================================================================
 # 15. SUPPORT HANDLER
 # ==============================================================================
 
+# ============================================================================== 
+# SECTION 19 — HELP & NOTIFICATION PREFERENCES
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "📞 <b>አዲካ ማርኬትፕሌስ — የደንበኞች ድጋፍ ማዕከል</b>\n"
@@ -2598,6 +2692,7 @@ async def notification_prefs_callback(update: Update, context: ContextTypes.DEFA
         )
     except Exception:
         pass
+# ============================ END SECTION 19 ============================
 
 
 # ==============================================================================
@@ -2607,6 +2702,10 @@ async def notification_prefs_callback(update: Update, context: ContextTypes.DEFA
 
 
 
+# ============================================================================== 
+# SECTION 20 — ERROR HANDLING & PRICE-DROP ALERT DISPATCH
+# Change/maintain this entire section as one unit. Logic is unchanged.
+# ============================================================================== 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log full traceback and optionally notify the user."""
     import traceback
@@ -2691,3 +2790,4 @@ def dispatch_price_drop_alerts(listing_id, title, old_price, new_price, bot=None
     except Exception as e:
         logger.error("dispatch_price_drop_alerts: %s", e)
         return 0
+# ============================ END SECTION 20 ============================
