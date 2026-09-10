@@ -581,6 +581,20 @@
     .hero-dots { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
     .hero-dot { width: 4px; height: 4px; border-radius: 999px; background: rgba(15,23,42,0.25); }
     .hero-dot.active { background: #0e7490; width: 12px; }
+        #cats {
+      display: flex !important;
+      width: 100% !important;
+      gap: 4px !important;
+    }
+    #cats .cat-pill {
+      flex: 1 1 0 !important;
+      min-width: 0 !important;
+      padding: 6px 2px !important;
+      font-size: 10px !important;
+      line-height: 1.15 !important;
+      text-align: center !important;
+      white-space: normal !important;
+    }
 
     /* Instagram-style listing photo auto-enhancement (zero-cost CSS) */
     .listing-photo-frame {
@@ -5232,70 +5246,32 @@
 <!-- SECTION 21 — NOTIFICATIONS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
-    // ===== STRICT category gate (content beats wrong main_category) =====
+    // ===== STRICT category gate (tag + item_kind; እቃ isolated) =====
     function adikaListingSignals(it) {
-      if (!it) return { isCar: false, isHouse: false, isBiz: false };
+      if (!it) return { isCar: false, isHouse: false, isItem: false, isBiz: false };
       var main = String(it.main_category || "").toLowerCase();
       var cat = String(it.category || "").toLowerCase();
-      var sub = String(it.sub_category || "").toLowerCase();
-      var brand = String(it.brand || "").toLowerCase();
-      var model = String(it.model || "").toLowerCase();
-      var title = String(it.title || it.name || "").toLowerCase();
-      var desc = String(it.description || "").toLowerCase();
-      var extra = it.extra_data || {};
-      if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-      var houseType = String((extra && (extra.house_type || extra.property_type || extra.location_area)) || "").toLowerCase();
-      // Content blob WITHOUT main/category tags (truth from user text)
-      var content = [sub, brand, model, title, desc, houseType].join(" ");
-      var tags = [main, cat].join(" ");
-
-      var contentHouse = /ቤት|house|apartment|villa|ንብረት|property|condo|መሬት|land|አፓርታማ|ሪል\s*እስቴት|የማሸጫ\s*ቤት|ለሽያጭ\s*ቤት|ክፍል/.test(content);
-      var contentCar = /toyota|hyundai|suzuki|vits|vitz|chassis|sedan|suv|pickup|corolla|raize|yaris|vehicle|መኪና|ሞተር|engine\s*cc|የመኪና/.test(content);
-      var tagHouse = /ቤት|house|property|ንብረት|apartment|villa|condo|መሬት|land/.test(tags);
-      var tagCar = /መኪና|car|vehicle|auto/.test(tags);
-      var tagBiz = /ንግድ|commercial|business|ሱቅ|shop|office/.test(tags + " " + content);
-
-      // CONTENT WINS when tags conflict (e.g. house posted with main_category=መኪና)
-      var isHouse = false, isCar = false;
-      if (contentHouse && !contentCar) isHouse = true;
-      else if (contentCar && !contentHouse) isCar = true;
-      else if (contentHouse && contentCar) {
-        // both signals: prefer explicit house words in title/sub
-        isHouse = /ቤት|house|apartment|villa|አፓርታማ|ንብረት/.test(sub + " " + title);
-        isCar = !isHouse;
-      } else {
-        // no content signal — fall back to tags
-        if (tagHouse && !tagCar) isHouse = true;
-        else if (tagCar && !tagHouse) isCar = true;
-        else if (tagHouse) isHouse = true;
-        else if (tagCar) isCar = true;
-      }
-      return { isCar: isCar, isHouse: isHouse, isBiz: tagBiz && !isCar && !isHouse };
+      var kind = String(it.item_kind || "").toLowerCase();
+      var title = String(it.title || it.name || it.sub_category || "").toLowerCase();
+      var tags = [main, cat, kind].join(" ");
+      var isItem = !!(kind || /እቃ|item|electronics|furniture|appliance|ቁሳቁስ/.test(tags));
+      var isHouse = !isItem && /ቤት|house|property|ንብረት|apartment|villa/.test(tags + " " + title);
+      var isCar = !isItem && !isHouse && /መኪና|car/.test(tags);
+      var isBiz = /ንግድ|commercial|business/.test(tags);
+      return { isCar: isCar, isHouse: isHouse, isItem: isItem, isBiz: isBiz && !isCar && !isHouse && !isItem };
     }
-    function adikaIsCarListing(it) {
-      return !!adikaListingSignals(it).isCar;
-    }
-    function adikaIsHouseListing(it) {
-      return !!adikaListingSignals(it).isHouse;
-    }
+    function adikaIsCarListing(it) { return !!adikaListingSignals(it).isCar; }
+    function adikaIsHouseListing(it) { return !!adikaListingSignals(it).isHouse; }
+    function adikaIsItemListing(it) { return !!adikaListingSignals(it).isItem; }
     function adikaFilterByActiveCategory(items) {
       items = items || [];
       try {
         var mode = (window.state && state.feedMode) || "";
         var cat = ((window.state && state.category) || "").trim();
         if (mode !== "cat" || !cat) return items;
-        var wantHouse = /ቤት|house|property|ንብረት/i.test(cat);
-        var wantCar = /መኪና|car|vehicle/i.test(cat);
-        var wantBiz = /ንግድ|commercial|business/i.test(cat);
-        if (wantHouse) return items.filter(adikaIsHouseListing);
-        if (wantCar) return items.filter(function (it) { return adikaIsCarListing(it) && !adikaIsHouseListing(it); });
-        if (wantBiz) {
-          return items.filter(function (it) {
-            if (adikaIsCarListing(it) || adikaIsHouseListing(it)) return false;
-            var blob = [it.main_category, it.category, it.title, it.description].join(" ").toLowerCase();
-            return /ንግድ|commercial|business|ሱቅ|shop|office/.test(blob);
-          });
-        }
+        if (/እቃ|item|ቁሳቁስ/i.test(cat)) return items.filter(adikaIsItemListing);
+        if (/ቤት|house|property|ንብረት/i.test(cat)) return items.filter(adikaIsHouseListing);
+        if (/መኪና|car/i.test(cat)) return items.filter(adikaIsCarListing);
       } catch (e) {}
       return items;
     }
@@ -5706,7 +5682,6 @@
     };
 
 <!-- ======================= END SECTION 21 ======================= -->
-
 
 
 <!-- ================================================================ -->
@@ -9684,7 +9659,7 @@
     var u = tgUser();
     return {
       title: (el("listTitle") || {}).value || "",
-      main_category: cat === "House" ? "ቤት" : (cat === "Item" ? "እቃ" : "መኪና"),
+           main_category: cat === "House" ? "ቤት" : (cat === "Item" ? "እቃ" : "መኪና"),
       category: cat === "House" ? "ቤት" : (cat === "Item" ? "እቃ" : "መኪና"),
       item_kind: (el("listItemKind") || {}).value || "",
       listing_type: "SELL",
