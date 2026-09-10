@@ -10283,11 +10283,89 @@
 </script>
 <!-- ======================= END SECTION 31 ======================= -->
 
-
 <!-- ================================================================ -->
 <!-- SECTION 32 — INITIALIZATION / FINAL LOGIC -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
+<script>
+(function () {
+  "use strict";
+
+  function tgId() {
+    try {
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if (u && u.id != null) return String(u.id);
+    } catch (e) {}
+    try { if (window.state && state.userId) return String(state.userId); } catch (e2) {}
+    return "";
+  }
+
+  function sb() {
+    try {
+      if (typeof ensureSupabaseClient === "function") {
+        var c = ensureSupabaseClient();
+        if (c) return c;
+      }
+    } catch (e) {}
+    return window.supabase || null;
+  }
+
+  function num(v) {
+    if (v == null || v === "") return 0;
+    if (typeof v === "number") return isFinite(v) ? v : 0;
+    var n = Number(String(v).replace(/[^\d.]/g, ""));
+    return isFinite(n) ? n : 0;
+  }
+
+  function normCat(c) {
+    c = String(c || "").toLowerCase().trim();
+    if (/መኪና|car|vehicle|auto/.test(c)) return "car";
+    if (/ቤት|house|property|real|home|apartment/.test(c)) return "house";
+    if (/ንግድ|commercial|business/.test(c)) return "commercial";
+    return c || "other";
+  }
+
+  function listingCat(it) {
+    return normCat(it.main_category || it.category || it.sub_category || "");
+  }
+
+  function listingPrice(it) {
+    return num(it.price || it.amount || it.value);
+  }
+
+  function listingCreated(it) {
+    var s = it.created_at || it.posted_at || it.date || it.updated_at;
+    if (!s) return 0;
+    var t = new Date(s).getTime();
+    return isFinite(t) ? t : 0;
+  }
+
+  function extractExtra(it) {
+    var extra = it.extra_data || {};
+    if (typeof extra === "string") {
+      try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+    }
+    return extra || {};
+  }
+
+  function listingTrans(it) {
+    var e = extractExtra(it);
+    return String(it.transmission || e.transmission || e.gearbox || "").toLowerCase();
+  }
+
+  function listingFuel(it) {
+    var e = extractExtra(it);
+    return String(it.fuel || it.fuel_type || e.fuel_type || e.fuel || "").toLowerCase();
+  }
+
+  function listingBrandModel(it) {
+    var e = extractExtra(it);
+    return [
+      it.brand, it.model, e.brand, e.model,
+      it.sub_category, it.title
+    ].filter(Boolean).join(" ").toLowerCase();
+  }
+
   // ---------- Data fetchers ----------
   function fetchPreferences(uid) {
     var client = sb();
@@ -10342,7 +10420,6 @@
 
   function fetchBuyerRequests(uid) {
     var client = sb();
-    // Prefer recent open buyer requests (global demand + user's own)
     if (!client) return Promise.resolve([]);
     var q = client.from("buyer_requests").select("*").order("created_at", { ascending: false }).limit(60);
     return q.then(function (res) { return (res && res.data) || []; })
@@ -10357,7 +10434,6 @@
   function fetchListingPool(limit) {
     limit = limit || 80;
     var client = sb();
-    // Prefer active sell listings
     if (client) {
       return client.from("listings")
         .select("*")
@@ -10439,7 +10515,6 @@
     var bm = listingBrandModel(listing);
     var price = listingPrice(listing);
 
-    // Favorites category / brand affinity
     var favCatHits = 0;
     var favBrandHits = 0;
     (favorites || []).forEach(function (f) {
@@ -10451,7 +10526,6 @@
     if (favCatHits > 0) pts += Math.min(12, 6 + favCatHits * 2);
     if (favBrandHits > 0) pts += Math.min(8, 4 + favBrandHits * 2);
 
-    // Search alerts query match
     (alerts || []).forEach(function (a) {
       var q = String(a.query || a.keywords || a.search_query || a.category || "").toLowerCase();
       if (!q) return;
@@ -10504,7 +10578,7 @@
     if (ageH <= 24) return 10;
     if (ageH <= 48) return 8;
     if (ageH <= 72) return 6;
-    if (ageH <= 168) return 2; // within a week small nudge
+    if (ageH <= 168) return 2;
     return 0;
   }
 
@@ -10514,7 +10588,6 @@
     var sBuy = scoreBuyerRequests(listing, ctx.requests);
     var sFresh = scoreFreshness(listing);
     var total = sPref + sFav + sBuy + sFresh;
-    // Soft view-count boost for trending fallback (max +5, not part of core 100)
     var views = num(listing.view_count || listing.views_count);
     if (views > 50) total += 3;
     else if (views > 20) total += 1;
@@ -10532,7 +10605,6 @@
     return !!(cat || pMin > 0 || pMax > 0 || prefs.transmission || prefs.fuel || prefs.fuel_type);
   }
 
-  // ---------- CTA banner when prefs empty ----------
   function ensurePrefsCta(show) {
     var grid = document.getElementById("grid");
     if (!grid) return;
@@ -10568,11 +10640,9 @@
     }
   }
 
-  // ---------- Main engine ----------
   function rankListings(listings, ctx) {
     var scored = (listings || []).map(function (it) {
       var sc = computeScore(it, ctx);
-      // attach for UI badge
       it._fypScore = sc.total;
       it.fyp_score = sc.total;
       it.match_score = sc.total;
@@ -10581,7 +10651,6 @@
     });
     scored.sort(function (a, b) {
       if (b.score !== a.score) return b.score - a.score;
-      // tie-break: newer first
       return listingCreated(b.item) - listingCreated(a.item);
     });
     return scored.map(function (r) { return r.item; });
@@ -10630,7 +10699,6 @@
       }
     } catch (e) {}
 
-    // Always clear stale cards when starting a fresh For You load
     try {
       var grid = document.getElementById("grid");
       if (grid && !append) {
@@ -10661,7 +10729,6 @@
       var ctx = { prefs: prefs, favorites: favorites, alerts: alerts, requests: requests };
       var meaningful = hasMeaningfulPrefs(prefs);
 
-      // Filter sell-only for FYP marketplace
       pool = pool.filter(function (it) {
         if (!it) return false;
         var t = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
@@ -10672,14 +10739,12 @@
 
       var ranked = rankListings(pool, ctx);
 
-      // HARD FILTER: always apply when budget exists (do not depend only on meaningful flag)
       if (prefs) {
         var bud = (typeof window.adikaParseBudgetRange === "function")
           ? window.adikaParseBudgetRange(prefs)
           : { min: num(prefs.budget_min || prefs.min_price), max: num(prefs.budget_max || prefs.max_price) };
         var maxP = bud.max || num(prefs.budget_max || prefs.max_price || prefs.price_max) || 0;
         var minP = bud.min || num(prefs.budget_min || prefs.min_price || prefs.price_min) || 0;
-        // Also try localStorage if server prefs empty
         if ((!maxP || maxP >= 999999999)) {
           try {
             var rawP = localStorage.getItem("adika_user_prefs");
@@ -10709,11 +10774,8 @@
         }
       }
 
-      // If no meaningful prefs, still show ranked by fav/alerts/demand/fresh + views
-      // but surface CTA
       ensurePrefsCta(!meaningful);
 
-      // Pagination slice
       var perPage = 20;
       var start = (Math.max(1, page) - 1) * perPage;
       var slice = ranked.slice(start, start + perPage);
@@ -10733,29 +10795,6 @@
       } catch (eO) {}
 
       paintRanked(slice, append);
-
-      // Also try server RPC in parallel for enrichment (non-blocking)
-      try {
-        var client = sb();
-        if (client && uid && typeof client.rpc === "function" && !append) {
-          client.rpc("get_fyp_feed", {
-            p_telegram_id: Number(uid) || uid,
-            p_limit: 20,
-            p_offset: 0
-          }).then(function (res) {
-            var rows = (res && res.data) || [];
-            if (!Array.isArray(rows) || !rows.length) return;
-            // Merge server rows that we don't already have, re-score
-            var seen = {};
-            ranked.forEach(function (r) { if (r && r.id != null) seen[String(r.id)] = 1; });
-            var extra = rows.filter(function (r) { return r && r.id != null && !seen[String(r.id)]; });
-            if (!extra.length) return;
-            var merged = rankListings(ranked.concat(extra), ctx);
-            var top = merged.slice(0, perPage);
-            paintRanked(top, false);
-          }).catch(function () {});
-        }
-      } catch (eRpc) {}
     }).catch(function (err) {
       console.warn("[Adika FYP]", err);
       try {
@@ -10763,7 +10802,6 @@
         var grid3 = document.getElementById("grid");
         if (grid3) {
           grid3.style.opacity = "1";
-          // Keep For You empty-state instead of dumping all listings
           grid3.innerHTML = '<div style="grid-column:1/-1;padding:28px 16px;text-align:center;">' +
             '<div style="font-size:36px;margin-bottom:8px;">🔍</div>' +
             '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px;">በፍላጎትዎ የሚመጥን ነገር አልተገኘም።</div>' +
@@ -10773,7 +10811,6 @@
     });
   };
 
-  // Override loadFYPFeed to use smart engine — always fresh filtered load
   window.loadFYPFeed = function () {
     try {
       if (window.state) {
@@ -10797,7 +10834,6 @@
     }
   };
 
-  // Hook the main load() when feedMode is foryou so infinite scroll / category also benefit
   if (typeof window.load === "function" && !window.load.__smartFypWrapped) {
     var _origLoad = window.load;
     window.load = function (append) {
@@ -10818,18 +10854,14 @@
     window.load.__smartFypWrapped = true;
   }
 
-  // Expose for onboarding completion
   window.triggerSmartFyp = function () {
     window.loadSmartFYP({ page: 1, append: false });
   };
-
-  // When user finishes onboarding, engine already called via loadFYPFeed override
 })();
 </script>
 
-
 <script>
-/* ===== CLEAN FYP BOOT (no duplicate wrappers) ===== */
+/* ===== CLEAN FYP BOOT ===== */
 (function () {
   window.adikaParseBudgetRange = window.adikaParseBudgetRange || function (prefs) {
     prefs = prefs || {};
@@ -10944,7 +10976,8 @@
       }
       return it;
     }
-         function hardFilter(items, prefs) {
+
+    function hardFilter(items, prefs) {
       if (!items || !items.length) return [];
       prefs = prefs || {};
       function parsePrice(v) {
@@ -11082,9 +11115,7 @@
 })();
 </script>
 
-
 <!-- ======================= END SECTION 32 ======================= -->
-  <!-- ================================================================ -->
 <!-- SECTION 33 — CLOSING TAGS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
