@@ -10285,108 +10285,639 @@
 
 
 <!-- ================================================================ -->
-<!-- SECTION 32 — JS: FINAL INITIALIZATION / BOOT -->
+<!-- SECTION 32 — JS: FYP SCORING ENGINE + INITIALIZATION -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
 <script>
-/* ===== FINAL BOOT — Role Selection + Broker Registration ===== */
+/* ===== Data Fetchers ===== */
 (function () {
-  try {
-    state.userId = (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.id) || 0;
-  } catch (e) { state.userId = 0; }
+  "use strict";
 
-  function openM(id) {
-    var m = document.getElementById(id);
-    if (m) { m.classList.remove("hidden"); m.classList.add("flex"); m.style.display = "flex"; }
-  }
-  function closeM(id) {
-    var m = document.getElementById(id);
-    if (m) { m.classList.add("hidden"); m.classList.remove("flex"); m.style.display = "none"; }
-  }
-
-  var roleKey = "adika_role_v1";
-  var hasRole = false;
-  try { hasRole = !!_lsGet(roleKey); } catch (e) {}
-  try { if (!hasRole) _lsSet(roleKey, "user"); } catch (e) {}
-
-  var roleUser = document.getElementById("roleUserBtn");
-  var roleBroker = document.getElementById("roleBrokerBtn");
-  if (roleUser) roleUser.onclick = function() {
-    try { _lsSet(roleKey, "user"); } catch (e) {}
-    closeM("roleSelectModal");
+  function tgId() {
     try {
-      state.feedMode = "all";
-      if (typeof paintFeedModes === "function") paintFeedModes();
-      if (typeof load === "function") load(false);
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if (u && u.id != null) return String(u.id);
+    } catch (e) {}
+    try {
+      if (window.state && state.userId) return String(state.userId);
     } catch (e2) {}
-  };
-  if (roleBroker) roleBroker.onclick = function() {
-    try { _lsSet(roleKey, "broker"); } catch (e) {}
-    closeM("roleSelectModal");
-    openM("brokerRegModal");
-  };
-
-  var brIdPhoto = document.getElementById("brIdPhoto");
-  var brIdPreview = document.getElementById("brIdPreview");
-  var brIdDataUrl = "";
-  if (brIdPhoto) {
-    brIdPhoto.onchange = function() {
-      var f = brIdPhoto.files && brIdPhoto.files[0];
-      if (!f) return;
-      var reader = new FileReader();
-      reader.onload = function(ev) {
-        brIdDataUrl = ev.target.result || "";
-        if (brIdPreview && brIdDataUrl) {
-          brIdPreview.src = brIdDataUrl;
-          brIdPreview.classList.remove("hidden");
-        }
-      };
-      reader.readAsDataURL(f);
-    };
+    return "";
   }
 
-  var brSubmit = document.getElementById("brSubmitBtn");
-  if (brSubmit) brSubmit.onclick = function() {
-    var name = (document.getElementById("brName") || {}).value || "";
-    var phone = (document.getElementById("brPhone") || {}).value || "";
-    var user = (document.getElementById("brUser") || {}).value || "";
-    var cats = [];
-    document.querySelectorAll(".brCat:checked").forEach(function(c) { cats.push(c.value); });
-    var tid = state.userId || 0;
+  function sb() {
     try {
-      if ((!tid || tid === 0) && window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
-        tid = Telegram.WebApp.initDataUnsafe.user.id || 0;
+      if (typeof ensureSupabaseClient === "function") {
+        var c = ensureSupabaseClient();
+        if (c) return c;
       }
     } catch (e) {}
-    if (!name || !phone) { showToast("ስም እና ስልክ ያስፈልጋሉ", "error"); return; }
-    brSubmit.disabled = true;
-    brSubmit.textContent = "እየተመዘገበ ነው…";
-    fetch("/api/brokers/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        telegram_id: tid,
-        name: name,
-        phone: phone,
-        username: user,
-        categories: cats,
-        id_photo: brIdDataUrl || null
+    return window.supabase || null;
+  }
+
+  function fetchPreferences(uid) {
+    var client = sb();
+    if (!client || !uid) return Promise.resolve(null);
+    return client.from("user_preferences")
+      .select("*")
+      .or("user_id.eq." + uid + ",telegram_id.eq." + uid)
+      .limit(1)
+      .then(function (res) {
+        var rows = (res && res.data) || [];
+        return rows[0] || null;
       })
-    }).then(function(r){ return r.json(); }).then(function(d){
-      if (d.success) {
-        showToast("✅ ምዝገባዎ ተልኳል! አድሚን ካረጋገጠ በኋላ ደላላ ይሆናሉ።", "success");
-        closeM("brokerRegModal");
-        brIdDataUrl = "";
-        try { if (brIdPreview) { brIdPreview.classList.add("hidden"); brIdPreview.src = ""; } } catch (e) {}
-      } else {
-        showToast(d.message || "ምዝገባ አልተሳካም", "error");
+      .catch(function () {
+        return fetch("/api/user/preferences?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && (d.preferences || d.data || d)) || null; })
+          .catch(function () { return null; });
+      });
+  }
+
+  function fetchFavorites(uid) {
+    var client = sb();
+    if (!client || !uid) return Promise.resolve([]);
+    return client.from("favorites")
+      .select("listing_id, category, tags, created_at")
+      .or("user_id.eq." + uid + ",telegram_id.eq." + uid)
+      .limit(80)
+      .then(function (res) { return (res && res.data) || []; })
+      .catch(function () { return []; });
+  }
+
+  function fetchSearchAlerts(uid) {
+    var client = sb();
+    if (!client || !uid) return Promise.resolve([]);
+    return client.from("search_alerts")
+      .select("*")
+      .or("user_id.eq." + uid + ",telegram_id.eq." + uid)
+      .limit(40)
+      .then(function (res) { return (res && res.data) || []; })
+      .catch(function () { return []; });
+  }
+
+  function fetchBuyerRequests(uid) {
+    var client = sb();
+    if (!client) return Promise.resolve([]);
+    var q = client.from("buyer_requests").select("*").order("created_at", { ascending: false }).limit(60);
+    return q.then(function (res) { return (res && res.data) || []; })
+      .catch(function () { return []; });
+  }
+
+  function fetchListingPool(limit) {
+    limit = limit || 80;
+    return fetch("/api/listings?page=1&limit=" + limit + "&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var items = (d && (d.items || d.listings || d.results || d.data)) || [];
+        return Array.isArray(items) ? items : [];
+      })
+      .catch(function () { return []; });
+  }
+
+  window.adikaFetchPreferences = fetchPreferences;
+  window.adikaFetchFavorites = fetchFavorites;
+  window.adikaFetchSearchAlerts = fetchSearchAlerts;
+  window.adikaFetchBuyerRequests = fetchBuyerRequests;
+  window.adikaFetchListingPool = fetchListingPool;
+})();
+</script>
+
+<script>
+/* ===== FYP Scoring Engine ===== */
+(function () {
+  "use strict";
+
+  function tgId() {
+    try {
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if (u && u.id != null) return String(u.id);
+    } catch (e) {}
+    try {
+      if (window.state && state.userId) return String(state.userId);
+    } catch (e2) {}
+    return "";
+  }
+
+  function sb() {
+    try {
+      if (typeof ensureSupabaseClient === "function") {
+        var c = ensureSupabaseClient();
+        if (c) return c;
       }
-    }).catch(function(){ showToast("ኔትወርክ ስህተት", "error"); })
-    .finally(function(){
-      brSubmit.disabled = false;
-      brSubmit.textContent = "✅ መመዝገብ / Submit";
+    } catch (e) {}
+    return window.supabase || null;
+  }
+
+  function num(v) {
+    if (v == null || v === "") return 0;
+    if (typeof v === "number") return isFinite(v) ? v : 0;
+    var n = Number(String(v).replace(/[^\d.]/g, ""));
+    return isFinite(n) ? n : 0;
+  }
+
+  function normCat(c) {
+    c = String(c || "").toLowerCase().trim();
+    if (/መኪና|car|vehicle|auto/.test(c)) return "car";
+    if (/ቤት|house|property|real|home|apartment/.test(c)) return "house";
+    if (/ንግድ|commercial|business/.test(c)) return "commercial";
+    return c || "other";
+  }
+
+  function listingCat(it) {
+    return normCat(it.main_category || it.category || it.sub_category || "");
+  }
+
+  function listingPrice(it) {
+    return num(it.price || it.amount || it.value);
+  }
+
+  function listingCreated(it) {
+    var s = it.created_at || it.posted_at || it.date || it.updated_at;
+    if (!s) return 0;
+    var t = new Date(s).getTime();
+    return isFinite(t) ? t : 0;
+  }
+
+  function extractExtra(it) {
+    var extra = it.extra_data || {};
+    if (typeof extra === "string") {
+      try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+    }
+    return extra || {};
+  }
+
+  function listingTrans(it) {
+    var e = extractExtra(it);
+    return String(it.transmission || e.transmission || e.gearbox || "").toLowerCase();
+  }
+
+  function listingFuel(it) {
+    var e = extractExtra(it);
+    return String(it.fuel || it.fuel_type || e.fuel_type || e.fuel || "").toLowerCase();
+  }
+
+  function listingBrandModel(it) {
+    var e = extractExtra(it);
+    return [
+      it.brand, it.model, e.brand, e.model,
+      it.sub_category, it.title
+    ].filter(Boolean).join(" ").toLowerCase();
+  }
+
+  /* ===== Image Normalization ===== */
+  function normalizeImages(it) {
+    if (!it || typeof it !== "object") return it;
+    var urls = [];
+    function add(v) {
+      if (!v) return;
+      if (Array.isArray(v)) { v.forEach(add); return; }
+      if (typeof v === "object") {
+        var u = v.url || v.src || v.image_url || v.photo_url || "";
+        if (u) add(u);
+        return;
+      }
+      var s = String(v).trim();
+      if (!s) return;
+      if (s.charAt(0) === "[") {
+        try { add(JSON.parse(s)); return; } catch (e) {}
+      }
+      if (/^https?:\/\//i.test(s) || s.indexOf("data:image") === 0 || s.indexOf("/") === 0) {
+        if (urls.indexOf(s) < 0) urls.push(s);
+      }
+    }
+    add(it.image_url); add(it.photo_url); add(it.telegram_image);
+    add(it.images); add(it.photos); add(it.photo_urls); add(it.listing_photos);
+    add(it.image); add(it.photo);
+    try {
+      var ex = it.extra_data;
+      if (typeof ex === "string") { try { ex = JSON.parse(ex); } catch (e) { ex = null; } }
+      if (ex && typeof ex === "object") {
+        add(ex.image_url); add(ex.photo_url); add(ex.images); add(ex.photos); add(ex.photo_urls);
+      }
+    } catch (eE) {}
+    if (urls.length) {
+      it.image_url = urls[0];
+      it.photo_url = urls[0];
+      it.photos = urls.slice();
+      it.photo_urls = urls.slice();
+      it.images = urls.slice();
+      it._resolved_photos = urls.slice();
+    }
+    return it;
+  }
+  window.normalizeImages = normalizeImages;
+
+  /* ===== Budget Parser ===== */
+  window.adikaParseBudgetRange = function (prefs) {
+    prefs = prefs || {};
+    function parseNum(v) {
+      if (v == null || v === "") return 0;
+      if (typeof v === "number") return isFinite(v) ? v : 0;
+      var s = String(v).replace(/,/g, "").trim();
+      var mMul = s.match(/^([\d.]+)\s*(m|M|ሚ|ሚሊ|million|ሚሊዮን)/i);
+      if (mMul) return Math.round(parseFloat(mMul[1]) * 1000000);
+      var kMul = s.match(/^([\d.]+)\s*(k|K|ሺ)/i);
+      if (kMul) return Math.round(parseFloat(kMul[1]) * 1000);
+      var n = Number(s.replace(/[^\d.]/g, ""));
+      return isFinite(n) ? n : 0;
+    }
+    var minP = parseNum(prefs.price_min || prefs.min_price || prefs.budget_min || prefs.min_budget);
+    var maxP = parseNum(prefs.price_max || prefs.max_price || prefs.budget_max || prefs.max_budget);
+    var raw = prefs.budget || prefs.budget_range || prefs.price_range || prefs.budgetRange || "";
+    if ((!minP && !maxP) && raw) {
+      var text = String(raw);
+      var range = text.match(/([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|million|ሚሊዮን)?\s*[-–—toእስከ]+\s*([\d.,]+)\s*(m|M|k|K|ሚ|ሚሊ|million|ሚሊዮን)?/i);
+      if (range) {
+        function scale(v, u) {
+          v = parseFloat(String(v).replace(/,/g, "")) || 0;
+          u = (u || "").toLowerCase();
+          if (/m|ሚ|mil/.test(u)) return Math.round(v * 1000000);
+          if (/k|ሺ/.test(u)) return Math.round(v * 1000);
+          if (/ሚሊ|million/i.test(text) && v < 1000) return Math.round(v * 1000000);
+          return Math.round(v);
+        }
+        minP = scale(range[1], range[2]);
+        maxP = scale(range[3], range[4]);
+      }
+    }
+    if (minP > 0 && maxP > 0 && maxP < minP) { var t = minP; minP = maxP; maxP = t; }
+    return { min: minP || 0, max: maxP || 0, label: raw || "" };
+  };
+
+  /* ===== Hard Filter (SAFE — falls back to showing all if budget too strict) ===== */
+  function hardFilter(items, prefs) {
+    if (!items || !items.length) return [];
+    prefs = prefs || {};
+    function parsePrice(v) {
+      var n = Number(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
+      return isFinite(n) ? n : 0;
+    }
+    var bud = window.adikaParseBudgetRange(prefs);
+    var maxP = bud.max || parsePrice(prefs.budget_max || prefs.max_price || prefs.price_max);
+    var minP = bud.min || parsePrice(prefs.budget_min || prefs.min_price || prefs.price_min);
+
+    // Elastic budget expansion
+    try {
+      var likeP = parsePrice(localStorage.getItem("adika_last_like_price") || 0);
+      var viewP = parsePrice(localStorage.getItem("adika_last_view_price") || 0);
+      var elastic = Math.max(likeP * 1.25, viewP * 1.15, maxP || 0);
+      if (elastic > (maxP || 0)) maxP = elastic;
+    } catch (eEl) {}
+
+    var cats = prefs.categories || [];
+    var wantCar = false, wantHouse = false, wantItem = false;
+    cats.forEach(function (c) {
+      var cl = String(c).toLowerCase();
+      if (/እቃ|item|goods|ቁሳቁስ/.test(cl)) wantItem = true;
+      else if (/መኪና|car/.test(cl)) wantCar = true;
+      else if (/ቤት|house|property/.test(cl)) wantHouse = true;
+    });
+    var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
+    if (/እቃ|item|goods|ቁሳቁስ/.test(mc)) wantItem = true;
+    if (/መኪና|car/.test(mc)) wantCar = true;
+    if (/ቤት|house/.test(mc)) wantHouse = true;
+    if (!wantCar && !wantHouse && !wantItem) {
+      wantCar = true; wantHouse = true; wantItem = true;
+    }
+
+    function bucket(it) {
+      var extra = it.extra_data || {};
+      if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+      if (it.item_kind || extra.item_kind) return "item";
+      var raw = String(it.main_category || it.category || "").toLowerCase();
+      if (/እቃ|item|goods|ቁሳቁስ/.test(raw)) return "item";
+      if (/ቤት|house|property|ንብረት/.test(raw)) return "house";
+      if (/መኪና|car/.test(raw)) return "car";
+      return "other";
+    }
+
+    // Safety: if filtering produces 0 results, fall back to unfiltered
+    var filtered = items.filter(function (it) {
+      if (!it) return false;
+      var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
+      if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
+      var b = bucket(it);
+      if (b === "item") return !!wantItem;
+      if (b === "house") return !!wantHouse;
+      if (b === "car") {
+        if (!wantCar) return false;
+        var price = parsePrice(it.price || it.asking_price || 0);
+        // Only filter by price if we actually got a valid budget AND price is known
+        if (maxP > 0 && maxP < 999999999 && price > 0) {
+          if (price > maxP) return false;
+          if (minP > 0 && price < minP) return false;
+        }
+        return true;
+      }
+      // 'other' category — include if user wants any category
+      return wantCar || wantHouse || wantItem;
+    }).map(function (it) {
+      return normalizeImages(it);
+    });
+
+    // SAFETY FALLBACK: If hard filter removed everything, show all normalized items
+    if (!filtered.length && items.length) {
+      console.warn("[Adika FYP] Hard filter removed all items — falling back to all listings");
+      return items.map(normalizeImages);
+    }
+    return filtered;
+  }
+  window.hardFilter = hardFilter;
+
+  /* ===== Scoring Functions ===== */
+  function scorePreferences(listing, prefs) {
+    if (!prefs) return 0;
+    var pts = 0;
+    var prefCat = normCat(prefs.main_category || prefs.category || prefs.preferred_category || "");
+    var lCat = listingCat(listing);
+    if (prefCat && prefCat !== "other" && prefCat === lCat) pts += 16;
+    else if (prefCat && lCat && prefCat.slice(0, 3) === lCat.slice(0, 3)) pts += 6;
+
+    var bud = window.adikaParseBudgetRange(prefs);
+    var price = listingPrice(listing);
+    if (price > 0 && (bud.min > 0 || bud.max > 0)) {
+      if (bud.min > 0 && bud.max > 0) {
+        if (price >= bud.min && price <= bud.max) pts += 14;
+      } else if (bud.max > 0 && price <= bud.max * 1.15) pts += 10;
+      else if (bud.min > 0 && price >= bud.min * 0.85) pts += 8;
+    }
+    return Math.min(40, pts);
+  }
+
+  function scoreFavoritesAlerts(listing, favorites, alerts) {
+    var pts = 0;
+    var lCat = listingCat(listing);
+    var bm = listingBrandModel(listing);
+    var favCatHits = 0;
+    (favorites || []).forEach(function (f) {
+      if (normCat(f.category || "") === lCat) favCatHits++;
+    });
+    if (favCatHits > 0) pts += Math.min(12, 6 + favCatHits * 2);
+    (alerts || []).forEach(function (a) {
+      var q = String(a.query || a.category || "").toLowerCase();
+      if (q && lCat && q.indexOf(lCat) >= 0) pts += 4;
+    });
+    return Math.min(30, pts);
+  }
+
+  function scoreBuyerRequests(listing, requests) {
+    if (!requests || !requests.length) return 0;
+    var lCat = listingCat(listing);
+    var price = listingPrice(listing);
+    var best = 0;
+    requests.forEach(function (r) {
+      var local = 0;
+      if (normCat(r.category || "") === lCat) local += 8;
+      var bmax = num(r.budget_max || r.max_price);
+      if (price > 0 && bmax > 0 && price <= bmax * 1.1) local += 5;
+      if (local > best) best = local;
+    });
+    return Math.min(20, best);
+  }
+
+  function scoreFreshness(listing) {
+    var created = listingCreated(listing);
+    if (!created) return 0;
+    var ageH = (Date.now() - created) / 3600000;
+    if (ageH <= 24) return 10;
+    if (ageH <= 48) return 8;
+    if (ageH <= 72) return 6;
+    if (ageH <= 168) return 2;
+    return 0;
+  }
+
+  function computeScore(listing, ctx) {
+    var sPref = scorePreferences(listing, ctx.prefs);
+    var sFav = scoreFavoritesAlerts(listing, ctx.favorites, ctx.alerts);
+    var sBuy = scoreBuyerRequests(listing, ctx.requests);
+    var sFresh = scoreFreshness(listing);
+    var total = sPref + sFav + sBuy + sFresh;
+    var views = num(listing.view_count);
+    if (views > 50) total += 3;
+    else if (views > 20) total += 1;
+    return Math.min(100, Math.round(total));
+  }
+
+  function hasMeaningfulPrefs(prefs) {
+    if (!prefs) return false;
+    var cat = prefs.main_category || prefs.category;
+    var bud = window.adikaParseBudgetRange(prefs);
+    return !!(cat || bud.min > 0 || bud.max > 0);
+  }
+
+  function ensurePrefsCta(show) {
+    var grid = document.getElementById("grid");
+    if (!grid) return;
+    var existing = document.getElementById("fypPrefsCtaBanner");
+    if (!show) {
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+      return;
+    }
+    if (existing) return;
+    var banner = document.createElement("div");
+    banner.id = "fypPrefsCtaBanner";
+    banner.style.gridColumn = "1 / -1";
+    banner.innerHTML =
+      '<div class="fyp-cta-text">' +
+        '<span class="lang-am">✨ የግል ምክሮች ለማግኘት ምርጫዎችዎን ያዘጋጁ</span>' +
+        '<div style="font-size:9px;font-weight:600;color:#64748b;margin-top:2px;">Top trending shown until you personalize</div>' +
+      "</div>" +
+      '<button type="button" id="fypOpenPrefsBtn">አዘጋጅ</button>';
+    grid.parentNode.insertBefore(banner, grid);
+    var btn = document.getElementById("fypOpenPrefsBtn");
+    if (btn) {
+      btn.onclick = function (e) {
+        e.preventDefault();
+        if (typeof window.openFYPWithOnboarding === "function") window.openFYPWithOnboarding();
+      };
+    }
+  }
+
+  function rankListings(listings, ctx) {
+    var scored = (listings || []).map(function (it) {
+      var sc = computeScore(it, ctx);
+      it._fypScore = sc;
+      it.match_score = sc;
+      return { item: it, score: sc };
+    });
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      return listingCreated(b.item) - listingCreated(a.item);
+    });
+    return scored.map(function (r) { return r.item; });
+  }
+
+  function paintRanked(items, append) {
+    try {
+      if (typeof finishLoading === "function") {
+        finishLoading(items, !!append, items.length >= 12);
+        return;
+      }
+    } catch (e) {}
+    try {
+      if (window.__adikaPaintListings) {
+        window.__adikaPaintListings(items);
+        return;
+      }
+    } catch (e2) {}
+    var g = document.getElementById("grid");
+    if (!g) return;
+    if (!append) g.innerHTML = "";
+    items.forEach(function (it) {
+      try {
+        if (window.__adikaCreateCard) g.appendChild(window.__adikaCreateCard(it));
+      } catch (e3) {}
+    });
+    window.__adikaLiveItems = items;
+  }
+
+  /* ===== Main Engine ===== */
+  window.loadSmartFYP = function (opts) {
+    opts = opts || {};
+    var uid = tgId();
+    var append = !!opts.append;
+    var page = opts.page || 1;
+
+    try {
+      if (window.state) {
+        state.feedMode = "foryou";
+        state.category = "";
+        state.loading = true;
+        if (!append) state.page = 1;
+      }
+    } catch (e) {}
+
+    try {
+      var grid = document.getElementById("grid");
+      if (grid && !append) {
+        grid.innerHTML = "";
+        grid.style.opacity = "0.65";
+      }
+    } catch (eG) {}
+
+    Promise.all([
+      window.adikaFetchPreferences(uid),
+      window.adikaFetchFavorites(uid),
+      window.adikaFetchSearchAlerts(uid),
+      window.adikaFetchBuyerRequests(uid),
+      window.adikaFetchListingPool(100)
+    ]).then(function (results) {
+      var prefs = results[0];
+      var favorites = results[1] || [];
+      var alerts = results[2] || [];
+      var requests = results[3] || [];
+      var pool = results[4] || [];
+
+      // If server prefs empty, try localStorage
+      if (!prefs) {
+        try {
+          var raw = localStorage.getItem("adika_user_prefs");
+          if (raw) prefs = JSON.parse(raw);
+        } catch (e) {}
+      }
+
+      var ctx = { prefs: prefs, favorites: favorites, alerts: alerts, requests: requests };
+      var meaningful = hasMeaningfulPrefs(prefs);
+
+      // Sell-only
+      pool = pool.filter(function (it) {
+        if (!it) return false;
+        var t = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
+        if (/BUY|REQUEST|WANT/.test(t)) return false;
+        if (it.is_buyer_request) return false;
+        return true;
+      });
+
+      var ranked = rankListings(pool, ctx);
+      ranked = hardFilter(ranked, prefs || {});
+
+      ensurePrefsCta(!meaningful);
+
+      var perPage = 20;
+      var start = (Math.max(1, page) - 1) * perPage;
+      var slice = ranked.slice(start, start + perPage);
+
+      try {
+        if (window.state) {
+          state.loading = false;
+          state.page = page;
+          state.hasMore = ranked.length > start + perPage;
+          state.items = append ? (state.items || []).concat(slice) : slice;
+        }
+      } catch (eS) {}
+
+      try {
+        var grid2 = document.getElementById("grid");
+        if (grid2) grid2.style.opacity = "1";
+      } catch (eO) {}
+
+      paintRanked(slice, append);
+    }).catch(function (err) {
+      console.warn("[Adika FYP]", err);
+      try {
+        if (window.state) state.loading = false;
+        var grid3 = document.getElementById("grid");
+        if (grid3) grid3.style.opacity = "1";
+      } catch (e) {}
     });
   };
+
+  window.loadFYPFeed = function () {
+    try {
+      if (window.state) {
+        state.feedMode = "foryou";
+        state.category = "";
+        state.page = 1;
+        state.items = [];
+        state.q = "";
+        state.loading = false;
+      }
+    } catch (e) {}
+    try {
+      var g = document.getElementById("grid");
+      if (g) { g.innerHTML = ""; g.style.opacity = "0.55"; }
+    } catch (eG) {}
+    try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
+    if (typeof window.loadSmartFYP === "function") {
+      window.loadSmartFYP({ page: 1, append: false });
+    }
+  };
+
+  window.triggerSmartFyp = function () {
+    window.loadSmartFYP({ page: 1, append: false });
+  };
+
+  window.adikaComputeFypScores = function (listings, ctx) {
+    return rankListings(listings, ctx || {});
+  };
+})();
+</script>
+
+<script>
+/* ===== Boot ===== */
+(function () {
+  function maybeBootFyp() {
+    try {
+      var onboarded = false;
+      try { onboarded = localStorage.getItem("adika_onboarded") === "true"; } catch (e) {}
+      if (onboarded && typeof window.loadFYPFeed === "function") {
+        setTimeout(function () { window.loadFYPFeed(); }, 350);
+      }
+    } catch (e) {}
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", maybeBootFyp);
+  } else {
+    maybeBootFyp();
+  }
+
+  try {
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.ready();
+      setTimeout(maybeBootFyp, 500);
+    }
+  } catch (e) {}
 })();
 </script>
 
