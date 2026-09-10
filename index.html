@@ -586,9 +586,11 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
 
 
 <!-- ================================================================ -->
+<!-- ================================================================ -->
 <!-- SECTION 04 — COMPONENT STYLES -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
+    /* ============ Detail Modal — Light + Cyan Services ============ */
     #modalSheet {
       background: linear-gradient(180deg, #f0fdfa 0%, #f8fafc 45%, #f1f5f9 100%) !important;
       color: #0f172a;
@@ -605,7 +607,6 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       padding-bottom: 0.5rem !important;
       gap: 0.5rem;
     }
-    /* Push reco+alert block to bottom of available space — kills empty gap above bottom bar */
     #modalRecoSection {
       margin-top: auto !important;
       margin-bottom: 0 !important;
@@ -615,7 +616,6 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     #modalAlertCard.detail-alert-compact {
       margin-bottom: 0 !important;
     }
-    /* Detail hero photo — landscape frame (wider), crop top/bottom not sides */
     #modalMediaContainer {
       position: relative !important;
       width: calc(100% - 0.75rem) !important;
@@ -653,7 +653,6 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       height: 100% !important;
       max-width: none !important;
       max-height: none !important;
-      /* landscape frame: keep subject; crop top/bottom rather than sides */
       object-fit: cover !important;
       object-position: center 35% !important;
       display: block !important;
@@ -722,6 +721,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       font-size: 12px; font-weight: 700;
     }
 
+    /* ============ Detail Glass Cards ============ */
     .detail-glass-card {
       background: rgba(255,255,255,0.92);
       backdrop-filter: blur(10px);
@@ -731,7 +731,6 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       box-shadow: 0 2px 10px rgba(15,23,42,0.04);
       color: #0f172a;
     }
-    /* Cyan/blue bordered digital services card */
     .detail-hub-services {
       background: linear-gradient(135deg, rgba(236,254,255,0.95) 0%, rgba(239,246,255,0.9) 100%) !important;
       border: 2px solid rgba(34,211,238,0.75) !important;
@@ -771,6 +770,8 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     .detail-hub-svc .svc-sub {
       font-size: 8px; color: #94a3b8; font-weight: 600; line-height: 1.2;
     }
+
+    /* ============ Detail Badges ============ */
     .detail-badge {
       display: inline-flex; align-items: center; gap: 0.25rem;
       padding: 0.2rem 0.55rem; border-radius: 999px;
@@ -792,6 +793,8 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       background: #ecfeff; color: #0d9488;
       border: 1px solid rgba(34,211,238,0.45);
     }
+
+    /* ============ Modal Bottom Bar ============ */
     #modalSpecs p {
       margin: 0;
       line-height: 1.45;
@@ -824,13 +827,14 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     #modalDynamicActions .uppercase {
       color: #0f172a !important;
     }
-    /* Tighter reco section — less bottom dead space */
     #modalRecoScroll {
       max-height: none;
       overflow-x: auto;
       overflow-y: hidden;
       -webkit-overflow-scrolling: touch;
     }
+
+    /* ============ Reco Cards ============ */
     .reco-card {
       flex: 0 0 135px;
       width: 135px;
@@ -881,8 +885,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       display: block;
     }
 
-
-    /* Glass chat bubbles */
+    /* ============ Glass Chat Bubbles ============ */
     .chat-bubble-user {
       margin-left: 2rem; padding: 0.75rem 0.9rem; border-radius: 1.05rem 1.05rem 0.35rem 1.05rem;
       background: linear-gradient(135deg, #0e7490, #14b8a6);
@@ -923,7 +926,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     }
     .chat-send-btn:active { transform: scale(0.94); }
 
-    /* Corporate tool cards */
+    /* ============ Corporate Tool Cards ============ */
     .tool-card-pro {
       padding: 0.4rem 0.45rem; border-radius: 0.75rem; text-align: left;
       background: rgba(6, 182, 212, 0.08);
@@ -978,6 +981,8 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     body.hub-results-open #opportunityCards { display: block !important; }
     body.hub-results-open #hubSeniorCta { display: none !important; }
     body.hub-results-open #aiToolsView { overflow: hidden !important; }
+
+    /* ============ Tools Ambient Background ============ */
     .tools-ambient-wrap { position: relative; overflow: hidden; }
     .tools-ambient-blob {
       position: absolute; width: 11rem; height: 11rem; border-radius: 9999px;
@@ -985,6 +990,8 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     }
     .tools-ambient-blob.cyan { top: 1.5rem; left: -1rem; background: rgba(6, 182, 212, 0.32); }
     .tools-ambient-blob.indigo { bottom: 2rem; right: -1rem; background: rgba(99, 102, 241, 0.28); }
+
+    /* ============ Budget Glass Card ============ */
     .budget-glass-card {
       position: relative; z-index: 1;
       background: rgba(255,255,255,0.12);
@@ -1005,6 +1012,8 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       border: 1px solid rgba(255,255,255,0.25) !important;
       color: #e0f2fe !important;
     }
+
+    /* ============ Animations ============ */
     @keyframes toolCardIn {
       from { opacity: 0; transform: translateY(14px) scale(0.96); }
       to { opacity: 1; transform: translateY(0) scale(1); }
@@ -1028,6 +1037,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       100% { background-position: 0% 100%; }
     }
 
+    /* ============ Tools Grid ============ */
     .tools-grid-compact {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem;
       flex: 0 1 auto; height: auto; align-items: start;
@@ -1035,6 +1045,8 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     @media (max-width: 340px) {
       .tools-grid-compact { grid-template-columns: repeat(2, 1fr); }
     }
+
+    /* ============ Opportunity Cards ============ */
     .opp-card {
       border-radius: 0.75rem; padding: 0.5rem 0.6rem;
       background: linear-gradient(145deg, rgba(15,23,42,0.92), rgba(8,47,73,0.88));
@@ -1050,7 +1062,8 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       border: 1px solid rgba(34,211,238,0.4);
       text-align: center;
     }
-    /* Sticky chat input at absolute bottom of analysis view */
+
+    /* ============ Analysis View ============ */
     #analysisView { display: none; flex-direction: column; }
     #analysisView.flex { display: flex !important; }
     #analysisView .chat-shell {
@@ -1074,8 +1087,25 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     #analysisView #advisorChatLog {
       padding-bottom: 5.5rem !important;
     }
-  
 
+    /* ============ Smart Tools Banner ============ */
+    .smart-dot {
+      width: 6px; height: 6px; border-radius: 999px;
+      background: rgba(255,255,255,0.25); transition: all 0.3s ease;
+      border: none; padding: 0; cursor: pointer;
+    }
+    .smart-dot.active {
+      width: 18px; background: #22d3ee;
+    }
+    .smart-slide { display: none; }
+    .smart-slide.active { display: block; animation: smartFade 0.4s ease; }
+    @keyframes smartFade {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    #smartToolsBanner { max-height: 78px; }
+    .line-clamp-1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
 
 <!-- ======================= END SECTION 04 ======================= -->
 
