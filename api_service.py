@@ -93,24 +93,34 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 def normalize_listing_main_category(data: Optional[Dict[str, Any]] = None, category: str = "", **hints) -> str:
     """
-    Strict main_category assignment for listings inserts.
-    Returns canonical Amharic tags used across the app filters:
-      - 'መኪና' for any vehicle / car payload
-      - 'ቤት' for any property / house payload
-    Never returns mixed or empty values when signals exist.
+    Canonical main_category for listings:
+      - 'መኪና' vehicle
+      - 'ቤት' property
+      - 'እቃ' goods / items
+    Explicit item tags win so TVs never become cars.
     """
     data = data or {}
-    raw = (
+    raw = str(
         category
         or data.get("category")
         or data.get("main_category")
         or data.get("type")
         or data.get("listing_category")
         or ""
-    )
-    raw_l = str(raw).strip().lower()
+    ).strip()
+    raw_l = raw.lower()
 
-    # Explicit field signals from the form
+    item_signals = [
+        data.get("item_kind"), data.get("item_title"),
+        hints.get("item_kind"), hints.get("item_title"),
+    ]
+    has_item = any(str(x or "").strip() for x in item_signals) or raw_l in (
+        "እቃ", "item", "items", "goods", "ቁሳቁስ", "ቁሳቁስ እና ምርቶች"
+    ) or ("እቃ" in raw) or ("ቁሳቁስ" in raw)
+
+    if has_item:
+        return "እቃ"
+
     car_signals = [
         data.get("car_model"), data.get("car_type"), data.get("fuel_type"),
         data.get("transmission"), data.get("mileage"), data.get("chassis_number"),
@@ -125,7 +135,6 @@ def normalize_listing_main_category(data: Optional[Dict[str, Any]] = None, categ
     has_car = any(str(x or "").strip() for x in car_signals)
     has_house = any(str(x or "").strip() for x in house_signals)
 
-    # Keyword blobs
     blob = " ".join(
         str(x or "") for x in (
             raw,
@@ -137,7 +146,7 @@ def normalize_listing_main_category(data: Optional[Dict[str, Any]] = None, categ
 
     vehicle_kw = (
         "መኪና", "car", "cars", "vehicle", "auto", "toyota", "suzuki", "hyundai",
-        "vin", "chassis", "mileage", "transmission", "fuel", "sedan", "suv", "pickup"
+        "vin", "chassis", "mileage", "transmission", "sedan", "suv", "pickup"
     )
     property_kw = (
         "ቤት", "house", "houses", "home", "property", "villa", "apartment",
@@ -155,33 +164,32 @@ def normalize_listing_main_category(data: Optional[Dict[str, Any]] = None, categ
         or any(k in blob for k in property_kw)
     )
 
-    # Prefer explicit form fields over ambiguous blob
-    if has_car and not has_house:
-        return "መኪና"
     if has_house and not has_car:
         return "ቤት"
-    if is_vehicle and not is_property:
+    if has_car and not has_house:
         return "መኪና"
     if is_property and not is_vehicle:
         return "ቤት"
-    if is_vehicle:
+    if is_vehicle and not is_property:
         return "መኪና"
     if is_property:
         return "ቤት"
-    # Default marketplace inventory is cars
-    if raw_l in ("cars", "car"):
+    if is_vehicle:
         return "መኪና"
     if raw_l in ("houses", "house"):
         return "ቤት"
-    return "መኪና" if not raw else ("መኪና" if "መኪና" in raw or "car" in raw_l else ("ቤት" if "ቤት" in raw or "house" in raw_l else "መኪና"))
-
-
+    if raw_l in ("cars", "car"):
+        return "መኪና"
+    if "ቤት" in raw or "house" in raw_l:
+        return "ቤት"
+    if "መኪና" in raw or "car" in raw_l:
+        return "መኪና"
+    return "መኪና"
 
 
 # Optional bot globals (set by webapp at runtime)
 bot_app = None
 bot_loop = None
-
 
 
 def unify_listing_images(item):
@@ -260,6 +268,7 @@ def unify_listings_payload(items):
 
 
 # ============================ END SECTION 02 ============================
+
 # ==============================================================================
 # SECTION 03 — AUTHENTICATION & DEVICE SECURITY
 # Change/maintain this entire section as one unit. Logic is unchanged.
@@ -1844,7 +1853,6 @@ def _dispatch_listing_alerts(category, price, title, listing_id, model_hint=""):
 
 
 # ============================ END SECTION 08 ============================
-    # ==============================================================================
     # SECTION 09 — LISTING CREATION / SUBMISSION
     # Change/maintain this entire section as one unit. Logic is unchanged.
     # ==============================================================================
@@ -1930,6 +1938,8 @@ def register_api_routes(web_app):
             urgent_text = "⚡ **URGENT SALE / አስቸኳይ ሽያጭ!** " if urgent_sale else ""
             full_desc = f"{urgent_text}"
             full_desc += f"💰 Price: {price} ETB ({negotiable_text})\n"
+            item_kind = data.get('item_kind') or ''
+            item_title = data.get('item_title') or data.get('title') or ''
             if category == 'መኪና':
                 if car_model: full_desc += f"🚘 Model: {car_model}\n"
                 elif car_type: full_desc += f"🚗 Type: {car_type}\n"
@@ -1938,6 +1948,9 @@ def register_api_routes(web_app):
                 if mileage: full_desc += f"🛣️ Mileage: {mileage} KM\n"
                 if condition: full_desc += f"📊 Condition: {condition}\n"
                 if chassis_number: full_desc += f"🛡️ Chassis/VIN: {chassis_number}\n"
+            elif category == 'እቃ':
+                if item_kind: full_desc += f"📦 Item type: {item_kind}\n"
+                if item_title: full_desc += f"📝 Title: {item_title}\n"
             else:
                 if house_type: full_desc += f"🏠 Type: {house_type}\n"
                 if location_area: full_desc += f"📍 Location: {location_area}\n"
@@ -1975,7 +1988,9 @@ def register_api_routes(web_app):
                 'car_type': car_type, 'car_model': car_model, 'location_area': location_area,
                 'negotiable': negotiable, 'urgent_sale': urgent_sale,
                 'chassis_number': chassis_number, 'has_chassis': bool(chassis_number),
-                'telegram_user': telegram_user
+                'telegram_user': telegram_user,
+                'item_kind': data.get('item_kind') or '',
+                'item_title': data.get('item_title') or data.get('title') or '',
             }
             safe_photos = []
             if isinstance(photos, list):
@@ -1984,7 +1999,10 @@ def register_api_routes(web_app):
                     if len(s) > 350000:
                         s = s[:350000]
                     safe_photos.append(s)
-            resolved_sub = sub_category or (car_model if category == 'መኪና' else (f"{house_type} • {location_area}" if house_type and location_area else (house_type or location_area)))
+            if category == 'እቃ':
+                resolved_sub = sub_category or data.get('item_title') or data.get('title') or data.get('item_kind') or 'እቃ'
+            else:
+                resolved_sub = sub_category or (car_model if category == 'መኪና' else (f"{house_type} • {location_area}" if house_type and location_area else (house_type or location_area)))
             if not (full_desc or "").strip():
                 full_desc = f"{category} {sub_category or car_model or 'listing'} — {price} ETB | {phone}"
             req_id = add_listing(
@@ -2056,6 +2074,7 @@ def register_api_routes(web_app):
 
 
     # ============================ END SECTION 09 ============================
+
     # ==============================================================================
     # SECTION 10 — QR SCANNING & LAND MAP
     # Change/maintain this entire section as one unit. Logic is unchanged.
