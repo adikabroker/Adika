@@ -3636,6 +3636,7 @@
 
 
 
+
 <!-- ================================================================ -->
 <!-- SECTION 18 — FAVORITES -->
 <!-- Change/maintain this entire section as one unit. -->
@@ -5242,7 +5243,6 @@
 
 
 <!-- ======================= END SECTION 20 ======================= -->
-
 <!-- SECTION 21 — NOTIFICATIONS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
@@ -5480,24 +5480,16 @@
         try {
           var cat = (state.category || "").trim();
           if (state.feedMode === "cat" && cat) {
-            function bucketOf(it) {
-              var m = String((it && (it.main_category || it.category)) || "").toLowerCase();
-              var kind = String((it && it.item_kind) || "").toLowerCase();
-              if (kind || /እቃ|item|electronics|furniture|appliance|ቁሳቁስ/.test(m)) return "item";
-              if (/ቤት|house|property|ንብረት/.test(m)) return "house";
-              if (/መኪና|car/.test(m)) return "car";
-              return "other";
-            }
             var wantHouse = /ቤት|house|property|ንብረት/i.test(cat);
-            var wantCar = /መኪና|car/i.test(cat) && !/እቃ|item/i.test(cat);
-            var wantItem = /እቃ|item|ቁሳቁስ/i.test(cat);
+            var wantCar = /መኪና|car|vehicle/i.test(cat);
+            var wantItem = /እቃ|item|electronics|furniture/i.test(cat);
             if (wantHouse || wantCar || wantItem) {
               items = items.filter(function (it) {
                 if (!it) return false;
-                var b = bucketOf(it);
-                if (wantItem) return b === "item";
-                if (wantHouse) return b === "house";
-                if (wantCar) return b === "car";
+                var blob = [it.main_category, it.category, it.sub_category, it.item_kind, it.title].join(" ").toLowerCase();
+                if (wantItem) return /እቃ|item|electronics|furniture|appliance/.test(blob);
+                if (wantHouse) return /ቤት|house|apartment|villa|ንብረት/.test(blob) && !/እቃ|item/.test(blob);
+                if (wantCar) return /መኪና|car|toyota|vehicle/.test(blob) && !/እቃ|item/.test(blob);
                 return false;
               });
             }
@@ -5720,6 +5712,7 @@
     };
 
 <!-- ======================= END SECTION 21 ======================= -->
+
 
 
 <!-- ================================================================ -->
@@ -8256,12 +8249,11 @@
       // Prefill category strip: For You first
       function paintFeedModes() {
         if (!catsEl) return;
-        try { catsEl.className = "flex w-full gap-1 pb-0.5"; } catch (eC) {}
         var modes = [
           { id: "foryou", am: "✨ ለእርስዎ", en: "✨ For You" },
           { id: "መኪና", am: "🚗 መኪና", en: "🚗 Cars" },
-          { id: "ቤት", am: "🏠 ቤት", en: "🏠 Homes" },
-          { id: "እቃ", am: "📦 ቁሳቁስ እና ምርቶች", en: "📦 Goods" }
+          { id: "ቤት", am: "🏠 ቤት", en: "🏠 Houses" },
+          { id: "እቃ", am: "📦 እቃ", en: "📦 Items" }
         ];
         catsEl.innerHTML = "";
         modes.forEach(function(m) {
@@ -8272,8 +8264,8 @@
             || (state.feedMode === "all" && m.id === "all")
             || (state.feedMode === "cat" && state.category === m.id);
           b.className = on
-            ? "cat-pill active flex-1 min-w-0 px-1 py-1.5 rounded-full text-[10px] font-bold text-center leading-tight transition-all"
-            : "cat-pill flex-1 min-w-0 px-1 py-1.5 rounded-full text-[10px] font-bold text-center leading-tight transition-all bg-white/20 text-white";
+            ? "cat-pill active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all"
+            : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all";
           b.innerHTML = '<span class="lang-am">' + m.am + '</span><span class="lang-en">' + m.en + '</span>';
           b.onclick = function() {
             if (m.id === "foryou") {
@@ -8404,7 +8396,6 @@
 
 
 <!-- ======================= END SECTION 26 ======================= -->
-
 
 
 
@@ -9897,6 +9888,7 @@
 
 
 <!-- ======================= END SECTION 30 ======================= -->
+
 
 
 
