@@ -269,6 +269,7 @@ def unify_listings_payload(items):
 
 # ============================ END SECTION 02 ============================
 
+
 # ==============================================================================
 # SECTION 03 — AUTHENTICATION & DEVICE SECURITY
 # Change/maintain this entire section as one unit. Logic is unchanged.
@@ -2067,13 +2068,8 @@ def register_api_routes(web_app):
             logger.error(f"submit_listing error: {e}", exc_info=True)
             return jsonify({"success": False, "status": "error", "message": str(e)}), 500
 
-
-
-
-
-
-
     # ============================ END SECTION 09 ============================
+
 
     # ==============================================================================
     # SECTION 10 — QR SCANNING & LAND MAP
