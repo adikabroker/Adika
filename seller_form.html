@@ -307,6 +307,23 @@ document.addEventListener("click", function(ev){
       const [parking, setParking] = useState(false);
       const [houseCondition, setHouseCondition] = useState('');
       const [houseType, setHouseType] = useState('');
+      const [itemKind, setItemKind] = useState('electronics');
+      const [itemTitle, setItemTitle] = useState('');
+      const ITEM_KINDS = [
+        ['electronics','ኤሌክትሮኒክስ','Electronics'],
+        ['furniture','የቤት ዕቃ / መሳሪያ','Furniture / Appliances'],
+        ['clothing','ልብስ / ጫማ / ቦርሳ','Clothing / Shoes / Bags'],
+        ['jewelry','ጌጥ / ሰዓት','Jewelry / Watches'],
+        ['beauty','ውበት / ጤና','Beauty / Health'],
+        ['baby','የህጻን እቃ','Baby Stuff'],
+        ['bikes','ሞተርሳይክል / ብስክሌት','Motorcycles / Bicycles'],
+        ['autoparts','የመኪና መለዋወጫ','Auto Parts'],
+        ['crafts','ስዕል / እደ-ጥበብ','Paintings / Crafts'],
+        ['books','መጽሐፍ / ጨዋታ','Books / Games'],
+        ['machines','ማሽን / ጄነሬተር','Machineries / Generators'],
+        ['pets','የቤት እንስሳ','Pets'],
+        ['other','ሌላ','Others']
+      ];
       const [price, setPrice] = useState('');
       const [negotiable, setNegotiable] = useState(true);
       const [urgent, setUrgent] = useState(false);
@@ -363,7 +380,11 @@ document.addEventListener("click", function(ev){
       };
 
       const removePhoto = (i) => setPhotos(prev => prev.filter((_, idx) => idx !== i));
-      const canNext1 = category && (category === 'መኪና' ? (carModel || carType || condition) : (houseType || locationArea));
+      const canNext1 = category && (
+        category === 'መኪና' ? (carModel || carType || condition) :
+        category === 'እቃ' ? (itemTitle || itemKind) :
+        (houseType || locationArea)
+      );
       const canSubmit = Boolean(description && description.trim());
 
       const resetForm = () => {
@@ -381,6 +402,8 @@ document.addEventListener("click", function(ev){
         setParking(false);
         setHouseCondition('');
         setHouseType('');
+        setItemKind('electronics');
+        setItemTitle('');
         setPrice('');
         setNegotiable(true);
         setUrgent(false);
@@ -394,10 +417,19 @@ document.addEventListener("click", function(ev){
         setSubmitting(true);
         setStatus('');
         const isCar = category === 'መኪና';
-        const subCat = isCar ? (carModel || carType) : (houseType ? `${houseType}${locationArea ? ` • ${locationArea}` : ''}` : locationArea);
+        const isItem = category === 'እቃ';
+        const kindLabel = (ITEM_KINDS.find(k => k[0] === itemKind) || ['other','ሌላ','Other'])[1];
+        const subCat = isCar
+          ? (carModel || carType)
+          : isItem
+            ? (itemTitle || kindLabel)
+            : (houseType ? `${houseType}${locationArea ? ` • ${locationArea}` : ''}` : locationArea);
         const data = {
           user_id: user.id || 'unknown',
-          category,
+          category: isItem ? 'እቃ' : category,
+          main_category: isItem ? 'እቃ' : category,
+          item_kind: isItem ? itemKind : '',
+          title: isItem ? (itemTitle || kindLabel) : (isCar ? (carModel || carType) : (houseType || locationArea)),
           sub_category: subCat,
           price: parsePrice(price),
           negotiable,
@@ -406,11 +438,13 @@ document.addEventListener("click", function(ev){
           phone,
           telegram_user: telegramUser,
           photos,
-          car_model: carModel,
+          car_model: isCar ? carModel : '',
           location_area: locationArea,
-          chassis_number: chassisNumber,
+          chassis_number: isCar ? chassisNumber : '',
           ...(isCar ? {
             fuel_type: fuel, transmission, mileage, condition, car_type: carType, chassis_number: chassisNumber
+          } : isItem ? {
+            item_kind: itemKind, item_title: itemTitle
           } : {
             bedrooms, bathrooms,
             parking: parking ? 'አለ' : 'የለም',
@@ -528,13 +562,38 @@ document.addEventListener("click", function(ev){
                       <span className="lang-am">📦 ምድብ</span>
                       <span className="lang-en">📦 Category</span>
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Chip am="🚗 መኪና" en="🚗 Vehicle" active={category==='መኪና'} onClick={() => setCategory('መኪና')} />
                       <Chip am="🏠 ቤት" en="🏠 Property" active={category==='ቤት'} onClick={() => setCategory('ቤት')} />
+                      <Chip am="📦 እቃ" en="📦 Goods" active={category==='እቃ'} onClick={() => setCategory('እቃ')} />
                     </div>
                   </div>
 
-                  {category === 'መኪና' ? (
+                  {category === 'እቃ' ? (
+                    <>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">📦 የእቃ አይነት</span>
+                          <span className="lang-en">📦 Item type</span>
+                        </label>
+                        <select value={itemKind} onChange={e => setItemKind(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold">
+                          {ITEM_KINDS.map(([slug, am, en]) => (
+                            <option key={slug} value={slug}>{am} / {en}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 mb-1 block">
+                          <span className="lang-am">📝 ርዕስ / ስም</span>
+                          <span className="lang-en">📝 Title</span>
+                        </label>
+                        <input type="text" value={itemTitle} onChange={e => setItemTitle(e.target.value)}
+                          placeholder="Samsung TV 32 inch / Sofa set"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-[#16acbd] outline-none text-xs font-bold" />
+                      </div>
+                    </>
+                  ) : category === 'መኪና' ? (
                     <>
                       <div>
                         <label className="text-xs font-bold text-slate-700 mb-1 block">
