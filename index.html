@@ -1306,6 +1306,7 @@
 <!-- ================================================================ -->
   <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.12); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
+      <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
         <div class="flex-1 grid grid-cols-2 gap-1 p-0.5 bg-black/15 rounded-xl">
           <button id="tabSell" type="button"
@@ -1321,11 +1322,19 @@
             <span class="lang-en">Buyers</span>
           </button>
         </div>
+
+        <!-- Global AM | EN Language Switcher Button -->
         <div class="flex items-center bg-black/20 p-0.5 rounded-xl shrink-0">
-          <button id="langAmBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm">AM</button>
-          <button id="langEnBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white">EN</button>
+          <button id="langAmBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm">
+            AM
+          </button>
+          <button id="langEnBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white">
+            EN
+          </button>
         </div>
       </div>
+
+      <!-- Search + Broker glass badge -->
       <div class="flex items-center gap-2">
         <div class="relative flex-1 min-w-0">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
@@ -1337,22 +1346,28 @@
           <span>🤝</span><span class="lang-am">ደላላ የት?</span><span class="lang-en">Find Broker</span>
         </button>
       </div>
-      <div id="cats" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-        <button type="button" class="cat-pill active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all" data-id="foryou">
+
+      <!-- Third Row: Category Pills (Horizontal Scroll) -->
+      <div id="cats" class="flex w-full gap-1 pb-0.5">
+        <button type="button" class="cat-pill active flex-1 min-w-0 px-1 py-1.5 rounded-full text-[10px] font-bold text-center leading-tight transition-all" data-id="foryou">
           <span class="lang-am">✨ ለእርስዎ</span><span class="lang-en">✨ For You</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="መኪና">
+        <button type="button" class="cat-pill flex-1 min-w-0 px-1 py-1.5 rounded-full text-[10px] font-bold text-center leading-tight transition-all bg-white/20 text-white" data-id="መኪና">
           <span class="lang-am">🚗 መኪና</span><span class="lang-en">🚗 Cars</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ቤት">
-          <span class="lang-am">🏠 ቤት</span><span class="lang-en">🏠 Property</span>
+        <button type="button" class="cat-pill flex-1 min-w-0 px-1 py-1.5 rounded-full text-[10px] font-bold text-center leading-tight transition-all bg-white/20 text-white" data-id="ቤት">
+          <span class="lang-am">🏠 ቤት</span><span class="lang-en">🏠 Homes</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="እቃ">
-          <span class="lang-am">📦 እቃ</span><span class="lang-en">📦 Items</span>
+        <button type="button" class="cat-pill flex-1 min-w-0 px-1 py-1.5 rounded-full text-[9px] font-bold text-center leading-tight transition-all bg-white/20 text-white" data-id="እቃ">
+          <span class="lang-am">📦 ቁሳቁስ እና ምርቶች</span><span class="lang-en">📦 Goods</span>
         </button>
       </div>
     </div>
   </header>
+
+  <!-- ================================================================= -->
+  <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
+  <!-- ================================================================= -->
 <!-- ======================= END SECTION 06 ======================= -->
 
 
@@ -5451,16 +5466,24 @@
         try {
           var cat = (state.category || "").trim();
           if (state.feedMode === "cat" && cat) {
+            function bucketOf(it) {
+              var m = String((it && (it.main_category || it.category)) || "").toLowerCase();
+              var kind = String((it && it.item_kind) || "").toLowerCase();
+              if (kind || /እቃ|item|electronics|furniture|appliance|ቁሳቁስ/.test(m)) return "item";
+              if (/ቤት|house|property|ንብረት/.test(m)) return "house";
+              if (/መኪና|car/.test(m)) return "car";
+              return "other";
+            }
             var wantHouse = /ቤት|house|property|ንብረት/i.test(cat);
-            var wantCar = /መኪና|car|vehicle/i.test(cat);
-            var wantItem = /እቃ|item|electronics|furniture/i.test(cat);
+            var wantCar = /መኪና|car/i.test(cat) && !/እቃ|item/i.test(cat);
+            var wantItem = /እቃ|item|ቁሳቁስ/i.test(cat);
             if (wantHouse || wantCar || wantItem) {
               items = items.filter(function (it) {
                 if (!it) return false;
-                var blob = [it.main_category, it.category, it.sub_category, it.item_kind, it.title].join(" ").toLowerCase();
-                if (wantItem) return /እቃ|item|electronics|furniture|appliance/.test(blob);
-                if (wantHouse) return /ቤት|house|apartment|villa|ንብረት/.test(blob) && !/እቃ|item/.test(blob);
-                if (wantCar) return /መኪና|car|toyota|vehicle/.test(blob) && !/እቃ|item/.test(blob);
+                var b = bucketOf(it);
+                if (wantItem) return b === "item";
+                if (wantHouse) return b === "house";
+                if (wantCar) return b === "car";
                 return false;
               });
             }
@@ -8220,11 +8243,12 @@
       // Prefill category strip: For You first
       function paintFeedModes() {
         if (!catsEl) return;
+        try { catsEl.className = "flex w-full gap-1 pb-0.5"; } catch (eC) {}
         var modes = [
           { id: "foryou", am: "✨ ለእርስዎ", en: "✨ For You" },
           { id: "መኪና", am: "🚗 መኪና", en: "🚗 Cars" },
-          { id: "ቤት", am: "🏠 ቤት", en: "🏠 Houses" },
-          { id: "እቃ", am: "📦 እቃ", en: "📦 Items" }
+          { id: "ቤት", am: "🏠 ቤት", en: "🏠 Homes" },
+          { id: "እቃ", am: "📦 ቁሳቁስ እና ምርቶች", en: "📦 Goods" }
         ];
         catsEl.innerHTML = "";
         modes.forEach(function(m) {
@@ -8235,8 +8259,8 @@
             || (state.feedMode === "all" && m.id === "all")
             || (state.feedMode === "cat" && state.category === m.id);
           b.className = on
-            ? "cat-pill active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all"
-            : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all";
+            ? "cat-pill active flex-1 min-w-0 px-1 py-1.5 rounded-full text-[10px] font-bold text-center leading-tight transition-all"
+            : "cat-pill flex-1 min-w-0 px-1 py-1.5 rounded-full text-[10px] font-bold text-center leading-tight transition-all bg-white/20 text-white";
           b.innerHTML = '<span class="lang-am">' + m.am + '</span><span class="lang-en">' + m.en + '</span>';
           b.onclick = function() {
             if (m.id === "foryou") {
@@ -8367,6 +8391,7 @@
 
 
 <!-- ======================= END SECTION 26 ======================= -->
+
 
 
 
