@@ -8393,25 +8393,11 @@
 
 
 <!-- ================================================================ -->
-<!-- SECTION 29 — FYP SCORING -->
+<!-- SECTION 29 — JS: FYP SCORING ENGINE -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
-  function fitFeed(){
-    var hdr = document.getElementById("adikaFixedHeader");
-    var main = document.getElementById("adikaMainFeed");
-    if(!hdr || !main) return;
-    var h = Math.ceil(hdr.getBoundingClientRect().height || 0);
-    main.style.paddingTop = (h + 6) + "px";
-  }
-  fitFeed();
-  window.addEventListener("resize", fitFeed);
-  setTimeout(fitFeed, 200);
-  setTimeout(fitFeed, 800);
-})();
-</script>
-
 <script>
-(function(){
+(function () {
   function uid(){
     try{
       var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
@@ -8425,13 +8411,16 @@
       return [u.first_name, u.last_name].filter(Boolean).join(" ") || u.username || "Adika User";
     }catch(e){ return "Adika User"; }
   }
+
   var ctx = { listing_id:"", peer_id:"", listing_title:"" };
+
   function showInbox(on){
     var v = document.getElementById("inboxView");
     if(!v) return;
     if(on){ v.classList.remove("hidden"); v.classList.add("flex"); v.style.display="flex"; }
     else { v.classList.add("hidden"); v.classList.remove("flex"); v.style.display="none"; }
   }
+
   function loadThreads(){
     var list = document.getElementById("inboxThreadList");
     var pane = document.getElementById("inboxThreadPane");
@@ -8456,6 +8445,7 @@
         if(list) list.innerHTML = '<div class="text-center text-xs text-rose-500 py-6">መልእክት መጫን አልተሳካም</div>';
       });
   }
+
   function openThread(lid, peer, title){
     ctx.listing_id = String(lid||"");
     ctx.peer_id = String(peer||"");
@@ -8468,6 +8458,7 @@
     if(meta) meta.textContent = ctx.listing_title || ("ውይይት #" + ctx.listing_id);
     loadThread();
   }
+
   function loadThread(){
     var log = document.getElementById("inboxThreadLog");
     if(!log) return;
@@ -8482,6 +8473,7 @@
         log.scrollTop = log.scrollHeight;
       }).catch(function(){});
   }
+
   function sendMsg(){
     var box = document.getElementById("inboxCompose");
     var text = box ? String(box.value||"").trim() : "";
@@ -8503,6 +8495,7 @@
       loadThread();
     }).catch(function(){});
   }
+
   window.openInbox = function(){
     showInbox(true);
     try{
@@ -8511,6 +8504,7 @@
     }catch(e){}
     loadThreads();
   };
+
   window.closeInbox = function(){
     showInbox(false);
     try{
@@ -8518,32 +8512,28 @@
       var f=document.getElementById("fabBtn"); if(f) f.style.display="";
     }catch(e){}
   };
-<!-- ======================= END SECTION 29 ======================= -->
 
-
-<!-- SECTION 30 — DATA FETCHERS -->
-<!-- Change/maintain this entire section as one unit. -->
-<!-- ================================================================ -->
   function sellerFromListing(listing){
     listing = listing || {};
     var extra = listing.extra_data || {};
     if(typeof extra === "string"){ try{ extra = JSON.parse(extra); }catch(e){ extra = {}; } }
     var peer = listing.user_chat_id || listing.user_id || listing.seller_id || listing.telegram_id || listing.owner_id || extra.user_id || extra.telegram_id || extra.chat_id || "";
-    var uname = listing.telegram_username || listing.telegram_user || listing.user_name || extra.telegram_user || extra.telegram_username || extra.username || "";
-    if(!uname){
+    var unameVal = listing.telegram_username || listing.telegram_user || listing.user_name || extra.telegram_user || extra.telegram_username || extra.username || "";
+    if(!unameVal){
       var m = String(listing.description||"").match(/@([A-Za-z0-9_]{4,})/);
-      if(m) uname = m[1];
+      if(m) unameVal = m[1];
     }
-    uname = String(uname||"").replace(/^@/,"");
-    if(!peer && uname) peer = uname;
-    return { peer: String(peer||""), uname: uname };
+    unameVal = String(unameVal||"").replace(/^@/,"");
+    if(!peer && unameVal) peer = unameVal;
+    return { peer: String(peer||""), uname: unameVal };
   }
+
   window.openListingMessage = function(listing){
     listing = listing || (window.state && state.selectedItem) || {};
     var s = sellerFromListing(listing);
     var peer = s.peer;
     if(!peer){
-      var fallback = s.uname || "AkremFF";
+      var fallback = s.uname || "AdikaMarketplaceBot";
       var url = "https://t.me/" + fallback;
       try{
         if(window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) Telegram.WebApp.openTelegramLink(url);
@@ -8562,12 +8552,14 @@
     }catch(e){}
     openThread(listing.id, peer, listing.sub_category || listing.title || listing.brand || "ማስታወቂያ");
   };
+
   document.addEventListener("click", function(e){
     var th = e.target.closest && e.target.closest(".inbox-thread");
     if(th){
       openThread(th.getAttribute("data-lid"), th.getAttribute("data-peer"), th.getAttribute("data-title"));
     }
   });
+
   var back = document.getElementById("inboxBackBtn");
   var close = document.getElementById("inboxCloseBtn");
   if(back) back.onclick = function(){
@@ -8581,58 +8573,9 @@
 })();
 </script>
 
-<!-- standalone promo rotator -->
-
 <script>
 (function(){
-  function splitTitle(el){
-    var title = el.querySelector(".promo-title");
-    if(!title || title.dataset.split==="1") return;
-    var raw = title.textContent || "";
-    title.innerHTML = raw.split("").map(function(ch,i){
-      if(ch===" ") return " ";
-      return '<span class="promo-letter" style="animation-delay:'+(i*28)+'ms">'+ch+'</span>';
-    }).join("");
-    title.dataset.split = "1";
-  }
-  function run(){
-    var slides = document.querySelectorAll("#promoSlides .promo-slide");
-    var dots = document.querySelectorAll("#promoDots .promo-dot");
-    if(!slides.length) return;
-    slides.forEach(splitTitle);
-    var i = 0;
-    function paint(n){
-      i = ((n % slides.length)+slides.length)%slides.length;
-      slides.forEach(function(s,k){
-        var on = k===i;
-        s.style.opacity = on ? "1" : "0";
-        s.style.pointerEvents = on ? "auto" : "none";
-        s.style.transform = on ? "translateY(0) scale(1)" : "translateY(12px) scale(0.97)";
-        s.style.transition = "opacity .4s ease, transform .45s cubic-bezier(.16,1,.3,1)";
-        s.classList.toggle("is-active", on);
-        if(on){
-          s.querySelectorAll(".promo-letter").forEach(function(L){
-            L.style.animation = "none";
-            void L.offsetWidth;
-            L.style.animation = "";
-          });
-        }
-      });
-      dots.forEach(function(d,k){
-        d.style.background = k===i ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.28)";
-        d.style.width = k===i ? "10px" : "6px";
-      });
-    }
-    paint(0);
-    setInterval(function(){ paint(i+1); }, 3400);
-  }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", run);
-  else run();
-})();
-</script>
-<script>
-(function () {
-  function el(id) { return document.getElementById(id); }
+  function el(id){ return document.getElementById(id); }
   function showM(id) {
     var n = el(id); if (!n) return;
     n.classList.remove("hidden");
@@ -8912,7 +8855,6 @@
       min_price: Number((el("reqMin") || {}).value || 0) || 0,
       max_price: Number((el("reqMax") || {}).value || 0) || 0,
       budget: Number((el("reqMax") || {}).value || (el("reqMin") || {}).value || 0) || 0,
-      // some schemas store budget in price
       price: Number((el("reqMax") || {}).value || (el("reqMin") || {}).value || 0) || 0,
       listing_type: "BUY",
       req_type: "BUY",
@@ -9069,17 +9011,6 @@
 </script>
 
 <script>
-
-
-<!-- ======================= END SECTION 30 ======================= -->
-
-
-
-
-<!-- ================================================================ -->
-<!-- SECTION 31 — EVENT HANDLERS & UTILITIES -->
-<!-- Change/maintain this entire section as one unit. -->
-<!-- ================================================================ -->
 /* ===== FAB + bottom nav instant restore + budget price helper ===== */
 (function () {
   function forceShowChrome() {
@@ -9100,7 +9031,6 @@
         f.style.setProperty("opacity", "1", "important");
         f.style.setProperty("pointer-events", "auto", "important");
         f.style.setProperty("z-index", "95", "important");
-        // centered like default
         f.style.setProperty("left", "50%", "important");
         f.style.setProperty("right", "auto", "important");
         f.style.setProperty("transform", "translateX(-50%)", "important");
@@ -9120,7 +9050,6 @@
   window.restoreHomeChrome = forceShowChrome;
   window.instantShowHomeChrome = forceShowChrome;
 
-  // Wrap closeDetailModalPreserve
   var _cp = window.closeDetailModalPreserve;
   window.closeDetailModalPreserve = function () {
     try { if (typeof _cp === "function") _cp(); } catch (e) {}
@@ -9139,7 +9068,6 @@
     setTimeout(forceShowChrome, 100);
   };
 
-  // Any back/close that hides modal
   document.addEventListener("click", function (e) {
     var t = e.target;
     if (!t) return;
@@ -9154,7 +9082,6 @@
     }
   }, true);
 
-  // When modal overlay loses flex/hidden
   try {
     var ov = document.getElementById("modalOverlay");
     if (ov && !ov.__chromeObs) {
@@ -9167,7 +9094,6 @@
     }
   } catch (e) {}
 
-  // openDetailModal: after fill price use formatListingPrice with full item
   var _od = window.openDetailModal;
   if (typeof _od === "function" && !_od.__budgetWrap) {
     window.openDetailModal = function (it, photos) {
@@ -9183,7 +9109,6 @@
     window.openDetailModal.__budgetWrap = true;
   }
 
-  // Initial
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
       forceShowChrome();
@@ -9194,11 +9119,166 @@
   }
 })();
 </script>
+<!-- ======================= END SECTION 29 ======================= -->
 
+
+<!-- ================================================================ -->
+<!-- SECTION 30 — JS: DATA FETCHERS & INBOX -->
+<!-- Change/maintain this entire section as one unit. -->
+<!-- ================================================================ -->
+<script>
+/* ===== Data Fetchers: Preferences, Favorites, Alerts, Requests, Pool ===== */
+(function () {
+  "use strict";
+
+  function tgId() {
+    try {
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if (u && u.id != null) return String(u.id);
+    } catch (e) {}
+    try {
+      if (window.state && state.userId) return String(state.userId);
+    } catch (e2) {}
+    try {
+      if (typeof getTelegramUserId === "function") {
+        var t = getTelegramUserId();
+        if (t) return String(t);
+      }
+    } catch (e3) {}
+    return "";
+  }
+
+  function sb() {
+    try {
+      if (typeof ensureSupabaseClient === "function") {
+        var c = ensureSupabaseClient();
+        if (c) return c;
+      }
+    } catch (e) {}
+    return window.supabase || null;
+  }
+
+  function fetchPreferences(uid) {
+    var client = sb();
+    if (!client || !uid) return Promise.resolve(null);
+    return client.from("user_preferences")
+      .select("*")
+      .or("user_id.eq." + uid + ",telegram_id.eq." + uid)
+      .limit(1)
+      .then(function (res) {
+        var rows = (res && res.data) || [];
+        return rows[0] || null;
+      })
+      .catch(function () {
+        return fetch("/api/user/preferences?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && (d.preferences || d.data || d)) || null; })
+          .catch(function () { return null; });
+      });
+  }
+
+  function fetchFavorites(uid) {
+    var client = sb();
+    if (!client || !uid) return Promise.resolve([]);
+    return client.from("favorites")
+      .select("listing_id, category, tags, created_at")
+      .or("user_id.eq." + uid + ",telegram_id.eq." + uid)
+      .limit(80)
+      .then(function (res) { return (res && res.data) || []; })
+      .catch(function () {
+        return fetch("/api/favorites?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && (d.items || d.favorites || d.data)) || []; })
+          .catch(function () { return []; });
+      });
+  }
+
+  function fetchSearchAlerts(uid) {
+    var client = sb();
+    if (!client || !uid) return Promise.resolve([]);
+    return client.from("search_alerts")
+      .select("*")
+      .or("user_id.eq." + uid + ",telegram_id.eq." + uid)
+      .limit(40)
+      .then(function (res) { return (res && res.data) || []; })
+      .catch(function () {
+        return fetch("/api/search-alerts?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && (d.items || d.alerts || d.data)) || []; })
+          .catch(function () { return []; });
+      });
+  }
+
+  function fetchBuyerRequests(uid) {
+    var client = sb();
+    if (!client) return Promise.resolve([]);
+    var q = client.from("buyer_requests").select("*").order("created_at", { ascending: false }).limit(60);
+    return q.then(function (res) { return (res && res.data) || []; })
+      .catch(function () {
+        return fetch("/api/buyer-requests?limit=60", { credentials: "same-origin" })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && (d.items || d.requests || d.data)) || []; })
+          .catch(function () { return []; });
+      });
+  }
+
+  function fetchListingPool(limit) {
+    limit = limit || 80;
+    var client = sb();
+    if (client) {
+      return client.from("listings")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(limit)
+        .then(function (res) {
+          var rows = (res && res.data) || [];
+          if (rows.length) return rows;
+          throw new Error("empty");
+        })
+        .catch(function () {
+          return fetch("/api/listings?page=1&limit=" + limit + "&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              var items = (d && (d.items || d.listings || d.results || d.data)) || [];
+              return Array.isArray(items) ? items : [];
+            })
+            .catch(function () { return []; });
+        });
+    }
+    return fetch("/api/listings?page=1&limit=" + limit + "&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var items = (d && (d.items || d.listings || d.results || d.data)) || [];
+        return Array.isArray(items) ? items : [];
+      })
+      .catch(function () { return []; });
+  }
+
+  window.adikaFetchPreferences = fetchPreferences;
+  window.adikaFetchFavorites = fetchFavorites;
+  window.adikaFetchSearchAlerts = fetchSearchAlerts;
+  window.adikaFetchBuyerRequests = fetchBuyerRequests;
+  window.adikaFetchListingPool = fetchListingPool;
+})();
+</script>
 
 <script>
-/* ===== Unified buyer budget / price resolver (all column aliases) ===== */
+/* ===== FYP Recommendation Engine: 100-Point Scoring ===== */
 (function () {
+  "use strict";
+
+  function tgId() {
+    try {
+      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+      if (u && u.id != null) return String(u.id);
+    } catch (e) {}
+    try {
+      if (window.state && state.userId) return String(state.userId);
+    } catch (e2) {}
+    return "";
+  }
+
   function num(v) {
     if (v == null || v === "") return 0;
     if (typeof v === "number") return isFinite(v) ? v : 0;
@@ -9206,546 +9286,457 @@
     return isFinite(n) ? n : 0;
   }
 
-  /** Collect min/max budget from ANY known column name */
-  window.adikaExtractBudget = function (item) {
-    item = item || {};
-    var extra = item.extra_data;
+  function normCat(c) {
+    c = String(c || "").toLowerCase().trim();
+    if (/መኪና|car|vehicle|auto/.test(c)) return "car";
+    if (/ቤት|house|property|real|home|apartment/.test(c)) return "house";
+    if (/ንግድ|commercial|business/.test(c)) return "commercial";
+    return c || "other";
+  }
+
+  function listingCat(it) {
+    return normCat(it.main_category || it.category || it.sub_category || "");
+  }
+
+  function listingPrice(it) {
+    return num(it.price || it.amount || it.value);
+  }
+
+  function listingCreated(it) {
+    var s = it.created_at || it.posted_at || it.date || it.updated_at;
+    if (!s) return 0;
+    var t = new Date(s).getTime();
+    return isFinite(t) ? t : 0;
+  }
+
+  function extractExtra(it) {
+    var extra = it.extra_data || {};
     if (typeof extra === "string") {
       try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
     }
-    extra = extra || {};
-
-    var minCandidates = [
-      item.budget_min, item.min_budget, item.budgetMin, item.minBudget,
-      item.min_price, item.minPrice, item.price_min, item.priceMin,
-      item.from_price, item.low_budget, item.budget_from,
-      extra.budget_min, extra.min_budget, extra.min_price, extra.budget
-    ];
-    var maxCandidates = [
-      item.budget_max, item.max_budget, item.budgetMax, item.maxBudget,
-      item.max_price, item.maxPrice, item.price_max, item.priceMax,
-      item.to_price, item.high_budget, item.budget_to,
-      extra.budget_max, extra.max_budget, extra.max_price
-    ];
-    var flatCandidates = [
-      item.budget, item.price, item.amount, item.value,
-      extra.budget, extra.price
-    ];
-
-    var bmin = 0, bmax = 0, bflat = 0;
-    for (var i = 0; i < minCandidates.length; i++) {
-      var a = num(minCandidates[i]);
-      if (a > 0) { bmin = a; break; }
-    }
-    for (var j = 0; j < maxCandidates.length; j++) {
-      var b = num(maxCandidates[j]);
-      if (b > 0) { bmax = b; break; }
-    }
-    for (var k = 0; k < flatCandidates.length; k++) {
-      var c = num(flatCandidates[k]);
-      if (c > 0) { bflat = c; break; }
-    }
-    if (bmin > 0 && bmax > 0 && bmax < bmin) {
-      var tmp = bmin; bmin = bmax; bmax = tmp;
-    }
-    return { min: bmin, max: bmax, flat: bflat };
-  };
-
-  function fmtCompact(n) {
-    n = Math.round(Number(n) || 0);
-    if (n >= 1000000) {
-      var m = n / 1000000;
-      return (Math.abs(m - Math.round(m)) < 0.05 ? Math.round(m) : m.toFixed(1)) + "M";
-    }
-    if (n >= 1000) {
-      var k = n / 1000;
-      return (Math.abs(k - Math.round(k)) < 0.05 ? Math.round(k) : k.toFixed(1)) + "K";
-    }
-    try { return n.toLocaleString("en-US"); } catch (e) { return String(n); }
+    return extra || {};
   }
 
-  window.adikaIsBuyerItem = function (item) {
-    if (!item) return false;
-    if (item.is_buyer_request || item._source === "buyers" || item._source === "buyer_requests") return true;
-    var blob = [item.req_type, item.action_type, item.listing_type, item.post_type, item.type, item.status, item._source].join(" ");
-    if (/BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(blob)) return true;
-    var bud = window.adikaExtractBudget(item);
-    var priceN = num(item.price);
-    // has budget fields and no real sell price
-    if ((bud.min > 0 || bud.max > 0) && !(priceN > 0 && priceN !== bud.min && priceN !== bud.max && priceN !== bud.flat)) {
-      // still could be sell — only treat as buy if explicit buy markers OR only budget without sell title flow
-    }
-    return false;
-  };
+  function listingTrans(it) {
+    var e = extractExtra(it);
+    return String(it.transmission || e.transmission || e.gearbox || "").toLowerCase();
+  }
 
-  window.adikaCardPriceText = function (item) {
-    item = item || {};
-    var bud = window.adikaExtractBudget(item);
-    var isBuy = window.adikaIsBuyerItem(item);
-    // Always prefer budget range when any budget column is set
-    if (bud.min > 0 && bud.max > 0) {
-      return fmtCompact(bud.min) + " – " + fmtCompact(bud.max) + " ETB";
-    }
-    if (bud.max > 0) return "እስከ " + fmtCompact(bud.max) + " ETB";
-    if (bud.min > 0) return "ከ " + fmtCompact(bud.min) + " ETB";
-    if (isBuy && bud.flat > 0) return fmtCompact(bud.flat) + " ETB";
-    // Seller price
-    var priceN = num(item.price);
-    if (priceN > 0 && priceN <= 300000000) {
-      try { return Math.round(priceN).toLocaleString("en-US") + " ETB"; } catch (e) { return priceN + " ETB"; }
-    }
-    if (bud.flat > 0 && bud.flat <= 300000000) {
-      try { return Math.round(bud.flat).toLocaleString("en-US") + " ETB"; } catch (e2) { return bud.flat + " ETB"; }
-    }
-    return "ለዋጋ ደውሉ";
-  };
+  function listingFuel(it) {
+    var e = extractExtra(it);
+    return String(it.fuel || it.fuel_type || e.fuel_type || e.fuel || "").toLowerCase();
+  }
 
-  // Override formatListingPrice globally
-  window.formatListingPrice = function (raw, item) {
-    if (item && typeof item === "object") return window.adikaCardPriceText(item);
-    if (raw && typeof raw === "object") return window.adikaCardPriceText(raw);
-    var n = num(raw);
-    if (n > 0 && n <= 300000000) {
-      try { return Math.round(n).toLocaleString("en-US") + " ETB"; } catch (e) { return n + " ETB"; }
-    }
-    return "ለዋጋ ደውሉ";
-  };
+  function listingBrandModel(it) {
+    var e = extractExtra(it);
+    return [
+      it.brand, it.model, e.brand, e.model,
+      it.sub_category, it.title
+    ].filter(Boolean).join(" ").toLowerCase();
+  }
 
-  function relabelPrices() {
-    var items = window.__adikaLiveItems || [];
-    document.querySelectorAll("#grid .adika-card").forEach(function (card, idx) {
-      var it = card._adikaItem || null;
-      if (!it) {
-        var did = card.getAttribute("data-id");
-        if (did) {
-          for (var i = 0; i < items.length; i++) {
-            if (String(items[i].id) === String(did)) { it = items[i]; break; }
-          }
+  function scorePreferences(listing, prefs) {
+    if (!prefs) return 0;
+    var pts = 0;
+    var max = 40;
+
+    var prefCat = normCat(prefs.main_category || prefs.category || prefs.preferred_category || "");
+    var lCat = listingCat(listing);
+    if (prefCat && prefCat !== "other" && prefCat === lCat) pts += 16;
+    else if (prefCat && lCat && prefCat.slice(0, 3) === lCat.slice(0, 3)) pts += 6;
+
+    var pMin = num(prefs.price_min || prefs.min_price || prefs.budget_min || prefs.min_budget);
+    var pMax = num(prefs.price_max || prefs.max_price || prefs.budget_max || prefs.max_budget);
+    var price = listingPrice(listing);
+    if (price > 0 && (pMin > 0 || pMax > 0)) {
+      if (pMin > 0 && pMax > 0) {
+        if (price >= pMin && price <= pMax) pts += 14;
+        else {
+          var mid = (pMin + pMax) / 2;
+          var span = Math.max(1, pMax - pMin);
+          var dist = Math.abs(price - mid) / span;
+          if (dist < 0.25) pts += 10;
+          else if (dist < 0.5) pts += 6;
+          else if (dist < 1) pts += 2;
         }
-      }
-      if (!it && items[idx]) it = items[idx];
-      if (!it) return;
-      card._adikaItem = it;
-      var priceEl = card.querySelector(".card-price");
-      if (!priceEl) return;
-      var txt = window.adikaCardPriceText(it);
-      var hasIcon = /💰|\$/.test(priceEl.textContent || "");
-      priceEl.textContent = hasIcon ? ("💰 " + txt) : txt;
+      } else if (pMax > 0 && price <= pMax * 1.15) pts += 10;
+      else if (pMin > 0 && price >= pMin * 0.85) pts += 8;
+    }
+
+    var prefTrans = String(prefs.transmission || prefs.gearbox || "").toLowerCase();
+    var lTrans = listingTrans(listing);
+    if (prefTrans && lTrans && (lTrans.indexOf(prefTrans.slice(0, 4)) >= 0 || prefTrans.indexOf(lTrans.slice(0, 4)) >= 0)) {
+      pts += 5;
+    }
+
+    var prefFuel = String(prefs.fuel || prefs.fuel_type || "").toLowerCase();
+    var lFuel = listingFuel(listing);
+    if (prefFuel && lFuel && (lFuel.indexOf(prefFuel.slice(0, 4)) >= 0 || prefFuel.indexOf(lFuel.slice(0, 4)) >= 0)) {
+      pts += 5;
+    }
+
+    return Math.min(max, pts);
+  }
+
+  function scoreFavoritesAlerts(listing, favorites, alerts) {
+    var pts = 0;
+    var max = 30;
+    var lCat = listingCat(listing);
+    var bm = listingBrandModel(listing);
+    var price = listingPrice(listing);
+
+    var favCatHits = 0;
+    var favBrandHits = 0;
+    (favorites || []).forEach(function (f) {
+      var fc = normCat(f.category || f.main_category || "");
+      if (fc && fc === lCat) favCatHits++;
+      var tags = String(f.tags || f.brand || f.model || "").toLowerCase();
+      if (tags && bm && (bm.indexOf(tags.slice(0, 4)) >= 0 || tags.indexOf(bm.slice(0, 4)) >= 0)) favBrandHits++;
     });
-    // Detail modal
-    try {
-      var mp = document.getElementById("modalPrice");
-      var sel = window.state && state.selectedItem;
-      if (mp && sel) mp.textContent = window.adikaCardPriceText(sel);
-    } catch (e) {}
-  }
-  window.adikaRelabelPrices = relabelPrices;
+    if (favCatHits > 0) pts += Math.min(12, 6 + favCatHits * 2);
+    if (favBrandHits > 0) pts += Math.min(8, 4 + favBrandHits * 2);
 
-  ["__adikaPaintListings", "paintLive", "finishLoading"].forEach(function (name) {
-    var orig = window[name];
-    if (typeof orig !== "function" || orig.__budgetV2) return;
-    window[name] = function () {
-      var r = orig.apply(this, arguments);
-      setTimeout(relabelPrices, 0);
-      setTimeout(relabelPrices, 40);
-      setTimeout(relabelPrices, 150);
-      setTimeout(relabelPrices, 400);
-      return r;
+    (alerts || []).forEach(function (a) {
+      var q = String(a.query || a.keywords || a.search_query || a.category || "").toLowerCase();
+      if (!q) return;
+      if (lCat && q.indexOf(lCat) >= 0) pts += 4;
+      if (bm && q.length > 2 && bm.indexOf(q.slice(0, Math.min(6, q.length))) >= 0) pts += 6;
+      var aMin = num(a.min_price || a.price_min || a.budget_min);
+      var aMax = num(a.max_price || a.price_max || a.budget_max);
+      if (price > 0 && aMin > 0 && aMax > 0 && price >= aMin && price <= aMax) pts += 4;
+    });
+
+    return Math.min(max, pts);
+  }
+
+  function scoreBuyerRequests(listing, requests) {
+    var pts = 0;
+    var max = 20;
+    if (!requests || !requests.length) return 0;
+    var lCat = listingCat(listing);
+    var price = listingPrice(listing);
+    var bm = listingBrandModel(listing);
+
+    var best = 0;
+    requests.forEach(function (r) {
+      var local = 0;
+      var rCat = normCat(r.main_category || r.category || "");
+      if (rCat && rCat === lCat) local += 8;
+
+      var bmin = num(r.budget_min || r.min_budget || r.min_price || r.price_min);
+      var bmax = num(r.budget_max || r.max_budget || r.max_price || r.price_max || r.budget || r.price);
+      if (price > 0 && (bmin > 0 || bmax > 0)) {
+        if (bmin > 0 && bmax > 0 && price >= bmin && price <= bmax) local += 8;
+        else if (bmax > 0 && price <= bmax * 1.1) local += 5;
+        else if (bmin > 0 && price >= bmin * 0.9) local += 4;
+      }
+
+      var note = String(r.notes || r.details || r.description || r.brand || r.model || "").toLowerCase();
+      if (note && bm && note.length > 2 && (bm.indexOf(note.slice(0, 5)) >= 0 || note.indexOf(bm.slice(0, 5)) >= 0)) {
+        local += 4;
+      }
+      if (local > best) best = local;
+    });
+    pts = Math.min(max, best);
+    return pts;
+  }
+
+  function scoreFreshness(listing) {
+    var created = listingCreated(listing);
+    if (!created) return 0;
+    var ageH = (Date.now() - created) / 3600000;
+    if (ageH <= 24) return 10;
+    if (ageH <= 48) return 8;
+    if (ageH <= 72) return 6;
+    if (ageH <= 168) return 2;
+    return 0;
+  }
+
+  function computeScore(listing, ctx) {
+    var sPref = scorePreferences(listing, ctx.prefs);
+    var sFav = scoreFavoritesAlerts(listing, ctx.favorites, ctx.alerts);
+    var sBuy = scoreBuyerRequests(listing, ctx.requests);
+    var sFresh = scoreFreshness(listing);
+    var total = sPref + sFav + sBuy + sFresh;
+    var views = num(listing.view_count || listing.views_count);
+    if (views > 50) total += 3;
+    else if (views > 20) total += 1;
+    return {
+      total: Math.min(100, Math.round(total)),
+      breakdown: { prefs: sPref, favAlerts: sFav, buyer: sBuy, fresh: sFresh }
     };
-    window[name].__budgetV2 = true;
-  });
-
-  var _od = window.openDetailModal;
-  if (typeof _od === "function" && !_od.__budgetV2) {
-    window.openDetailModal = function (it, photos) {
-      var r = _od.apply(this, arguments);
-      setTimeout(function () {
-        try {
-          var mp = document.getElementById("modalPrice");
-          if (mp && it) mp.textContent = window.adikaCardPriceText(it);
-        } catch (e) {}
-      }, 30);
-      return r;
-    };
-    window.openDetailModal.__budgetV2 = true;
   }
 
-  function watch() {
-    var g = document.getElementById("grid");
-    if (!g || g.__budgetObs2) return;
-    g.__budgetObs2 = true;
-    try {
-      new MutationObserver(function () { setTimeout(relabelPrices, 25); }).observe(g, { childList: true });
-    } catch (e) {}
-  }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", watch);
-  else watch();
-  setTimeout(relabelPrices, 600);
-  setTimeout(relabelPrices, 1500);
-  setTimeout(relabelPrices, 3000);
-})();
-</script>
-
-
-<script>
-/* ===== Professional Buyer Request Cards ===== */
-(function () {
-  function esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  function hasMeaningfulPrefs(prefs) {
+    if (!prefs) return false;
+    var cat = prefs.main_category || prefs.category || prefs.preferred_category;
+    var pMin = num(prefs.price_min || prefs.min_price || prefs.budget_min);
+    var pMax = num(prefs.price_max || prefs.max_price || prefs.budget_max);
+    return !!(cat || pMin > 0 || pMax > 0 || prefs.transmission || prefs.fuel || prefs.fuel_type);
   }
 
-  function isBuyer(item) {
-    if (!item) return false;
-    if (typeof window.adikaIsBuyerItem === "function" && window.adikaIsBuyerItem(item)) return true;
-    if (item.is_buyer_request || item._source === "buyers" || item._source === "buyer_requests") return true;
-    var blob = [item.req_type, item.action_type, item.listing_type, item.post_type, item.type].join(" ");
-    if (/BUY|REQUEST|WANT|መግዛት|ፈላጊ/i.test(blob)) return true;
-    if (window.__adikaIsBuy) {
-      // when on buyers tab, treat as buyer if budget fields exist or no sell price
-      var bud = typeof window.adikaExtractBudget === "function" ? window.adikaExtractBudget(item) : null;
-      if (bud && (bud.min > 0 || bud.max > 0)) return true;
+  function ensurePrefsCta(show) {
+    var grid = document.getElementById("grid");
+    if (!grid) return;
+    var existing = document.getElementById("fypPrefsCtaBanner");
+    if (!show) {
+      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+      return;
     }
-    return false;
-  }
-
-  function budgetText(item) {
-    if (typeof window.adikaCardPriceText === "function") {
-      var t = window.adikaCardPriceText(item);
-      if (t && t !== "ለዋጋ ደውሉ") return t;
-    }
-    if (typeof formatListingPrice === "function") {
-      var t2 = formatListingPrice(item.price, item);
-      if (t2 && t2 !== "ለዋጋ ደውሉ") return t2;
-    }
-    return "ለዋጋ ይደውሉ";
-  }
-
-  function relativeTime(iso) {
-    try {
-      if (typeof window.relativeTime === "function") return window.relativeTime(iso);
-    } catch (e) {}
-    if (!iso) return "";
-    var d = new Date(iso).getTime();
-    if (!d) return "";
-    var mins = Math.max(0, Math.round((Date.now() - d) / 60000));
-    if (mins < 60) return mins + "m";
-    if (mins < 1440) return Math.round(mins / 60) + "h";
-    return Math.round(mins / 1440) + "d";
-  }
-
-  function buildBuyerCard(item) {
-    item = item || {};
-    var budTxt = budgetText(item);
-    if (!budTxt || budTxt === "ለዋጋ ደውሉ") budTxt = "ለዋጋ ይደውሉ";
-
-    var cat = item.main_category || item.category || "መኪና";
-    var isCar = /መኪና|car|vehicle/i.test(String(cat));
-    var catPill = isCar ? "🚗 መኪና" : "🏠 ቤት";
-
-    // Clean note: strip phone, budget, labels, "Details:"
-    var rawNote = item.notes || item.details || item.description || item.title || "";
-    rawNote = String(rawNote).trim();
-    rawNote = rawNote
-      .replace(/Details\s*:\s*/gi, "")
-      .replace(/ዝርዝር\s*:\s*/gi, "")
-      .replace(/Phone\s*:\s*/gi, "")
-      .replace(/ስልክ\s*:\s*/gi, "")
-      .replace(/Budget\s*:\s*[\d,\.\s\-–to]+\s*(ETB|ብር)?/gi, "")
-      .replace(/በጀት\s*:\s*[\d,\.\s\-–to]+\s*(ETB|ብር)?/gi, "")
-      .replace(/(?:\+?251|0)?9\d{8}/g, "")
-      .replace(/(?:\+?251|0)?7\d{8}/g, "")
-      .replace(/\s{2,}/g, " ")
-      .trim();
-
-    var brand = "";
-    try {
-      var extra = item.extra_data;
-      if (typeof extra === "string") extra = JSON.parse(extra);
-      extra = extra || {};
-      brand = item.brand || item.model || extra.brand || extra.model || "";
-    } catch (e) {}
-
-    var chips = [catPill];
-    if (brand) chips.push(String(brand));
-    if (item.urgent || item.is_urgent) chips.push("⚡ አስቸኳይ");
-    if (item.transmission) chips.push(String(item.transmission));
-    if (item.property_type) chips.push(String(item.property_type));
-    if (item.location || item.area) chips.push(String(item.location || item.area));
-
-    var timeLabel = relativeTime(item.created_at || item.posted_at);
-    var phone = item.phone || item.contact_phone || "";
-    var tg = String(item.telegram_username || item.telegram_user || "").replace(/^@/, "");
-
-    var canDel = false;
-    try {
-      if (typeof canManageListing === "function") canDel = !!canManageListing(item);
-      else if (typeof window.canDeleteListing === "function") canDel = !!window.canDeleteListing(item);
-    } catch (e2) {}
-
-    var card = document.createElement("button");
-    card.type = "button";
-    card.className = "adika-card buyer-request-card";
-    card.setAttribute("data-live", "1");
-    card.setAttribute("data-buyer", "1");
-    if (item.id != null) card.setAttribute("data-id", String(item.id));
-    card._adikaItem = item;
-
-    var chipsHtml = chips.map(function (c) {
-      return '<span class="buyer-chip">' + esc(c) + "</span>";
-    }).join("");
-
-    // ONLY budget in hero — never repeat in body
-    card.innerHTML =
-      '<div class="buyer-hero">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">' +
-          '<span class="buyer-wanted-badge">🔍 ፈላጊ</span>' +
-          (timeLabel ? '<span style="font-size:8px;font-weight:700;opacity:.85;">' + esc(timeLabel) + "</span>" : "") +
-        "</div>" +
-        '<div class="buyer-budget-hero">' + esc(budTxt) + "</div>" +
+    if (existing) return;
+    var banner = document.createElement("div");
+    banner.id = "fypPrefsCtaBanner";
+    banner.style.gridColumn = "1 / -1";
+    banner.innerHTML =
+      '<div class="fyp-cta-text">' +
+        '<span class="lang-am">✨ የግል ምክሮች ለማግኘት ምርጫዎችዎን ያዘጋጁ</span>' +
+        '<span class="lang-en">✨ Set your preferences for personalized picks</span>' +
+        '<div style="font-size:9px;font-weight:600;color:#64748b;margin-top:2px;">Top trending shown until you personalize</div>' +
       "</div>" +
-      '<div class="buyer-body">' +
-        '<div class="buyer-chips">' + chipsHtml + "</div>" +
-        (rawNote ? '<div class="buyer-note">' + esc(rawNote) + "</div>" : "") +
-      "</div>" +
-      '<div class="buyer-cta" data-buyer-cta="1">💡 ይህ ንብረት አለኝ! · Send Offer</div>';
-
-    if (canDel) {
-      var del = document.createElement("button");
-      del.type = "button";
-      del.className = "adika-card-del is-allowed";
-      del.setAttribute("data-delete", "1");
-      del.textContent = "🗑️";
-      del.addEventListener("click", function (e) {
+      '<button type="button" id="fypOpenPrefsBtn">' +
+        '<span class="lang-am">አዘጋጅ</span><span class="lang-en">Set up</span>' +
+      "</button>";
+    grid.parentNode.insertBefore(banner, grid);
+    var btn = document.getElementById("fypOpenPrefsBtn");
+    if (btn) {
+      btn.onclick = function (e) {
         e.preventDefault();
         e.stopPropagation();
-        if (typeof window.adikaDeleteItem === "function") window.adikaDeleteItem(item);
-        else if (typeof window.deleteListingById === "function") window.deleteListingById(item);
-        else if (typeof window.deleteListing === "function") window.deleteListing(item.id);
-      });
-      card.appendChild(del);
-    }
-
-    card.addEventListener("click", function (ev) {
-      var tgEl = ev.target;
-      if (tgEl && (tgEl.getAttribute("data-buyer-cta") || (tgEl.closest && tgEl.closest("[data-buyer-cta]")))) {
-        ev.preventDefault();
-        ev.stopPropagation();
         try {
-          if (typeof window.openListingMessage === "function") {
-            window.openListingMessage(item);
-            return;
-          }
-        } catch (e3) {}
-        if (tg) {
-          var url = "https://t.me/" + tg;
-          try {
-            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
-              Telegram.WebApp.openTelegramLink(url);
-            } else {
-              window.open(url, "_blank");
-            }
-          } catch (e4) { window.open(url, "_blank"); }
-          return;
-        }
-        if (phone) {
-          window.location.href = "tel:" + String(phone).replace(/\s/g, "");
-          return;
-        }
-        if (typeof openDetailModal === "function") openDetailModal(item, []);
+          if (typeof window.openFYPWithOnboarding === "function") window.openFYPWithOnboarding();
+          else if (typeof requireOnboardingForFyp === "function") requireOnboardingForFyp();
+        } catch (err) {}
+      };
+    }
+  }
+
+  function rankListings(listings, ctx) {
+    var scored = (listings || []).map(function (it) {
+      var sc = computeScore(it, ctx);
+      it._fypScore = sc.total;
+      it.fyp_score = sc.total;
+      it.match_score = sc.total;
+      it._fypBreakdown = sc.breakdown;
+      return { item: it, score: sc.total };
+    });
+    scored.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      return listingCreated(b.item) - listingCreated(a.item);
+    });
+    return scored.map(function (r) { return r.item; });
+  }
+
+  function paintRanked(items, append) {
+    try {
+      if (typeof finishLoading === "function") {
+        finishLoading(items, !!append, items.length >= 12);
         return;
       }
-      if (tgEl && (tgEl.getAttribute("data-delete") || (tgEl.closest && tgEl.closest("[data-delete]")))) return;
-      if (typeof openDetailModal === "function") openDetailModal(item, []);
-    });
-
-    return card;
-  }
-
-  function wrapCreate() {
-    var names = ["createCardElement", "__adikaCreateCard"];
-    names.forEach(function (name) {
-      var orig = window[name];
-      // also try local scope via assignment that sets window
-      if (typeof orig !== "function") return;
-      if (orig.__buyerWrap) return;
-      window[name] = function (item) {
-        if (isBuyer(item) || window.__adikaIsBuy) {
-          try { return buildBuyerCard(item); } catch (e) { console.warn(e); }
-        }
-        return orig.apply(this, arguments);
-      };
-      window[name].__buyerWrap = true;
-    });
-    // Patch createCardElement if only stored on window.__adikaCreateCard
-    if (typeof window.__adikaCreateCard === "function" && !window.__adikaCreateCard.__buyerWrap) {
-      var o2 = window.__adikaCreateCard;
-      window.__adikaCreateCard = function (item) {
-        if (isBuyer(item) || window.__adikaIsBuy) {
-          try { return buildBuyerCard(item); } catch (e) {}
-        }
-        return o2.apply(this, arguments);
-      };
-      window.__adikaCreateCard.__buyerWrap = true;
-    }
-  }
-
-  // Re-paint grid items that are buyers with new design
-  function upgradeExisting() {
-    if (!window.__adikaIsBuy) return;
+    } catch (e) {}
+    try {
+      if (window.__adikaPaintListings) {
+        window.__adikaPaintListings(items);
+        return;
+      }
+    } catch (e2) {}
     var g = document.getElementById("grid");
     if (!g) return;
-    var items = window.__adikaLiveItems || [];
-    var cards = g.querySelectorAll(".adika-card");
-    if (!items.length) return;
-    // If already buyer-request-card, skip full rebuild unless budget wrong
-    var need = false;
-    cards.forEach(function (c) {
-      if (!c.classList.contains("buyer-request-card")) need = true;
-    });
-    if (!need && cards.length) return;
-    // rebuild
-    g.innerHTML = "";
+    if (!append) g.innerHTML = "";
     items.forEach(function (it) {
-      g.appendChild(buildBuyerCard(it));
+      try {
+        if (window.__adikaCreateCard) g.appendChild(window.__adikaCreateCard(it));
+      } catch (e3) {}
     });
+    window.__adikaLiveItems = items;
   }
 
-  function boot() {
-    wrapCreate();
-    setTimeout(wrapCreate, 200);
-    setTimeout(wrapCreate, 800);
-    setTimeout(upgradeExisting, 300);
-    setTimeout(upgradeExisting, 1000);
-  }
+  window.adikaComputeFypScores = function (listings, ctx) {
+    return rankListings(listings, ctx || {});
+  };
 
-  // Hook paints to rebuild buyer cards
-  ["__adikaPaintListings", "paintLive", "finishLoading"].forEach(function (name) {
-    var orig = window[name];
-    if (typeof orig !== "function" || orig.__buyerPaint) return;
-    window[name] = function (items) {
-      wrapCreate();
-      // If buyers tab — paint with professional cards directly
-      if (window.__adikaIsBuy && Array.isArray(items)) {
-        window.__adikaLiveItems = items;
-        var g = document.getElementById("grid");
-        if (g) {
-          g.innerHTML = "";
-          items.forEach(function (it) { g.appendChild(buildBuyerCard(it)); });
-          return;
+  window.loadSmartFYP = function (opts) {
+    opts = opts || {};
+    var uid = tgId();
+    var append = !!opts.append;
+    var page = opts.page || 1;
+
+    try {
+      if (window.state) {
+        state.feedMode = "foryou";
+        state.category = "";
+        state.loading = true;
+        if (!append) state.page = 1;
+      }
+    } catch (e) {}
+
+    try {
+      var grid = document.getElementById("grid");
+      if (grid && !append) {
+        grid.innerHTML = "";
+        grid.style.opacity = "0.65";
+      }
+    } catch (eG) {}
+    try {
+      if (!append && window.state) {
+        state.items = [];
+        state.page = 1;
+      }
+    } catch (eClr) {}
+
+    Promise.all([
+      window.adikaFetchPreferences(uid),
+      window.adikaFetchFavorites(uid),
+      window.adikaFetchSearchAlerts(uid),
+      window.adikaFetchBuyerRequests(uid),
+      window.adikaFetchListingPool(100)
+    ]).then(function (results) {
+      var prefs = results[0];
+      var favorites = results[1] || [];
+      var alerts = results[2] || [];
+      var requests = results[3] || [];
+      var pool = results[4] || [];
+
+      var ctx = { prefs: prefs, favorites: favorites, alerts: alerts, requests: requests };
+      var meaningful = hasMeaningfulPrefs(prefs);
+
+      pool = pool.filter(function (it) {
+        if (!it) return false;
+        var t = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
+        if (/BUY|REQUEST|WANT/.test(t)) return false;
+        if (it.is_buyer_request) return false;
+        return true;
+      });
+
+      var ranked = rankListings(pool, ctx);
+
+      if (prefs) {
+        var bud = (typeof window.adikaParseBudgetRange === "function")
+          ? window.adikaParseBudgetRange(prefs)
+          : { min: num(prefs.budget_min || prefs.min_price), max: num(prefs.budget_max || prefs.max_price) };
+        var maxP = bud.max || num(prefs.budget_max || prefs.max_price || prefs.price_max) || 0;
+        var minP = bud.min || num(prefs.budget_min || prefs.min_price || prefs.price_min) || 0;
+        if ((!maxP || maxP >= 999999999)) {
+          try {
+            var rawP = localStorage.getItem("adika_user_prefs");
+            if (rawP) {
+              var lp = JSON.parse(rawP);
+              maxP = maxP || num(lp.budget_max || lp.max_price) || 0;
+              minP = minP || num(lp.budget_min || lp.min_price) || 0;
+              if (!prefs.categories || !prefs.categories.length) {
+                prefs.categories = lp.categories || [];
+              }
+            }
+          } catch (eLoc) {}
+        }
+        var prefCat = normCat(prefs.main_category || prefs.category || (prefs.categories && prefs.categories[0]) || "");
+        if (maxP > 0 && maxP < 999999999) {
+          ranked = ranked.filter(function (it) {
+            var price = listingPrice(it);
+            if (price <= 0) return false;
+            if (price > maxP) return false;
+            if (minP > 0 && price < minP) return false;
+            if (prefCat === "car" || prefCat === "house") {
+              var lc = listingCat(it);
+              if (lc && lc !== prefCat) return false;
+            }
+            return true;
+          });
         }
       }
-      var r = orig.apply(this, arguments);
-      setTimeout(upgradeExisting, 30);
-      return r;
-    };
-    window[name].__buyerPaint = true;
-  });
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
-  else boot();
-})();
-</script>
+      ensurePrefsCta(!meaningful);
 
+      var perPage = 20;
+      var start = (Math.max(1, page) - 1) * perPage;
+      var slice = ranked.slice(start, start + perPage);
 
-<script>
-/* ===== Buyer card anti-duplication ===== */
-(function () {
-  function cleanBuyerCards() {
-    document.querySelectorAll(".buyer-request-card").forEach(function (card) {
-      // Remove any secondary price nodes that paint paths may inject
-      card.querySelectorAll(".card-price, .buyer-budget-sub, .buyer-meta").forEach(function (n) {
-        n.remove();
-      });
-      // Ensure note doesn't still contain phone/budget lines
-      var note = card.querySelector(".buyer-note");
-      if (note) {
-        var tx = note.textContent || "";
-        tx = tx
-          .replace(/Details\s*:\s*/gi, "")
-          .replace(/Phone\s*:\s*[0-9+\s\-]+/gi, "")
-          .replace(/ስልክ\s*:\s*[0-9+\s\-]+/gi, "")
-          .replace(/Budget\s*:\s*[\d,\.\s\-–to]+(\s*ETB)?/gi, "")
-          .replace(/በጀት\s*:\s*[\d,\.\s\-–to]+(\s*ETB)?/gi, "")
-          .replace(/(?:\+?251|0)?9\d{8}/g, "")
-          .replace(/\s{2,}/g, " ")
-          .trim();
-        note.textContent = tx;
-        if (!tx) note.remove();
+      try {
+        if (window.state) {
+          state.loading = false;
+          state.page = page;
+          state.hasMore = ranked.length > start + perPage;
+          state.items = append ? (state.items || []).concat(slice) : slice;
+        }
+      } catch (eS) {}
+
+      try {
+        var grid2 = document.getElementById("grid");
+        if (grid2) grid2.style.opacity = "1";
+      } catch (eO) {}
+
+      paintRanked(slice, append);
+    }).catch(function (err) {
+      console.warn("[Adika FYP]", err);
+      try {
+        if (window.state) state.loading = false;
+        var grid3 = document.getElementById("grid");
+        if (grid3) {
+          grid3.style.opacity = "1";
+          grid3.innerHTML = '<div style="grid-column:1/-1;padding:28px 16px;text-align:center;">' +
+            '<div style="font-size:36px;margin-bottom:8px;">🔍</div>' +
+            '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px;">በፍላጎትዎ የሚመጥን ነገር አልተገኘም።</div>' +
+            '<button type="button" onclick="window.openFYPWithOnboarding&&openFYPWithOnboarding()" style="padding:8px 14px;border-radius:999px;background:linear-gradient(135deg,#0ea5e9,#14b8a6);color:#fff;font-weight:900;font-size:11px;border:0;">⚙️ ምርጫ ቀይር</button></div>';
+        }
+      } catch (e) {}
+    });
+  };
+
+  window.loadFYPFeed = function () {
+    try {
+      if (window.state) {
+        state.feedMode = "foryou";
+        state.category = "";
+        state.page = 1;
+        state.hasMore = true;
+        state.items = [];
+        state.q = "";
+        state.loading = false;
       }
-    });
-  }
-  window.adikaCleanBuyerCards = cleanBuyerCards;
-  ["__adikaPaintListings", "paintLive", "finishLoading"].forEach(function (name) {
-    var orig = window[name];
-    if (typeof orig !== "function" || orig.__buyerClean) return;
-    window[name] = function () {
-      var r = orig.apply(this, arguments);
-      setTimeout(cleanBuyerCards, 0);
-      setTimeout(cleanBuyerCards, 50);
-      setTimeout(cleanBuyerCards, 200);
-      return r;
+    } catch (e) {}
+    try {
+      var g = document.getElementById("grid");
+      if (g) { g.innerHTML = ""; g.style.opacity = "0.55"; }
+    } catch (eG) {}
+    try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
+    if (typeof window.loadSmartFYP === "function") {
+      window.loadSmartFYP({ page: 1, append: false });
+      return;
+    }
+  };
+
+  if (typeof window.load === "function" && !window.load.__smartFypWrapped) {
+    var _origLoad = window.load;
+    window.load = function (append) {
+      try {
+        if (window.state && state.feedMode === "foryou" && !state.q && state.tab !== "buy") {
+          if (!append && typeof window.__adikaLoadFYP === "function") {
+            window.__adikaLoadFYP();
+            return;
+          }
+          if (typeof window.loadSmartFYP === "function") {
+            window.loadSmartFYP({ page: append ? ((state.page || 1) + 1) : 1, append: !!append });
+            return;
+          }
+        }
+      } catch (e) {}
+      return _origLoad.apply(this, arguments);
     };
-    window[name].__buyerClean = true;
-  });
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      setTimeout(cleanBuyerCards, 400);
-      setTimeout(cleanBuyerCards, 1200);
-    });
-  } else {
-    setTimeout(cleanBuyerCards, 400);
+    window.load.__smartFypWrapped = true;
   }
+
+  window.triggerSmartFyp = function () {
+    window.loadSmartFYP({ page: 1, append: false });
+  };
 })();
 </script>
+<!-- ======================= END SECTION 30 ======================= -->
 
 
-<div id="adikaImageLightbox" class="hidden" hidden role="dialog" aria-modal="true" aria-label="Photo viewer">
-  <button type="button" class="lb-close" id="adikaLightboxClose" aria-label="Close">✕</button>
-  <img id="adikaLightboxImg" src="" alt="" />
-</div>
-<script>
-(function () {
-  function box() { return document.getElementById("adikaImageLightbox"); }
-  function img() { return document.getElementById("adikaLightboxImg"); }
-  window.openImageLightbox = function (src) {
-    if (!src) return;
-    var b = box(), i = img();
-    if (!b || !i) return;
-    i.src = src;
-    b.classList.add("is-open");
-    b.classList.remove("hidden");
-    b.removeAttribute("hidden");
-    b.style.display = "flex";
-  };
-  window.closeImageLightbox = function () {
-    var b = box(), i = img();
-    if (i) i.src = "";
-    if (b) {
-      b.classList.remove("is-open");
-      b.classList.add("hidden");
-      b.setAttribute("hidden", "");
-      b.style.display = "none";
-    }
-  };
-  document.addEventListener("click", function (e) {
-    var t = e.target;
-    if (!t) return;
-    if (t.id === "adikaLightboxClose") { e.preventDefault(); closeImageLightbox(); return; }
-    if (t.id === "adikaImageLightbox") { closeImageLightbox(); return; }
-    if (t.closest && t.closest("#modalMediaContainer") && t.tagName === "IMG") {
-      var s = t.getAttribute("src");
-      if (s) { e.preventDefault(); e.stopPropagation(); openImageLightbox(s); }
-    }
-  }, true);
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closeImageLightbox();
-  });
-})();
-</script>
 
-
+<!-- ================================================================ -->
+<!-- SECTION 31 — JS: EVENT HANDLERS & UTILITIES -->
+<!-- Change/maintain this entire section as one unit. -->
+<!-- ================================================================ -->
 <script>
 /* ===== My Listings (የኔ ማስታወቂያዎች) — photo + atomic delete ===== */
 (function () {
@@ -9884,7 +9875,6 @@
     } catch (e2) {}
   }
 
-  /** Atomic one-step delete — UI first, then DB (image errors never block) */
   function atomicDelete(it, btn) {
     if (!it) return;
     var lid = cleanId(it.id != null ? it.id : it);
@@ -9899,12 +9889,10 @@
       btn.textContent = "⏳...";
     }
 
-    // 1) Instant local removal (stops "two-click" / stash reappear)
     removeCardDom(lid);
     removeFromStash(lid);
     removeFromLiveState(lid);
 
-    // Empty state if grid empty
     try {
       var grid = el("myListingsGrid");
       if (grid && !grid.children.length) {
@@ -9924,7 +9912,6 @@
       } catch (e) {}
     }
 
-    // 2) Parallel: API + optional Supabase — never blocked by photo
     var apiP = fetch("/api/items/" + encodeURIComponent(lid), {
       method: "DELETE",
       credentials: "same-origin",
@@ -9959,7 +9946,6 @@
         try { if (typeof window.fetchListings === "function") window.fetchListings(); } catch (e2) {}
       } else {
         toast("ማጥፋት አልተቻለም — እንደገና ይሞክሩ");
-        // keep card gone locally; user can refresh
       }
     });
   }
@@ -9992,7 +9978,6 @@
       var title = titleOf(it);
       var price = priceOf(it);
 
-      // Photo: capped height so delete button always fits below
       var photoWrap = document.createElement("div");
       photoWrap.className = "my-listing-photo";
       photoWrap.style.cssText = "width:100%;aspect-ratio:1/1;flex:0 0 auto;overflow:hidden;background:#e2e8f0;border-radius:10px 10px 0 0;position:relative;";
@@ -10059,7 +10044,6 @@
           stash.forEach(function (r) {
             if (!r || r.id == null) return;
             if (seen[String(r.id)]) return;
-            // skip if marked deleted
             if (r._deleted) return;
             list.unshift(r);
             seen[String(r.id)] = 1;
@@ -10119,46 +10103,9 @@
 })();
 </script>
 
-
 <script>
-/* ========================================================================
-   ADIKA SMART FYP RECOMMENDATION ENGINE (client-side, 100-point scoring)
-   Weights:
-     40  User Preferences Match (category, price, transmission, fuel…)
-     30  Favorites + Search Alerts synergy
-     20  Buyer Requests alignment (demand signal)
-     10  Freshness (created within last 72h)
-   ======================================================================== */
+/* ===== Unified buyer budget / price resolver (all column aliases) ===== */
 (function () {
-  "use strict";
-
-  function tgId() {
-    try {
-      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-      if (u && u.id != null) return String(u.id);
-    } catch (e) {}
-    try {
-      if (window.state && state.userId) return String(state.userId);
-    } catch (e2) {}
-    try {
-      if (typeof getTelegramUserId === "function") {
-        var t = getTelegramUserId();
-        if (t) return String(t);
-      }
-    } catch (e3) {}
-    return "";
-  }
-
-  function sb() {
-    try {
-      if (typeof ensureSupabaseClient === "function") {
-        var c = ensureSupabaseClient();
-        if (c) return c;
-      }
-    } catch (e) {}
-    return window.supabase || null;
-  }
-
   function num(v) {
     if (v == null || v === "") return 0;
     if (typeof v === "number") return isFinite(v) ? v : 0;
@@ -10166,56 +10113,174 @@
     return isFinite(n) ? n : 0;
   }
 
-  function normCat(c) {
-    c = String(c || "").toLowerCase().trim();
-    if (/መኪና|car|vehicle|auto/.test(c)) return "car";
-    if (/ቤት|house|property|real|home|apartment/.test(c)) return "house";
-    if (/ንግድ|commercial|business/.test(c)) return "commercial";
-    return c || "other";
-  }
-
-  function listingCat(it) {
-    return normCat(it.main_category || it.category || it.sub_category || "");
-  }
-
-  function listingPrice(it) {
-    return num(it.price || it.amount || it.value);
-  }
-
-  function listingCreated(it) {
-    var s = it.created_at || it.posted_at || it.date || it.updated_at;
-    if (!s) return 0;
-    var t = new Date(s).getTime();
-    return isFinite(t) ? t : 0;
-  }
-
-  function extractExtra(it) {
-    var extra = it.extra_data || {};
+  window.adikaExtractBudget = function (item) {
+    item = item || {};
+    var extra = item.extra_data;
     if (typeof extra === "string") {
       try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
     }
-    return extra || {};
+    extra = extra || {};
+
+    var minCandidates = [
+      item.budget_min, item.min_budget, item.budgetMin, item.minBudget,
+      item.min_price, item.minPrice, item.price_min, item.priceMin,
+      item.from_price, item.low_budget, item.budget_from,
+      extra.budget_min, extra.min_budget, extra.min_price, extra.budget
+    ];
+    var maxCandidates = [
+      item.budget_max, item.max_budget, item.budgetMax, item.maxBudget,
+      item.max_price, item.maxPrice, item.price_max, item.priceMax,
+      item.to_price, item.high_budget, item.budget_to,
+      extra.budget_max, extra.max_budget, extra.max_price
+    ];
+    var flatCandidates = [
+      item.budget, item.price, item.amount, item.value,
+      extra.budget, extra.price
+    ];
+
+    var bmin = 0, bmax = 0, bflat = 0;
+    for (var i = 0; i < minCandidates.length; i++) {
+      var a = num(minCandidates[i]);
+      if (a > 0) { bmin = a; break; }
+    }
+    for (var j = 0; j < maxCandidates.length; j++) {
+      var b = num(maxCandidates[j]);
+      if (b > 0) { bmax = b; break; }
+    }
+    for (var k = 0; k < flatCandidates.length; k++) {
+      var c = num(flatCandidates[k]);
+      if (c > 0) { bflat = c; break; }
+    }
+    if (bmin > 0 && bmax > 0 && bmax < bmin) {
+      var tmp = bmin; bmin = bmax; bmax = tmp;
+    }
+    return { min: bmin, max: bmax, flat: bflat };
+  };
+
+  function fmtCompact(n) {
+    n = Math.round(Number(n) || 0);
+    if (n >= 1000000) {
+      var m = n / 1000000;
+      return (Math.abs(m - Math.round(m)) < 0.05 ? Math.round(m) : m.toFixed(1)) + "M";
+    }
+    if (n >= 1000) {
+      var k = n / 1000;
+      return (Math.abs(k - Math.round(k)) < 0.05 ? Math.round(k) : k.toFixed(1)) + "K";
+    }
+    try { return n.toLocaleString("en-US"); } catch (e) { return String(n); }
   }
 
-  function listingTrans(it) {
-    var e = extractExtra(it);
-    return String(it.transmission || e.transmission || e.gearbox || "").toLowerCase();
+  window.adikaIsBuyerItem = function (item) {
+    if (!item) return false;
+    if (item.is_buyer_request || item._source === "buyers" || item._source === "buyer_requests") return true;
+    var blob = [item.req_type, item.action_type, item.listing_type, item.post_type, item.type, item.status, item._source].join(" ");
+    if (/BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(blob)) return true;
+    return false;
+  };
+
+  window.adikaCardPriceText = function (item) {
+    item = item || {};
+    var bud = window.adikaExtractBudget(item);
+    var isBuy = window.adikaIsBuyerItem(item);
+    if (bud.min > 0 && bud.max > 0) {
+      return fmtCompact(bud.min) + " – " + fmtCompact(bud.max) + " ETB";
+    }
+    if (bud.max > 0) return "እስከ " + fmtCompact(bud.max) + " ETB";
+    if (bud.min > 0) return "ከ " + fmtCompact(bud.min) + " ETB";
+    if (isBuy && bud.flat > 0) return fmtCompact(bud.flat) + " ETB";
+    var priceN = num(item.price);
+    if (priceN > 0 && priceN <= 300000000) {
+      try { return Math.round(priceN).toLocaleString("en-US") + " ETB"; } catch (e) { return priceN + " ETB"; }
+    }
+    if (bud.flat > 0 && bud.flat <= 300000000) {
+      try { return Math.round(bud.flat).toLocaleString("en-US") + " ETB"; } catch (e2) { return bud.flat + " ETB"; }
+    }
+    return "ለዋጋ ደውሉ";
+  };
+
+  window.formatListingPrice = function (raw, item) {
+    if (item && typeof item === "object") return window.adikaCardPriceText(item);
+    if (raw && typeof raw === "object") return window.adikaCardPriceText(raw);
+    var n = num(raw);
+    if (n > 0 && n <= 300000000) {
+      try { return Math.round(n).toLocaleString("en-US") + " ETB"; } catch (e) { return n + " ETB"; }
+    }
+    return "ለዋጋ ደውሉ";
+  };
+
+  function relabelPrices() {
+    var items = window.__adikaLiveItems || [];
+    document.querySelectorAll("#grid .adika-card").forEach(function (card, idx) {
+      var it = card._adikaItem || null;
+      if (!it) {
+        var did = card.getAttribute("data-id");
+        if (did) {
+          for (var i = 0; i < items.length; i++) {
+            if (String(items[i].id) === String(did)) { it = items[i]; break; }
+          }
+        }
+      }
+      if (!it && items[idx]) it = items[idx];
+      if (!it) return;
+      card._adikaItem = it;
+      var priceEl = card.querySelector(".card-price");
+      if (!priceEl) return;
+      var txt = window.adikaCardPriceText(it);
+      var hasIcon = /💰|\$/.test(priceEl.textContent || "");
+      priceEl.textContent = hasIcon ? ("💰 " + txt) : txt;
+    });
+    try {
+      var mp = document.getElementById("modalPrice");
+      var sel = window.state && state.selectedItem;
+      if (mp && sel) mp.textContent = window.adikaCardPriceText(sel);
+    } catch (e) {}
+  }
+  window.adikaRelabelPrices = relabelPrices;
+
+  ["__adikaPaintListings", "paintLive", "finishLoading"].forEach(function (name) {
+    var orig = window[name];
+    if (typeof orig !== "function" || orig.__budgetV2) return;
+    window[name] = function () {
+      var r = orig.apply(this, arguments);
+      setTimeout(relabelPrices, 0);
+      setTimeout(relabelPrices, 40);
+      setTimeout(relabelPrices, 150);
+      setTimeout(relabelPrices, 400);
+      return r;
+    };
+    window[name].__budgetV2 = true;
+  });
+
+  var _od = window.openDetailModal;
+  if (typeof _od === "function" && !_od.__budgetV2) {
+    window.openDetailModal = function (it, photos) {
+      var r = _od.apply(this, arguments);
+      setTimeout(function () {
+        try {
+          var mp = document.getElementById("modalPrice");
+          if (mp && it) mp.textContent = window.adikaCardPriceText(it);
+        } catch (e) {}
+      }, 30);
+      return r;
+    };
+    window.openDetailModal.__budgetV2 = true;
   }
 
-  function listingFuel(it) {
-    var e = extractExtra(it);
-    return String(it.fuel || it.fuel_type || e.fuel_type || e.fuel || "").toLowerCase();
+  function watch() {
+    var g = document.getElementById("grid");
+    if (!g || g.__budgetObs2) return;
+    g.__budgetObs2 = true;
+    try {
+      new MutationObserver(function () { setTimeout(relabelPrices, 25); }).observe(g, { childList: true });
+    } catch (e) {}
   }
-
-  function listingBrandModel(it) {
-    var e = extractExtra(it);
-    return [
-      it.brand, it.model, e.brand, e.model,
-      it.sub_category, it.title
-    ].filter(Boolean).join(" ").toLowerCase();
-  }
-
-
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", watch);
+  else watch();
+  setTimeout(relabelPrices, 600);
+  setTimeout(relabelPrices, 1500);
+  setTimeout(relabelPrices, 3000);
+})();
+</script>
 <!-- ======================= END SECTION 31 ======================= -->
 
 
