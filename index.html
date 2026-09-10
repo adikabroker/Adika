@@ -5428,9 +5428,9 @@
       }
       if (useForYou) {
         var _uid = encodeURIComponent(state.userId || (typeof getTelegramUserId === "function" ? getTelegramUserId() : "") || "0");
+        urls.push("/api/listings?" + qs);
         urls.push("/api/feed/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + _uid + "&telegram_id=" + _uid);
         urls.push("/api/for-you?page=" + page + "&limit=" + itemsPerPage + "&user_id=" + _uid + "&telegram_id=" + _uid);
-        // DO NOT fall back to unfiltered /api/listings for For You — keeps budget filter
       }
 
       var done = false;
@@ -5438,6 +5438,19 @@
         if (done && !(items && items.length)) return;
         done = true;
         items = items || [];
+        try {
+          items = items.map(function (it) {
+            if (typeof normalizeImages === "function") return normalizeImages(it);
+            return it;
+          });
+        } catch (eImg) {}
+        try {
+          if (state.feedMode === "foryou" && typeof hardFilter === "function") {
+            var _prefs = {};
+            try { _prefs = JSON.parse(localStorage.getItem("adika_prefs") || "{}"); } catch (eP) {}
+            items = hardFilter(items, _prefs);
+          }
+        } catch (eHf) {}
         // STRICT client-side category isolation
         try {
           var cat = (state.category || "").trim();
@@ -5487,10 +5500,7 @@
           }).then(function (res) {
             var rows = (res && res.data) || [];
             if (!Array.isArray(rows)) rows = [];
-            if (rows.length > 0) {
-              applyItems(rows, rows.length >= itemsPerPage);
-              return;
-            }
+            // Never paint FYP from RPC first — photos often missing. Always merge via listings.
             tryUrl(0);
           }).catch(function () {
             tryUrl(0);
@@ -5682,6 +5692,7 @@
     };
 
 <!-- ======================= END SECTION 21 ======================= -->
+
 
 
 
