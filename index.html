@@ -3362,7 +3362,7 @@
         return { budget_min: Math.min(nums[0], nums[1]), budget_max: Math.max(nums[0], nums[1]) };
       }
 
-      function collectForm() {
+          function collectForm() {
         var fullName = (document.getElementById("fullName") || {}).value || "";
         var phone = (document.getElementById("phoneNum") || {}).value || "";
         var tg = (document.getElementById("tgUsername") || {}).value || "";
@@ -3375,14 +3375,11 @@
         var budget = parseBudgetRange((document.getElementById("budgetRange") || {}).value);
         var isBroker = !!(document.getElementById("isBroker") || {}).checked;
         var specs = {};
-        if (mainCat === "House") {
-          specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
-          specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
-          specs.item_kind = ((document.getElementById("itemKind") || {}).value || "").trim();
-        } else {
-          specs.transmission = ((document.getElementById("carTrans") || {}).value || "").trim();
-          specs.fuel = ((document.getElementById("carFuel") || {}).value || "").trim();
-        }
+        specs.transmission = ((document.getElementById("carTrans") || {}).value || "").trim();
+        specs.fuel = ((document.getElementById("carFuel") || {}).value || "").trim();
+        specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
+        specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
+        specs.item_kind = ((document.getElementById("itemKind") || {}).value || "").trim();
         var categories = [];
         if (picked.indexOf("Car") >= 0) categories.push("መኪና", "Car");
         if (picked.indexOf("House") >= 0) categories.push("ቤት", "House");
@@ -3394,6 +3391,7 @@
           telegram_username: tg,
           main_category: mainCat,
           categories: categories,
+          item_kind: specs.item_kind || "",
           budget_min: budget.budget_min,
           budget_max: budget.budget_max,
           budget_range: (document.getElementById("budgetRange") || {}).value || "",
@@ -3407,7 +3405,6 @@
           updated_at: new Date().toISOString()
         };
       }
-
       function triggerFypFeed() {
         try {
           state.feedMode = "foryou";
