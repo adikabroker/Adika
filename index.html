@@ -3529,77 +3529,170 @@
 <!-- SECTION 18 — JS: FAVORITES & RECOMMENDATIONS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
-    var savedFeedScrollY = 0;
+<script>
+(function () {
+  "use strict";
 
-    function pushViewHistory(item) {
+  // ============================================================
+  // 🔧 FIX #1: Brand/Model extraction helper (used by pushViewHistory)
+  // 🔧 FIX #2: TTL purge before adding new interest
+  // ============================================================
+
+  function extractBrandModelLocal(item, extra) {
+    extra = extra || {};
+    var raw = String(
+      extra.car_model || extra.brand_model || extra.model
+      || [extra.brand, extra.model].filter(Boolean).join(" ")
+      || item.sub_category || item.title || item.model || ""
+    ).trim();
+
+    var brands = ["Toyota","BYD","Hyundai","Suzuki","Chery","Jetour","Nissan","Honda",
+                  "Mercedes","BMW","Audi","Lexus","Kia","Mitsubishi","Isuzu","Ford",
+                  "Volkswagen","VW","Mazda","Subaru","Geely","Haval","Changan"];
+    var brand = String(extra.brand || item.brand || "").trim();
+    var model = raw;
+    if (!brand && raw) {
+      for (var i = 0; i < brands.length; i++) {
+        var b = brands[i];
+        var re = new RegExp("^" + b + "\\b", "i");
+        if (re.test(raw)) {
+          brand = b;
+          model = raw.replace(re, "").trim() || raw;
+          break;
+        }
+      }
+    }
+    if (brand && model && model.toLowerCase().indexOf(brand.toLowerCase()) === 0) {
+      model = model.slice(brand.length).trim();
+    }
+    var display = brand ? (brand + (model ? " " + model : "")) : (raw || "መኪና");
+    return { brand: brand, model: model || raw, display: display };
+  }
+
+  /**
+   * 🔧 FIX #2: Purge expired interests (>30 min) BEFORE adding new one.
+   * This prevents pool from filling with stale entries and evicting fresh ones.
+   */
+  function purgeExpiredInterests(pool) {
+    var now = Date.now();
+    var TTL = 30 * 60 * 1000;
+    return (pool || []).filter(function (int) {
+      return int && (now - (int.ts || 0)) < TTL;
+    });
+  }
+
+  /**
+   * 🔧 FIX #1: pushViewHistory now correctly extracts car sub-category
+   * from brand/model/car_model/car_type — not just extra.car_model.
+   */
+  function pushViewHistory(item) {
+    try {
+      if (!item) return;
+      var extra = item.extra_data || {};
+      if (typeof extra === "string") {
+        try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+      }
+      if (!extra || typeof extra !== "object") extra = {};
+
+      var bm = {};
       try {
-        var extra = item.extra_data || {};
-        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-        var bm = {};
-        try { bm = extractBrandModel(item, extra) || {}; } catch (e) {}
-        var priceNum = 0;
-        try { priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0; } catch (e) {}
+        bm = (typeof window.extractBrandModel === "function")
+          ? window.extractBrandModel(item, extra)
+          : extractBrandModelLocal(item, extra);
+      } catch (e) { bm = extractBrandModelLocal(item, extra); }
 
-        // 🆕 Determine category + sub-category
-        var mc = String(item.main_category || item.category || "").toLowerCase();
-        var itemKind = String(extra.item_kind || item.item_kind || "").toLowerCase();
-        var viewCat = "";
-        var viewSub = "";
+      var priceNum = 0;
+      try {
+        priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0;
+      } catch (eP) {}
 
-        if (/እቃ|item|goods|ቁሳቁስ/.test(mc) || itemKind) {
-          viewCat = "item";
-          viewSub = itemKind || "";
-        } else if (/ቤት|house|property|ንብረት/.test(mc)) {
-          viewCat = "house";
-          viewSub = String(extra.house_type || item.sub_category || "").toLowerCase();
-        } else if (/መኪና|car|vehicle|auto/.test(mc)) {
-          viewCat = "car";
-          viewSub = String(extra.car_model || extra.car_type || item.sub_category || "").toLowerCase();
+      var mc = String(item.main_category || item.category || "").toLowerCase();
+      var itemKind = String(extra.item_kind || item.item_kind || "").toLowerCase();
+
+      var viewCat = "";
+      var viewSub = "";
+
+      // 🔧 FIX #1: Explicit category tags win over item_kind fallback
+      if (/መኪና|car|vehicle|auto/.test(mc)) {
+        viewCat = "car";
+        // Use brand/model blob (not item_kind)
+        var carSubRaw =
+          extra.car_model || extra.car_type
+          || bm.display
+          || [item.brand, item.model].filter(Boolean).join(" ")
+          || item.sub_category || "";
+        viewSub = String(carSubRaw).toLowerCase().trim().slice(0, 60);
+      } else if (/ቤት|house|property|ንብረት/.test(mc)) {
+        viewCat = "house";
+        viewSub = String(
+          extra.house_type || extra.property_type || item.sub_category || ""
+        ).toLowerCase().trim().slice(0, 60);
+      } else if (/እቃ|item|goods|ቁሳቁስ/.test(mc) || itemKind) {
+        viewCat = "item";
+        viewSub = String(itemKind || extra.item_kind || "").toLowerCase().trim();
+      }
+
+      if (!viewCat) return;
+
+      // ============================================================
+      // Interest pool — cumulative with TTL purge
+      // ============================================================
+      try {
+        var pool = [];
+        try { pool = JSON.parse(localStorage.getItem("adika_interests") || "[]"); } catch (eP2) { pool = []; }
+        if (!Array.isArray(pool)) pool = [];
+
+        // 🔧 FIX #2: purge expired BEFORE lookup/insert
+        pool = purgeExpiredInterests(pool);
+
+        var interestKey = viewCat + "|" + viewSub;
+        var exists = false;
+
+        for (var i = 0; i < pool.length; i++) {
+          var p = pool[i] || {};
+          var pKey = String(p.type || "") + "|" + String(p.sub || "");
+          if (pKey === interestKey) {
+            p.ts = Date.now();
+            if (viewCat === "car" && priceNum > 0) {
+              // Elastic budget: keep the higher of existing/new
+              p.maxPrice = Math.max(Number(p.maxPrice || 0), priceNum);
+            }
+            exists = true;
+            break;
+          }
         }
 
-        // 🆕 INTEREST POOL — cumulative list of what user viewed
-        try {
-          var pool = [];
-          try { pool = JSON.parse(localStorage.getItem("adika_interests") || "[]"); } catch (eP) { pool = []; }
-          if (!Array.isArray(pool)) pool = [];
+        if (!exists) {
+          var newInterest = {
+            type: viewCat,
+            sub: viewSub,
+            maxPrice: (viewCat === "car" && priceNum > 0) ? priceNum : 0,
+            ts: Date.now()
+          };
+          pool.push(newInterest);
+        }
 
-          if (viewCat) {
-            var exists = false;
-            var interestKey = viewCat + "|" + viewSub;
-            for (var i = 0; i < pool.length; i++) {
-              var pKey = (pool[i].type || "") + "|" + (pool[i].sub || "");
-              if (pKey === interestKey) {
-                pool[i].ts = Date.now();
-                if (viewCat === "car" && priceNum > 0) {
-                  pool[i].maxPrice = Math.max(pool[i].maxPrice || 0, priceNum);
-                }
-                exists = true;
-                break;
-              }
-            }
-            if (!exists) {
-              var newInterest = {
-                type: viewCat,
-                sub: viewSub,
-                maxPrice: (viewCat === "car" && priceNum > 0) ? priceNum : 0,
-                ts: Date.now()
-              };
-              pool.push(newInterest);
-            }
-            pool = pool.slice(-10);
-            localStorage.setItem("adika_interests", JSON.stringify(pool));
+        // Keep most recent 10
+        pool = pool.slice(-10);
+        localStorage.setItem("adika_interests", JSON.stringify(pool));
 
-            localStorage.setItem("adika_last_view_category", viewCat);
-            localStorage.setItem("adika_last_view_sub", viewSub);
-            localStorage.setItem("adika_last_view_ts", String(Date.now()));
-            if (viewCat === "car" && priceNum > 0) {
-              localStorage.setItem("adika_last_view_price", String(priceNum));
-            }
-            var vm = bm.display || item.sub_category || extra.car_model || "";
-            if (vm) localStorage.setItem("adika_last_view_model", String(vm));
-          }
-        } catch (eCat) {}
+        // Persist last-viewed hints for FYP server-side / fallback
+        localStorage.setItem("adika_last_view_category", viewCat);
+        localStorage.setItem("adika_last_view_sub", viewSub);
+        localStorage.setItem("adika_last_view_ts", String(Date.now()));
+        if (viewCat === "car" && priceNum > 0) {
+          localStorage.setItem("adika_last_view_price", String(priceNum));
+        }
+        var vm = bm.display || item.sub_category || extra.car_model || "";
+        if (vm) localStorage.setItem("adika_last_view_model", String(vm));
+      } catch (ePool) {
+        console.warn("[Adika FYP] pool write failed:", ePool);
+      }
 
+      // ============================================================
+      // View history (last 3) — sent to /api/recommendations
+      // ============================================================
+      try {
         var entry = {
           id: item.id,
           category: item.main_category || item.category || "",
@@ -3609,356 +3702,296 @@
           brand: bm.brand || ""
         };
         var hist = [];
-        try { hist = JSON.parse(_lsGet("viewHistory") || "[]"); } catch (e) { hist = []; }
+        try { hist = JSON.parse(localStorage.getItem("viewHistory") || "[]"); } catch (eH) { hist = []; }
         if (!Array.isArray(hist)) hist = [];
         hist = hist.filter(function (h) { return String(h.id) !== String(entry.id); });
         hist.unshift(entry);
         hist = hist.slice(0, 3);
-        _lsSet("viewHistory", JSON.stringify(hist));
-        try {
-          var intent = hist.map(function (h) {
-            return { category: h.category || "", price: h.price || 0, model: h.model || "", brand: h.brand || "" };
-          });
-          _lsSet("adik_user_intent", JSON.stringify(intent));
-        } catch (e2) {}
-      } catch (e) {}
-    }
+        localStorage.setItem("viewHistory", JSON.stringify(hist));
 
-    function getViewHistory() {
-      try {
-        var hist = JSON.parse(_lsGet("viewHistory") || "[]");
-        if (!Array.isArray(hist) || !hist.length) hist = JSON.parse(_lsGet("adik_user_intent") || "[]");
-        return Array.isArray(hist) ? hist : [];
-      } catch (e) { return []; }
-    }
-
-    function renderRecoCards(items, intentLabel) {
-      var sc = document.getElementById("modalRecoScroll");
-      var title = document.getElementById("modalRecoTitle");
-      var intentEl = document.getElementById("modalRecoIntent");
-      if (!sc) return;
-      if (intentEl) intentEl.textContent = intentLabel || "";
-      if (title) {
-        var isCar = true;
-        try {
-          isCar = !(state.selectedItem && (state.selectedItem.main_category === "ቤት" || state.selectedItem.category === "ቤት"));
-        } catch (e) {}
-        title.textContent = isCar ? "🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች" : "🤖 ለእርስዎ የተመረጡ ተቀራራቢ ንብረቶች";
-      }
-      if (!items || !items.length) {
-        sc.innerHTML = '<div class="text-[10px] text-slate-400 font-medium py-2">ተቀራራቢ ዝርዝር በቅርቡ...</div>';
-        return;
-      }
-      sc.innerHTML = items.map(function (it) {
-        var img = "";
-        try {
-          var list = collectPhotoUrls(it);
-          img = (list && list[0]) || getValidImageUrl(it.photo_urls) || getValidImageUrl(it.photos) || "";
-        } catch (e3) { img = ""; }
-        var price = formatListingPrice(it.price, it);
-        var name = it.title || it.sub_category || it.model || it.main_category || "ንብረት";
-        return (
-          '<button type="button" class="reco-card shrink-0 text-left active:scale-95 transition-all" data-id="' + esc(String(it.id || "")) + '">' +
-            '<div class="reco-img-wrap">' +
-              (img
-                ? '<img src="' + escSrc(String(img)) + '" alt="" loading="lazy" onerror="this.onerror=null;this.style.display=\'none\';" />'
-                : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">🚗</div>') +
-            '</div>' +
-            '<div class="reco-body">' +
-              '<p class="reco-name">' + esc(name) + '</p>' +
-              '<p class="reco-price">💰 ' + esc(price) + '</p>' +
-            '</div>' +
-          '</button>'
-        );
-      }).join("");
-      sc.querySelectorAll(".reco-card").forEach(function (btn) {
-        btn.onclick = function (ev) {
-          try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e0) {}
-          var id = btn.getAttribute("data-id");
-          var found = (items || []).find(function (x) { return String(x.id) === String(id); });
-          if (found) {
-            if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(found);
-            else openDetailModal(found);
-            return;
-          }
-          var f2 = (state.items || window.__adikaLiveItems || []).find(function (x) { return String(x.id) === String(id); });
-          if (f2) openDetailModal(f2);
-          else if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(id);
-        };
-      });
-    }
-
-    function loadRecommendations(item) {
-      var hist = getViewHistory();
-      var sc = document.getElementById("modalRecoScroll") || document.getElementById("recommendationsContainer");
-      var alertCard = document.getElementById("modalAlertCard");
-      var alertText = document.getElementById("modalAlertText");
-      if (sc) sc.innerHTML = '<div class="text-[10px] text-slate-400 py-2">⏳ በመፈለግ ላይ...</div>';
-
-      function categoryBucket(raw) {
-        var s = String(raw || "").toLowerCase().trim();
-        if (!s) return "other";
-        if (/ቤት|house|home|apartment|real.?estate|property|ቪላ|አፓርታ|መሬት|land|condo/.test(s)) return "house";
-        if (/መኪና|car|vehicle|auto|truck|ቶዮታ|toyota|hyundai/.test(s)) return "car";
-        return "other";
-      }
-      function parsePriceNum(raw) {
-        try {
-          var n = parseFloat(String(raw == null ? "" : raw).replace(/[^0-9.]/g, ""));
-          return (isFinite(n) && n > 0) ? n : 0;
-        } catch (e) { return 0; }
-      }
-      function sameBucket(a, b) {
-        var ba = categoryBucket(a), bb = categoryBucket(b);
-        if (ba === "other" || bb === "other") {
-          return String(a || "").trim() === String(b || "").trim() && String(a || "").trim() !== "";
-        }
-        return ba === bb;
-      }
-
-      var curId = item && item.id != null ? item.id : null;
-      var curCatRaw = (item && (item.main_category || item.category)) || "";
-      var curCat = curCatRaw;
-      var curBucket = categoryBucket(curCatRaw);
-      var curCatRpc = curBucket === "house" ? "House" : (curBucket === "car" ? "Car" : String(curCatRaw || "Car"));
-      var curSub = (item && (item.sub_category || item.model || item.car_model)) || "";
-      var curPrice = parsePriceNum(item && item.price);
-      var priceLo = curPrice > 0 ? curPrice * 0.65 : 0;
-      var priceHi = curPrice > 0 ? curPrice * 1.35 : 0;
-      var payload = {
-        viewHistory: hist,
-        exclude_id: curId,
-        current_id: curId,
-        current_category: curCatRpc,
-        current_category_raw: curCat,
-        current_bucket: curBucket,
-        current_sub_category: curSub,
-        current_price: curPrice,
-        min_price: priceLo,
-        max_price: priceHi
-      };
-
-      function applyAlert(it) {
-        if (!(alertCard && alertText && it)) return;
-        try {
-          var extra = it.extra_data || {};
-          if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-          var bm = {};
-          try { bm = extractBrandModel(it, extra) || {}; } catch (e) {}
-          var priceNum = parsePriceNum(it.price);
-          var lo = priceNum ? Math.round(priceNum * 0.85) : 0;
-          var hi = priceNum ? Math.round(priceNum * 1.15) : 0;
-          var modelName = bm.display || it.sub_category || "ንብረት";
-          var rangeTxt = (lo && hi) ? (lo.toLocaleString() + " – " + hi.toLocaleString() + " ETB") : modelName;
-          alertText.textContent = "💡 ከ " + rangeTxt + " / " + modelName + " ጋር ተመሳሳይ አዳዲስ ንብረቶች ሲለቀቁ በቴሌግራም እንዲደርስዎ ይፈልጋሉ?";
-          alertCard.classList.remove("hidden");
-          alertCard.dataset.minPrice = String(lo || 0);
-          alertCard.dataset.maxPrice = String(hi || 999999999);
-          alertCard.dataset.model = modelName;
-          alertCard.dataset.category = it.main_category || it.category || curCatRpc;
-        } catch (eA) {}
-      }
-
-      function strictFilterList(list) {
-        if (!Array.isArray(list)) return [];
-        return list.filter(function (x) {
-          if (!x) return false;
-          if (curId != null && String(x.id) === String(curId)) return false;
-          var cat = x.main_category || x.category || "";
-          if (!sameBucket(cat, curCatRaw) && categoryBucket(cat) !== curBucket) return false;
-          if (curBucket === "car" && categoryBucket(cat) === "house") return false;
-          if (curBucket === "house" && categoryBucket(cat) === "car") return false;
-          var pr = parsePriceNum(x.price);
-          if (curPrice > 0 && pr > 0) {
-            if (pr < priceLo || pr > priceHi) return false;
-          }
-          return true;
+        var intent = hist.map(function (h) {
+          return {
+            category: h.category || "",
+            price: h.price || 0,
+            model: h.model || "",
+            brand: h.brand || ""
+          };
         });
-      }
-
-      function clientFypFallback() {
-        try {
-          var pool = (window.__adikaLiveItems || state.items || []).filter(function (x) {
-            return x && (curId == null || String(x.id) !== String(curId));
-          });
-          pool = strictFilterList(pool);
-          pool = pool.map(function (x) {
-            var score = 0;
-            var cat = x.main_category || x.category || "";
-            var sub = String(x.sub_category || x.model || "");
-            var pr = parsePriceNum(x.price);
-            if (curBucket !== "other" && categoryBucket(cat) === curBucket) score += 50;
-            if (curSub && sub && sub.toLowerCase().indexOf(String(curSub).toLowerCase().slice(0, 4)) >= 0) score += 25;
-            if (curPrice > 0 && pr > 0) {
-              var ratio = pr / curPrice;
-              if (ratio >= 0.85 && ratio <= 1.15) score += 35;
-              else if (ratio >= 0.65 && ratio <= 1.35) score += 20;
-            }
-            try {
-              hist.forEach(function (h) {
-                if (!h) return;
-                if (categoryBucket(h.category) === curBucket) score += 6;
-                if (h.model && sub && sub.toLowerCase().indexOf(String(h.model).toLowerCase().slice(0, 3)) >= 0) score += 8;
-              });
-            } catch (eH) {}
-            return { item: x, score: score };
-          }).sort(function (a, b) { return b.score - a.score; });
-          var top = pool.slice(0, 10).map(function (r) { return r.item; });
-          renderRecoCards(top, curBucket === "house" ? "ተመሳሳይ ቤቶች" : "በተመሳሳይ ምድብ");
-        } catch (e) {
-          renderRecoCards([], "");
-        }
-        applyAlert(item);
-      }
-
-      var apiPromise = fetch("/api/recommendations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      }).then(function (r) {
-        if (!r.ok) throw new Error("api " + r.status);
-        return r.json();
-      }).then(function (data) {
-        var list = (data && (data.items || data.recommendations || data.data)) || [];
-        list = strictFilterList(list);
-        if (list && list.length) {
-          renderRecoCards(list, (data && data.intent_label) || "ለእርስዎ የተመረጡ");
-          applyAlert(item);
-          return true;
-        }
-        return false;
-      });
-
-      var sbPromise = Promise.resolve(false);
-      try {
-        if (window.supabase && typeof window.supabase.rpc === "function") {
-          sbPromise = window.supabase.rpc("get_recommended_vehicles", {
-            current_id: curId,
-            current_category: curCatRpc,
-            current_sub_category: curSub,
-            current_price: curPrice
-          }).then(function (res) {
-            var list = (res && (res.data || res)) || [];
-            if (!Array.isArray(list)) list = [];
-            list = strictFilterList(list);
-            if (list.length) {
-              renderRecoCards(list, "FYP · ተመሳሳይ");
-              applyAlert(item);
-              return true;
-            }
-            return false;
-          }).catch(function () { return false; });
-        }
-      } catch (eSb) { sbPromise = Promise.resolve(false); }
-
-      Promise.all([apiPromise.catch(function () { return false; }), sbPromise])
-        .then(function (results) {
-          if (results[0] || results[1]) return;
-          clientFypFallback();
-        })
-        .catch(function () { clientFypFallback(); });
+        localStorage.setItem("adik_user_intent", JSON.stringify(intent));
+      } catch (eHist) {}
+    } catch (eTop) {
+      console.warn("[Adika] pushViewHistory:", eTop);
     }
+  }
 
-    window.openVehicleDetail = function (idOrItem) {
+  // Expose globally
+  window.pushViewHistory = pushViewHistory;
+  window.extractBrandModelLocal = extractBrandModelLocal;
+
+  // ============================================================
+  // getViewHistory — reads recent history
+  // ============================================================
+  function getViewHistory() {
+    try {
+      var hist = JSON.parse(localStorage.getItem("viewHistory") || "[]");
+      if (!Array.isArray(hist) || !hist.length) {
+        hist = JSON.parse(localStorage.getItem("adik_user_intent") || "[]");
+      }
+      return Array.isArray(hist) ? hist : [];
+    } catch (e) { return []; }
+  }
+  window.getViewHistory = getViewHistory;
+
+  // ============================================================
+  // renderRecoCards — recommendation cards in detail modal
+  // ============================================================
+  function renderRecoCards(items, intentLabel) {
+    var sc = document.getElementById("modalRecoScroll");
+    var title = document.getElementById("modalRecoTitle");
+    var intentEl = document.getElementById("modalRecoIntent");
+    if (!sc) return;
+    if (intentEl) intentEl.textContent = intentLabel || "";
+    if (title) {
+      var isCar = true;
       try {
-        if (idOrItem && typeof idOrItem === "object") {
-          openDetailModal(idOrItem);
+        isCar = !(state.selectedItem && (
+          state.selectedItem.main_category === "ቤት"
+          || state.selectedItem.category === "ቤት"
+        ));
+      } catch (e) {}
+      title.textContent = isCar
+        ? "🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች"
+        : "🤖 ለእርስርዎ የተመረጡ ተቀራራቢ ንብረቶች";
+      // Fix typo: "ለእርስርዎ" → "ለእርስዎ"
+      title.textContent = isCar
+        ? "🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች"
+        : "🤖 ለእርስዎ የተመረጡ ተቀራራቢ ንብረቶች";
+    }
+    if (!items || !items.length) {
+      sc.innerHTML = '<div class="text-[10px] text-slate-400 font-medium py-2">ተቀራራቢ ዝርዝር በቅርቡ...</div>';
+      return;
+    }
+    sc.innerHTML = items.map(function (it) {
+      var img = "";
+      try {
+        var list = collectPhotoUrls(it);
+        img = (list && list[0])
+          || getValidImageUrl(it.photo_urls)
+          || getValidImageUrl(it.photos) || "";
+      } catch (e3) { img = ""; }
+      var price = formatListingPrice(it.price, it);
+      var name = it.title || it.sub_category || it.model || it.main_category || "ንብረት";
+      return (
+        '<button type="button" class="reco-card shrink-0 text-left active:scale-95 transition-all" data-id="' + esc(String(it.id || "")) + '">' +
+          '<div class="reco-img-wrap">' +
+            (img
+              ? '<img src="' + escSrc(String(img)) + '" alt="" loading="lazy" onerror="this.onerror=null;this.style.display=\'none\';" />'
+              : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">🚗</div>') +
+          '</div>' +
+          '<div class="reco-body">' +
+            '<p class="reco-name">' + esc(name) + '</p>' +
+            '<p class="reco-price">💰 ' + esc(price) + '</p>' +
+          '</div>' +
+        '</button>'
+      );
+    }).join("");
+    sc.querySelectorAll(".reco-card").forEach(function (btn) {
+      btn.onclick = function (ev) {
+        try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e0) {}
+        var id = btn.getAttribute("data-id");
+        var found = (items || []).find(function (x) { return String(x.id) === String(id); });
+        if (found) {
+          if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(found);
+          else openDetailModal(found);
           return;
         }
-        var id = idOrItem;
-        var found = (window.__adikaLiveItems || []).find(function (x) { return String(x.id) === String(id); })
-          || (state.items || []).find(function (x) { return String(x.id) === String(id); });
-        if (found) openDetailModal(found);
-        else {
-          fetch("/api/listing/" + encodeURIComponent(String(id)))
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-              var it = data.item || data.listing || data;
-              if (it && it.id) openDetailModal(it);
-            })
-            .catch(function () {});
-        }
-      } catch (e) {}
+        var f2 = (state.items || window.__adikaLiveItems || []).find(function (x) {
+          return String(x.id) === String(id);
+        });
+        if (f2) openDetailModal(f2);
+        else if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(id);
+      };
+    });
+  }
+  window.renderRecoCards = renderRecoCards;
+
+  // ============================================================
+  // loadRecommendations — detail modal FYP suggestions
+  // ============================================================
+  function loadRecommendations(item) {
+    var hist = getViewHistory();
+    var sc = document.getElementById("modalRecoScroll") || document.getElementById("recommendationsContainer");
+    var alertCard = document.getElementById("modalAlertCard");
+    var alertText = document.getElementById("modalAlertText");
+    if (sc) sc.innerHTML = '<div class="text-[10px] text-slate-400 py-2">⏳ በመፈለግ ላይ...</div>';
+
+    function categoryBucket(raw) {
+      var s = String(raw || "").toLowerCase().trim();
+      if (!s) return "other";
+      if (/ቤት|house|home|apartment|real.?estate|property|ቪላ|አፓርታ|መሬት|land|condo/.test(s)) return "house";
+      if (/መኪና|car|vehicle|auto|truck|ቶዮታ|toyota|hyundai/.test(s)) return "car";
+      if (/እቃ|item|goods|ቁሳቁስ/.test(s)) return "item";
+      return "other";
+    }
+    function parsePriceNum(raw) {
+      try {
+        var n = parseFloat(String(raw == null ? "" : raw).replace(/[^0-9.]/g, ""));
+        return (isFinite(n) && n > 0) ? n : 0;
+      } catch (e) { return 0; }
+    }
+    function sameBucket(a, b) {
+      var ba = categoryBucket(a), bb = categoryBucket(b);
+      if (ba === "other" || bb === "other") {
+        return String(a || "").trim() === String(b || "").trim() && String(a || "").trim() !== "";
+      }
+      return ba === bb;
+    }
+
+    var curId = item && item.id != null ? item.id : null;
+    var curCatRaw = (item && (item.main_category || item.category)) || "";
+    var curCat = curCatRaw;
+    var curBucket = categoryBucket(curCatRaw);
+    var curCatRpc = curBucket === "house" ? "House" : (curBucket === "car" ? "Car" : String(curCatRaw || "Car"));
+    var curSub = (item && (item.sub_category || item.model || item.car_model)) || "";
+    var curPrice = parsePriceNum(item && item.price);
+    var priceLo = curPrice > 0 ? curPrice * 0.65 : 0;
+    var priceHi = curPrice > 0 ? curPrice * 1.35 : 0;
+    var payload = {
+      viewHistory: hist,
+      exclude_id: curId,
+      current_id: curId,
+      current_category: curCatRpc,
+      current_category_raw: curCat,
+      current_bucket: curBucket,
+      current_sub_category: curSub,
+      current_price: curPrice,
+      min_price: priceLo,
+      max_price: priceHi
     };
 
-    var grid = document.getElementById("grid");
-    var statusEl = document.getElementById("status");
-    var DEMO_LISTINGS = [
-      { id: "demo-1", main_category: "መኪና", category: "መኪና", sub_category: "Toyota Vitz", brand: "Toyota", model: "Vitz", price: "1850000", description: "Toyota Vitz — ናሙና ማስታወቂያ", created_at: new Date().toISOString(), view_count: 42, photos: [], photo_urls: [] },
-      { id: "demo-2", main_category: "መኪና", category: "መኪና", sub_category: "Hyundai Tucson", brand: "Hyundai", model: "Tucson", price: "4200000", description: "Hyundai Tucson — ናሙና", created_at: new Date().toISOString(), view_count: 18, photos: [], photo_urls: [] },
-      { id: "demo-3", main_category: "ቤት", category: "ቤት", sub_category: "አፓርታማ ቦሌ", price: "6500000", description: "አፓርታማ ቦሌ — ናሙና", created_at: new Date().toISOString(), view_count: 27, photos: [], photo_urls: [] },
-      { id: "demo-4", main_category: "ቤት", category: "ቤት", sub_category: "መሬት አዲስ ከተማ", price: "0", description: "መሬት — ለዋጋ ደውሉ", created_at: new Date().toISOString(), view_count: 9, photos: [], photo_urls: [] }
-    ];
-
-    function formatDemoPrice(p) {
-      var n = Number(String(p || "").replace(/[^0-9.]/g, ""));
-      if (!n || n <= 0 || n > 300000000) return "ለዋጋ ደውሉ";
-      try { return Math.round(n).toLocaleString("en-US") + " ETB"; } catch (e) { return n + " ETB"; }
+    function applyAlert(it) {
+      if (!(alertCard && alertText && it)) return;
+      try {
+        var extra = it.extra_data || {};
+        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        var bm = {};
+        try { bm = extractBrandModel(it, extra) || {}; } catch (e) {}
+        var priceNum = parsePriceNum(it.price);
+        var lo = priceNum ? Math.round(priceNum * 0.85) : 0;
+        var hi = priceNum ? Math.round(priceNum * 1.15) : 0;
+        var modelName = bm.display || it.sub_category || "ንብረት";
+        var rangeTxt = (lo && hi) ? (lo.toLocaleString() + " – " + hi.toLocaleString() + " ETB") : modelName;
+        alertText.textContent = "💡 ከ " + rangeTxt + " / " + modelName + " ጋር ተመሳሳይ አዳዲስ ንብረቶች ሲለቀቁ በቴሌግራም እንዲደርስዎ ይፈልጋሉ?";
+        alertCard.classList.remove("hidden");
+        alertCard.dataset.minPrice = String(lo || 0);
+        alertCard.dataset.maxPrice = String(hi || 999999999);
+        alertCard.dataset.model = modelName;
+        alertCard.dataset.category = it.main_category || it.category || curCatRpc;
+      } catch (eA) {}
     }
 
-    function renderFallbackCards(items) {
-      var g = document.getElementById("grid");
-      if (!g) return;
-      var list = (items && items.length) ? items : DEMO_LISTINGS;
-      var html = "";
-      for (var i = 0; i < list.length; i++) {
-        var it = list[i] || {};
-        var title = it.sub_category || it.brand || it.model || it.main_category || it.category || "ማስታወቂያ";
-        if (it.brand && it.model) title = (it.brand + " " + it.model).trim();
-        var priceTxt = formatDemoPrice(it.price);
-        var isCar = (it.main_category === "መኪና" || it.category === "መኪና");
-        var emoji = isCar ? "🚗" : "🏠";
-        html +=
-          '<div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">' +
-            '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:40px;">' + emoji + '</div>' +
-            '<div style="padding:8px 10px;">' +
-              '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">' +
-                '<div style="font-weight:800;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + title + ' ✓</div>' +
-                '<div style="font-size:10px;color:#64748b;flex-shrink:0;">now</div>' +
-              '</div>' +
-              '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">' +
-                '<div style="font-weight:800;font-size:12px;color:#0e7490;">💰 ' + priceTxt + '</div>' +
-                '<div style="color:#94a3b8;font-size:14px;">♡</div>' +
-              '</div>' +
-            '</div>' +
-          '</div>';
+    function strictFilterList(list) {
+      if (!Array.isArray(list)) return [];
+      return list.filter(function (x) {
+        if (!x) return false;
+        if (curId != null && String(x.id) === String(curId)) return false;
+        var cat = x.main_category || x.category || "";
+        if (!sameBucket(cat, curCatRaw) && categoryBucket(cat) !== curBucket) return false;
+        if (curBucket === "car" && categoryBucket(cat) === "house") return false;
+        if (curBucket === "house" && categoryBucket(cat) === "car") return false;
+        var pr = parsePriceNum(x.price);
+        if (curPrice > 0 && pr > 0) {
+          if (pr < priceLo || pr > priceHi) return false;
+        }
+        return true;
+      });
+    }
+
+    function clientFypFallback() {
+      try {
+        var pool = (window.__adikaLiveItems || state.items || []).filter(function (x) {
+          return x && (curId == null || String(x.id) !== String(curId));
+        });
+        pool = strictFilterList(pool);
+        pool = pool.map(function (x) {
+          var score = 0;
+          var cat = x.main_category || x.category || "";
+          var sub = String(x.sub_category || x.model || "");
+          var pr = parsePriceNum(x.price);
+          if (curBucket !== "other" && categoryBucket(cat) === curBucket) score += 50;
+          if (curSub && sub && sub.toLowerCase().indexOf(String(curSub).toLowerCase().slice(0, 4)) >= 0) score += 25;
+          if (curPrice > 0 && pr > 0) {
+            var ratio = pr / curPrice;
+            if (ratio >= 0.85 && ratio <= 1.15) score += 35;
+            else if (ratio >= 0.65 && ratio <= 1.35) score += 20;
+          }
+          try {
+            hist.forEach(function (h) {
+              if (!h) return;
+              if (categoryBucket(h.category) === curBucket) score += 6;
+              if (h.model && sub && sub.toLowerCase().indexOf(String(h.model).toLowerCase().slice(0, 3)) >= 0) score += 8;
+            });
+          } catch (eH) {}
+          return { item: x, score: score };
+        }).sort(function (a, b) { return b.score - a.score; });
+        var top = pool.slice(0, 10).map(function (r) { return r.item; });
+        renderRecoCards(top, curBucket === "house" ? "ተመሳሳይ ቤቶች" : "በተመሳሳይ ምድብ");
+      } catch (e) {
+        renderRecoCards([], "");
       }
-      g.innerHTML = html;
-      try { if (statusEl) { statusEl.style.display = "none"; statusEl.innerHTML = ""; } } catch (e) {}
+      applyAlert(item);
     }
 
-    var moreBtn = document.getElementById("more");
-    var tabSell = document.getElementById("tabSell");
-    var tabBuy = document.getElementById("tabBuy");
-    var qInput = document.getElementById("q");
-    var catsEl = document.getElementById("cats");
-    var fabBtn = document.getElementById("fabBtn");
-    var filterBanner = document.getElementById("filterBanner");
-    var filterText = document.getElementById("filterText");
-    var clearFilterBtn = document.getElementById("clearFilterBtn");
-    var langAmBtn = document.getElementById("langAmBtn");
-    var langEnBtn = document.getElementById("langEnBtn");
-    var modalOverlay = document.getElementById("modalOverlay");
-    var modalClose = document.getElementById("modalClose");
-    var modalCategoryBadge = document.getElementById("modalCategoryBadge");
-    var modalIdBadge = document.getElementById("modalIdBadge");
-    var modalTitle = document.getElementById("modalTitle");
-    var modalPrice = document.getElementById("modalPrice");
-    var modalTime = document.getElementById("modalTime");
-    var modalMediaContainer = document.getElementById("modalMediaContainer");
-    var modalSpecs = document.getElementById("modalSpecs");
-    var modalDesc = document.getElementById("modalDesc");
-    var modalCallBtn = document.getElementById("modalCallBtn");
-    var modalChatBtn = document.getElementById("modalChatBtn");
-    var modalShareBtn = document.getElementById("modalShareBtn");
-    var modalDeleteBtn = document.getElementById("modalDeleteBtn");
-    var modalFavBtn = document.getElementById("modalFavBtn");
-    var aiModal = document.getElementById("aiModal");
-    var aiModalClose = document.getElementById("aiModalClose");
-    var aiPrompt = document.getElementById("aiPrompt");
-    var aiApplyBtn = document.getElementById("aiApplyBtn");
-    var aiResetBtn = document.getElementById("aiResetBtn");
+    var apiPromise = fetch("/api/recommendations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (r) {
+      if (!r.ok) throw new Error("api " + r.status);
+      return r.json();
+    }).then(function (data) {
+      var list = (data && (data.items || data.recommendations || data.data)) || [];
+      list = strictFilterList(list);
+      if (list && list.length) {
+        renderRecoCards(list, (data && data.intent_label) || "ለእርስዎ የተመረጡ");
+        applyAlert(item);
+        return true;
+      }
+      return false;
+    });
 
+    var sbPromise = Promise.resolve(false);
+    try {
+      if (window.supabase && typeof window.supabase.rpc === "function") {
+        sbPromise = window.supabase.rpc("get_recommended_vehicles", {
+          current_id: curId,
+          current_category: curCatRpc,
+          current_sub_category: curSub,
+          current_price: curPrice
+        }).then(function (res) {
+          var list = (res && (res.data || res)) || [];
+          if (!Array.isArray(list)) list = [];
+          list = strictFilterList(list);
+          if (list.length) {
+            renderRecoCards(list, "FYP · ተመሳሳይ");
+            applyAlert(item);
+            return true;
+          }
+          return false;
+        }).catch(function () { return false; });
+      }
+    } catch (eSb) { sbPromise = Promise.resolve(false); }
+
+    Promise.all([apiPromise.catch(function () { return false; }), sbPromise])
+      .then(function (results) {
+        if (results[0] || results[1]) return;
+        clientFypFallback();
+      })
+      .catch(function () { clientFypFallback(); });
+  }
+  window.loadRecommendations = loadRecommendations;
+})();
+</script>
 <!-- ======================= END SECTION 18 ======================= -->
 <!-- ================================================================ -->
 <!-- SECTION 19 — JS: GLOBAL FUNCTIONS & LOAD -->
@@ -5136,71 +5169,109 @@
 <!-- SECTION 22 — JS: AUTH / TABS / CATEGORIES -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
-    function selectCategory(catId) {
-      try { state.loading = false; } catch (e) {}
+<script>
+(function () {
+  "use strict";
 
-      catId = (catId || "").trim();
+  // ============================================================
+  // 🔧 FIX #3: selectCategory — reorder to clear pool BEFORE state change
+  // 🔧 FIX #4: Read `adika_interests` count from localStorage for accurate check
+  // ============================================================
 
-      var isForYou = (catId === "foryou" || catId === "ለእርስዎ" || catId === "✨ ለእርስዎ");
-      var isAll = (!catId || catId === "all" || catId === "null" || catId === "undefined" || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም" || catId === "🌐 ሁሉም");
+  function selectCategory(catId) {
+    try { state.loading = false; } catch (e) {}
 
-      // 🆕 When user picks a specific category, clear interest pool (fresh start)
-      if (!isForYou && !isAll) {
-        try {
-          if (typeof window.adikaClearRecentView === "function") {
-            window.adikaClearRecentView();
-          } else {
-            localStorage.removeItem("adika_interests");
-            localStorage.removeItem("adika_last_view_category");
-            localStorage.removeItem("adika_last_view_sub");
-            localStorage.removeItem("adika_last_view_price");
-            localStorage.removeItem("adika_last_view_model");
-            localStorage.removeItem("adika_last_view_ts");
-          }
-        } catch (e) {}
+    catId = (catId || "").trim();
+
+    var isForYou = (catId === "foryou" || catId === "ለእርስዎ" || catId === "✨ ለእርስዎ");
+    var isAll = (!catId || catId === "all" || catId === "null" || catId === "undefined"
+      || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም" || catId === "🌐 ሁሉም");
+
+    // ============================================================
+    // 🔧 FIX #3: For explicit categories — clear pool FIRST, then set state
+    // ============================================================
+    if (!isForYou && !isAll) {
+      try {
+        if (typeof window.adikaClearRecentView === "function") {
+          window.adikaClearRecentView();
+        } else {
+          try { localStorage.removeItem("adika_interests"); } catch (e1) {}
+          try { localStorage.removeItem("adika_last_view_category"); } catch (e2) {}
+          try { localStorage.removeItem("adika_last_view_sub"); } catch (e3) {}
+          try { localStorage.removeItem("adika_last_view_price"); } catch (e4) {}
+          try { localStorage.removeItem("adika_last_view_model"); } catch (e5) {}
+          try { localStorage.removeItem("adika_last_view_ts"); } catch (e6) {}
+        }
+      } catch (e) {
+        console.warn("[Adika] clearRecentView failed:", e);
       }
 
-      if (isForYou) {
-        // Reset history only — interests KEPT (cumulative)
-        try {
-          if (typeof window.adikaResetFypContext === "function") {
-            window.adikaResetFypContext();
-          } else {
-            try {
-              localStorage.removeItem("viewHistory");
-              localStorage.removeItem("adik_user_intent");
-            } catch (eLS) {}
-          }
-        } catch (eR) {}
+      // Set explicit category state
+      state.feedMode = "cat";
+      state.category = catId;
+      state.page = 1;
+      state.items = [];
+      state.hasMore = true;
+      state.q = "";
+    }
 
-        try { if (typeof window.openFYPWithOnboarding === "function") window.openFYPWithOnboarding(); } catch (eOb) {}
-        if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) {
-          state.feedMode = "foryou";
-          state.category = "";
-          try {
-            var buttons = catsEl.querySelectorAll("button");
-            buttons.forEach(function(b) {
-              if (b.getAttribute("data-filter") === "chassis") return;
-              var bId = b.getAttribute("data-id") || "";
-              var on = (bId === "foryou");
-              b.className = on
-                ? "cat-pill active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all"
-                : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all";
-            });
-          } catch (eP) {}
-          return;
+    // ============================================================
+    // For You — reset history only, KEEP interests (cumulative)
+    // ============================================================
+    if (isForYou) {
+      try {
+        if (typeof window.adikaResetFypContext === "function") {
+          window.adikaResetFypContext();
+        } else {
+          try { localStorage.removeItem("viewHistory"); } catch (eH) {}
+          try { localStorage.removeItem("adik_user_intent"); } catch (eI) {}
         }
+      } catch (eR) {}
+
+      try {
+        if (typeof window.openFYPWithOnboarding === "function") {
+          window.openFYPWithOnboarding();
+        }
+      } catch (eOb) {}
+
+      if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) {
         state.feedMode = "foryou";
         state.category = "";
-      } else if (isAll) {
-        state.feedMode = "all";
-        state.category = "";
-      } else {
-        state.feedMode = "cat";
-        state.category = catId;
+        try {
+          var buttons0 = catsEl.querySelectorAll("button");
+          buttons0.forEach(function (b) {
+            if (b.getAttribute("data-filter") === "chassis") return;
+            var bId = b.getAttribute("data-id") || "";
+            var on = (bId === "foryou");
+            b.className = on
+              ? "cat-pill active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all"
+              : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all";
+          });
+        } catch (eP) {}
+        return;
       }
+
+      state.feedMode = "foryou";
+      state.category = "";
+      state.page = 1;
+      state.items = [];
+      state.hasMore = true;
+      state.q = "";
+    } else if (isAll) {
+      state.feedMode = "all";
+      state.category = "";
+      state.page = 1;
+      state.items = [];
+      state.hasMore = true;
+      state.q = "";
+    }
+
+    // ============================================================
+    // Paint category pills
+    // ============================================================
+    try {
       var buttons = catsEl.querySelectorAll("button");
-      buttons.forEach(function(b) {
+      buttons.forEach(function (b) {
         if (b.getAttribute("data-filter") === "chassis") return;
         var bId = b.getAttribute("data-id") || "";
         var on = (state.feedMode === "foryou" && bId === "foryou")
@@ -5212,401 +5283,167 @@
           b.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all";
         }
       });
-      load(false);
-    }
+    } catch (eP2) {}
 
-    catsEl.onclick = function (ev) {
-      var btn = ev.target.closest("button");
-      if (!btn || !catsEl.contains(btn)) return;
-      if (btn.id === "filterChassisChip") {
-        state.chassisOnly = !state.chassisOnly;
-        if (state.chassisOnly) {
-          btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-400 text-slate-900 shadow-md ring-2 ring-emerald-200";
-          filterText.textContent = "🛡️ ሻሲ ያላቸው ብቻ (VIN Verified Only)";
-          filterBanner.classList.remove("hidden");
-        } else {
-          btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40";
-          filterBanner.classList.add("hidden");
+    // ============================================================
+    // 🔧 FIX #3b: For You → use FYP loader, else use generic load
+    // ============================================================
+    try {
+      if (isForYou) {
+        if (typeof window.loadFYPFeed === "function") {
+          window.loadFYPFeed();
+          return;
         }
+        if (typeof window.loadSmartFYP === "function") {
+          window.loadSmartFYP({ page: 1, append: false });
+          return;
+        }
+        if (typeof window.__adikaLoadFYP === "function") {
+          window.__adikaLoadFYP();
+          return;
+        }
+      }
+      if (typeof load === "function") {
         load(false);
-        return;
       }
-      var catId = btn.getAttribute("data-id") || "";
-      selectCategory(catId);
-    };
-
-    moreBtn.onclick = function () { loadMoreVehicles(); };
-
-    (function bindInfiniteScroll() {
-      var ticking = false;
-      function nearBottom() {
-        var el = document.documentElement;
-        return (el.scrollTop + el.clientHeight >= el.scrollHeight - 100);
-      }
-      window.addEventListener("scroll", function () {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(function () {
-          ticking = false;
-          if (nearBottom()) loadMoreVehicles();
-        });
-      }, { passive: true });
-      var wrap = document.getElementById("loadMoreWrap");
-      if (wrap && "IntersectionObserver" in window) {
-        try {
-          var io = new IntersectionObserver(function (entries) {
-            if (entries[0] && entries[0].isIntersecting) loadMoreVehicles();
-          }, { rootMargin: "120px 0px" });
-          io.observe(wrap);
-        } catch (e) {}
-      }
-    })();
-
-    var deb = null;
-    qInput.oninput = function () {
-      clearTimeout(deb);
-      deb = setTimeout(function () {
-        state.q = (qInput.value || "").trim();
-        load(false);
-      }, 300);
-    };
-
-    var aiToolsView = document.getElementById("aiToolsView");
-    var aiSearchView = document.getElementById("aiSearchView");
-    var aiTabTools = document.getElementById("aiTabTools");
-    var aiTabSearch = document.getElementById("aiTabSearch");
-
-    function closeSmartSearchPanel() {
-      if (aiSearchView) {
-        aiSearchView.classList.add("hidden");
-        aiSearchView.classList.remove("flex");
-        aiSearchView.style.setProperty("display","none","important");
-        aiSearchView.style.setProperty("pointer-events","none","important");
-      }
-      if (aiToolsView) aiToolsView.classList.remove("hidden");
-      if (aiTabTools) aiTabTools.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
-      if (aiTabSearch) aiTabSearch.className = "py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center";
+    } catch (eLoad) {
+      console.warn("[Adika] load after selectCategory:", eLoad);
     }
-    window.closeSmartSearchPanel = closeSmartSearchPanel;
+  }
+  window.selectCategory = selectCategory;
 
-    aiTabTools.onclick = function() {
-      closeSmartSearchPanel();
-    };
+  // ============================================================
+  // Category pill click delegation
+  // ============================================================
+  try {
+    var catsEl = document.getElementById("cats");
+    if (catsEl && !catsEl.__selectCategoryBound) {
+      catsEl.__selectCategoryBound = true;
+      catsEl.addEventListener("click", function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest("button") : null;
+        if (!btn || !catsEl.contains(btn)) return;
 
-    aiTabSearch.onclick = function() {
-      if (aiToolsView) aiToolsView.classList.remove("hidden");
-      if (aiSearchView) {
-        aiSearchView.classList.remove("hidden");
-        aiSearchView.classList.add("flex");
-        aiSearchView.style.setProperty("display","flex","important");
-        aiSearchView.style.setProperty("pointer-events","auto","important");
-      }
-      if (aiTabSearch) aiTabSearch.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
-      if (aiTabTools) aiTabTools.className = "py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center";
-    };
+        // Chassis-only filter chip
+        if (btn.id === "filterChassisChip") {
+          state.chassisOnly = !state.chassisOnly;
+          var filterBannerEl = document.getElementById("filterBanner");
+          var filterTextEl = document.getElementById("filterText");
+          if (state.chassisOnly) {
+            btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-400 text-slate-900 shadow-md ring-2 ring-emerald-200";
+            if (filterTextEl) filterTextEl.textContent = "🛡️ ሻሲ ያላቸው ብቻ (VIN Verified Only)";
+            if (filterBannerEl) filterBannerEl.classList.remove("hidden");
+          } else {
+            btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40";
+            if (filterBannerEl) filterBannerEl.classList.add("hidden");
+          }
+          if (typeof load === "function") load(false);
+          return;
+        }
 
-    var aiSearchBackBtn = document.getElementById("aiSearchBackBtn");
-    var aiSearchCloseBtn = document.getElementById("aiSearchCloseBtn");
-    if (aiSearchBackBtn) aiSearchBackBtn.onclick = closeSmartSearchPanel;
-    if (aiSearchCloseBtn) aiSearchCloseBtn.onclick = closeSmartSearchPanel;
-
-    function adikaAdvisorCtaHtml(carModel, summary) {
-      var model = (carModel || "መኪናዎ").toString().trim() || "መኪናዎ";
-      var sum = (summary || "").toString().trim();
-      return (
-        '<div class="mt-3 p-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 via-cyan-50 to-sky-50 shadow-sm space-y-2">' +
-          '<div class="flex items-start gap-2">' +
-            '<span class="text-lg shrink-0">🤖</span>' +
-            '<p class="text-[11px] text-slate-700 leading-relaxed font-medium">' +
-              'ስለ <span class="font-black text-[#0e7490]">' + esc(model) + '</span> ተጨማሪ መረጃ ወይም የባለሙያ ምክር ይፈልጋሉ? ' +
-              '<span class="font-bold">Adika Digital Adviser</span>ን ያነጋግሩ!' +
-            '</p>' +
-          '</div>' +
-          '<button type="button" class="adika-advisor-cta-btn w-full text-center py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-[11px] shadow-md active:scale-[0.98]" ' +
-            'data-car="' + esc(model).replace(/"/g, '&quot;') + '" data-summary="' + esc(sum).replace(/"/g, '&quot;') + '">' +
-            '💬 አሁኑኑ አማክር (Chat Now)' +
-          '</button>' +
-        '</div>'
-      );
-    }
-
-    window.openAdviserChat = function(carModelName, diagnosticSummary) {
-      var model = (carModelName || "መኪና").toString().trim() || "መኪና";
-      var summary = (diagnosticSummary || "").toString().trim();
-      ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal"].forEach(function(mid) {
-        try { closeToolModal(mid); } catch (e) {}
+        var catId = btn.getAttribute("data-id") || "";
+        selectCategory(catId);
       });
-      showAnalysisView(true);
-      var prompt = "ሰላም፣ ስለ " + model + " የምርመራ ውጤት ምክር እፈልጋለሁ።";
-      if (summary) prompt += "\n\nማጠቃለያ:\n" + summary;
-      else prompt += " Hello, I need advice regarding the diagnostic results for " + model + ".";
-      var input = document.getElementById("advisorChatInput");
-      if (input) {
-        input.value = prompt;
+    }
+  } catch (eBind) {
+    console.warn("[Adika] catsEl bind:", eBind);
+  }
+
+  // ============================================================
+  // 🔧 FIX #4: Tab switching (Sell / Buy) — market vs requests
+  // ============================================================
+  try {
+    var tabSell = document.getElementById("tabSell");
+    var tabBuy = document.getElementById("tabBuy");
+
+    function setActiveTab(tab) {
+      if (!tabSell || !tabBuy) return;
+      if (tab === "buy") {
+        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+        window.__adikaIsBuy = true;
         try {
-          input.style.height = "auto";
-          input.style.height = Math.min(input.scrollHeight, 120) + "px";
+          if (state) { state.tab = "buy"; state.feedMode = "buy"; }
         } catch (e) {}
-        input.focus();
-      }
-      var log = document.getElementById("advisorChatLog");
-      if (log && !log.children.length) {
-        appendAdvisorChat("advisor", "ሰላም! እኔ Adika Senior Financial Advisor ነኝ። ስለ " + model + " ጥያቄዎን ይላኩ — ወይም ከታች ያለውን ቅድመ-ጥያቄ ይላኩ።");
-      }
-    };
-
-    document.addEventListener("click", function(ev) {
-      var btn = ev.target && ev.target.closest ? ev.target.closest(".adika-advisor-cta-btn") : null;
-      if (!btn) return;
-      ev.preventDefault();
-      openAdviserChat(btn.getAttribute("data-car") || "", btn.getAttribute("data-summary") || "");
-    });
-
-    window.__adikaOpenToolFromHub = function(modalId) {
-      var ai = document.getElementById("aiModal");
-      if (ai) {
-        ai.classList.add("hidden");
-        ai.classList.remove("flex");
-        try { ai.style.display = "none"; } catch (e) {}
-      }
-      openToolModal(modalId);
-    };
-
-    window.openToolModal = function(id, ev) {
-      try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e0) {}
-      var m = document.getElementById(id);
-      if (m) {
-        m.classList.remove("hidden");
-        m.classList.add("flex");
+        try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
+        if (typeof load === "function") load(false);
+      } else {
+        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+        window.__adikaIsBuy = false;
         try {
-          m.style.display = "flex";
-          m.style.zIndex = "9999";
+          if (state) { state.tab = "marketplace"; state.feedMode = "foryou"; }
         } catch (e) {}
-      }
-      if (id === "aiModal") {
+        try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
         try {
-          var nav = document.getElementById("adikaBottomNav");
-          var fab = document.getElementById("fabBtn");
-          var hdr = document.getElementById("adikaFixedHeader");
-          var hero = document.getElementById("homeHero");
-          if (nav) nav.style.display = "none";
-          if (fab) fab.style.display = "none";
-          if (hdr) hdr.style.display = "none";
-          if (hero) hero.style.display = "none";
-          document.body.style.overflow = "hidden";
-        } catch (e2) {}
+          if (typeof window.loadFYPFeed === "function") { window.loadFYPFeed(); return; }
+          if (typeof window.loadSmartFYP === "function") { window.loadSmartFYP({ page: 1, append: false }); return; }
+        } catch (e3) {}
+        if (typeof load === "function") load(false);
       }
-    };
-
-    window.closeToolModal = function(id) {
-      var m = document.getElementById(id);
-      if (m) {
-        m.classList.add("hidden");
-        m.classList.remove("flex");
-        try { m.style.display = "none"; } catch (e) {}
-      }
-      var anyOpen = false;
-      ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal"].forEach(function(mid) {
-        var el = document.getElementById(mid);
-        if (el && !el.classList.contains("hidden")) anyOpen = true;
-      });
-      var av = document.getElementById("analysisView");
-      if (av && !av.classList.contains("hidden")) anyOpen = true;
-      if (!anyOpen) document.body.style.overflow = "";
-    };
-
-    window.returnToToolsHub = function() {
-      var ai = document.getElementById("aiModal");
-      if (ai) {
-        ai.classList.remove("hidden");
-        ai.classList.add("flex");
-        try { ai.style.display = "flex"; } catch (e) {}
-      }
-      try {
-        var nav = document.getElementById("adikaBottomNav");
-        var fab = document.getElementById("fabBtn");
-        var hdr = document.getElementById("adikaFixedHeader");
-        var hero = document.getElementById("homeHero");
-        if (nav) nav.style.display = "none";
-        if (fab) fab.style.display = "none";
-        if (hdr) hdr.style.display = "none";
-        if (hero) hero.style.display = "none";
-        document.body.style.overflow = "hidden";
-      } catch (e2) {}
-    };
-
-    window.goHomeFromTool = function(id) {
-      if (id) closeToolModal(id);
-      var ai = document.getElementById("aiModal");
-      if (ai) {
-        ai.classList.add("hidden");
-        ai.classList.remove("flex");
-        try { ai.style.display = "none"; } catch (e) {}
-      }
-      try { if (typeof showAnalysisView === "function") showAnalysisView(false); } catch (e3) {}
-      try {
-        var nav = document.getElementById("adikaBottomNav");
-        var fab = document.getElementById("fabBtn");
-        var hdr = document.getElementById("adikaFixedHeader");
-        var hero = document.getElementById("homeHero");
-        if (nav) nav.style.display = "";
-        if (fab) fab.style.display = "";
-        if (hdr) hdr.style.display = "";
-        if (hero) hero.style.display = "";
-        document.body.style.overflow = "";
-      } catch (e4) {}
-    };
-
-    window.closeModal = function(id) {
-      var tools = ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal"];
-      if (id && tools.indexOf(id) !== -1) {
-        closeToolModal(id);
-        returnToToolsHub();
-        return;
-      }
-      if (id) closeToolModal(id);
-      else {
-        tools.concat(["aiModal"]).forEach(function(mid) { closeToolModal(mid); });
-        showAnalysisView(false);
-      }
-    };
-
-    window.navigateBack = function(id) {
-      if (id === "analysisView") { showAnalysisView(false); returnToToolsHub(); return; }
-      if (id) { closeModal(id); return; }
-      goHomeFromTool(null);
-    };
-
-    ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal"].forEach(function(mid) {
-      var el = document.getElementById(mid);
-      if (!el) return;
-      el.addEventListener("click", function(e) {
-        if (e.target === el) closeToolModal(mid);
-      });
-    });
-
-    document.getElementById("toolDutyBtn").onclick = function() { __adikaOpenToolFromHub("dutyModal"); };
-    document.getElementById("toolLoanBtn").onclick = function() { __adikaOpenToolFromHub("loanModal"); };
-    document.getElementById("toolCompareBtn").onclick = function() { __adikaOpenToolFromHub("compareModal"); };
-    document.getElementById("toolContractBtn").onclick = function() { __adikaOpenToolFromHub("contractModal"); };
-    document.getElementById("toolPoaBtn").onclick = function() { __adikaOpenToolFromHub("poaModal"); };
-    document.getElementById("toolDiagBtn").onclick = function() { __adikaOpenToolFromHub("diagModal"); };
-    if (document.getElementById("toolChassisBtn")) {
-      document.getElementById("toolChassisBtn").onclick = function() { __adikaOpenToolFromHub("chassisModal"); };
-      var _lmBtn = document.getElementById("toolLandMapBtn");
-      if (_lmBtn) _lmBtn.onclick = function() { __adikaOpenToolFromHub("landMapModal"); };
     }
+    window.setActiveTab = setActiveTab;
 
-    var selectedPurpose = "business";
-    var selectedPay = "cash";
-
-    var budgetInputEl = document.getElementById("advisorBudget");
-    var budgetFormattedEl = document.getElementById("advisorBudgetFormatted");
-
-    if (budgetInputEl && budgetFormattedEl) {
-      budgetInputEl.oninput = function() {
-        var v = Number(budgetInputEl.value) || 0;
-        budgetFormattedEl.textContent = v > 0 ? (v.toLocaleString() + " ETB") : "0 ETB";
+    if (tabSell && !tabSell.__bound) {
+      tabSell.__bound = true;
+      tabSell.onclick = function (e) {
+        if (e) e.preventDefault();
+        setActiveTab("marketplace");
       };
     }
-    var incomeInputEl = document.getElementById("advisorMonthlyIncome");
-    var incomeFormattedEl = document.getElementById("advisorIncomeFormatted");
-    if (incomeInputEl && incomeFormattedEl) {
-      incomeInputEl.oninput = function() {
-        var v = Number(incomeInputEl.value) || 0;
-        incomeFormattedEl.textContent = v > 0 ? (v.toLocaleString() + " / ወር") : "0 / ወር";
+    if (tabBuy && !tabBuy.__bound) {
+      tabBuy.__bound = true;
+      tabBuy.onclick = function (e) {
+        if (e) e.preventDefault();
+        setActiveTab("buy");
       };
     }
+  } catch (eTab) {
+    console.warn("[Adika] tab bind:", eTab);
+  }
 
-    document.querySelectorAll(".advisor-preset-chip").forEach(function(btn) {
-      btn.onclick = function() {
-        var b = btn.getAttribute("data-budget");
-        if (budgetInputEl) {
-          budgetInputEl.value = b;
-          if (budgetFormattedEl) budgetFormattedEl.textContent = Number(b).toLocaleString() + " ETB";
-        }
-      };
-    });
+  // ============================================================
+  // Language switcher (AM / EN)
+  // ============================================================
+  try {
+    var langAmBtn = document.getElementById("langAmBtn");
+    var langEnBtn = document.getElementById("langEnBtn");
 
-    var purposeBizBtn = document.getElementById("advisorPurposeBiz");
-    var purposeFamBtn = document.getElementById("advisorPurposeFam");
-    if (purposeBizBtn && purposeFamBtn) {
-      purposeBizBtn.onclick = function() {
-        selectedPurpose = "business";
-        purposeBizBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
-        purposeFamBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
-      };
-      purposeFamBtn.onclick = function() {
-        selectedPurpose = "personal";
-        purposeFamBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
-        purposeBizBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
-      };
-    }
-
-    var payCashBtn = document.getElementById("advisorPayCash");
-    var payLoanBtn = document.getElementById("advisorPayLoan");
-    var incomeRow = document.getElementById("advisorIncomeRow");
-    if (payCashBtn && payLoanBtn) {
-      payCashBtn.onclick = function() {
-        selectedPay = "cash";
-        payCashBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
-        payLoanBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
-        if (incomeRow) incomeRow.classList.add("hidden");
-      };
-      payLoanBtn.onclick = function() {
-        selectedPay = "loan";
-        payLoanBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
-        payCashBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
-        if (incomeRow) incomeRow.classList.remove("hidden");
-      };
-    }
-
-    (function(){
-      var ha = document.getElementById("heroAdvisorBtn");
-      var hp = document.getElementById("heroPoaBtn");
-      var ht = document.getElementById("heroToolsBtn");
-      if (ha) ha.onclick = function() {
-        if (typeof openToolModal === "function") openToolModal("aiModal");
-        else {
-          var m = document.getElementById("aiModal");
-          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
-        }
-      };
-      if (hp) hp.onclick = function() {
-        if (typeof openToolModal === "function") openToolModal("aiModal");
-        else {
-          var m = document.getElementById("aiModal");
-          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
-        }
-      };
-      if (ht) ht.onclick = function() {
-        if (typeof openToolModal === "function") openToolModal("aiModal");
-        else {
-          var m = document.getElementById("aiModal");
-          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
-        }
-      };
-      var car = document.getElementById("heroCarousel");
-      var dots = document.querySelectorAll("#heroDots .hero-dot");
-      if (car && dots.length) {
-        car.addEventListener("scroll", function() {
-          var i = Math.round(car.scrollLeft / Math.max(car.clientWidth * 0.78, 1));
-          dots.forEach(function(d, idx){ d.classList.toggle("active", idx === i); });
-        }, { passive: true });
+    function setLanguage(lang) {
+      try { localStorage.setItem("adika_lang", lang); } catch (e) {}
+      if (lang === "en") {
+        document.body.classList.add("lang-en-active");
+        if (langEnBtn) langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
+        if (langAmBtn) langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
+        var qEl = document.getElementById("q");
+        if (qEl) qEl.placeholder = "Search listings...";
+      } else {
+        document.body.classList.remove("lang-en-active");
+        if (langAmBtn) langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
+        if (langEnBtn) langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
+        var qEl2 = document.getElementById("q");
+        if (qEl2) qEl2.placeholder = "ንብረት ይፈልጉ...";
       }
-    })();
+      try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
+    }
+    window.setLanguage = setLanguage;
 
-    window.setActiveTab = function(tab){
-      if(tab === "chat" || tab === "advisor"){
-        if(typeof showAnalysisView === "function") showAnalysisView(true);
-        else if(typeof window.openAiChat === "function") window.openAiChat();
-      } else if(tab === "tools"){
-        if(typeof window.openTools === "function") window.openTools();
-      } else if(tab === "home" || tab === "marketplace"){
-        if(typeof window.openHome === "function") window.openHome();
-      }
-    };
+    if (langAmBtn && !langAmBtn.__bound) {
+      langAmBtn.__bound = true;
+      langAmBtn.onclick = function (e) { if (e) e.preventDefault(); setLanguage("am"); };
+    }
+    if (langEnBtn && !langEnBtn.__bound) {
+      langEnBtn.__bound = true;
+      langEnBtn.onclick = function (e) { if (e) e.preventDefault(); setLanguage("en"); };
+    }
 
+    var initialLang = "am";
+    try { initialLang = localStorage.getItem("adika_lang") || "am"; } catch (e) {}
+    setLanguage(initialLang);
+  } catch (eLang) {
+    console.warn("[Adika] language bind:", eLang);
+  }
+})();
+</script>
 <!-- ======================= END SECTION 22 ======================= -->
 <!-- ================================================================ -->
 <!-- SECTION 23 — JS: SUPABASE & ANALYSIS VIEW -->
@@ -8222,7 +8059,12 @@
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
 <script>
-(function(){
+(function () {
+  "use strict";
+
+  // ============================================================
+  // 🔧 FIX #5: adikaParseBudgetRange — kept as before
+  // ============================================================
   window.adikaParseBudgetRange = window.adikaParseBudgetRange || function (prefs) {
     prefs = prefs || {};
     function num(v) {
@@ -8259,7 +8101,286 @@
     return { min: minP || 0, max: maxP || 0, label: raw || "" };
   };
 
-  window.__adikaLoadFYP = function () {
+  // ============================================================
+  // 🔧 FIX #6: bucket() — explicit category FIRST, then item_kind fallback
+  // 🔧 FIX #7: hardFilter — car sub-category uses brand/model blob
+  // 🔧 FIX #8: Purge expired interests BEFORE filtering
+  // ============================================================
+  function normalizeImages(it) {
+    if (!it || typeof it !== "object") return it;
+    var urls = [];
+    function add(v) {
+      if (!v) return;
+      if (Array.isArray(v)) { v.forEach(add); return; }
+      if (typeof v === "object") {
+        var u = v.url || v.src || v.image_url || v.photo_url || "";
+        if (u) add(u);
+        return;
+      }
+      var s = String(v).trim();
+      if (!s) return;
+      if (s.charAt(0) === "[") {
+        try { add(JSON.parse(s)); return; } catch (e) {}
+      }
+      if (/^https?:\/\//i.test(s) || s.indexOf("data:image") === 0 || s.indexOf("/") === 0) {
+        if (urls.indexOf(s) < 0) urls.push(s);
+      }
+    }
+    add(it.image_url); add(it.photo_url); add(it.telegram_image);
+    add(it.images); add(it.photos); add(it.photo_urls); add(it.listing_photos);
+    add(it.image); add(it.photo);
+    try {
+      var ex = it.extra_data;
+      if (typeof ex === "string") { try { ex = JSON.parse(ex); } catch (e) { ex = null; } }
+      if (ex && typeof ex === "object") {
+        add(ex.image_url); add(ex.photo_url); add(ex.images); add(ex.photos); add(ex.photo_urls);
+      }
+    } catch (eE) {}
+    if (urls.length) {
+      it.image_url = urls[0];
+      it.photo_url = urls[0];
+      it.photos = urls.slice();
+      it.photo_urls = urls.slice();
+      it.images = urls.slice();
+      it._resolved_photos = urls.slice();
+    }
+    return it;
+  }
+  window.normalizeImages = normalizeImages;
+
+  // ============================================================
+  // 🔧 FIX #6: bucket() — explicit category FIRST
+  // ============================================================
+  function bucketOf(it) {
+    if (!it) return "other";
+    var extra = it.extra_data || {};
+    if (typeof extra === "string") {
+      try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+    }
+    if (!extra || typeof extra !== "object") extra = {};
+
+    var raw = String(it.main_category || it.category || "").toLowerCase();
+
+    // 🔧 FIX: Explicit category tags WIN over item_kind fallback
+    if (/መኪና|car|vehicle|auto/.test(raw)) return "car";
+    if (/ቤት|house|property|ንብረት/.test(raw)) return "house";
+    if (/እቃ|item|goods|ቁሳቁስ/.test(raw)) return "item";
+
+    // Fallback: item_kind ONLY when category is missing/unknown
+    if (it.item_kind || extra.item_kind) return "item";
+    return "other";
+  }
+  window.bucketOf = bucketOf;
+
+  function itemKindOf(it) {
+    if (!it) return "";
+    var extra = it.extra_data || {};
+    if (typeof extra === "string") {
+      try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+    }
+    if (!extra || typeof extra !== "object") extra = {};
+    return String(it.item_kind || extra.item_kind || "").toLowerCase();
+  }
+
+  // ============================================================
+  // 🔧 FIX #7 + #8: hardFilter — bucket fix + car sub blob + TTL purge
+  // ============================================================
+  function hardFilter(items, prefs) {
+    if (!items || !items.length) return [];
+    prefs = prefs || {};
+
+    function parsePriceLocal(v) {
+      var n = Number(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
+      return isFinite(n) ? n : 0;
+    }
+
+    // ============================================================
+    // 1) Base preferences (from user_preferences table)
+    // ============================================================
+    var prefMaxP = parsePriceLocal(prefs.budget_max || prefs.max_price || prefs.price_max);
+    var prefMinP = parsePriceLocal(prefs.budget_min || prefs.min_price || prefs.price_min);
+    if ((!prefMaxP || prefMaxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
+      var t = String(prefs.budget_range || prefs.budget || "");
+      var parts = t.split(/[-–—toእስከ]/i);
+      var nums = parts.map(parsePriceLocal).filter(function (n) { return n > 0; });
+      if (nums.length >= 2) {
+        prefMinP = Math.min(nums[0], nums[1]);
+        prefMaxP = Math.max(nums[0], nums[1]);
+      } else if (nums.length === 1) {
+        prefMaxP = nums[0];
+      }
+    }
+
+    // ============================================================
+    // 2) Interest pool (cumulative) — 🔧 FIX #8: purge expired FIRST
+    // ============================================================
+    var interests = [];
+    try {
+      interests = JSON.parse(localStorage.getItem("adika_interests") || "[]");
+    } catch (eP) { interests = []; }
+    if (!Array.isArray(interests)) interests = [];
+
+    var now = Date.now();
+    var TTL = 30 * 60 * 1000;
+    interests = interests.filter(function (int) {
+      return int && (now - (int.ts || 0) < TTL);
+    });
+
+    // Persist purged pool back
+    try { localStorage.setItem("adika_interests", JSON.stringify(interests)); } catch (eSave) {}
+
+    // ============================================================
+    // 3) Build target categories from interests
+    // ============================================================
+    var wantCar = false, wantHouse = false, wantItem = false;
+    var carMaxP = prefMaxP;
+    var carSub = "";
+    var houseSub = "";
+    var itemSubs = [];
+
+    interests.forEach(function (int) {
+      var t = String(int.type || "").toLowerCase();
+      var sub = String(int.sub || "").toLowerCase();
+      if (t === "car") {
+        wantCar = true;
+        // 🔧 Elastic budget: viewed × 1.15
+        if (int.maxPrice && int.maxPrice > carMaxP) {
+          carMaxP = Math.max(int.maxPrice * 1.15, carMaxP);
+        }
+        if (sub) carSub = sub;
+      } else if (t === "house") {
+        wantHouse = true;
+        if (sub) houseSub = sub;
+      } else if (t === "item") {
+        wantItem = true;
+        if (sub && itemSubs.indexOf(sub) < 0) itemSubs.push(sub);
+      }
+    });
+
+    // ============================================================
+    // 4) Fallback to preferences when no interests exist
+    // ============================================================
+    if (!wantCar && !wantHouse && !wantItem) {
+      var cats = prefs.categories || [];
+      if (typeof cats === "string") {
+        try { cats = JSON.parse(cats); } catch (e) { cats = [cats]; }
+      }
+      if (Array.isArray(cats)) {
+        cats.forEach(function (c) {
+          var cl = String(c).toLowerCase();
+          if (/እቃ|item|goods|ቁሳቁስ/.test(cl)) wantItem = true;
+          else if (/መኪና|car/.test(cl)) wantCar = true;
+          else if (/ቤት|house|property/.test(cl)) wantHouse = true;
+        });
+      }
+      var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
+      if (/እቃ|item|goods|ቁሳቁስ/.test(mc)) wantItem = true;
+      if (/መኪና|car/.test(mc)) wantCar = true;
+      if (/ቤት|house/.test(mc)) wantHouse = true;
+
+      // 🚫 Never show nothing — if all prefs missing, show everything
+      if (!wantCar && !wantHouse && !wantItem) {
+        wantCar = true; wantHouse = true; wantItem = true;
+      }
+    }
+
+    // ============================================================
+    // 5) Item sub-category matching
+    // ============================================================
+    function subMatchItem(it, subList) {
+      if (!subList || !subList.length) return true;
+      var k = itemKindOf(it);
+      if (!k) return true; // no item_kind → permissive
+      for (var i = 0; i < subList.length; i++) {
+        var s = subList[i];
+        if (!s) continue;
+        if (k.indexOf(s) >= 0 || s.indexOf(k) >= 0) return true;
+      }
+      return false;
+    }
+
+    // ============================================================
+    // 6) 🔧 FIX #7: Car sub-category matching uses brand/model blob
+    // ============================================================
+    function carSubMatches(it, carSubValue) {
+      if (!carSubValue || carSubValue.length < 3) return true;
+      var extra = it.extra_data || {};
+      if (typeof extra === "string") {
+        try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
+      }
+      if (!extra || typeof extra !== "object") extra = {};
+
+      var blob = [
+        it.brand, it.model,
+        extra.brand, extra.model,
+        extra.car_model, extra.car_type,
+        it.sub_category, it.title, it.description
+      ].filter(Boolean).join(" ").toLowerCase();
+
+      // Match first 6 chars to handle English/Amharic variations
+      var probe = carSubValue.slice(0, 6);
+      return blob.indexOf(probe) >= 0;
+    }
+
+    // ============================================================
+    // 7) Main filter pass
+    // ============================================================
+    return items
+      .filter(function (it) {
+        if (!it) return false;
+
+        // Exclude BUY requests
+        var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
+        if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
+
+        var b = bucketOf(it);
+
+        if (b === "item") {
+          if (!wantItem) return false;
+          return subMatchItem(it, itemSubs);
+        }
+
+        if (b === "house") {
+          if (!wantHouse) return false;
+          var priceH = parsePriceLocal(it.price || it.asking_price || 0);
+          if (prefMaxP > 0 && prefMaxP < 999999999) {
+            if (priceH > 0) {
+              if (priceH > prefMaxP) return false;
+              if (prefMinP > 0 && priceH < prefMinP) return false;
+            }
+          }
+          return true;
+        }
+
+        if (b === "car") {
+          if (!wantCar) return false;
+
+          // 🔧 FIX #7: use carSubMatches (brand/model blob)
+          if (carSub && !carSubMatches(it, carSub)) {
+            return false;
+          }
+
+          var priceC = parsePriceLocal(it.price || it.asking_price || 0);
+          if (carMaxP > 0 && carMaxP < 999999999) {
+            if (priceC <= 0) return false; // unknown price → exclude when cap set
+            if (priceC > carMaxP) return false;
+            if (prefMinP > 0 && priceC < prefMinP) return false;
+          }
+          return true;
+        }
+
+        return false;
+      })
+      .map(function (it) {
+        return normalizeImages(it);
+      });
+  }
+  window.hardFilter = hardFilter;
+
+  // ============================================================
+  // 8) __adikaLoadFYP — main FYP loader
+  // ============================================================
+  function __adikaLoadFYP() {
     try {
       if (window.state) {
         state.feedMode = "foryou";
@@ -8272,15 +8393,13 @@
       }
     } catch (e) {}
 
-    // 🔄 Reset history arrays only — interests KEPT (cumulative)
+    // Reset history arrays only — KEEP interests (cumulative)
     try {
       if (typeof window.adikaResetFypContext === "function") {
         window.adikaResetFypContext();
       } else {
-        try {
-          localStorage.removeItem("viewHistory");
-          localStorage.removeItem("adik_user_intent");
-        } catch (eLS) {}
+        try { localStorage.removeItem("viewHistory"); } catch (eLS) {}
+        try { localStorage.removeItem("adik_user_intent"); } catch (eLI) {}
       }
     } catch (eR) {}
 
@@ -8297,206 +8416,17 @@
       return null;
     }
 
-    function parsePrice(v) {
-      if (v == null || v === "") return 0;
-      if (typeof v === "number") return isFinite(v) ? v : 0;
-      var s = String(v).replace(/,/g, "").trim();
-      var m = s.match(/^([\d.]+)\s*(m|M|ሚ|ሚሊ|million|ሚሊዮን)/i);
-      if (m) return Math.round(parseFloat(m[1]) * 1e6);
-      var k = s.match(/^([\d.]+)\s*(k|K|ሺ)/i);
-      if (k) return Math.round(parseFloat(k[1]) * 1e3);
-      var n = Number(s.replace(/[^\d.]/g, ""));
-      return isFinite(n) ? n : 0;
-    }
-
-    function normalizeImages(it) {
-      if (!it || typeof it !== "object") return it;
-      var urls = [];
-      function add(v) {
-        if (!v) return;
-        if (Array.isArray(v)) { v.forEach(add); return; }
-        if (typeof v === "object") {
-          var u = v.url || v.src || v.image_url || v.photo_url || "";
-          if (u) add(u);
-          return;
-        }
-        var s = String(v).trim();
-        if (!s) return;
-        if (s.charAt(0) === "[") {
-          try { add(JSON.parse(s)); return; } catch (e) {}
-        }
-        if (/^https?:\/\//i.test(s) || s.indexOf("data:image") === 0 || s.indexOf("/") === 0) {
-          if (urls.indexOf(s) < 0) urls.push(s);
-        }
-      }
-      add(it.image_url); add(it.photo_url); add(it.telegram_image);
-      add(it.images); add(it.photos); add(it.photo_urls); add(it.listing_photos);
-      add(it.image); add(it.photo);
-      try {
-        var ex = it.extra_data;
-        if (typeof ex === "string") { try { ex = JSON.parse(ex); } catch (e) { ex = null; } }
-        if (ex && typeof ex === "object") {
-          add(ex.image_url); add(ex.photo_url); add(ex.images); add(ex.photos); add(ex.photo_urls);
-        }
-      } catch (eE) {}
-      if (urls.length) {
-        it.image_url = urls[0];
-        it.photo_url = urls[0];
-        it.photos = urls.slice();
-        it.photo_urls = urls.slice();
-        it.images = urls.slice();
-        it._resolved_photos = urls.slice();
-      }
-      return it;
-    }
-    window.normalizeImages = normalizeImages;
-
-    function hardFilter(items, prefs) {
-      if (!items || !items.length) return [];
-      prefs = prefs || {};
-      function parsePriceLocal(v) {
-        var n = Number(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
-        return isFinite(n) ? n : 0;
-      }
-
-      // ===== BASE PREFERENCES =====
-      var prefMaxP = parsePriceLocal(prefs.budget_max || prefs.max_price || prefs.price_max);
-      var prefMinP = parsePriceLocal(prefs.budget_min || prefs.min_price || prefs.price_min);
-      if ((!prefMaxP || prefMaxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
-        var t = String(prefs.budget_range || prefs.budget || "");
-        var parts = t.split(/[-–—toእስከ]/i);
-        var nums = parts.map(parsePriceLocal).filter(function (n) { return n > 0; });
-        if (nums.length >= 2) { prefMinP = Math.min(nums[0], nums[1]); prefMaxP = Math.max(nums[0], nums[1]); }
-        else if (nums.length === 1) { prefMaxP = nums[0]; }
-      }
-
-      // ===== INTEREST POOL (cumulative) =====
-      var interests = [];
-      try {
-        interests = JSON.parse(localStorage.getItem("adika_interests") || "[]");
-      } catch (eP) { interests = []; }
-      if (!Array.isArray(interests)) interests = [];
-
-      var now = Date.now();
-      interests = interests.filter(function (int) {
-        return int && (now - (int.ts || 0) < 30 * 60 * 1000);
-      });
-
-      // Build target categories
-      var wantCar = false, wantHouse = false, wantItem = false;
-      var carMaxP = prefMaxP;
-      var carSub = "";
-      var houseSub = "";
-      var itemSubs = [];
-
-      interests.forEach(function (int) {
-        var t = String(int.type || "").toLowerCase();
-        var sub = String(int.sub || "").toLowerCase();
-        if (t === "car") {
-          wantCar = true;
-          if (int.maxPrice && int.maxPrice > carMaxP) carMaxP = int.maxPrice * 1.15;
-          if (sub) carSub = sub;
-        } else if (t === "house") {
-          wantHouse = true;
-          if (sub) houseSub = sub;
-        } else if (t === "item") {
-          wantItem = true;
-          if (sub && itemSubs.indexOf(sub) < 0) itemSubs.push(sub);
-        }
-      });
-
-      // If no interests, use preferences
-      if (!wantCar && !wantHouse && !wantItem) {
-        var cats = prefs.categories || [];
-        cats.forEach(function (c) {
-          var cl = String(c).toLowerCase();
-          if (/እቃ|item|goods|ቁሳቁስ/.test(cl)) wantItem = true;
-          else if (/መኪና|car/.test(cl)) wantCar = true;
-          else if (/ቤት|house|property/.test(cl)) wantHouse = true;
-        });
-        var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
-        if (/እቃ|item|goods|ቁሳቁስ/.test(mc)) wantItem = true;
-        if (/መኪና|car/.test(mc)) wantCar = true;
-        if (/ቤት|house/.test(mc)) wantHouse = true;
-        if (!wantCar && !wantHouse && !wantItem) {
-          wantCar = true; wantHouse = true; wantItem = true;
-        }
-      }
-
-      function bucket(it) {
-        var extra = it.extra_data || {};
-        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-        if (it.item_kind || extra.item_kind) return "item";
-        var raw = String(it.main_category || it.category || "").toLowerCase();
-        if (/እቃ|item|goods|ቁሳቁስ/.test(raw)) return "item";
-        if (/ቤት|house|property|ንብረት/.test(raw)) return "house";
-        if (/መኪና|car/.test(raw)) return "car";
-        return "other";
-      }
-
-      function itemKind(it) {
-        var extra = it.extra_data || {};
-        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-        return String(it.item_kind || extra.item_kind || "").toLowerCase();
-      }
-
-      function subMatchItem(it, subList) {
-        if (!subList || !subList.length) return true;
-        var k = itemKind(it);
-        if (!k) return true;
-        for (var i = 0; i < subList.length; i++) {
-          var s = subList[i];
-          if (k.indexOf(s) >= 0 || s.indexOf(k) >= 0) return true;
-        }
-        return false;
-      }
-
-      // CUMULATIVE FILTER — item matches ANY interest
-      return items.filter(function (it) {
-        if (!it) return false;
-        var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
-        if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
-        var b = bucket(it);
-
-        if (b === "item" && wantItem) {
-          if (subMatchItem(it, itemSubs)) return true;
-        }
-        if (b === "house" && wantHouse) {
-          var priceH = parsePriceLocal(it.price || it.asking_price || 0);
-          if (prefMaxP > 0 && prefMaxP < 999999999) {
-            if (priceH > 0) {
-              if (priceH > prefMaxP) return false;
-              if (prefMinP > 0 && priceH < prefMinP) return false;
-            }
-          }
-          return true;
-        }
-        if (b === "car" && wantCar) {
-          var priceC = parsePriceLocal(it.price || it.asking_price || 0);
-          if (carSub) {
-            var subOk = (itemKind(it).indexOf(carSub) >= 0 ||
-              String(it.sub_category || "").toLowerCase().indexOf(carSub.slice(0, 6)) >= 0 ||
-              String(it.description || "").toLowerCase().indexOf(carSub.slice(0, 6)) >= 0);
-            if (!subOk && carSub.length >= 4) return false;
-          }
-          if (carMaxP > 0 && carMaxP < 999999999) {
-            if (priceC <= 0) return false;
-            if (priceC > carMaxP) return false;
-            if (prefMinP > 0 && priceC < prefMinP) return false;
-          }
-          return true;
-        }
-        return false;
-      }).map(function (it) {
-        return (typeof normalizeImages === "function") ? normalizeImages(it) : it;
-      });
-    }
-    window.hardFilter = hardFilter;
-
     function paint(items) {
       items = (items || []).map(normalizeImages);
-      try { if (window.state) { state.loading = false; state.items = items; state.feedMode = "foryou"; } } catch (e) {}
+      try {
+        if (window.state) {
+          state.loading = false;
+          state.items = items;
+          state.feedMode = "foryou";
+        }
+      } catch (e) {}
       if (grid) grid.style.opacity = "1";
+
       if (!items.length) {
         if (grid) {
           grid.innerHTML =
@@ -8508,32 +8438,78 @@
         }
         return;
       }
+
+      // Prefer finishLoading (handles append + hasMore correctly)
       try {
-        if (typeof finishLoading === "function") { finishLoading(items, false, false); return; }
+        if (typeof finishLoading === "function") {
+          finishLoading(items, false, false);
+          return;
+        }
       } catch (e1) {}
+
       try {
-        if (typeof window.__adikaPaintListings === "function") { window.__adikaPaintListings(items); return; }
+        if (typeof window.__adikaPaintListings === "function") {
+          window.__adikaPaintListings(items);
+          return;
+        }
       } catch (e2) {}
     }
 
     var prefs = readLocalPrefs() || {};
-    fetch("/api/listings?page=1&limit=60&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
+    fetch("/api/listings?page=1&limit=60&order=DESC&active_only=1&type=SELL", {
+      credentials: "same-origin"
+    })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var base = (data && (data.items || data.listings || data.data)) || [];
         if (!Array.isArray(base)) base = [];
-        paint(hardFilter(base.map(normalizeImages), prefs));
+        var filtered = hardFilter(base.map(normalizeImages), prefs);
+        paint(filtered);
       })
       .catch(function (err) {
         console.warn("[Adika FYP]", err);
         paint([]);
       });
+  }
+  window.__adikaLoadFYP = __adikaLoadFYP;
+  window.loadFYPFeed = __adikaLoadFYP;
+
+  // Alias — same loader
+  window.loadSmartFYP = function (opts) {
+    // If caller passes append + page > 1, we honor it with smart paging
+    opts = opts || {};
+    if (opts.append && opts.page && opts.page > 1) {
+      // Load more FYP: fetch extra, filter, append
+      var prefs = {};
+      try { prefs = JSON.parse(localStorage.getItem("adika_user_prefs") || "{}"); } catch (e) {}
+      fetch("/api/listings?page=" + opts.page + "&limit=20&order=DESC&active_only=1&type=SELL", {
+        credentials: "same-origin"
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var base = (data && (data.items || data.listings || data.data)) || [];
+          if (!Array.isArray(base)) base = [];
+          var filtered = hardFilter(base.map(normalizeImages), prefs);
+          try {
+            if (typeof finishLoading === "function") {
+              finishLoading(filtered, true, filtered.length >= 12);
+            } else if (typeof window.__adikaPaintListings === "function") {
+              window.__adikaPaintListings(
+                (window.__adikaLiveItems || []).concat(filtered)
+              );
+            }
+          } catch (e) {}
+        })
+        .catch(function () {});
+      return;
+    }
+    __adikaLoadFYP();
   };
+  window.triggerSmartFyp = __adikaLoadFYP;
 
-  window.loadFYPFeed = window.__adikaLoadFYP;
-  window.loadSmartFYP = function () { window.__adikaLoadFYP(); };
-  window.triggerSmartFyp = function () { window.__adikaLoadFYP(); };
-
+  // ============================================================
+  // 9) Boot — auto-run FYP if user already onboarded
+  // ============================================================
   function maybeBootFyp() {
     try {
       var onboarded = false;
@@ -8550,8 +8526,8 @@
     maybeBootFyp();
   }
   try {
-    if (window.Telegram && Telegram.WebApp) {
-      Telegram.WebApp.ready();
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.ready();
       setTimeout(maybeBootFyp, 500);
     }
   } catch (e) {}
@@ -8559,7 +8535,6 @@
 </script>
 
 <!-- ======================= END SECTION 28 ======================= -->
-
 <!-- ================================================================ -->
 <!-- SECTION 29 — JS: FYP SCORING ENGINE -->
 <!-- Change/maintain this entire section as one unit. -->
