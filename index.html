@@ -6,23 +6,18 @@
 <html lang="en">
 <head>
 <script>
-/* Adika Global Config — SINGLE SOURCE OF TRUTH */
-window.ADIKA_CONFIG = window.ADIKA_CONFIG || {
-  ADMIN_IDS: [7030641737],
-  ADMIN_TELEGRAM_ID: 7030641737,
-  SUPPORT_PHONE: "0911959585",
-  SUPPORT_TELEGRAM: "https://t.me/AdikaMarketplaceBot"
-};
-window.ADMIN_IDS = window.ADIKA_CONFIG.ADMIN_IDS;
-window.ADMIN_TELEGRAM_ID = window.ADIKA_CONFIG.ADMIN_TELEGRAM_ID;
-window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
+  window.ADMIN_IDS = window.ADMIN_IDS || [7030641737];
+  if (window.ADMIN_IDS.indexOf(7030641737) < 0) window.ADMIN_IDS.push(7030641737);
+  window.ADMIN_TELEGRAM_ID = 7030641737;
+  window.__ADIKA_ADMIN_ID = 7030641737;
 </script>
 
 <script>
-/* Adika global glass toast — replaces native alert for user messages */
+/* Adika global glass toast — replaces native alert */
 (function () {
-  var CONFIG = window.ADIKA_CONFIG;
-  var ADMIN_SUPPORT_PHONE = CONFIG.SUPPORT_PHONE;
+  var ADMIN_SUPPORT_PHONE = "0911959585";
+  window.ADIKA_SUPPORT_PHONE = ADMIN_SUPPORT_PHONE;
+  window.__ADIKA_SUPPORT_PHONE = ADMIN_SUPPORT_PHONE;
 
   function ensureToastEl() {
     var t = document.getElementById("adikaGlassToast");
@@ -30,7 +25,15 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     t = document.createElement("div");
     t.id = "adikaGlassToast";
     t.setAttribute("role", "status");
-    t.className = "adika-glass-toast";
+    t.style.cssText = [
+      "position:fixed", "left:50%", "bottom:96px", "transform:translateX(-50%) translateY(12px)",
+      "z-index:2147483646", "max-width:min(92vw,360px)", "padding:10px 18px",
+      "background:rgba(15,23,42,0.85)", "backdrop-filter:blur(10px)", "-webkit-backdrop-filter:blur(10px)",
+      "color:#ffffff", "border:1px solid rgba(255,255,255,0.15)", "border-radius:20px",
+      "font-size:13px", "font-weight:700", "text-align:center", "line-height:1.35",
+      "box-shadow:0 8px 32px rgba(0,0,0,0.3)", "opacity:0", "pointer-events:none",
+      "transition:opacity .22s ease, transform .22s ease"
+    ].join(";");
     document.body.appendChild(t);
     return t;
   }
@@ -40,64 +43,76 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     var msg = String(message == null ? "" : message).trim();
     if (!msg) return;
     var t = ensureToastEl();
-    t.className = "adika-glass-toast adika-glass-toast--" + type;
+    if (type === "error" || type === "danger") {
+      t.style.borderColor = "rgba(248,113,113,0.55)";
+      t.style.background = "rgba(127,29,29,0.88)";
+    } else if (type === "success") {
+      t.style.borderColor = "rgba(45,212,191,0.45)";
+      t.style.background = "rgba(15,23,42,0.88)";
+    } else {
+      t.style.borderColor = "rgba(255,255,255,0.15)";
+      t.style.background = "rgba(15,23,42,0.85)";
+    }
     t.textContent = msg;
-    t.classList.add("is-visible");
+    t.style.opacity = "1";
+    t.style.transform = "translateX(-50%) translateY(0)";
+    t.style.pointerEvents = "none";
     clearTimeout(window.__adikaGlassToastTimer);
     window.__adikaGlassToastTimer = setTimeout(function () {
-      t.classList.remove("is-visible");
+      t.style.opacity = "0";
+      t.style.transform = "translateX(-50%) translateY(12px)";
     }, 2500);
   }
 
   window.showToast = showToast;
   window.showAdikaToast = showToast;
+  window.alert = function (msg) { showToast(msg, "info"); };
 
   window.openHelpContact = function () {
-    var phone = String(window.ADIKA_SUPPORT_PHONE || ADMIN_SUPPORT_PHONE || "0911959585");
-    var tgUrl = (window.ADIKA_CONFIG && window.ADIKA_CONFIG.SUPPORT_TELEGRAM) || "https://t.me/AdikaMarketplaceBot";
+    var phone = String(window.ADIKA_SUPPORT_PHONE || window.__ADIKA_SUPPORT_PHONE || ADMIN_SUPPORT_PHONE || "0911959585");
     var old = document.getElementById("adikaHelpSheet");
     if (old && old.parentNode) old.parentNode.removeChild(old);
 
     var sheet = document.createElement("div");
     sheet.id = "adikaHelpSheet";
-    sheet.className = "adika-help-sheet";
+    sheet.style.cssText = "position:fixed;inset:0;z-index:2147483645;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,23,42,0.45);backdrop-filter:blur(8px);";
 
     var panel = document.createElement("div");
-    panel.className = "adika-help-panel";
+    panel.style.cssText = "width:100%;max-width:420px;background:rgba(15,23,42,0.92);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.14);border-radius:22px 22px 0 0;padding:18px 16px 22px;color:#fff;box-shadow:0 -12px 40px rgba(0,0,0,0.35);";
 
     var head = document.createElement("div");
-    head.className = "adika-help-head";
+    head.style.cssText = "display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;";
     var title = document.createElement("div");
-    title.className = "adika-help-title";
+    title.style.cssText = "font-weight:900;font-size:15px;";
     title.textContent = "🆘 እርዳታ / Help";
     var closeBtn = document.createElement("button");
     closeBtn.type = "button";
     closeBtn.id = "adikaHelpClose";
-    closeBtn.className = "adika-help-close";
     closeBtn.textContent = "✕";
+    closeBtn.style.cssText = "width:32px;height:32px;border-radius:999px;background:rgba(255,255,255,0.12);border:0;color:#fff;font-weight:900;cursor:pointer;";
     head.appendChild(title);
     head.appendChild(closeBtn);
 
     var p = document.createElement("p");
-    p.className = "adika-help-sub";
+    p.style.cssText = "font-size:12px;color:#cbd5e1;margin:0 0 14px;line-height:1.45;";
     p.textContent = "Adika Marketplace ድጋፍ — ይደውሉ ወይም ቴሌግራም ይጻፉ።";
 
     var call = document.createElement("a");
     call.href = "tel:" + phone;
-    call.className = "adika-help-call";
+    call.style.cssText = "display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:14px;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#0f172a;font-weight:900;font-size:14px;text-decoration:none;margin-bottom:10px;";
     call.textContent = "📞 " + phone;
 
-    var tgLink = document.createElement("a");
-    tgLink.href = tgUrl;
-    tgLink.target = "_blank";
-    tgLink.rel = "noopener";
-    tgLink.className = "adika-help-tg";
-    tgLink.textContent = "✈️ @AdikaMarketplaceBot";
+    var tg = document.createElement("a");
+    tg.href = "https://t.me/AdikaMarketplaceBot";
+    tg.target = "_blank";
+    tg.rel = "noopener";
+    tg.style.cssText = "display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:14px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);color:#e2e8f0;font-weight:800;font-size:12px;text-decoration:none;";
+    tg.textContent = "✈️ @AdikaMarketplaceBot";
 
     panel.appendChild(head);
     panel.appendChild(p);
     panel.appendChild(call);
-    panel.appendChild(tgLink);
+    panel.appendChild(tg);
     sheet.appendChild(panel);
     document.body.appendChild(sheet);
 
@@ -111,6 +126,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
   };
 })();
 </script>
+
 
 <!-- ======================= END SECTION 01 ======================= -->
 
