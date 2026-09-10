@@ -127,7 +127,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // Optional: set window.__ADIKA_SUPABASE = { url: "...", anonKey: "..." } before this runs
+    /* Supabase client bootstrap — reads config from window.ADIKA_SUPABASE or globals */
     (function () {
       try {
         var lib = window.supabase || (typeof supabase !== "undefined" ? supabase : null);
