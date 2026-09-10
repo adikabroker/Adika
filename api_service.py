@@ -3266,7 +3266,7 @@ function shareContract() {{
             return jsonify({"success": False, "items": [], "message": str(e)}), 200
 
     # ============================ END SECTION 15 ============================
-    # ==============================================================================
+     # ==============================================================================
     # SECTION 16 — FYP / RECOMMENDATION FEED
     # Change/maintain this entire section as one unit. Logic is unchanged.
     # ==============================================================================
@@ -3491,6 +3491,53 @@ function shareContract() {{
                 except Exception as fb_err:
                     logger.warning("for-you empty fallback: %s", fb_err)
 
+            # If FYP engine missing or photos empty, fill from newest listings
+            need_photos = (not items) or any(not (it.get("image_url") or "") for it in items)
+            if need_photos:
+                try:
+                    from models import get_recent_listings
+                    raw = get_recent_listings(80)
+                except Exception:
+                    raw = []
+                try:
+                    if not raw:
+                        import adika_features as af
+                        if hasattr(af, "_fetch_listings"):
+                            raw = af._fetch_listings(limit=80, category="", min_price=0, max_price=0) or []
+                except Exception:
+                    raw = raw or []
+                by_id = {}
+                filled = []
+                for it in raw:
+                    if not isinstance(it, dict):
+                        continue
+                    try:
+                        it = unify_listing_images(it)
+                    except Exception:
+                        pass
+                    if it.get("id") is not None:
+                        by_id[str(it.get("id"))] = it
+                    filled.append(it)
+                if items:
+                    merged = []
+                    seen = set()
+                    for it in items:
+                        rid = str(it.get("id"))
+                        rich = by_id.get(rid) or it
+                        try:
+                            rich = unify_listing_images(rich)
+                        except Exception:
+                            pass
+                        merged.append(rich)
+                        seen.add(rid)
+                    for it in filled:
+                        rid = str(it.get("id"))
+                        if rid not in seen:
+                            merged.append(it)
+                    items = merged
+                else:
+                    items = filled
+
             return jsonify({
                 "success": True,
                 "items": items,
@@ -3516,6 +3563,7 @@ function shareContract() {{
 
 
     # ============================ END SECTION 16 ============================
+
     # ==============================================================================
     # SECTION 17 — AUTH ROUTES & HEALTH
     # Change/maintain this entire section as one unit. Logic is unchanged.
