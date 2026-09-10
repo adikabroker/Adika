@@ -3539,11 +3539,67 @@
         try { bm = extractBrandModel(item, extra) || {}; } catch (e) {}
         var priceNum = 0;
         try { priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0; } catch (e) {}
+
+        // 🆕 Determine category + sub-category
+        var mc = String(item.main_category || item.category || "").toLowerCase();
+        var itemKind = String(extra.item_kind || item.item_kind || "").toLowerCase();
+        var viewCat = "";
+        var viewSub = "";
+
+        if (/እቃ|item|goods|ቁሳቁስ/.test(mc) || itemKind) {
+          viewCat = "item";
+          viewSub = itemKind || "";
+        } else if (/ቤት|house|property|ንብረት/.test(mc)) {
+          viewCat = "house";
+          viewSub = String(extra.house_type || item.sub_category || "").toLowerCase();
+        } else if (/መኪና|car|vehicle|auto/.test(mc)) {
+          viewCat = "car";
+          viewSub = String(extra.car_model || extra.car_type || item.sub_category || "").toLowerCase();
+        }
+
+        // 🆕 INTEREST POOL — cumulative list of what user viewed
         try {
-          if (priceNum > 0) localStorage.setItem("adika_last_view_price", String(priceNum));
-          var vm = bm.display || item.sub_category || extra.car_model || "";
-          if (vm) localStorage.setItem("adika_last_view_model", String(vm));
-        } catch (eV) {}
+          var pool = [];
+          try { pool = JSON.parse(localStorage.getItem("adika_interests") || "[]"); } catch (eP) { pool = []; }
+          if (!Array.isArray(pool)) pool = [];
+
+          if (viewCat) {
+            var exists = false;
+            var interestKey = viewCat + "|" + viewSub;
+            for (var i = 0; i < pool.length; i++) {
+              var pKey = (pool[i].type || "") + "|" + (pool[i].sub || "");
+              if (pKey === interestKey) {
+                pool[i].ts = Date.now();
+                if (viewCat === "car" && priceNum > 0) {
+                  pool[i].maxPrice = Math.max(pool[i].maxPrice || 0, priceNum);
+                }
+                exists = true;
+                break;
+              }
+            }
+            if (!exists) {
+              var newInterest = {
+                type: viewCat,
+                sub: viewSub,
+                maxPrice: (viewCat === "car" && priceNum > 0) ? priceNum : 0,
+                ts: Date.now()
+              };
+              pool.push(newInterest);
+            }
+            pool = pool.slice(-10);
+            localStorage.setItem("adika_interests", JSON.stringify(pool));
+
+            localStorage.setItem("adika_last_view_category", viewCat);
+            localStorage.setItem("adika_last_view_sub", viewSub);
+            localStorage.setItem("adika_last_view_ts", String(Date.now()));
+            if (viewCat === "car" && priceNum > 0) {
+              localStorage.setItem("adika_last_view_price", String(priceNum));
+            }
+            var vm = bm.display || item.sub_category || extra.car_model || "";
+            if (vm) localStorage.setItem("adika_last_view_model", String(vm));
+          }
+        } catch (eCat) {}
+
         var entry = {
           id: item.id,
           category: item.main_category || item.category || "",
@@ -3786,7 +3842,7 @@
             if (!Array.isArray(list)) list = [];
             list = strictFilterList(list);
             if (list.length) {
-              renderRecoCards(list, "FYP • ተመሳሳይ");
+              renderRecoCards(list, "FYP · ተመሳሳይ");
               applyAlert(item);
               return true;
             }
@@ -5084,16 +5140,33 @@
       try { state.loading = false; } catch (e) {}
 
       catId = (catId || "").trim();
-      if (catId === "foryou" || catId === "ለእርስዎ" || catId === "✨ ለእርስዎ") {
-        // 🔄 RESET FYP CONTEXT — clear stale view history so preferences-only apply
+
+      var isForYou = (catId === "foryou" || catId === "ለእርስዎ" || catId === "✨ ለእርስዎ");
+      var isAll = (!catId || catId === "all" || catId === "null" || catId === "undefined" || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም" || catId === "🌐 ሁሉም");
+
+      // 🆕 When user picks a specific category, clear interest pool (fresh start)
+      if (!isForYou && !isAll) {
+        try {
+          if (typeof window.adikaClearRecentView === "function") {
+            window.adikaClearRecentView();
+          } else {
+            localStorage.removeItem("adika_interests");
+            localStorage.removeItem("adika_last_view_category");
+            localStorage.removeItem("adika_last_view_sub");
+            localStorage.removeItem("adika_last_view_price");
+            localStorage.removeItem("adika_last_view_model");
+            localStorage.removeItem("adika_last_view_ts");
+          }
+        } catch (e) {}
+      }
+
+      if (isForYou) {
+        // Reset history only — interests KEPT (cumulative)
         try {
           if (typeof window.adikaResetFypContext === "function") {
             window.adikaResetFypContext();
           } else {
-            // Fallback — clear directly
             try {
-              localStorage.removeItem("adika_last_view_price");
-              localStorage.removeItem("adika_last_view_model");
               localStorage.removeItem("viewHistory");
               localStorage.removeItem("adik_user_intent");
             } catch (eLS) {}
@@ -5119,7 +5192,7 @@
         }
         state.feedMode = "foryou";
         state.category = "";
-      } else if (!catId || catId === "all" || catId === "null" || catId === "undefined" || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም" || catId === "🌐 ሁሉም") {
+      } else if (isAll) {
         state.feedMode = "all";
         state.category = "";
       } else {
@@ -8199,14 +8272,12 @@
       }
     } catch (e) {}
 
-    // 🔄 RESET FYP CONTEXT — clear stale view history so preferences-only apply
+    // 🔄 Reset history arrays only — interests KEPT (cumulative)
     try {
       if (typeof window.adikaResetFypContext === "function") {
         window.adikaResetFypContext();
       } else {
         try {
-          localStorage.removeItem("adika_last_view_price");
-          localStorage.removeItem("adika_last_view_model");
           localStorage.removeItem("viewHistory");
           localStorage.removeItem("adik_user_intent");
         } catch (eLS) {}
@@ -8287,30 +8358,69 @@
         var n = Number(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
         return isFinite(n) ? n : 0;
       }
-      var maxP = parsePriceLocal(prefs.budget_max || prefs.max_price || prefs.price_max);
-      var minP = parsePriceLocal(prefs.budget_min || prefs.min_price || prefs.price_min);
-      if ((!maxP || maxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
+
+      // ===== BASE PREFERENCES =====
+      var prefMaxP = parsePriceLocal(prefs.budget_max || prefs.max_price || prefs.price_max);
+      var prefMinP = parsePriceLocal(prefs.budget_min || prefs.min_price || prefs.price_min);
+      if ((!prefMaxP || prefMaxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
         var t = String(prefs.budget_range || prefs.budget || "");
         var parts = t.split(/[-–—toእስከ]/i);
         var nums = parts.map(parsePriceLocal).filter(function (n) { return n > 0; });
-        if (nums.length >= 2) { minP = Math.min(nums[0], nums[1]); maxP = Math.max(nums[0], nums[1]); }
-        else if (nums.length === 1) { maxP = nums[0]; }
+        if (nums.length >= 2) { prefMinP = Math.min(nums[0], nums[1]); prefMaxP = Math.max(nums[0], nums[1]); }
+        else if (nums.length === 1) { prefMaxP = nums[0]; }
       }
-      // NOTE: view-history elasticity removed — always honor form budget
-      var cats = prefs.categories || [];
-      var wantCar = false, wantHouse = false, wantItem = false;
-      cats.forEach(function (c) {
-        var cl = String(c).toLowerCase();
-        if (/እቃ|item|goods|ቁሳቁስ/.test(cl)) wantItem = true;
-        else if (/መኪና|car/.test(cl)) wantCar = true;
-        else if (/ቤት|house|property/.test(cl)) wantHouse = true;
+
+      // ===== INTEREST POOL (cumulative) =====
+      var interests = [];
+      try {
+        interests = JSON.parse(localStorage.getItem("adika_interests") || "[]");
+      } catch (eP) { interests = []; }
+      if (!Array.isArray(interests)) interests = [];
+
+      var now = Date.now();
+      interests = interests.filter(function (int) {
+        return int && (now - (int.ts || 0) < 30 * 60 * 1000);
       });
-      var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
-      if (/እቃ|item|goods|ቁሳቁስ/.test(mc)) wantItem = true;
-      if (/መኪና|car/.test(mc)) wantCar = true;
-      if (/ቤት|house/.test(mc)) wantHouse = true;
+
+      // Build target categories
+      var wantCar = false, wantHouse = false, wantItem = false;
+      var carMaxP = prefMaxP;
+      var carSub = "";
+      var houseSub = "";
+      var itemSubs = [];
+
+      interests.forEach(function (int) {
+        var t = String(int.type || "").toLowerCase();
+        var sub = String(int.sub || "").toLowerCase();
+        if (t === "car") {
+          wantCar = true;
+          if (int.maxPrice && int.maxPrice > carMaxP) carMaxP = int.maxPrice * 1.15;
+          if (sub) carSub = sub;
+        } else if (t === "house") {
+          wantHouse = true;
+          if (sub) houseSub = sub;
+        } else if (t === "item") {
+          wantItem = true;
+          if (sub && itemSubs.indexOf(sub) < 0) itemSubs.push(sub);
+        }
+      });
+
+      // If no interests, use preferences
       if (!wantCar && !wantHouse && !wantItem) {
-        wantCar = true; wantHouse = true; wantItem = true;
+        var cats = prefs.categories || [];
+        cats.forEach(function (c) {
+          var cl = String(c).toLowerCase();
+          if (/እቃ|item|goods|ቁሳቁስ/.test(cl)) wantItem = true;
+          else if (/መኪና|car/.test(cl)) wantCar = true;
+          else if (/ቤት|house|property/.test(cl)) wantHouse = true;
+        });
+        var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
+        if (/እቃ|item|goods|ቁሳቁስ/.test(mc)) wantItem = true;
+        if (/መኪና|car/.test(mc)) wantCar = true;
+        if (/ቤት|house/.test(mc)) wantHouse = true;
+        if (!wantCar && !wantHouse && !wantItem) {
+          wantCar = true; wantHouse = true; wantItem = true;
+        }
       }
 
       function bucket(it) {
@@ -8324,20 +8434,55 @@
         return "other";
       }
 
+      function itemKind(it) {
+        var extra = it.extra_data || {};
+        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        return String(it.item_kind || extra.item_kind || "").toLowerCase();
+      }
+
+      function subMatchItem(it, subList) {
+        if (!subList || !subList.length) return true;
+        var k = itemKind(it);
+        if (!k) return true;
+        for (var i = 0; i < subList.length; i++) {
+          var s = subList[i];
+          if (k.indexOf(s) >= 0 || s.indexOf(k) >= 0) return true;
+        }
+        return false;
+      }
+
+      // CUMULATIVE FILTER — item matches ANY interest
       return items.filter(function (it) {
         if (!it) return false;
         var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
         if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
         var b = bucket(it);
-        if (b === "item") return !!wantItem;
-        if (b === "house") return !!wantHouse;
-        if (b === "car") {
-          if (!wantCar) return false;
-          var price = parsePriceLocal(it.price || it.asking_price || 0);
-          if (maxP > 0 && maxP < 999999999) {
-            if (price <= 0) return false;
-            if (price > maxP) return false;
-            if (minP > 0 && price < minP) return false;
+
+        if (b === "item" && wantItem) {
+          if (subMatchItem(it, itemSubs)) return true;
+        }
+        if (b === "house" && wantHouse) {
+          var priceH = parsePriceLocal(it.price || it.asking_price || 0);
+          if (prefMaxP > 0 && prefMaxP < 999999999) {
+            if (priceH > 0) {
+              if (priceH > prefMaxP) return false;
+              if (prefMinP > 0 && priceH < prefMinP) return false;
+            }
+          }
+          return true;
+        }
+        if (b === "car" && wantCar) {
+          var priceC = parsePriceLocal(it.price || it.asking_price || 0);
+          if (carSub) {
+            var subOk = (itemKind(it).indexOf(carSub) >= 0 ||
+              String(it.sub_category || "").toLowerCase().indexOf(carSub.slice(0, 6)) >= 0 ||
+              String(it.description || "").toLowerCase().indexOf(carSub.slice(0, 6)) >= 0);
+            if (!subOk && carSub.length >= 4) return false;
+          }
+          if (carMaxP > 0 && carMaxP < 999999999) {
+            if (priceC <= 0) return false;
+            if (priceC > carMaxP) return false;
+            if (prefMinP > 0 && priceC < prefMinP) return false;
           }
           return true;
         }
@@ -9181,16 +9326,28 @@
     return window.supabase || null;
   }
 
-  /** Reset stale FYP view history so preferences-only apply on next load */
+  /** Reset FYP history arrays — KEEP interest pool so user's interests persist */
   function resetFypContext() {
     try {
-      localStorage.removeItem("adika_last_view_price");
-      localStorage.removeItem("adika_last_view_model");
       localStorage.removeItem("viewHistory");
       localStorage.removeItem("adik_user_intent");
+      // DO NOT remove adika_interests, adika_last_view_*
     } catch (e) {}
   }
   window.adikaResetFypContext = resetFypContext;
+
+  /** Clear ALL interest state — called ONLY when user explicitly picks a new top-level category */
+  function clearRecentView() {
+    try {
+      localStorage.removeItem("adika_interests");
+      localStorage.removeItem("adika_last_view_category");
+      localStorage.removeItem("adika_last_view_sub");
+      localStorage.removeItem("adika_last_view_price");
+      localStorage.removeItem("adika_last_view_model");
+      localStorage.removeItem("adika_last_view_ts");
+    } catch (e) {}
+  }
+  window.adikaClearRecentView = clearRecentView;
 
   function fetchPreferences(uid) {
     var client = sb();
@@ -9294,473 +9451,6 @@
   window.adikaFetchSearchAlerts = fetchSearchAlerts;
   window.adikaFetchBuyerRequests = fetchBuyerRequests;
   window.adikaFetchListingPool = fetchListingPool;
-})();
-</script>
-
-<script>
-/* ===== FYP Recommendation Engine: 100-Point Scoring ===== */
-(function () {
-  "use strict";
-
-  function tgId() {
-    try {
-      var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-      if (u && u.id != null) return String(u.id);
-    } catch (e) {}
-    try {
-      if (window.state && state.userId) return String(state.userId);
-    } catch (e2) {}
-    return "";
-  }
-
-  function num(v) {
-    if (v == null || v === "") return 0;
-    if (typeof v === "number") return isFinite(v) ? v : 0;
-    var n = Number(String(v).replace(/[^\d.]/g, ""));
-    return isFinite(n) ? n : 0;
-  }
-
-  function normCat(c) {
-    c = String(c || "").toLowerCase().trim();
-    if (/መኪና|car|vehicle|auto/.test(c)) return "car";
-    if (/ቤት|house|property|real|home|apartment/.test(c)) return "house";
-    if (/ንግድ|commercial|business/.test(c)) return "commercial";
-    return c || "other";
-  }
-
-  function listingCat(it) {
-    return normCat(it.main_category || it.category || it.sub_category || "");
-  }
-
-  function listingPrice(it) {
-    return num(it.price || it.amount || it.value);
-  }
-
-  function listingCreated(it) {
-    var s = it.created_at || it.posted_at || it.date || it.updated_at;
-    if (!s) return 0;
-    var t = new Date(s).getTime();
-    return isFinite(t) ? t : 0;
-  }
-
-  function extractExtra(it) {
-    var extra = it.extra_data || {};
-    if (typeof extra === "string") {
-      try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
-    }
-    return extra || {};
-  }
-
-  function listingTrans(it) {
-    var e = extractExtra(it);
-    return String(it.transmission || e.transmission || e.gearbox || "").toLowerCase();
-  }
-
-  function listingFuel(it) {
-    var e = extractExtra(it);
-    return String(it.fuel || it.fuel_type || e.fuel_type || e.fuel || "").toLowerCase();
-  }
-
-  function listingBrandModel(it) {
-    var e = extractExtra(it);
-    return [
-      it.brand, it.model, e.brand, e.model,
-      it.sub_category, it.title
-    ].filter(Boolean).join(" ").toLowerCase();
-  }
-
-  function scorePreferences(listing, prefs) {
-    if (!prefs) return 0;
-    var pts = 0;
-    var max = 40;
-
-    var prefCat = normCat(prefs.main_category || prefs.category || prefs.preferred_category || "");
-    var lCat = listingCat(listing);
-    if (prefCat && prefCat !== "other" && prefCat === lCat) pts += 16;
-    else if (prefCat && lCat && prefCat.slice(0, 3) === lCat.slice(0, 3)) pts += 6;
-
-    var pMin = num(prefs.price_min || prefs.min_price || prefs.budget_min || prefs.min_budget);
-    var pMax = num(prefs.price_max || prefs.max_price || prefs.budget_max || prefs.max_budget);
-    var price = listingPrice(listing);
-    if (price > 0 && (pMin > 0 || pMax > 0)) {
-      if (pMin > 0 && pMax > 0) {
-        if (price >= pMin && price <= pMax) pts += 14;
-        else {
-          var mid = (pMin + pMax) / 2;
-          var span = Math.max(1, pMax - pMin);
-          var dist = Math.abs(price - mid) / span;
-          if (dist < 0.25) pts += 10;
-          else if (dist < 0.5) pts += 6;
-          else if (dist < 1) pts += 2;
-        }
-      } else if (pMax > 0 && price <= pMax * 1.15) pts += 10;
-      else if (pMin > 0 && price >= pMin * 0.85) pts += 8;
-    }
-
-    var prefTrans = String(prefs.transmission || prefs.gearbox || "").toLowerCase();
-    var lTrans = listingTrans(listing);
-    if (prefTrans && lTrans && (lTrans.indexOf(prefTrans.slice(0, 4)) >= 0 || prefTrans.indexOf(lTrans.slice(0, 4)) >= 0)) {
-      pts += 5;
-    }
-
-    var prefFuel = String(prefs.fuel || prefs.fuel_type || "").toLowerCase();
-    var lFuel = listingFuel(listing);
-    if (prefFuel && lFuel && (lFuel.indexOf(prefFuel.slice(0, 4)) >= 0 || prefFuel.indexOf(lFuel.slice(0, 4)) >= 0)) {
-      pts += 5;
-    }
-
-    return Math.min(max, pts);
-  }
-
-  function scoreFavoritesAlerts(listing, favorites, alerts) {
-    var pts = 0;
-    var max = 30;
-    var lCat = listingCat(listing);
-    var bm = listingBrandModel(listing);
-    var price = listingPrice(listing);
-
-    var favCatHits = 0;
-    var favBrandHits = 0;
-    (favorites || []).forEach(function (f) {
-      var fc = normCat(f.category || f.main_category || "");
-      if (fc && fc === lCat) favCatHits++;
-      var tags = String(f.tags || f.brand || f.model || "").toLowerCase();
-      if (tags && bm && (bm.indexOf(tags.slice(0, 4)) >= 0 || tags.indexOf(bm.slice(0, 4)) >= 0)) favBrandHits++;
-    });
-    if (favCatHits > 0) pts += Math.min(12, 6 + favCatHits * 2);
-    if (favBrandHits > 0) pts += Math.min(8, 4 + favBrandHits * 2);
-
-    (alerts || []).forEach(function (a) {
-      var q = String(a.query || a.keywords || a.search_query || a.category || "").toLowerCase();
-      if (!q) return;
-      if (lCat && q.indexOf(lCat) >= 0) pts += 4;
-      if (bm && q.length > 2 && bm.indexOf(q.slice(0, Math.min(6, q.length))) >= 0) pts += 6;
-      var aMin = num(a.min_price || a.price_min || a.budget_min);
-      var aMax = num(a.max_price || a.price_max || a.budget_max);
-      if (price > 0 && aMin > 0 && aMax > 0 && price >= aMin && price <= aMax) pts += 4;
-    });
-
-    return Math.min(max, pts);
-  }
-
-  function scoreBuyerRequests(listing, requests) {
-    var pts = 0;
-    var max = 20;
-    if (!requests || !requests.length) return 0;
-    var lCat = listingCat(listing);
-    var price = listingPrice(listing);
-    var bm = listingBrandModel(listing);
-
-    var best = 0;
-    requests.forEach(function (r) {
-      var local = 0;
-      var rCat = normCat(r.main_category || r.category || "");
-      if (rCat && rCat === lCat) local += 8;
-
-      var bmin = num(r.budget_min || r.min_budget || r.min_price || r.price_min);
-      var bmax = num(r.budget_max || r.max_budget || r.max_price || r.price_max || r.budget || r.price);
-      if (price > 0 && (bmin > 0 || bmax > 0)) {
-        if (bmin > 0 && bmax > 0 && price >= bmin && price <= bmax) local += 8;
-        else if (bmax > 0 && price <= bmax * 1.1) local += 5;
-        else if (bmin > 0 && price >= bmin * 0.9) local += 4;
-      }
-
-      var note = String(r.notes || r.details || r.description || r.brand || r.model || "").toLowerCase();
-      if (note && bm && note.length > 2 && (bm.indexOf(note.slice(0, 5)) >= 0 || note.indexOf(bm.slice(0, 5)) >= 0)) {
-        local += 4;
-      }
-      if (local > best) best = local;
-    });
-    pts = Math.min(max, best);
-    return pts;
-  }
-
-  function scoreFreshness(listing) {
-    var created = listingCreated(listing);
-    if (!created) return 0;
-    var ageH = (Date.now() - created) / 3600000;
-    if (ageH <= 24) return 10;
-    if (ageH <= 48) return 8;
-    if (ageH <= 72) return 6;
-    if (ageH <= 168) return 2;
-    return 0;
-  }
-
-  function computeScore(listing, ctx) {
-    var sPref = scorePreferences(listing, ctx.prefs);
-    var sFav = scoreFavoritesAlerts(listing, ctx.favorites, ctx.alerts);
-    var sBuy = scoreBuyerRequests(listing, ctx.requests);
-    var sFresh = scoreFreshness(listing);
-    var total = sPref + sFav + sBuy + sFresh;
-    var views = num(listing.view_count || listing.views_count);
-    if (views > 50) total += 3;
-    else if (views > 20) total += 1;
-    return {
-      total: Math.min(100, Math.round(total)),
-      breakdown: { prefs: sPref, favAlerts: sFav, buyer: sBuy, fresh: sFresh }
-    };
-  }
-
-  function hasMeaningfulPrefs(prefs) {
-    if (!prefs) return false;
-    var cat = prefs.main_category || prefs.category || prefs.preferred_category;
-    var pMin = num(prefs.price_min || prefs.min_price || prefs.budget_min);
-    var pMax = num(prefs.price_max || prefs.max_price || prefs.budget_max);
-    return !!(cat || pMin > 0 || pMax > 0 || prefs.transmission || prefs.fuel || prefs.fuel_type);
-  }
-
-  function ensurePrefsCta(show) {
-    var grid = document.getElementById("grid");
-    if (!grid) return;
-    var existing = document.getElementById("fypPrefsCtaBanner");
-    if (!show) {
-      if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
-      return;
-    }
-    if (existing) return;
-    var banner = document.createElement("div");
-    banner.id = "fypPrefsCtaBanner";
-    banner.style.gridColumn = "1 / -1";
-    banner.innerHTML =
-      '<div class="fyp-cta-text">' +
-        '<span class="lang-am">✨ የግል ምክሮች ለማግኘት ምርጫዎችዎን ያዘጋጁ</span>' +
-        '<span class="lang-en">✨ Set your preferences for personalized picks</span>' +
-        '<div style="font-size:9px;font-weight:600;color:#64748b;margin-top:2px;">Top trending shown until you personalize</div>' +
-      "</div>" +
-      '<button type="button" id="fypOpenPrefsBtn">' +
-        '<span class="lang-am">አዘጋጅ</span><span class="lang-en">Set up</span>' +
-      "</button>";
-    grid.parentNode.insertBefore(banner, grid);
-    var btn = document.getElementById("fypOpenPrefsBtn");
-    if (btn) {
-      btn.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        try {
-          if (typeof window.openFYPWithOnboarding === "function") window.openFYPWithOnboarding();
-          else if (typeof requireOnboardingForFyp === "function") requireOnboardingForFyp();
-        } catch (err) {}
-      };
-    }
-  }
-
-  function rankListings(listings, ctx) {
-    var scored = (listings || []).map(function (it) {
-      var sc = computeScore(it, ctx);
-      it._fypScore = sc.total;
-      it.fyp_score = sc.total;
-      it.match_score = sc.total;
-      it._fypBreakdown = sc.breakdown;
-      return { item: it, score: sc.total };
-    });
-    scored.sort(function (a, b) {
-      if (b.score !== a.score) return b.score - a.score;
-      return listingCreated(b.item) - listingCreated(a.item);
-    });
-    return scored.map(function (r) { return r.item; });
-  }
-
-  function paintRanked(items, append) {
-    try {
-      if (typeof finishLoading === "function") {
-        finishLoading(items, !!append, items.length >= 12);
-        return;
-      }
-    } catch (e) {}
-    try {
-      if (window.__adikaPaintListings) {
-        window.__adikaPaintListings(items);
-        return;
-      }
-    } catch (e2) {}
-    var g = document.getElementById("grid");
-    if (!g) return;
-    if (!append) g.innerHTML = "";
-    items.forEach(function (it) {
-      try {
-        if (window.__adikaCreateCard) g.appendChild(window.__adikaCreateCard(it));
-      } catch (e3) {}
-    });
-    window.__adikaLiveItems = items;
-  }
-
-  window.adikaComputeFypScores = function (listings, ctx) {
-    return rankListings(listings, ctx || {});
-  };
-
-  window.loadSmartFYP = function (opts) {
-    opts = opts || {};
-    var uid = tgId();
-    var append = !!opts.append;
-    var page = opts.page || 1;
-
-    try {
-      if (window.state) {
-        state.feedMode = "foryou";
-        state.category = "";
-        state.loading = true;
-        if (!append) state.page = 1;
-      }
-    } catch (e) {}
-
-    try {
-      var grid = document.getElementById("grid");
-      if (grid && !append) {
-        grid.innerHTML = "";
-        grid.style.opacity = "0.65";
-      }
-    } catch (eG) {}
-    try {
-      if (!append && window.state) {
-        state.items = [];
-        state.page = 1;
-      }
-    } catch (eClr) {}
-
-    Promise.all([
-      window.adikaFetchPreferences(uid),
-      window.adikaFetchFavorites(uid),
-      window.adikaFetchSearchAlerts(uid),
-      window.adikaFetchBuyerRequests(uid),
-      window.adikaFetchListingPool(100)
-    ]).then(function (results) {
-      var prefs = results[0];
-      var favorites = results[1] || [];
-      var alerts = results[2] || [];
-      var requests = results[3] || [];
-      var pool = results[4] || [];
-
-      var ctx = { prefs: prefs, favorites: favorites, alerts: alerts, requests: requests };
-      var meaningful = hasMeaningfulPrefs(prefs);
-
-      pool = pool.filter(function (it) {
-        if (!it) return false;
-        var t = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
-        if (/BUY|REQUEST|WANT/.test(t)) return false;
-        if (it.is_buyer_request) return false;
-        return true;
-      });
-
-      var ranked = rankListings(pool, ctx);
-
-      if (prefs) {
-        var bud = (typeof window.adikaParseBudgetRange === "function")
-          ? window.adikaParseBudgetRange(prefs)
-          : { min: num(prefs.budget_min || prefs.min_price), max: num(prefs.budget_max || prefs.max_price) };
-        var maxP = bud.max || num(prefs.budget_max || prefs.max_price || prefs.price_max) || 0;
-        var minP = bud.min || num(prefs.budget_min || prefs.min_price || prefs.price_min) || 0;
-        if ((!maxP || maxP >= 999999999)) {
-          try {
-            var rawP = localStorage.getItem("adika_user_prefs");
-            if (rawP) {
-              var lp = JSON.parse(rawP);
-              maxP = maxP || num(lp.budget_max || lp.max_price) || 0;
-              minP = minP || num(lp.budget_min || lp.min_price) || 0;
-              if (!prefs.categories || !prefs.categories.length) {
-                prefs.categories = lp.categories || [];
-              }
-            }
-          } catch (eLoc) {}
-        }
-        var prefCat = normCat(prefs.main_category || prefs.category || (prefs.categories && prefs.categories[0]) || "");
-        if (maxP > 0 && maxP < 999999999) {
-          ranked = ranked.filter(function (it) {
-            var price = listingPrice(it);
-            if (price <= 0) return false;
-            if (price > maxP) return false;
-            if (minP > 0 && price < minP) return false;
-            if (prefCat === "car" || prefCat === "house") {
-              var lc = listingCat(it);
-              if (lc && lc !== prefCat) return false;
-            }
-            return true;
-          });
-        }
-      }
-
-      ensurePrefsCta(!meaningful);
-
-      var perPage = 20;
-      var start = (Math.max(1, page) - 1) * perPage;
-      var slice = ranked.slice(start, start + perPage);
-
-      try {
-        if (window.state) {
-          state.loading = false;
-          state.page = page;
-          state.hasMore = ranked.length > start + perPage;
-          state.items = append ? (state.items || []).concat(slice) : slice;
-        }
-      } catch (eS) {}
-
-      try {
-        var grid2 = document.getElementById("grid");
-        if (grid2) grid2.style.opacity = "1";
-      } catch (eO) {}
-
-      paintRanked(slice, append);
-    }).catch(function (err) {
-      console.warn("[Adika FYP]", err);
-      try {
-        if (window.state) state.loading = false;
-        var grid3 = document.getElementById("grid");
-        if (grid3) {
-          grid3.style.opacity = "1";
-          grid3.innerHTML = '<div style="grid-column:1/-1;padding:28px 16px;text-align:center;">' +
-            '<div style="font-size:36px;margin-bottom:8px;">🔍</div>' +
-            '<div style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px;">በፍላጎትዎ የሚመጥን ነገር አልተገኘም።</div>' +
-            '<button type="button" onclick="window.openFYPWithOnboarding&&openFYPWithOnboarding()" style="padding:8px 14px;border-radius:999px;background:linear-gradient(135deg,#0ea5e9,#14b8a6);color:#fff;font-weight:900;font-size:11px;border:0;">⚙️ ምርጫ ቀይር</button></div>';
-        }
-      } catch (e) {}
-    });
-  };
-
-  window.loadFYPFeed = function () {
-    try {
-      if (window.state) {
-        state.feedMode = "foryou";
-        state.category = "";
-        state.page = 1;
-        state.hasMore = true;
-        state.items = [];
-        state.q = "";
-        state.loading = false;
-      }
-    } catch (e) {}
-    try {
-      var g = document.getElementById("grid");
-      if (g) { g.innerHTML = ""; g.style.opacity = "0.55"; }
-    } catch (eG) {}
-    try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
-    if (typeof window.loadSmartFYP === "function") {
-      window.loadSmartFYP({ page: 1, append: false });
-      return;
-    }
-  };
-
-  if (typeof window.load === "function" && !window.load.__smartFypWrapped) {
-    var _origLoad = window.load;
-    window.load = function (append) {
-      try {
-        if (window.state && state.feedMode === "foryou" && !state.q && state.tab !== "buy") {
-          if (!append && typeof window.__adikaLoadFYP === "function") {
-            window.__adikaLoadFYP();
-            return;
-          }
-          if (typeof window.loadSmartFYP === "function") {
-            window.loadSmartFYP({ page: append ? ((state.page || 1) + 1) : 1, append: !!append });
-            return;
-          }
-        }
-      } catch (e) {}
-      return _origLoad.apply(this, arguments);
-    };
-    window.load.__smartFypWrapped = true;
-  }
-
-  window.triggerSmartFyp = function () {
-    window.loadSmartFYP({ page: 1, append: false });
-  };
 })();
 </script>
 <!-- ======================= END SECTION 30 ======================= -->
