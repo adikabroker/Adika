@@ -1301,13 +1301,11 @@
 <!-- ======================= END SECTION 05 ======================= -->
 
 
-<!-- ================================================================ -->
 <!-- SECTION 06 — NAVIGATION -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
   <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.12); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
-      <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
         <div class="flex-1 grid grid-cols-2 gap-1 p-0.5 bg-black/15 rounded-xl">
           <button id="tabSell" type="button"
@@ -1323,19 +1321,11 @@
             <span class="lang-en">Buyers</span>
           </button>
         </div>
-
-        <!-- Global AM | EN Language Switcher Button -->
         <div class="flex items-center bg-black/20 p-0.5 rounded-xl shrink-0">
-          <button id="langAmBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm">
-            AM
-          </button>
-          <button id="langEnBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white">
-            EN
-          </button>
+          <button id="langAmBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm">AM</button>
+          <button id="langEnBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white">EN</button>
         </div>
       </div>
-
-      <!-- Search + Broker glass badge -->
       <div class="flex items-center gap-2">
         <div class="relative flex-1 min-w-0">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
@@ -1347,39 +1337,22 @@
           <span>🤝</span><span class="lang-am">ደላላ የት?</span><span class="lang-en">Find Broker</span>
         </button>
       </div>
-
-      <!-- Third Row: Category Pills (Horizontal Scroll) -->
       <div id="cats" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
         <button type="button" class="cat-pill active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all" data-id="foryou">
-          <span class="lang-am">✨ ለእርስዎ</span>
-          <span class="lang-en">✨ For You</span>
-        </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="all">
-          <span class="lang-am">🌐 ሁሉም</span>
-          <span class="lang-en">🌐 All</span>
+          <span class="lang-am">✨ ለእርስዎ</span><span class="lang-en">✨ For You</span>
         </button>
         <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="መኪና">
-          <span class="lang-am">🚗 መኪና</span>
-          <span class="lang-en">🚗 Cars</span>
+          <span class="lang-am">🚗 መኪና</span><span class="lang-en">🚗 Cars</span>
         </button>
         <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ቤት">
-          <span class="lang-am">🏠 ቤት</span>
-          <span class="lang-en">🏠 Property</span>
+          <span class="lang-am">🏠 ቤት</span><span class="lang-en">🏠 Property</span>
         </button>
-        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="ንግድ">
-          <span class="lang-am">🏢 ንግድ</span>
-          <span class="lang-en">🏢 Commercial</span>
-        </button>
-        <button id="filterChassisChip" type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40" data-filter="chassis">
-          <span>🔍 <span class="lang-am">ሻሲ ያላቸው</span><span class="lang-en">VIN</span></span>
+        <button type="button" class="cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-white/20 text-white hover:bg-white/30" data-id="እቃ">
+          <span class="lang-am">📦 እቃ</span><span class="lang-en">📦 Items</span>
         </button>
       </div>
     </div>
   </header>
-
-  <!-- ================================================================= -->
-  <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
-  <!-- ================================================================= -->
 <!-- ======================= END SECTION 06 ======================= -->
 
 
@@ -2851,7 +2824,6 @@
 <!-- ======================= END SECTION 14 ======================= -->
 
 
-<!-- ================================================================ -->
 <!-- SECTION 15 — LISTING DETAILS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
@@ -2886,12 +2858,16 @@
           <label class="block text-[11px] font-medium text-slate-300 mb-1">የሚሰሩበት / የሚፈልጉት ምድብ</label>
           <div class="flex flex-wrap gap-2">
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
-              <input type="radio" name="mainCat" value="Car" checked class="accent-teal-400">
+              <input type="checkbox" name="mainCat" value="Car" checked class="accent-teal-400">
               <span>🚗 መኪና</span>
             </label>
             <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
-              <input type="radio" name="mainCat" value="House" class="accent-teal-400">
+              <input type="checkbox" name="mainCat" value="House" class="accent-teal-400">
               <span>🏠 ቤት</span>
+            </label>
+            <label class="flex items-center gap-1.5 bg-white/5 border border-white/15 rounded-xl px-3 py-2 text-xs cursor-pointer has-[:checked]:border-teal-400 has-[:checked]:bg-teal-500/20">
+              <input type="checkbox" name="mainCat" value="Item" class="accent-teal-400">
+              <span>📦 እቃ</span>
             </label>
           </div>
         </div>
@@ -2967,12 +2943,15 @@
       <form id="addListingForm" class="space-y-3">
         <div id="listingStep1">
           <label class="block text-[11px] font-bold text-white mb-1">ምድብ</label>
-          <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="grid grid-cols-3 gap-2 mb-3">
             <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white cursor-pointer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
               <input type="radio" name="listCat" value="Car" checked class="accent-cyan-400"> 🚗 መኪና
             </label>
             <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white cursor-pointer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
               <input type="radio" name="listCat" value="House" class="accent-cyan-400"> 🏠 ቤት
+            </label>
+            <label class="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-white cursor-pointer" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.18);">
+              <input type="radio" name="listCat" value="Item" class="accent-cyan-400"> 📦 እቃ
             </label>
           </div>
           <label class="block text-[11px] font-bold text-white mb-1">ርዕስ / ሞዴል</label>
@@ -3105,6 +3084,7 @@
 <!-- ======================= END SECTION 15 ======================= -->
 
 
+
 <!-- ================================================================ -->
 <!-- SECTION 16 — SEARCH -->
 <!-- Change/maintain this entire section as one unit. -->
@@ -3195,7 +3175,6 @@
 <!-- ======================= END SECTION 16 ======================= -->
 
 
-<!-- ================================================================ -->
 <!-- SECTION 17 — FILTERS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
@@ -3227,6 +3206,7 @@
       return null;
     }
 
+    // ---- Onboarding (unified glass form → user_preferences + FYP) ----
     (function initOnboarding() {
       var KEY = "adika_onboarded";
       var PREF_KEY = "adika_user_prefs";
@@ -3287,6 +3267,7 @@
       };
 
       function parseBudgetRange(val) {
+        // Handles: "ከ 1.5M - 4 ሚሊዮን ETB", "1.5M-4M", "1500000-4000000"
         var text = String(val || "").trim().toLowerCase();
         if (!text) return { budget_min: 0, budget_max: 999999999 };
         function toNum(tok) {
@@ -3299,7 +3280,7 @@
           return isNaN(n) ? 0 : n * mult;
         }
         var parts = text.split(/\s*[-–—toእስከ]\s*/i);
-        var nums = parts.map(toNum).filter(function (n) { return n > 0; });
+        var nums = parts.map(toNum).filter(function(n){ return n > 0; });
         if (nums.length === 0) {
           var single = toNum(text);
           if (single > 0) {
@@ -3318,10 +3299,13 @@
       function collectForm() {
         var fullName = (document.getElementById("fullName") || {}).value || "";
         var phone = (document.getElementById("phoneNum") || {}).value || "";
-        var tgU = (document.getElementById("tgUsername") || {}).value || "";
-        tgU = String(tgU).replace(/^@/, "").trim();
-        var catEl = document.querySelector('input[name="mainCat"]:checked');
-        var mainCat = catEl ? catEl.value : "Car";
+        var tg = (document.getElementById("tgUsername") || {}).value || "";
+        tg = String(tg).replace(/^@/, "").trim();
+        var checked = document.querySelectorAll('input[name="mainCat"]:checked');
+        var picked = [];
+        checked.forEach(function (el) { picked.push(el.value); });
+        if (!picked.length) picked = ["Car"];
+        var mainCat = picked[0];
         var budget = parseBudgetRange((document.getElementById("budgetRange") || {}).value);
         var isBroker = !!(document.getElementById("isBroker") || {}).checked;
         var specs = {};
@@ -3332,11 +3316,15 @@
           specs.transmission = ((document.getElementById("carTrans") || {}).value || "").trim();
           specs.fuel = ((document.getElementById("carFuel") || {}).value || "").trim();
         }
-        var categories = mainCat === "House" ? ["ቤት", "House"] : ["መኪና", "Car"];
+        var categories = [];
+        if (picked.indexOf("Car") >= 0) categories.push("መኪና", "Car");
+        if (picked.indexOf("House") >= 0) categories.push("ቤት", "House");
+        if (picked.indexOf("Item") >= 0) categories.push("እቃ", "Item");
+        if (!categories.length) categories = ["መኪና", "Car"];
         return {
           full_name: String(fullName).trim(),
           phone: String(phone).trim(),
-          telegram_username: tgU,
+          telegram_username: tg,
           main_category: mainCat,
           categories: categories,
           budget_min: budget.budget_min,
@@ -3363,7 +3351,26 @@
         try {
           if (typeof window.loadFYPFeed === "function") { window.loadFYPFeed(); return; }
         } catch (eL) {}
-        try { if (typeof load === "function") load(false); } catch (e2) {}
+        try {
+          if (typeof load === "function") load(false);
+        } catch (e2) {
+          try {
+            var sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : null;
+            var tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : null;
+            if (sb && tid && typeof sb.rpc === "function") {
+              sb.rpc("get_fyp_feed", {
+                p_telegram_id: tid,
+                p_limit: 20,
+                p_offset: 0
+              }).then(function (res) {
+                var rows = (res && res.data) || [];
+                if (Array.isArray(rows) && rows.length && typeof finishLoading === "function") {
+                  finishLoading(rows, false, rows.length >= 20);
+                }
+              }).catch(function () {});
+            }
+          } catch (e3) {}
+        }
       }
 
       window.handleOnboardingSubmit = function (ev) {
@@ -3372,19 +3379,25 @@
         var btn = document.getElementById("onboardSubmitBtn");
         if (form && typeof form.reportValidity === "function" && !form.reportValidity()) return false;
         if (btn) { btn.disabled = true; btn.textContent = "⏳ በመመዝገብ ላይ..."; }
+
         var data = collectForm();
         var tid = null;
         try { tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : null; } catch (e) {}
+        // Prefill telegram username from WebApp if empty
         if (!data.telegram_username) {
           try {
             var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
             if (u && u.username) data.telegram_username = String(u.username);
-            if (!data.full_name && u) data.full_name = [u.first_name, u.last_name].filter(Boolean).join(" ");
+            if (!data.full_name && u) {
+              data.full_name = [u.first_name, u.last_name].filter(Boolean).join(" ");
+            }
           } catch (eU) {}
         }
         data.telegram_id = tid || null;
         data.user_id = tid || null;
+
         saveLocalPrefs(data);
+
         var sb = null;
         try { sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : (window.supabase || null); } catch (eS) {}
         var savePromise = Promise.resolve(false);
@@ -3401,8 +3414,23 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data)
-          }).then(function (r) { return !!(r && r.ok); }).catch(function () { return false; });
+          }).then(function (r) {
+            if (r && r.ok) return true;
+            // fallback alternate path
+            return fetch("/api/preferences", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data)
+            }).then(function (r2) { return !!(r2 && r2.ok); });
+          }).catch(function () {
+            return fetch("/api/preferences", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data)
+            }).then(function (r2) { return !!(r2 && r2.ok); }).catch(function () { return false; });
+          });
         }
+
         savePromise.then(function () {
           markOnboarded();
           showOb(false);
@@ -3417,14 +3445,19 @@
         return false;
       };
 
+      // Wire form + category radios
       function bind() {
         var form = document.getElementById("onboardingForm");
         if (form && !form.__adikaBound) {
           form.__adikaBound = true;
-          form.addEventListener("submit", function (e) { handleOnboardingSubmit(e); });
+          form.addEventListener("submit", function (e) {
+            handleOnboardingSubmit(e);
+          });
         }
         document.querySelectorAll('input[name="mainCat"]').forEach(function (r) {
-          r.addEventListener("change", function () { toggleSpecFields(r.value); });
+          r.addEventListener("change", function () {
+            toggleSpecFields(r.value);
+          });
         });
         var skip = document.getElementById("onboardSkipBtn");
         if (skip && !skip.__adikaBound) {
@@ -3434,110 +3467,92 @@
             closeOnboarding(true);
           });
         }
+        // Prefill TG user
         try {
           var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
           if (u) {
             var fn = document.getElementById("fullName");
-            var tgEl = document.getElementById("tgUsername");
+            var tg = document.getElementById("tgUsername");
             if (fn && !fn.value) fn.value = [u.first_name, u.last_name].filter(Boolean).join(" ");
-            if (tgEl && !tgEl.value && u.username) tgEl.value = "@" + u.username;
+            if (tg && !tg.value && u.username) tg.value = "@" + u.username;
           }
         } catch (eP) {}
         toggleSpecFields("Car");
       }
 
-      window.__adikaShowOnboarding = function () { bind(); showOb(true); };
+      window.__adikaShowOnboarding = function () {
+        bind();
+        showOb(true);
+      };
+
       window.openFYPWithOnboarding = function () {
         try { bind(); } catch (e) {}
         showOb(true);
-        try { if (window.state) { state.feedMode = "foryou"; state.category = ""; } } catch (e2) {}
+        try {
+          if (window.state) { state.feedMode = "foryou"; state.category = ""; }
+        } catch (e2) {}
         return true;
       };
 
-      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
-      else bind();
+      function forceOpenOnboardingForTest() {
+        bind();
+        var m = document.getElementById("unifiedOnboardingModal");
+        if (!m) return;
+        m.classList.remove("hidden");
+        m.classList.add("flex");
+        m.style.setProperty("display", "flex", "important");
+        m.style.zIndex = "10000";
+        document.body.style.overflow = "hidden";
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          // TESTING: show onboarding on every Mini App open
+          forceOpenOnboardingForTest();
+        });
+      } else {
+        forceOpenOnboardingForTest();
+      }
+      // Also when FYP tab is already selected without onboard
       setTimeout(function () {
-        try { if (!isOnboarded() && state && state.feedMode === "foryou") showOb(true); } catch (e) {}
+        try {
+          if (!isOnboarded() && state && state.feedMode === "foryou") showOb(true);
+        } catch (e) {}
       }, 900);
     })();
 
     var favorites = {};
     try {
-      favorites = JSON.parse(localStorage.getItem("adika_favs") || _lsGet("adika_favs") || "{}") || {};
-    } catch (e) { favorites = {}; }
-
-    function persistFavorites() {
-      var raw = JSON.stringify(favorites);
-      try { localStorage.setItem("adika_favs", raw); } catch (e) {}
-      try { _lsSet("adika_favs", raw); } catch (e2) {}
-    }
-
-    function hydrateFavoritesFromServer() {
-      var uid = 0;
-      try {
-        uid = (typeof tg !== "undefined" && tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
-      } catch (e) {}
-      if (!uid) return;
-      fetch("/api/favorites?user_id=" + encodeURIComponent(uid), { credentials: "same-origin" })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          var rows = (d && (d.items || d.favorites || d.data)) || [];
-          rows.forEach(function (row) {
-            var lid = row.listing_id || row.id;
-            if (lid != null) favorites[String(lid)] = true;
-          });
-          persistFavorites();
-          try { renderFavoritesUI(); } catch (e) {}
-        })
-        .catch(function () {});
-    }
-    hydrateFavoritesFromServer();
+      favorites = JSON.parse(_lsGet('adika_favs') || '{}');
+    } catch(e) {}
 
     function toggleFav(id) {
-      id = String(id);
       var wasFav = Boolean(favorites[id]);
-      if (wasFav) delete favorites[id];
+      if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
-      persistFavorites();
-      try { renderFavoritesUI(); } catch (e2) {}
-      if (!wasFav) {
-        var likedItem = null;
-        try {
-          var pool = (window.state && state.items) || window.__adikaLiveItems || [];
-          for (var i = 0; i < pool.length; i++) {
-            if (String(pool[i].id) === id) { likedItem = pool[i]; break; }
-          }
-        } catch (eFind) {}
-        var likePrice = 0;
-        if (likedItem && likedItem.price != null) {
-          likePrice = Number(String(likedItem.price).replace(/[^0-9.]/g, "")) || 0;
-        }
-        try {
-          if (likePrice > 0) localStorage.setItem("adika_last_like_price", String(likePrice));
-          if (likedItem) localStorage.setItem("adika_last_like_title", String(likedItem.sub_category || likedItem.title || ""));
-        } catch (eLs) {}
-        setTimeout(function () {
-          try { if (typeof window.__adikaLoadFYP === "function") window.__adikaLoadFYP(); } catch (eRel) {}
-        }, 300);
-      }
+      try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
+      renderFavoritesUI();
+      // Persist bookmark for price-drop alerts (Telegram chat_id)
       try {
-        var uid = (typeof tg !== "undefined" && tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
+        var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
         if (uid && id) {
           fetch("/api/favorites/toggle", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              user_id: uid, chat_id: uid, listing_id: id,
+              user_id: uid,
+              chat_id: uid,
+              listing_id: id,
               action: wasFav ? "remove" : "add"
             })
-          }).catch(function () {});
+          }).catch(function(){});
         }
       } catch (e) {}
     }
 
     var state = window.__adikaState = {
       tab: "marketplace",
-      feedMode: "foryou",
+      feedMode: "foryou", // foryou | all | category
       roleChosen: false,
       category: "",
       q: "",
@@ -3548,7 +3563,10 @@
       items: [],
       selectedItem: null
     };
+
+
 <!-- ======================= END SECTION 17 ======================= -->
+
 
 <!-- ================================================================ -->
 <!-- SECTION 18 — FAVORITES -->
@@ -7838,7 +7856,6 @@
 <!-- ======================= END SECTION 25 ======================= -->
 
 
-<!-- ================================================================ -->
 <!-- SECTION 26 — USER FUNCTIONS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
@@ -8168,10 +8185,9 @@
         if (!catsEl) return;
         var modes = [
           { id: "foryou", am: "✨ ለእርስዎ", en: "✨ For You" },
-          { id: "all", am: "🌐 ሁሉም", en: "🌐 All" },
           { id: "መኪና", am: "🚗 መኪና", en: "🚗 Cars" },
           { id: "ቤት", am: "🏠 ቤት", en: "🏠 Houses" },
-          { id: "ንግድ", am: "🏢 ንግድ", en: "🏢 Commercial" }
+          { id: "እቃ", am: "📦 እቃ", en: "📦 Items" }
         ];
         catsEl.innerHTML = "";
         modes.forEach(function(m) {
@@ -8329,6 +8345,7 @@
 
 
 <!-- ======================= END SECTION 26 ======================= -->
+
 
 
 <!-- ================================================================ -->
