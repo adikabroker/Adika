@@ -151,10 +151,12 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
 
 
 <!-- ================================================================ -->
+<!-- ================================================================ -->
 <!-- SECTION 03 — GLOBAL CSS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
   <style>
+    /* ============ Base Reset & Body ============ */
     html, body {
       margin: 0; padding: 0; width: 100%; max-width: 100vw;
       overflow-x: hidden; box-sizing: border-box;
@@ -164,120 +166,130 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     }
     *, *::before, *::after { box-sizing: border-box; }
 
+    /* ============ Glass Toast (from Section 1) ============ */
+    .adika-glass-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 96px;
+      transform: translateX(-50%) translateY(12px);
+      z-index: 2147483646;
+      max-width: min(92vw, 360px);
+      padding: 10px 18px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.35;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+    }
+    .adika-glass-toast.is-visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .adika-glass-toast--error,
+    .adika-glass-toast--danger {
+      border-color: rgba(248, 113, 113, 0.55);
+      background: rgba(127, 29, 29, 0.88);
+    }
+    .adika-glass-toast--success {
+      border-color: rgba(45, 212, 191, 0.45);
+      background: rgba(15, 23, 42, 0.88);
+    }
+
+    /* ============ Help Sheet (from Section 1) ============ */
+    .adika-help-sheet {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483645;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .adika-help-panel {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 22px 22px 0 0;
+      padding: 18px 16px 22px;
+      color: #fff;
+      box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+    }
+    .adika-help-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .adika-help-title {
+      font-weight: 900;
+      font-size: 15px;
+    }
+    .adika-help-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 0;
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .adika-help-sub {
+      font-size: 12px;
+      color: #cbd5e1;
+      margin: 0 0 14px;
+      line-height: 1.45;
+    }
+    .adika-help-call {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+      color: #0f172a;
+      font-weight: 900;
+      font-size: 14px;
+      text-decoration: none;
+      margin-bottom: 10px;
+    }
+    .adika-help-tg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 11px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #e2e8f0;
+      font-weight: 800;
+      font-size: 12px;
+      text-decoration: none;
+    }
+
+    /* ============ Keyframe Animations ============ */
     @keyframes adikaBlink {
       0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(16,185,129,0.95); }
       50% { opacity: 0.25; box-shadow: 0 0 2px rgba(16,185,129,0.4); }
     }
-
-    /* Bottom nav — uniform turquoise labels (all 4 tabs) */
-    #adikaBottomNav .adika-nav-btn {
-      color: #0e7490 !important;
-      opacity: 1 !important;
-    }
-    #adikaBottomNav .adika-nav-btn svg {
-      color: #16acbd !important;
-      stroke: currentColor;
-      opacity: 1 !important;
-    }
-    #adikaBottomNav .nav-label {
-      color: #0e7490 !important;
-      font-weight: 700 !important;
-      font-size: 9px !important;
-      opacity: 1 !important;
-    }
-    #adikaBottomNav, #adikaBottomNav * {
-      transition: none !important;
-    }
-
-
-    /* My Listings — 4-column grid, no overlap */
-    #myListingsGrid {
-      display: grid !important;
-      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-      gap: 6px !important;
-      align-content: start !important;
-      align-items: start !important;
-      position: relative !important;
-      overflow-x: hidden !important;
-      overflow-y: auto !important;
-      width: 100% !important;
-      box-sizing: border-box !important;
-    }
-    #myListingsGrid .my-listing-card {
-      display: flex !important;
-      flex-direction: column !important;
-      position: relative !important;
-      float: none !important;
-      min-width: 0 !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      min-height: 0 !important;
-      height: auto !important;
-      margin: 0 !important;
-      overflow: hidden !important;
-      background: #fff !important;
-      border-radius: 10px !important;
-      border: 1px solid rgba(226,232,240,0.9) !important;
-      box-shadow: 0 1px 4px rgba(15,23,42,0.06) !important;
-      z-index: 1 !important;
-    }
-    #myListingsGrid .my-listing-card .my-listing-photo {
-      width: 100% !important;
-      aspect-ratio: 1 / 1 !important;
-      max-height: none !important;
-      flex: 0 0 auto !important;
-      overflow: hidden !important;
-      border-radius: 10px 10px 0 0 !important;
-      background: #e2e8f0 !important;
-      position: relative !important;
-    }
-    #myListingsGrid .my-listing-card img {
-      width: 100% !important;
-      height: 100% !important;
-      object-fit: cover !important;
-      object-position: center !important;
-      display: block !important;
-      position: relative !important;
-    }
-    #myListingsGrid .my-listing-card .my-listing-body {
-      flex: 0 0 auto !important;
-      padding: 5px 6px 6px !important;
-      display: flex !important;
-      flex-direction: column !important;
-      gap: 2px !important;
-      background: #fff !important;
-      min-width: 0 !important;
-    }
-    #myListingsGrid .my-listing-card .my-listing-body > div:first-child {
-      font-size: 9px !important;
-      white-space: nowrap !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
-    }
-    #myListingsGrid .my-listing-card .my-listing-del {
-      display: block !important;
-      width: 100% !important;
-      margin-top: 3px !important;
-      padding: 5px 0 !important;
-      border-radius: 6px !important;
-      background: #f43f5e !important;
-      color: #fff !important;
-      font-size: 9px !important;
-      font-weight: 900 !important;
-      border: 0 !important;
-      flex-shrink: 0 !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      line-height: 1.2 !important;
-    }
-
-    .adika-live-dot {
-      width: 8px; height: 8px; border-radius: 999px;
-      background: #10b981;
-      animation: adikaBlink 1.5s ease-in-out infinite;
-      border: 0;
-    }
-
     @keyframes adikaShimmer {
       0% { transform: translateX(-120%); }
       100% { transform: translateX(120%); }
@@ -298,6 +310,8 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       0% { opacity: 0.15; transform: translateX(12px); }
       100% { opacity: 1; transform: translateX(0); }
     }
+
+    /* ============ Promo Banner Animations ============ */
     .promo-slide.is-active .promo-title { animation: adikaWipe .45s cubic-bezier(.16,1,.3,1) both; }
     .promo-slide.is-active .promo-letter {
       display: inline-block;
@@ -307,7 +321,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     .promo-slide.is-active .promo-cta { animation: adikaCtaPulse 1.8s ease-in-out .2s infinite; }
     .promo-slide.is-active .promo-icon { animation: adikaLetterIn .5s cubic-bezier(.34,1.56,.64,1) both; }
 
-    /* View badge — compact elegant (does not obstruct photo) */
+    /* ============ View Chip Badge ============ */
     .adika-view-chip,
     .adika-card .adika-view-chip,
     .adika-card .card-views,
@@ -342,7 +356,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       opacity: 0.9;
     }
 
-    /* FYP Match confidence badge */
+    /* ============ FYP Match Badge ============ */
     .fyp-match-badge {
       position: absolute;
       top: 8px;
@@ -366,32 +380,8 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     .fyp-match-badge.high { background: linear-gradient(135deg, #10b981, #06b6d4); }
     .fyp-match-badge.mid  { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
     .fyp-match-badge.low  { background: linear-gradient(135deg, #64748b, #475569); }
-    #fypPrefsCtaBanner {
-      margin: 0 0 8px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(236,254,255,0.95), rgba(224,242,254,0.95));
-      border: 1px solid rgba(34,211,238,0.45);
-      box-shadow: 0 4px 14px rgba(6,182,212,0.12);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    #fypPrefsCtaBanner .fyp-cta-text { font-size: 11px; font-weight: 800; color: #0f172a; line-height: 1.35; }
-    #fypPrefsCtaBanner button {
-      flex-shrink: 0;
-      padding: 7px 12px;
-      border-radius: 999px;
-      background: linear-gradient(135deg, #0ea5e9, #14b8a6);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 900;
-      border: 0;
-      box-shadow: 0 2px 8px rgba(14,165,233,0.35);
-    }
 
-    /* Hub-matched tool sheets */
+    /* ============ Hub Sheet (Dark Glass) ============ */
     .hub-sheet {
       background: linear-gradient(165deg, rgba(15,23,42,0.98) 0%, rgba(8,47,73,0.96) 50%, rgba(2,6,23,0.98) 100%) !important;
       color: #f8fafc !important;
@@ -414,13 +404,13 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       border-bottom: 1px solid rgba(255,255,255,0.12);
     }
 
-
-    /* Bulletproof CSS Dual-Class Language Switcher */
+    /* ============ Language Switcher ============ */
     .lang-en { display: none !important; }
     .lang-am { display: inline-block !important; }
     body.lang-en-active .lang-en { display: inline-block !important; }
     body.lang-en-active .lang-am { display: none !important; }
 
+    /* ============ Adika Card ============ */
     .adika-card {
       background: transparent;
       border: none;
@@ -434,8 +424,6 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       position: relative;
     }
     .adika-card:active { transform: scale(0.98); }
-
-    /* Frameless photo — edge to edge, no inner frame */
     .adika-card > .relative.w-full {
       border-radius: 18px 18px 0 0;
       background: #0f172a !important;
@@ -459,7 +447,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       display: block;
     }
 
-    /* Dark frosted glass footer */
+    /* ============ Card Glass Footer ============ */
     .adika-card .card-glass-foot,
     .adika-card > .px-2.py-1\.5,
     .adika-card > div:last-child:not(.relative) {
@@ -470,7 +458,6 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       border-radius: 0 0 18px 18px;
       padding: 8px 10px !important;
     }
-
     .adika-card .card-title-row { display:flex; align-items:center; justify-content:space-between; gap:4px; min-width:0; }
     .adika-card .card-title { font-size:10px !important; font-weight:800; color:#ffffff !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; line-height:1.2; }
     .adika-card .card-time { font-size:8px !important; color:#e2e8f0 !important; font-weight:600; white-space:nowrap; flex-shrink:0; }
@@ -495,13 +482,11 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     }
     #grid { gap: 8px !important; }
 
-
+    /* ============ Scrollbar Utilities ============ */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* Executive hero carousel — compact max 110px */
-    
-    /* vibrant-cat-tabs */
+    /* ============ Category Pills ============ */
     #feedModes button, .feed-mode-btn, [data-feed-mode], #catsRow button, #cats .cat-pill, .cat-pill {
       font-weight: 700 !important;
       transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
@@ -522,22 +507,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       border: 1px solid rgba(255,255,255,0.45) !important;
     }
 
-    .smart-dot {
-      width: 6px; height: 6px; border-radius: 999px;
-      background: rgba(255,255,255,0.25); transition: all 0.3s ease;
-      border: none; padding: 0; cursor: pointer;
-    }
-    .smart-dot.active {
-      width: 18px; background: #22d3ee;
-    }
-    .smart-slide { display: none; }
-    .smart-slide.active { display: block; animation: smartFade 0.4s ease; }
-    @keyframes smartFade {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    #smartToolsBanner { max-height: 78px; }
-    .line-clamp-1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* ============ Hero Carousel ============ */
     .hero-carousel {
       display: flex; gap: 0.4rem; overflow-x: auto; scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch; padding-bottom: 0;
@@ -561,7 +531,9 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     .hero-dots { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
     .hero-dot { width: 4px; height: 4px; border-radius: 999px; background: rgba(15,23,42,0.25); }
     .hero-dot.active { background: #0e7490; width: 12px; }
-        #cats {
+
+    /* ============ Category Strip ============ */
+    #cats {
       display: flex !important;
       width: 100% !important;
       gap: 4px !important;
@@ -576,7 +548,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
       white-space: normal !important;
     }
 
-    /* Instagram-style listing photo auto-enhancement (zero-cost CSS) */
+    /* ============ Instagram-style Photo Enhancement ============ */
     .listing-photo-frame {
       position: relative;
       width: 100%;
@@ -609,9 +581,7 @@ window.ADIKA_SUPPORT_PHONE = window.ADIKA_CONFIG.SUPPORT_PHONE;
     .adika-card:active .listing-photo-enhance {
       transform: scale(1.02);
     }
-
-
-    /* ===== Detail modal — Light + Cyan services + Instagram photo ===== */
+  </style>
 <!-- ======================= END SECTION 03 ======================= -->
 
 
