@@ -5268,7 +5268,11 @@
       try {
         var mode = (window.state && state.feedMode) || "";
         var cat = ((window.state && state.category) || "").trim();
-        if (mode !== "cat" || !cat) return items;
+        try {
+          var on = document.querySelector("#cats .cat-pill.active");
+          if (on && on.getAttribute("data-id")) cat = on.getAttribute("data-id") || cat;
+        } catch (eOn) {}
+        if (!cat || cat === "foryou" || mode === "foryou") return items;
         if (/እቃ|item|ቁሳቁስ/i.test(cat)) return items.filter(adikaIsItemListing);
         if (/ቤት|house|property|ንብረት/i.test(cat)) return items.filter(adikaIsHouseListing);
         if (/መኪና|car/i.test(cat)) return items.filter(adikaIsCarListing);
@@ -5454,7 +5458,11 @@
         // STRICT client-side category isolation
         try {
           var cat = (state.category || "").trim();
-          if (state.feedMode === "cat" && cat) {
+          try {
+            var on = document.querySelector("#cats .cat-pill.active");
+            if (on && on.getAttribute("data-id")) cat = on.getAttribute("data-id") || cat;
+          } catch (eOn) {}
+          if (cat && cat !== "foryou") {
             function bucketOf(it) {
               var m = String((it && (it.main_category || it.category)) || "").toLowerCase();
               var kind = String((it && it.item_kind) || "").toLowerCase();
@@ -5692,6 +5700,7 @@
     };
 
 <!-- ======================= END SECTION 21 ======================= -->
+
 
 
 
