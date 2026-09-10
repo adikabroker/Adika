@@ -2890,6 +2890,23 @@
             <input type="text" id="houseLoc" placeholder="አካባቢ (ቦሌ፣ አያት...)" class="bg-slate-800 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500">
           </div>
         </div>
+        <div id="itemSpecs" class="space-y-2 bg-white/5 p-2.5 rounded-2xl border border-white/10 hidden">
+          <select id="itemKind" class="w-full bg-slate-800 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white">
+            <option value="electronics">ኤሌክትሮኒክስ</option>
+            <option value="furniture">የቤት ዕቃ / መሳሪያ</option>
+            <option value="clothing">ልብስ / ጫማ / ቦርሳ</option>
+            <option value="jewelry">ጌጥ / ሰዓት</option>
+            <option value="beauty">ውበት / ጤና</option>
+            <option value="baby">የህጻን እቃ</option>
+            <option value="bikes">ሞተርሳይክል / ብስክሌት</option>
+            <option value="autoparts">የመኪና መለዋወጫ</option>
+            <option value="crafts">ስዕል / እደ-ጥበብ</option>
+            <option value="books">መጽሐፍ / ጨዋታ</option>
+            <option value="machines">ማሽን / ጄነሬተር</option>
+            <option value="pets">የቤት እንስሳ</option>
+            <option value="other">ሌላ</option>
+          </select>
+        </div>
         <div>
           <label class="block text-[11px] font-medium text-slate-300 mb-1">የቦጀት መጠን (ETB)</label>
           <select id="budgetRange" class="w-full bg-slate-800 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:border-teal-400">
@@ -2971,6 +2988,23 @@
             <input id="listBeds" placeholder="መኝታ" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
             <input id="listBaths" placeholder="መታጠቢያ" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
             <input id="listPType" placeholder="አፓርታማ/ቪላ" class="rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+          </div>
+          <div id="listItemSpecs" class="mb-3 hidden">
+            <select id="listItemKind" class="w-full rounded-xl px-2 py-2 text-[11px] text-white" style="background:rgba(15,23,42,0.55);border:1px solid rgba(255,255,255,0.2);">
+            <option value="electronics">ኤሌክትሮኒክስ</option>
+            <option value="furniture">የቤት ዕቃ / መሳሪያ</option>
+            <option value="clothing">ልብስ / ጫማ / ቦርሳ</option>
+            <option value="jewelry">ጌጥ / ሰዓት</option>
+            <option value="beauty">ውበት / ጤና</option>
+            <option value="baby">የህጻን እቃ</option>
+            <option value="bikes">ሞተርሳይክል / ብስክሌት</option>
+            <option value="autoparts">የመኪና መለዋወጫ</option>
+            <option value="crafts">ስዕል / እደ-ጥበብ</option>
+            <option value="books">መጽሐፍ / ጨዋታ</option>
+            <option value="machines">ማሽን / ጄነሬተር</option>
+            <option value="pets">የቤት እንስሳ</option>
+            <option value="other">ሌላ</option>
+            </select>
           </div>
           <label class="block text-[11px] font-bold text-white mb-1">ዋጋ (ETB)</label>
           <input id="listPrice" type="number" inputmode="numeric" placeholder="1500000" class="w-full rounded-xl px-3 py-2 text-xs text-white mb-3 outline-none" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.22);">
@@ -3085,6 +3119,7 @@
 
 
 
+
 <!-- ================================================================ -->
 <!-- SECTION 16 — SEARCH -->
 <!-- Change/maintain this entire section as one unit. -->
@@ -3173,8 +3208,6 @@
     }
 
 <!-- ======================= END SECTION 16 ======================= -->
-
-
 <!-- SECTION 17 — FILTERS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
@@ -3258,12 +3291,15 @@
         try { if (typeof load === "function") load(false); } catch (e2) {}
       };
 
-      window.toggleSpecFields = function (cat) {
+      window.toggleSpecFields = function () {
         var car = document.getElementById("carSpecs");
         var house = document.getElementById("houseSpecs");
-        var isHouse = String(cat || "") === "House";
-        if (car) car.classList.toggle("hidden", isHouse);
-        if (house) house.classList.toggle("hidden", !isHouse);
+        var item = document.getElementById("itemSpecs");
+        var picked = [];
+        document.querySelectorAll('input[name="mainCat"]:checked').forEach(function (el) { picked.push(el.value); });
+        if (car) car.classList.toggle("hidden", picked.indexOf("Car") < 0);
+        if (house) house.classList.toggle("hidden", picked.indexOf("House") < 0);
+        if (item) item.classList.toggle("hidden", picked.indexOf("Item") < 0);
       };
 
       function parseBudgetRange(val) {
@@ -3312,6 +3348,7 @@
         if (mainCat === "House") {
           specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
           specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
+          specs.item_kind = ((document.getElementById("itemKind") || {}).value || "").trim();
         } else {
           specs.transmission = ((document.getElementById("carTrans") || {}).value || "").trim();
           specs.fuel = ((document.getElementById("carFuel") || {}).value || "").trim();
@@ -3456,7 +3493,7 @@
         }
         document.querySelectorAll('input[name="mainCat"]').forEach(function (r) {
           r.addEventListener("change", function () {
-            toggleSpecFields(r.value);
+            toggleSpecFields();
           });
         });
         var skip = document.getElementById("onboardSkipBtn");
@@ -3477,7 +3514,7 @@
             if (tg && !tg.value && u.username) tg.value = "@" + u.username;
           }
         } catch (eP) {}
-        toggleSpecFields("Car");
+        toggleSpecFields();
       }
 
       window.__adikaShowOnboarding = function () {
@@ -3566,6 +3603,7 @@
 
 
 <!-- ======================= END SECTION 17 ======================= -->
+
 
 
 <!-- ================================================================ -->
@@ -5176,7 +5214,6 @@
 <!-- ======================= END SECTION 20 ======================= -->
 
 
-<!-- ================================================================ -->
 <!-- SECTION 21 — NOTIFICATIONS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
@@ -5416,15 +5453,15 @@
           if (state.feedMode === "cat" && cat) {
             var wantHouse = /ቤት|house|property|ንብረት/i.test(cat);
             var wantCar = /መኪና|car|vehicle/i.test(cat);
-            var wantBiz = /ንግድ|commercial|business/i.test(cat);
-            if (wantHouse || wantCar || wantBiz) {
+            var wantItem = /እቃ|item|electronics|furniture/i.test(cat);
+            if (wantHouse || wantCar || wantItem) {
               items = items.filter(function (it) {
                 if (!it) return false;
-                var sig = (typeof adikaListingSignals === "function") ? adikaListingSignals(it) : { isCar: false, isHouse: false, isBiz: false };
-                if (wantHouse) return !!sig.isHouse;
-                if (wantCar) return !!sig.isCar;
-                if (wantBiz) return !!sig.isBiz;
-                return true;
+                var blob = [it.main_category, it.category, it.sub_category, it.item_kind, it.title].join(" ").toLowerCase();
+                if (wantItem) return /እቃ|item|electronics|furniture|appliance/.test(blob);
+                if (wantHouse) return /ቤት|house|apartment|villa|ንብረት/.test(blob) && !/እቃ|item/.test(blob);
+                if (wantCar) return /መኪና|car|toyota|vehicle/.test(blob) && !/እቃ|item/.test(blob);
+                return false;
               });
             }
           }
@@ -5646,6 +5683,7 @@
     };
 
 <!-- ======================= END SECTION 21 ======================= -->
+
 
 
 <!-- ================================================================ -->
@@ -7855,7 +7893,6 @@
 
 <!-- ======================= END SECTION 25 ======================= -->
 
-
 <!-- SECTION 26 — USER FUNCTIONS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
@@ -8236,21 +8273,6 @@
           };
           catsEl.appendChild(b);
         });
-        // Chassis chip (bilingual)
-        var chassis = document.createElement("button");
-        chassis.id = "filterChassisChip";
-        chassis.type = "button";
-        chassis.setAttribute("data-filter", "chassis");
-        chassis.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40";
-        chassis.innerHTML = '🔍 <span class="lang-am">ሻሲ ያላቸው</span><span class="lang-en">With VIN</span>';
-        chassis.onclick = function() {
-          try {
-            state.chassisOnly = !state.chassisOnly;
-            chassis.classList.toggle("active", !!state.chassisOnly);
-            if (typeof load === "function") load(false);
-          } catch (e) {}
-        };
-        catsEl.appendChild(chassis);
       }
       paintFeedModes();
 
@@ -9285,7 +9307,6 @@
 <!-- ======================= END SECTION 29 ======================= -->
 
 
-<!-- ================================================================ -->
 <!-- SECTION 30 — DATA FETCHERS -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
@@ -9623,10 +9644,11 @@
       if (r.__bound) return;
       r.__bound = true;
       r.addEventListener("change", function () {
-        var house = r.value === "House";
-        var cs = el("listCarSpecs"), hs = el("listHouseSpecs");
-        if (cs) cs.classList.toggle("hidden", house);
-        if (hs) hs.classList.toggle("hidden", !house);
+        var v = r.value;
+        var cs = el("listCarSpecs"), hs = el("listHouseSpecs"), is_ = el("listItemSpecs");
+        if (cs) cs.classList.toggle("hidden", v !== "Car");
+        if (hs) hs.classList.toggle("hidden", v !== "House");
+        if (is_) is_.classList.toggle("hidden", v !== "Item");
       });
     });
   }
@@ -9637,8 +9659,9 @@
     var u = tgUser();
     return {
       title: (el("listTitle") || {}).value || "",
-      main_category: cat === "House" ? "ቤት" : "መኪና",
-      category: cat === "House" ? "ቤት" : "መኪና",
+      main_category: cat === "House" ? "ቤት" : (cat === "Item" ? "እቃ" : "መኪና"),
+      category: cat === "House" ? "ቤት" : (cat === "Item" ? "እቃ" : "መኪና"),
+      item_kind: (el("listItemKind") || {}).value || "",
       listing_type: "SELL",
       price: Number((el("listPrice") || {}).value || 0) || 0,
       negotiable: !!(el("listNeg") || {}).checked,
@@ -9835,6 +9858,7 @@
 
 
 <!-- ======================= END SECTION 30 ======================= -->
+
 
 
 <!-- ================================================================ -->
