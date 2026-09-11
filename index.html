@@ -1539,10 +1539,10 @@
         var h=0; for(var i=0;i<id.length;i++) h=((h<<5)-h)+id.charCodeAt(i);
         return Math.abs(h%87)+12;
       }
-      function isBuyItem(it){
-        var t=((it&&it.req_type)||"")+" "+((it&&it.action_type)||"")+" "+((it&&it.listing_type)||"");
-        return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t);
-      }
+    function isBuyItem(it) {
+    var t = ((it && it.req_type) || "") + " " + ((it && it.action_type) || "") + " " + ((it && it.listing_type) || "");
+    return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t) || it.is_buyer_request;
+  }
       function paint(items){
         var g=document.getElementById("grid");
         if(!g) return;
