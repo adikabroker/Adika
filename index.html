@@ -3541,20 +3541,25 @@
         try { priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0; } catch (e) {}
 
         // 🆕 Determine category + sub-category
-        var mc = String(item.main_category || item.category || "").toLowerCase();
+                var mc = String(item.main_category || item.category || "").toLowerCase();
         var itemKind = String(extra.item_kind || item.item_kind || "").toLowerCase();
+        var blob = [item.title, item.sub_category, item.description].join(" ").toLowerCase();
+        if (!itemKind) {
+          if (/tv|samsung|lg|phone|laptop|ኤሌክትሮ|ቴሌቪ/.test(blob)) itemKind = "electronics";
+          else if (/motor|ሞተር|bike|scooter|bajaj/.test(blob)) itemKind = "bikes";
+          else if (/sofa|furniture|ፈርኒቸ/.test(blob)) itemKind = "furniture";
+        }
         var viewCat = "";
         var viewSub = "";
-
         if (/እቃ|item|goods|ቁሳቁስ/.test(mc) || itemKind) {
           viewCat = "item";
           viewSub = itemKind || "";
         } else if (/ቤት|house|property|ንብረት/.test(mc)) {
           viewCat = "house";
-          viewSub = String(extra.house_type || item.sub_category || "").toLowerCase();
-        } else if (/መኪና|car|vehicle|auto/.test(mc)) {
+          viewSub = String(extra.house_type || extra.property_type || item.sub_category || "").toLowerCase();
+        } else {
           viewCat = "car";
-          viewSub = String(extra.car_model || extra.car_type || item.sub_category || "").toLowerCase();
+          viewSub = String(extra.car_model || extra.car_type || item.sub_category || item.title || "").toLowerCase();
         }
 
         // 🆕 INTEREST POOL — cumulative list of what user viewed
