@@ -3808,7 +3808,7 @@ function shareContract() {{
                 if active_only:
                     where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
                     params.extend(['sold', 'rented', 'expired'])
-              # Match req_type OR Amharic/English action_type
+          # Match req_type OR Amharic/English action_type
             if req_type == 'SELL':
                 where.append(
                     f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('SELL','SALE','') "
@@ -3817,13 +3817,21 @@ function shareContract() {{
                 )
                 params.extend(['መሸጥ', 'SELL', 'sell', 'ለመሸጥ', 'Sale'])
             elif req_type == 'BUY':
-                # 🔴 የፈላጊዎችን ጥያቄዎች (Buy requests) ብቻ በትክክል ማምጣት
-                where.append(
-                    f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('BUY','REQUEST','WANT') "
-                    f"OR UPPER(TRIM(COALESCE(action_type,''))) IN ('መግዛት','BUY','BUYER','ፈላጊ','REQUEST') "
-                    f"OR COALESCE(extra_data->>'is_buyer_request','false') = 'true')"
-                )
-                params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ', 'Request'])
+                # 🔴 የፈላጊዎችን ጥያቄዎች (Buy requests) ብቻ በትክክል ማምጣት (Cross-DB Safe)
+                if is_postgres():
+                    where.append(
+                        f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('BUY','REQUEST','WANT') "
+                        f"OR UPPER(TRIM(COALESCE(action_type,''))) IN ({p},{p},{p},{p},{p}) "
+                        f"OR COALESCE(extra_data->>'is_buyer_request','false') = 'true')"
+                    )
+                    params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ'])
+                else:
+                    # SQLite fallback (handles JSON text fields safely)
+                    where.append(
+                        f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('BUY','REQUEST','WANT') "
+                        f"OR UPPER(TRIM(COALESCE(action_type,''))) IN ({p},{p},{p},{p},{p}))"
+                    )
+                    params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ'])
                 like = "ILIKE" if is_postgres() else "LIKE"
                 # STRICT category isolation: ቤት never mixes with መኪና
                 cat_mode = ""  # "", "car", "house", "biz"
