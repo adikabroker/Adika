@@ -5635,6 +5635,41 @@
         if(typeof window.openHome === "function") window.openHome();
       }
     };
+    window.selectCategory = selectCategory;
+
+  // ============================================================
+  // DETAIL CLOSE HOOK — refresh FYP when returning
+  // ============================================================
+  (function hookDetailClose() {
+    if (window.__adikaDetailCloseHooked) return;
+    window.__adikaDetailCloseHooked = true;
+
+    var _origClose = window.closeDetailModalPreserve;
+    if (typeof _origClose === "function") {
+      window.closeDetailModalPreserve = function () {
+        var wasFyp = false;
+        try { wasFyp = window.state && state.feedMode === "foryou" && !state.q; } catch (e) {}
+        var r = _origClose.apply(this, arguments);
+        // Debounced FYP refresh
+        if (wasFyp) {
+          if (window.__fypRefreshTimer) clearTimeout(window.__fypRefreshTimer);
+          window.__fypRefreshTimer = setTimeout(function () {
+            try {
+              if (typeof window.loadFYPFeed === "function") {
+                // Silent refresh — no scroll reset
+                var scrollY = window.scrollY || 0;
+                window.loadFYPFeed();
+                setTimeout(function () {
+                  try { window.scrollTo(0, scrollY); } catch (e2) {}
+                }, 100);
+              }
+            } catch (e3) {}
+          }, 400);
+        }
+        return r;
+      };
+    }
+  })();
 
 <!-- ======================= END SECTION 22 ======================= -->
 <!-- ================================================================ -->
