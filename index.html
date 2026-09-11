@@ -5165,7 +5165,6 @@
 <!-- SECTION 22 — JS: AUTH / TABS / CATEGORIES -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
-<script>
     function selectCategory(catId) {
       try { state.loading = false; } catch (e) {}
 
@@ -5244,7 +5243,6 @@
       });
       load(false);
     }
-    window.selectCategory = selectCategory;
 
     catsEl.onclick = function (ev) {
       var btn = ev.target.closest("button");
@@ -5637,7 +5635,7 @@
         if(typeof window.openHome === "function") window.openHome();
       }
     };
-</script>
+
 <!-- ======================= END SECTION 22 ======================= -->
 <!-- ================================================================ -->
 <!-- SECTION 23 — JS: SUPABASE & ANALYSIS VIEW -->
