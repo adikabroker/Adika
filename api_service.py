@@ -2938,7 +2938,7 @@ function shareContract() {{
     # SECTION 14 — BROKERS & OTP
     # Change/maintain this entire section as one unit. Logic is unchanged.
     # ==============================================================================
-       @web_app.route('/api/brokers/register', methods=['POST', 'OPTIONS'])
+    @web_app.route('/api/brokers/register', methods=['POST', 'OPTIONS'])
     def api_broker_register():
         if request.method == 'OPTIONS':
             return ('', 204)
@@ -2957,91 +2957,98 @@ function shareContract() {{
             if isinstance(cats, str):
                 cats = [c.strip() for c in cats.split(',') if c.strip()]
             specialty = ", ".join(cats) if cats else "ደላላ"
+            sub_city = str(data.get('sub_city') or "አዲስ አበባ").strip()
+            id_photo = data.get('id_photo') or data.get('photo') or data.get('fayda_photo') or None
+
             if not name or not phone:
                 return jsonify({"success": False, "message": "ስም እና ስልክ ያስፈልጋሉ"}), 400
             if tid <= 0:
                 digits = "".join(ch for ch in phone if ch.isdigit()) or "100000001"
                 tid = int(digits[-9:]) if len(digits) >= 3 else 100000001
+
+            # Save broker with status = 'pending' (አልጸደቀም)
             rid = add_broker(
                 chat_id=tid,
                 full_name=name,
                 phone=phone,
                 role_type="ደላላ",
-                sub_city=str(data.get('sub_city') or "አዲስ አበባ"),
+                sub_city=sub_city,
                 specialty=specialty,
                 username=username,
-                national_id_photo=data.get("id_photo") or None,
+                national_id_photo=id_photo
             )
+
             if rid:
+                # 🔔 ወደ አድሚን በቴሌግራም ቦት የማጽደቂያ ቁልፎችን መላክ
                 try:
                     from config import ADMIN_CHAT_ID_INT
-                    import os
                     admin_id = ADMIN_CHAT_ID_INT
-                    id_photo = data.get("id_photo") or data.get("photo") or None
-                    uname = username
-                    if uname and not str(uname).startswith("@"):
-                        uname = "@" + str(uname)
-                    msg = (
-                        "🆕 <b>የደላላ ምዝገባ ጥያቄ (Mini App)</b>\n"
-                        "─────────────────\n"
-                        f"👤 ስም: <b>{name}</b>\n"
-                        f"📞 ስልክ: <code>{phone}</code>\n"
-                        f"📱 Telegram: {uname or '-'}\n"
-                        f"🆔 chat_id: <code>{tid}</code>\n"
-                        f"📦 ምድብ: {specialty}\n"
-                        f"📎 ID ፎቶ: {'አለ' if id_photo else 'የለም'}\n\n"
-                        "እባክዎ ያጽድቁ ወይም ይሰርዙ።"
-                    )
-                    keyboard = {
-                        "inline_keyboard": [[
-                            {"text": "✅ አጽድቅ", "callback_data": "admin_appr_%s" % tid},
-                            {"text": "❌ ሰርዝ", "callback_data": "admin_reje_%s" % tid},
-                        ]]
-                    }
-                    token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("BOT_TOKEN") or ""
-                    if token and admin_id:
-                        import requests as _req
-                        sent = False
-                        if id_photo and isinstance(id_photo, str) and id_photo.startswith("data:image"):
-                            try:
+                    if admin_id:
+                        uname = username if username.startswith("@") else ("@" + username if username else "-")
+                        msg = (
+                            "🆕 <b>ሚኒ አፕ (Mini App) የደላላ ምዝገባ ጥያቄ</b>\n"
+                            "─────────────────\n"
+                            f"👤 ስም: <b>{name}</b>\n"
+                            f"📞 ስልክ: <code>{phone}</code>\n"
+                            f"📱 Telegram: {uname}\n"
+                            f"🆔 chat_id: <code>{tid}</code>\n"
+                            f"📍 አካባቢ: {sub_city}\n"
+                            f"📦 ምድብ: {specialty}\n\n"
+                            "እባክዎ ፋይዳ/መታወቂያ ፎቶውን በመመልከት ያጸድቁ ወይም ውድቅ ያድርጉ።"
+                        )
+                        token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("BOT_TOKEN") or ""
+                        if token:
+                            import requests as _req
+                            from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+                            
+                            # የቦቱ አድሚን አፓርቹር አከፋፈት (Callback Data) ከ handlers.py ጋር እንዲጣጣም
+                            # handlers.py ላይ admin_appr_{id} እና admin_reje_{id} ይጠቀማል!
+                            keyboard = InlineKeyboardMarkup([
+                                [
+                                    InlineKeyboardButton("✅ አጽድቅ (Approve)", callback_data=f"admin_appr_{tid}"),
+                                    InlineKeyboardButton("❌ ውድቅ አድርግ (Reject)", callback_data=f"admin_reje_{tid}")
+                                ]
+                            ])
+                            
+                            # ፎቶ ከነበረ ከካፕሽኑ ጋር መላክ፣ ከሌለ ቴክስት ብቻ
+                            if id_photo and isinstance(id_photo, str) and id_photo.startswith("data:image"):
                                 import base64
                                 import io
                                 b64 = id_photo.split(",", 1)[-1]
                                 raw = base64.b64decode(b64)
-                                pr = _req.post(
+                                # python-telegram-bot ወይም requests መጠቀም ይቻላል
+                                _req.post(
                                     f"https://api.telegram.org/bot{token}/sendPhoto",
                                     data={
                                         "chat_id": str(admin_id),
                                         "caption": msg,
                                         "parse_mode": "HTML",
-                                        "reply_markup": json.dumps(keyboard),
+                                        "reply_markup": json.dumps(keyboard.to_dict())
                                     },
-                                    files={"photo": ("id.jpg", io.BytesIO(raw), "image/jpeg")},
+                                    files={"photo": ("fayda_id.jpg", io.BytesIO(raw), "image/jpeg")},
                                     timeout=20,
                                 )
-                                sent = pr.ok
-                            except Exception as pe:
-                                logger.warning("broker admin photo: %s", pe)
-                        if not sent:
-                            _req.post(
-                                f"https://api.telegram.org/bot{token}/sendMessage",
-                                json={
-                                    "chat_id": admin_id,
-                                    "text": msg,
-                                    "parse_mode": "HTML",
-                                    "reply_markup": keyboard,
-                                },
-                                timeout=12,
-                            )
+                            else:
+                                _req.post(
+                                    f"https://api.telegram.org/bot{token}/sendMessage",
+                                    json={
+                                        "chat_id": admin_id,
+                                        "text": msg,
+                                        "parse_mode": "HTML",
+                                        "reply_markup": keyboard.to_dict()
+                                    },
+                                    timeout=12,
+                                )
                 except Exception as ne:
-                    logger.warning("broker admin notify: %s", ne)
+                    logger.error("broker mini-app admin notify error: %s", ne)
 
                 return jsonify({
                     "success": True,
-                    "message": "ምዝገባዎ ተልኳል። አድሚን ካረጋገጠ በኋላ ደላላ ይሆናሉ።",
+                    "message": "ምዝገባዎ ተሳክቷል! አድሚኑ ፋይዳዎን እንዳረጋገጠ ኖቲፊኬሽን ይደርስዎታል።",
                     "broker_id": rid,
                     "pending_approval": True,
                 }), 200
+
             return jsonify({
                 "success": False,
                 "message": LAST_BROKER_ERROR or "ምዝገባ አልተሳካም",
