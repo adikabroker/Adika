@@ -2674,130 +2674,388 @@
 
 <!-- ======================= END SECTION 16 ======================= -->
 <!-- ================================================================ -->
-<!-- SECTION 17 — CORE APPLICATION SCRIPT -->
+<!-- SECTION 17 — JS: INIT & FILTERS -->
+<!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
 <script>
   (function () {
     var memoryStore = window.memoryStore || {};
     window.memoryStore = memoryStore;
-    var _lsGet = function(k){ return memoryStore[k] != null ? memoryStore[k] : null; };
-    var _lsSet = function(k,v){ memoryStore[k] = String(v); };
+    var __mem = memoryStore;
+    window.__mem = memoryStore;
+    window._lsGet = function(k){ return memoryStore[k] != null ? memoryStore[k] : null; };
+    window._lsSet = function(k,v){ memoryStore[k] = String(v); };
+    window._lsDel = function(k){ delete memoryStore[k]; };
+    var _lsGet = window._lsGet, _lsSet = window._lsSet, _lsDel = window._lsDel;
 
     var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
     if (tg) {
       try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
     }
 
+    function getTelegramUserId() {
+      try {
+        var u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
+        if (u && u.id) return Number(u.id);
+      } catch (e) {}
+      try {
+        if (window.state && state.userId) return Number(state.userId);
+      } catch (e2) {}
+      return 0;
+    }
+
+    function ensureSupabaseClient() {
+      try {
+        if (window.supabase && typeof window.supabase.from === "function" && typeof window.supabase.rpc === "function") {
+          return window.supabase;
+        }
+        var cfg = window.__ADIKA_SUPABASE || {};
+        var url = cfg.url || window.SUPABASE_URL || "";
+        var key = cfg.anonKey || cfg.key || window.SUPABASE_ANON_KEY || "";
+        var lib = window.__supabaseLib || window.supabase || (typeof supabase !== "undefined" ? supabase : null);
+        if (url && key && lib && typeof lib.createClient === "function") {
+          window.supabase = lib.createClient(url, key);
+          return window.supabase;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    // ---- Onboarding (unified glass form → user_preferences + FYP) ----
+    (function initOnboarding() {
+      var KEY = "adika_onboarded";
+      var PREF_KEY = "adika_user_prefs";
+
+      function isOnboarded() {
+        try { if (localStorage.getItem(KEY) === "true") return true; } catch (e) {}
+        try { if (typeof _lsGet === "function" && _lsGet(KEY) === "true") return true; } catch (e2) {}
+        return false;
+      }
+      function markOnboarded() {
+        try { localStorage.setItem(KEY, "true"); } catch (e) {}
+        try { if (typeof _lsSet === "function") _lsSet(KEY, "true"); } catch (e2) {}
+      }
+      function saveLocalPrefs(obj) {
+        try { localStorage.setItem(PREF_KEY, JSON.stringify(obj)); } catch (e) {}
+        try { if (typeof _lsSet === "function") _lsSet(PREF_KEY, JSON.stringify(obj)); } catch (e2) {}
+      }
+      function readLocalPrefs() {
+        try {
+          var raw = localStorage.getItem(PREF_KEY) || (typeof _lsGet === "function" ? _lsGet(PREF_KEY) : null);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+      }
+
+      function showOb(on) {
+        var m = document.getElementById("unifiedOnboardingModal");
+        if (!m) return;
+        if (on) {
+          m.classList.remove("hidden");
+          m.classList.add("flex");
+          m.style.display = "flex";
+          document.body.style.overflow = "hidden";
+        } else {
+          m.classList.add("hidden");
+          m.classList.remove("flex");
+          m.style.display = "none";
+          document.body.style.overflow = "";
+        }
+      }
+
+      window.closeOnboarding = function (skip) {
+        markOnboarded();
+        showOb(false);
+        try {
+          state.feedMode = "foryou";
+          state.category = "";
+          if (typeof paintFeedModes === "function") paintFeedModes();
+        } catch (e) {}
+        try { if (typeof load === "function") load(false); } catch (e2) {}
+      };
+
+      window.toggleSpecFields = function () {
+        var car = document.getElementById("carSpecs");
+        var house = document.getElementById("houseSpecs");
+        var item = document.getElementById("itemSpecs");
+        var picked = [];
+        document.querySelectorAll('input[name="mainCat"]:checked').forEach(function (el) { picked.push(el.value); });
+        if (car) car.classList.toggle("hidden", picked.indexOf("Car") < 0);
+        if (house) house.classList.toggle("hidden", picked.indexOf("House") < 0);
+        if (item) item.classList.toggle("hidden", picked.indexOf("Item") < 0);
+      };
+
+      function parseBudgetRange(val) {
+        var text = String(val || "").trim().toLowerCase();
+        if (!text) return { budget_min: 0, budget_max: 999999999 };
+        function toNum(tok) {
+          var t = String(tok || "").replace(/,/g, "").replace(/etb|ብር/gi, "").trim();
+          var mult = 1;
+          if (/ሚሊዮን|million|m\b/i.test(t)) { mult = 1000000; t = t.replace(/ሚሊዮን|million|m/gi, ""); }
+          else if (/ሺህ|thousand|k\b/i.test(t)) { mult = 1000; t = t.replace(/ሺህ|thousand|k/gi, ""); }
+          t = t.replace(/[^0-9.]/g, "");
+          var n = parseFloat(t);
+          return isNaN(n) ? 0 : n * mult;
+        }
+        var parts = text.split(/\s*[-–—toእስከ]\s*/i);
+        var nums = parts.map(toNum).filter(function(n){ return n > 0; });
+        if (nums.length === 0) {
+          var single = toNum(text);
+          if (single > 0) {
+            if (/\+|በላይ|above/i.test(text)) return { budget_min: single, budget_max: 999999999 };
+            return { budget_min: 0, budget_max: single };
+          }
+          return { budget_min: 0, budget_max: 999999999 };
+        }
+        if (nums.length === 1) {
+          if (/\+|በላይ|above/i.test(text)) return { budget_min: nums[0], budget_max: 999999999 };
+          return { budget_min: 0, budget_max: nums[0] };
+        }
+        return { budget_min: Math.min(nums[0], nums[1]), budget_max: Math.max(nums[0], nums[1]) };
+      }
+
+      function collectForm() {
+        var fullName = (document.getElementById("fullName") || {}).value || "";
+        var phone = (document.getElementById("phoneNum") || {}).value || "";
+        var tgUser = (document.getElementById("tgUsername") || {}).value || "";
+        tgUser = String(tgUser).replace(/^@/, "").trim();
+        var checked = document.querySelectorAll('input[name="mainCat"]:checked');
+        var picked = [];
+        checked.forEach(function (el) { picked.push(el.value); });
+        if (!picked.length) picked = ["Car"];
+        var mainCat = picked[0];
+        var budget = parseBudgetRange((document.getElementById("budgetRange") || {}).value);
+        var isBroker = !!(document.getElementById("isBroker") || {}).checked;
+        var specs = {};
+        specs.transmission = ((document.getElementById("carTrans") || {}).value || "").trim();
+        specs.fuel = ((document.getElementById("carFuel") || {}).value || "").trim();
+        specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
+        specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
+        specs.item_kind = ((document.getElementById("itemKind") || {}).value || "").trim();
+        var categories = [];
+        if (picked.indexOf("Car") >= 0) categories.push("መኪና", "Car");
+        if (picked.indexOf("House") >= 0) categories.push("ቤት", "House");
+        if (picked.indexOf("Item") >= 0) categories.push("እቃ", "Item");
+        if (!categories.length) categories = ["መኪና", "Car"];
+        return {
+          full_name: String(fullName).trim(),
+          phone: String(phone).trim(),
+          telegram_username: tgUser,
+          main_category: mainCat,
+          categories: categories,
+          item_kind: specs.item_kind || "",
+          budget_min: budget.budget_min,
+          budget_max: budget.budget_max,
+          budget_range: (document.getElementById("budgetRange") || {}).value || "",
+          is_broker: isBroker,
+          specs: specs,
+          transmission: specs.transmission || null,
+          fuel: specs.fuel || null,
+          property_type: specs.property_type || null,
+          location_area: specs.location || null,
+          onboarding_done: true,
+          updated_at: new Date().toISOString()
+        };
+      }
+
+      function triggerFypFeed() {
+        try {
+          state.feedMode = "foryou";
+          state.category = "";
+          state.page = 1;
+          if (typeof paintFeedModes === "function") paintFeedModes();
+        } catch (e) {}
+        try {
+          if (typeof window.loadFYPFeed === "function") { window.loadFYPFeed(); return; }
+        } catch (eL) {}
+        try {
+          if (typeof load === "function") load(false);
+        } catch (e2) {}
+      }
+
+      window.handleOnboardingSubmit = function (ev) {
+        if (ev) { try { ev.preventDefault(); } catch (e0) {} }
+        var form = document.getElementById("onboardingForm");
+        var btn = document.getElementById("onboardSubmitBtn");
+        if (form && typeof form.reportValidity === "function" && !form.reportValidity()) return false;
+        if (btn) { btn.disabled = true; btn.textContent = "⏳ በመመዝገብ ላይ..."; }
+
+        var data = collectForm();
+        var tid = null;
+        try { tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : null; } catch (e) {}
+        if (!data.telegram_username) {
+          try {
+            var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+            if (u && u.username) data.telegram_username = String(u.username);
+            if (!data.full_name && u) {
+              data.full_name = [u.first_name, u.last_name].filter(Boolean).join(" ");
+            }
+          } catch (eU) {}
+        }
+        data.telegram_id = tid || null;
+        data.user_id = tid || null;
+
+        saveLocalPrefs(data);
+
+        var sb = null;
+        try { sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : (window.supabase || null); } catch (eS) {}
+        var savePromise = Promise.resolve(false);
+        if (sb && tid) {
+          savePromise = sb.from("user_preferences").upsert(data, { onConflict: "user_id" })
+            .then(function () { return true; })
+            .catch(function () {
+              return sb.from("user_preferences").upsert(data, { onConflict: "telegram_id" })
+                .then(function () { return true; })
+                .catch(function () { return false; });
+            });
+        } else {
+          savePromise = fetch("/api/user/preferences", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+          }).then(function (r) {
+            if (r && r.ok) return true;
+            return fetch("/api/preferences", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data)
+            }).then(function (r2) { return !!(r2 && r2.ok); });
+          }).catch(function () {
+            return fetch("/api/preferences", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data)
+            }).then(function (r2) { return !!(r2 && r2.ok); }).catch(function () { return false; });
+          });
+        }
+
+        savePromise.then(function () {
+          markOnboarded();
+          showOb(false);
+          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); else triggerFypFeed(); } catch (eF) { triggerFypFeed(); }
+        }).catch(function () {
+          markOnboarded();
+          showOb(false);
+          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); else triggerFypFeed(); } catch (eF2) { triggerFypFeed(); }
+        }).finally(function () {
+          if (btn) { btn.disabled = false; btn.textContent = "✅ መዝግብ / Submit"; }
+        });
+        return false;
+      };
+
+      function bind() {
+        var form = document.getElementById("onboardingForm");
+        if (form && !form.__adikaBound) {
+          form.__adikaBound = true;
+          form.addEventListener("submit", function (e) {
+            handleOnboardingSubmit(e);
+          });
+        }
+        document.querySelectorAll('input[name="mainCat"]').forEach(function (r) {
+          r.addEventListener("change", function () {
+            toggleSpecFields();
+          });
+        });
+        var skip = document.getElementById("onboardSkipBtn");
+        if (skip && !skip.__adikaBound) {
+          skip.__adikaBound = true;
+          skip.addEventListener("click", function (e) {
+            e.preventDefault();
+            closeOnboarding(true);
+          });
+        }
+        try {
+          var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+          if (u) {
+            var fn = document.getElementById("fullName");
+            var tgU = document.getElementById("tgUsername");
+            if (fn && !fn.value) fn.value = [u.first_name, u.last_name].filter(Boolean).join(" ");
+            if (tgU && !tgU.value && u.username) tgU.value = "@" + u.username;
+          }
+        } catch (eP) {}
+        toggleSpecFields();
+      }
+
+      window.__adikaShowOnboarding = function () {
+        bind();
+        showOb(true);
+      };
+
+      window.openFYPWithOnboarding = function () {
+        try { bind(); } catch (e) {}
+        showOb(true);
+        try {
+          if (window.state) { state.feedMode = "foryou"; state.category = ""; }
+        } catch (e2) {}
+        return true;
+      };
+
+      function forceOpenOnboardingForTest() {
+        bind();
+        var m = document.getElementById("unifiedOnboardingModal");
+        if (!m) return;
+        m.classList.remove("hidden");
+        m.classList.add("flex");
+        m.style.setProperty("display", "flex", "important");
+        m.style.zIndex = "10000";
+        document.body.style.overflow = "hidden";
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+          forceOpenOnboardingForTest();
+        });
+      } else {
+        forceOpenOnboardingForTest();
+      }
+      setTimeout(function () {
+        try {
+          if (!isOnboarded() && state && state.feedMode === "foryou") showOb(true);
+        } catch (e) {}
+      }, 900);
+    })();
+
     var favorites = {};
-    try { favorites = JSON.parse(_lsGet('adika_favs') || '{}'); } catch(e) {}
+    try {
+      favorites = JSON.parse(_lsGet('adika_favs') || '{}');
+    } catch(e) {}
 
     function toggleFav(id) {
+      var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
       try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
+      renderFavoritesUI();
+      try {
+        var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
+        if (uid && id) {
+          fetch("/api/favorites/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user_id: uid,
+              chat_id: uid,
+              listing_id: id,
+              action: wasFav ? "remove" : "add"
+            })
+          }).catch(function(){});
+        }
+      } catch (e) {}
     }
-    window.toggleFav = toggleFav;
 
     var state = window.__adikaState = {
       tab: "marketplace",
       feedMode: "foryou",
+      roleChosen: false,
       category: "",
       q: "",
       page: 1,
+      hasMore: true,
+      loading: false,
+      itemsPerPage: 10,
       items: [],
       selectedItem: null
     };
 
-    function setLanguage(lang) {
-      _lsSet('adika_lang', lang);
-      if (lang === 'en') {
-        document.body.classList.add('lang-en-active');
-        document.getElementById('langEnBtn').className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
-        document.getElementById('langAmBtn').className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80";
-        document.getElementById('q').placeholder = "Search listings...";
-      } else {
-        document.body.classList.remove('lang-en-active');
-        document.getElementById('langAmBtn').className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
-        document.getElementById('langEnBtn').className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80";
-        document.getElementById('q').placeholder = "ንብረት ይፈልጉ...";
-      }
-    }
-
-    document.getElementById('langAmBtn').onclick = function() { setLanguage('am'); };
-    document.getElementById('langEnBtn').onclick = function() { setLanguage('en'); };
-    setLanguage(_lsGet('adika_lang') || 'am');
-
-    // Navigation & Modal triggers
-    var intentModal = document.getElementById('intentModal');
-    document.getElementById('fabBtn').onclick = function() {
-      intentModal.classList.remove('hidden');
-      intentModal.classList.add('flex');
-    };
-    document.getElementById('intentCloseBtn').onclick = function() {
-      intentModal.classList.add('hidden');
-      intentModal.classList.remove('flex');
-    };
-    document.getElementById('intentSellCard').onclick = function() { window.location.href = '/seller-form'; };
-    document.getElementById('intentRequestCard').onclick = function() { window.location.href = '/buyer-form'; };
-
-    document.getElementById('navHome').onclick = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); };
-    document.getElementById('navMessages').onclick = function() {
-      var v = document.getElementById('myListingsView');
-      if (v) {
-        v.classList.remove('hidden');
-        v.classList.add('flex');
-        v.style.display = 'flex';
-      }
-    };
-    document.getElementById('myListingsCloseBtn').onclick = document.getElementById('myListingsBackBtn').onclick = function() {
-      var v = document.getElementById('myListingsView');
-      if (v) {
-        v.classList.add('hidden');
-        v.classList.remove('flex');
-        v.style.display = 'none';
-      }
-    };
-    document.getElementById('navHelp').onclick = function() {
-      if (typeof window.openHelpContact === 'function') window.openHelpContact();
-    };
-
-    // Initial load fetch
-    function loadListings() {
-      fetch('/api/listings?page=1&limit=20&order=DESC&active_only=1&type=SELL')
-        .then(res => res.json())
-        .then(data => {
-          const items = data.items || data.listings || [];
-          const grid = document.getElementById('grid');
-          if (!grid) return;
-          if (!items.length) {
-            grid.innerHTML = '<div class="col-span-2 py-12 text-center text-xs font-bold text-slate-600">ምንም ማስታወቂያ አልተገኘም</div>';
-            return;
-          }
-          grid.innerHTML = items.map(it => {
-            const title = it.sub_category || it.brand || it.model || it.main_category || 'ማስታወቂያ';
-            const price = Number(String(it.price || '').replace(/[^\d]/g, '')) || 0;
-            const priceTxt = price > 0 ? price.toLocaleString() + ' ETB' : 'ለዋጋ ደውሉ';
-            const photo = (it.photos && it.photos[0]) || it.image_url || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400';
-            return `
-              <div class="adika-card bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm flex flex-col">
-                <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                  <img src="${photo}" class="w-full h-full object-cover" alt="" onerror="this.style.display='none'" />
-                  <span class="adika-view-chip">👁 12</span>
-                </div>
-                <div class="p-2.5 bg-white flex flex-col gap-1">
-                  <div class="font-bold text-[11px] text-slate-800 truncate">${title}</div>
-                  <div class="font-extrabold text-[11px] text-[#0e7490]">💰 ${priceTxt}</div>
-                </div>
-              </div>
-            `;
-          }).join('');
-        }).catch(err => console.error("Load error:", err));
-    }
-    loadListings();
-  })();
-</script>
-</body>
-</html>
 <!-- ======================= END SECTION 17 ======================= -->
 <!-- ================================================================ -->
 <!-- SECTION 18 — JS: FAVORITES & RECOMMENDATIONS -->
