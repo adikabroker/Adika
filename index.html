@@ -4473,7 +4473,7 @@
       var favBtnEl = card.querySelector(".card-fav-btn");
       if (favBtnEl) favBtnEl.onclick = function(e) {
         e.stopPropagation();
-        toggleFav(item.id, item);
+        toggleFav(item.id);
       };
       var delBtnEl = card.querySelector(".card-del-btn");
       if (delBtnEl) delBtnEl.onclick = function(e) {
@@ -4509,17 +4509,7 @@
       if (!item || typeof item !== "object") return;
       state.selectedItem = item;
       try { window.state = state; } catch (e) {}
-
-      // ============================================================
-      // 🔧 NEW: SIGNAL TRACKING — "view" (weight 1.0)
-      // ============================================================
- try {
-  if (typeof window.pushViewHistory === "function") {
-    window.pushViewHistory(item, "view");
-  }
-} catch (eSig) {
-  console.warn("[Adika] view signal failed:", eSig);
-}
+      try { pushViewHistory(item); } catch (e) {}
       var extra = item.extra_data || {};
       if (typeof extra === "string") {
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
@@ -4801,12 +4791,6 @@
         if (phone) {
           modalCallBtn.href = "tel:" + phone;
           modalCallBtn.onclick = function(ev) {
-            // 🔧 NEW: SIGNAL — "contact" (highest weight 4.0)
-            try {
-              if (typeof window.pushViewHistory === "function") {
-                window.pushViewHistory(item, "contact");
-              }
-            } catch (eSig) {}
             try {
               if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
                 // keep default too
@@ -4825,12 +4809,6 @@
       if (modalChatBtn) {
         modalChatBtn.onclick = function(ev) {
           if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-          // 🔧 NEW: SIGNAL — "contact" (highest weight 4.0)
-          try {
-            if (typeof window.pushViewHistory === "function") {
-              window.pushViewHistory(item, "contact");
-            }
-          } catch (eSig) {}
           try {
             if (typeof window.openListingMessage === "function") {
               window.openListingMessage(item);
@@ -4865,19 +4843,13 @@
         modalFavBtn.innerHTML = (favorites && favorites[item.id]) ? "❤️" : "🤍";
         modalFavBtn.onclick = function(ev) {
           if (ev) ev.stopPropagation();
-          try { toggleFav(item.id, item); } catch (e) {}
+          try { toggleFav(item.id); } catch (e) {}
         };
       }
 
       if (modalShareBtn) {
         modalShareBtn.onclick = function(ev) {
           if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-          // 🔧 NEW: SIGNAL — "share" (weight 3.0)
-          try {
-            if (typeof window.pushViewHistory === "function") {
-              window.pushViewHistory(item, "share");
-            }
-          } catch (eSig) {}
           var shareUrl = (window.location.origin || "") + "/explorer?id=" + (item.id || "");
           var titleTxt = (modalTitle && modalTitle.textContent) ? modalTitle.textContent : "Adika";
           var priceTxt2 = (modalPrice && modalPrice.textContent) ? modalPrice.textContent : "";
@@ -5634,44 +5606,8 @@
         if(typeof window.openHome === "function") window.openHome();
       }
     };
-    window.selectCategory = selectCategory;
-
-  // ============================================================
-  // DETAIL CLOSE HOOK — refresh FYP when returning
-  // ============================================================
-  (function hookDetailClose() {
-    if (window.__adikaDetailCloseHooked) return;
-    window.__adikaDetailCloseHooked = true;
-
-    var _origClose = window.closeDetailModalPreserve;
-    if (typeof _origClose === "function") {
-      window.closeDetailModalPreserve = function () {
-        var wasFyp = false;
-        try { wasFyp = window.state && state.feedMode === "foryou" && !state.q; } catch (e) {}
-        var r = _origClose.apply(this, arguments);
-        // Debounced FYP refresh
-        if (wasFyp) {
-          if (window.__fypRefreshTimer) clearTimeout(window.__fypRefreshTimer);
-          window.__fypRefreshTimer = setTimeout(function () {
-            try {
-              if (typeof window.loadFYPFeed === "function") {
-                // Silent refresh — no scroll reset
-                var scrollY = window.scrollY || 0;
-                window.loadFYPFeed();
-                setTimeout(function () {
-                  try { window.scrollTo(0, scrollY); } catch (e2) {}
-                }, 100);
-              }
-            } catch (e3) {}
-          }, 400);
-        }
-        return r;
-      };
-    }
-  })();
 
 <!-- ======================= END SECTION 22 ======================= -->
-
 <!-- ================================================================ -->
 <!-- SECTION 23 — JS: SUPABASE & ANALYSIS VIEW -->
 <!-- Change/maintain this entire section as one unit. -->
@@ -8286,12 +8222,7 @@
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
 <script>
-(function () {
-  "use strict";
-
-  // ============================================================
-  // BUDGET PARSER (public utility)
-  // ============================================================
+(function(){
   window.adikaParseBudgetRange = window.adikaParseBudgetRange || function (prefs) {
     prefs = prefs || {};
     function num(v) {
@@ -8328,427 +8259,7 @@
     return { min: minP || 0, max: maxP || 0, label: raw || "" };
   };
 
-  // ============================================================
-  // IMAGE NORMALIZER
-  // ============================================================
-  function normalizeImages(it) {
-    if (!it || typeof it !== "object") return it;
-    var urls = [];
-    function add(v) {
-      if (!v) return;
-      if (Array.isArray(v)) { v.forEach(add); return; }
-      if (typeof v === "object") {
-        var u = v.url || v.src || v.image_url || v.photo_url || "";
-        if (u) add(u);
-        return;
-      }
-      var s = String(v).trim();
-      if (!s) return;
-      if (s.charAt(0) === "[") {
-        try { add(JSON.parse(s)); return; } catch (e) {}
-      }
-      if (/^https?:\/\//i.test(s) || s.indexOf("data:image") === 0 || s.indexOf("/") === 0) {
-        if (urls.indexOf(s) < 0) urls.push(s);
-      }
-    }
-    add(it.image_url); add(it.photo_url); add(it.telegram_image);
-    add(it.images); add(it.photos); add(it.photo_urls); add(it.listing_photos);
-    add(it.image); add(it.photo);
-    try {
-      var ex = it.extra_data;
-      if (typeof ex === "string") { try { ex = JSON.parse(ex); } catch (e) { ex = null; } }
-      if (ex && typeof ex === "object") {
-        add(ex.image_url); add(ex.photo_url); add(ex.images); add(ex.photos); add(ex.photo_urls);
-      }
-    } catch (eE) {}
-    if (urls.length) {
-      it.image_url = urls[0];
-      it.photo_url = urls[0];
-      it.photos = urls.slice();
-      it.photo_urls = urls.slice();
-      it.images = urls.slice();
-      it._resolved_photos = urls.slice();
-    }
-    return it;
-  }
-  window.normalizeImages = normalizeImages;
-
-  // ============================================================
-  // BUCKET OF — explicit category FIRST, then item_kind fallback
-  // ============================================================
-  function bucketOf(it) {
-    if (!it) return "other";
-    var extra = it.extra_data || {};
-    if (typeof extra === "string") {
-      try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
-    }
-    if (!extra || typeof extra !== "object") extra = {};
-
-    var raw = String(it.main_category || it.category || "").toLowerCase();
-
-    // Explicit category tags WIN over item_kind
-    if (/መኪና|car|vehicle|auto|truck|pickup/.test(raw)) return "car";
-    if (/ቤት|house|property|ንብረት|land|መሬት/.test(raw)) return "house";
-    if (/እቃ|item|goods|ቁሳቁስ/.test(raw)) return "item";
-
-    // Fallback: item_kind ONLY when category unknown
-    if (it.item_kind || extra.item_kind) return "item";
-    return "other";
-  }
-  window.bucketOf = bucketOf;
-
-  function itemKindOf(it) {
-    if (!it) return "";
-    var extra = it.extra_data || {};
-    if (typeof extra === "string") {
-      try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
-    }
-    if (!extra || typeof extra !== "object") extra = {};
-    return String(it.item_kind || extra.item_kind || "").toLowerCase().trim();
-  }
-
-  // ============================================================
-  // HARD FILTER — Cumulative FYP engine
-  // ============================================================
-  function hardFilter(items, prefs) {
-    if (!items || !items.length) return [];
-    prefs = prefs || {};
-
-    function parsePriceLocal(v) {
-      if (v == null || v === "") return 0;
-      if (typeof v === "number") return isFinite(v) && v > 0 ? v : 0;
-      var s = String(v).replace(/,/g, "").trim();
-      var mMul = s.match(/^([\d.]+)\s*(m|M|ሚ|ሚሊ|million|ሚሊዮን)/i);
-      if (mMul) return Math.round(parseFloat(mMul[1]) * 1000000);
-      var kMul = s.match(/^([\d.]+)\s*(k|K|ሺ)/i);
-      if (kMul) return Math.round(parseFloat(kMul[1]) * 1000);
-      var n = Number(s.replace(/[^\d.]/g, ""));
-      return isFinite(n) && n > 0 ? n : 0;
-    }
-
-    // ============================================================
-    // 1) BASE PREFERENCES
-    // ============================================================
-    var prefMaxP = parsePriceLocal(prefs.budget_max || prefs.max_price || prefs.price_max);
-    var prefMinP = parsePriceLocal(prefs.budget_min || prefs.min_price || prefs.price_min);
-    if ((!prefMaxP || prefMaxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
-      var t = String(prefs.budget_range || prefs.budget || "");
-      var parts = t.split(/[-–—toእስከ]/i);
-      var nums = parts.map(parsePriceLocal).filter(function (n) { return n > 0; });
-      if (nums.length >= 2) {
-        prefMinP = Math.min(nums[0], nums[1]);
-        prefMaxP = Math.max(nums[0], nums[1]);
-      } else if (nums.length === 1) {
-        prefMaxP = nums[0];
-      }
-    }
-
-    // ============================================================
-    // 2) INTEREST POOL — purge expired FIRST
-    // ============================================================
-    var interests = [];
-    try {
-      interests = JSON.parse(localStorage.getItem("adika_interests") || "[]");
-    } catch (eP) { interests = []; }
-    if (!Array.isArray(interests)) interests = [];
-
-    var now = Date.now();
-    var TTL = 30 * 60 * 1000;
-    interests = interests.filter(function (int) {
-      if (!int) return false;
-      var lastSeen = int.lastSeen || int.ts || 0;
-      return (now - lastSeen) < TTL;
-    });
-
-    // Persist purged pool
-    try { localStorage.setItem("adika_interests", JSON.stringify(interests)); } catch (eSave) {}
-
-    // ============================================================
-    // 3) DECAYED WEIGHT for sorting
-    // ============================================================
-    function decayedWeight(int) {
-      if (!int) return 0;
-      var lastSeen = int.lastSeen || int.ts || Date.now();
-      var ageMin = (Date.now() - lastSeen) / 60000;
-      var decay = Math.exp(-ageMin / 30);
-      return (int.weight || 1) * decay;
-    }
-
-    // ============================================================
-    // 4) GROUP INTERESTS BY TYPE
-    // ============================================================
-    var carInterests = [];
-    var houseInterests = [];
-    var itemInterests = [];
-
-    interests.forEach(function (int) {
-      var t = String(int.type || "").toLowerCase();
-      if (t === "car") carInterests.push(int);
-      else if (t === "house") houseInterests.push(int);
-      else if (t === "item") itemInterests.push(int);
-    });
-
-    // ============================================================
-    // 5) CUMULATIVE BUDGET: take MAX across all interests
-    // ============================================================
-    var carMaxP = prefMaxP;
-    var carMinP = prefMinP;
-    var carModels = [];
-
-    carInterests.forEach(function (int) {
-      var sub = String(int.sub || "").toLowerCase().trim();
-      if (sub && carModels.indexOf(sub) < 0) carModels.push(sub);
-      // Elastic budget: take MAX of all maxPrice
-      var m = Number(int.maxPrice || 0);
-      if (m > carMaxP) carMaxP = m;
-      // Min budget
-      var mn = Number(int.minPrice || 0);
-      if (mn > 0 && (carMinP === 0 || mn < carMinP)) carMinP = mn;
-    });
-
-    var houseMaxP = prefMaxP;
-    var houseSubs = [];
-    houseInterests.forEach(function (int) {
-      var sub = String(int.sub || "").toLowerCase().trim();
-      if (sub && houseSubs.indexOf(sub) < 0) houseSubs.push(sub);
-      var m = Number(int.maxPrice || 0);
-      if (m > houseMaxP) houseMaxP = m;
-    });
-
-    // ITEMS — NO BUDGET, ONLY CATEGORY
-    var itemCategories = [];
-    itemInterests.forEach(function (int) {
-      var sub = String(int.sub || "").toLowerCase().trim();
-      if (sub && itemCategories.indexOf(sub) < 0) itemCategories.push(sub);
-      // Also merge categoryFilter arrays
-      var cf = int.categoryFilter;
-      if (Array.isArray(cf)) {
-        cf.forEach(function (c) {
-          c = String(c || "").toLowerCase().trim();
-          if (c && itemCategories.indexOf(c) < 0) itemCategories.push(c);
-        });
-      }
-    });
-
-    // ============================================================
-    // 6) FALLBACK to prefs when no interests
-    // ============================================================
-    var wantCar = carInterests.length > 0;
-    var wantHouse = houseInterests.length > 0;
-    var wantItem = itemInterests.length > 0;
-
-    if (!wantCar && !wantHouse && !wantItem) {
-      var cats = prefs.categories || [];
-      if (typeof cats === "string") {
-        try { cats = JSON.parse(cats); } catch (e) { cats = [cats]; }
-      }
-      if (Array.isArray(cats)) {
-        cats.forEach(function (c) {
-          var cl = String(c).toLowerCase();
-          if (/እቃ|item|goods|ቁሳቁስ/.test(cl)) wantItem = true;
-          else if (/መኪና|car/.test(cl)) wantCar = true;
-          else if (/ቤት|house|property/.test(cl)) wantHouse = true;
-        });
-      }
-      var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
-      if (/እቃ|item|goods|ቁሳቁስ/.test(mc)) wantItem = true;
-      if (/መኪና|car/.test(mc)) wantCar = true;
-      if (/ቤት|house/.test(mc)) wantHouse = true;
-
-      // Never empty — show everything
-      if (!wantCar && !wantHouse && !wantItem) {
-        wantCar = true; wantHouse = true; wantItem = true;
-      }
-    }
-
-    // ============================================================
-    // 7) HELPER: Car sub-category match (brand/model blob)
-    // ============================================================
-    function carSubMatches(it, carSubValue) {
-      if (!carSubValue || carSubValue.length < 3) return true;
-      var extra = it.extra_data || {};
-      if (typeof extra === "string") {
-        try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
-      }
-      if (!extra || typeof extra !== "object") extra = {};
-
-      var blob = [
-        it.brand, it.model,
-        extra.brand, extra.model,
-        extra.car_model, extra.car_type,
-        it.sub_category, it.title, it.description
-      ].filter(Boolean).join(" ").toLowerCase();
-
-      var probe = carSubValue.slice(0, 6);
-      return blob.indexOf(probe) >= 0;
-    }
-
-    // ============================================================
-    // 8) HELPER: Item category match
-    // ============================================================
-    function itemCategoryMatches(it, cats) {
-      if (!cats || !cats.length) return true;
-      var kind = itemKindOf(it);
-      // No item_kind → don't filter (permissive)
-      if (!kind) return true;
-      for (var i = 0; i < cats.length; i++) {
-        var c = cats[i];
-        if (!c) continue;
-        if (kind.indexOf(c) >= 0 || c.indexOf(kind) >= 0) return true;
-      }
-      return false;
-    }
-
-    // ============================================================
-    // 9) MAIN FILTER PASS
-    // ============================================================
-    var filtered = items.filter(function (it) {
-      if (!it) return false;
-
-      // Exclude BUY requests
-      var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
-      if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
-
-      var b = bucketOf(it);
-
-      // -------- CAR --------
-      if (b === "car") {
-        if (!wantCar) return false;
-        var priceC = parsePriceLocal(it.price || it.asking_price || 0);
-
-        // Budget filter (elastic ceiling)
-        if (carMaxP > 0 && carMaxP < 999999999) {
-          if (priceC <= 0) return false;
-          if (priceC > carMaxP) return false;
-          if (carMinP > 0 && priceC < carMinP) return false;
-        }
-
-        // Model filter — if user has specific model interests
-        if (carModels.length > 0) {
-          var matched = carModels.some(function (m) {
-            return carSubMatches(it, m);
-          });
-          if (!matched) return false;
-        }
-        return true;
-      }
-
-      // -------- HOUSE --------
-      if (b === "house") {
-        if (!wantHouse) return false;
-        var priceH = parsePriceLocal(it.price || it.asking_price || 0);
-
-        if (houseMaxP > 0 && houseMaxP < 999999999) {
-          if (priceH > 0) {
-            if (priceH > houseMaxP) return false;
-          }
-        }
-        return true;
-      }
-
-      // -------- ITEM --------
-      if (b === "item") {
-        if (!wantItem) return false;
-        // NO BUDGET FILTER — only category
-        if (itemCategories.length > 0) {
-          if (!itemCategoryMatches(it, itemCategories)) return false;
-        }
-        return true;
-      }
-
-      return false;
-    }).map(function (it) {
-      return normalizeImages(it);
-    });
-
-    // ============================================================
-    // 10) RANK & SORT (weight × freshness × views)
-    // ============================================================
-    function rankScore(it) {
-      var score = 0;
-
-      // Freshness (TikTok-style)
-      var created = it.created_at || it.posted_at || it.date;
-      if (created) {
-        var ts = new Date(created).getTime();
-        if (isFinite(ts)) {
-          var ageH = (Date.now() - ts) / 3600000;
-          if (ageH <= 6) score += 100;
-          else if (ageH <= 24) score += 70;
-          else if (ageH <= 72) score += 40;
-          else if (ageH <= 168) score += 20;
-          else score += 5;
-        }
-      }
-
-      // Views
-      var views = Number(it.view_count || it.views_count || 0);
-      score += Math.min(30, views / 10);
-
-      // Interest match bonus
-      var b = bucketOf(it);
-      var blob = String(it.brand || "") + " " + String(it.model || "")
-        + " " + String(it.sub_category || "") + " "
-        + String(it.title || "") + " "
-        + String(it.description || "").toLowerCase();
-
-      var pool = [].concat(carInterests, houseInterests, itemInterests);
-      pool.forEach(function (int) {
-        var sub = String(int.sub || "").toLowerCase();
-        if (!sub) return;
-        if (blob.indexOf(sub) >= 0) {
-          score += decayedWeight(int) * 20;
-        }
-      });
-
-      return score;
-    }
-
-    filtered = filtered.map(function (it) {
-      it._fypScore = rankScore(it);
-      it.fyp_score = it._fypScore;
-      it.match_score = it._fypScore;
-      return it;
-    }).sort(function (a, b) {
-      if (b._fypScore !== a._fypScore) return b._fypScore - a._fypScore;
-      // Tiebreak: newest first
-      var ta = new Date(a.created_at || 0).getTime() || 0;
-      var tb = new Date(b.created_at || 0).getTime() || 0;
-      return tb - ta;
-    });
-
-    return filtered;
-  }
-  window.hardFilter = hardFilter;
-
-  // ============================================================
-  // INTERLEAVE BY SCORE — diversity guard
-  // ============================================================
-  function interleaveByScore(groups, limit) {
-    limit = limit || 60;
-    var result = [];
-    var maxLen = 0;
-    groups.forEach(function (g) { if (g.length > maxLen) maxLen = g.length; });
-    var maxPerCat = Math.ceil(limit * 0.7); // No single cat > 70%
-    var counts = groups.map(function () { return 0; });
-
-    for (var i = 0; i < maxLen && result.length < limit; i++) {
-      for (var j = 0; j < groups.length; j++) {
-        if (!groups[j][i]) continue;
-        if (counts[j] >= maxPerCat) continue;
-        result.push(groups[j][i]);
-        counts[j]++;
-        if (result.length >= limit) break;
-      }
-    }
-    return result;
-  }
-  window.interleaveByScore = interleaveByScore;
-
-  // ============================================================
-  // LOAD FYP — main loader
-  // ============================================================
-  function __adikaLoadFYP() {
+  window.__adikaLoadFYP = function () {
     try {
       if (window.state) {
         state.feedMode = "foryou";
@@ -8761,13 +8272,15 @@
       }
     } catch (e) {}
 
-    // Reset history arrays only — KEEP interests (cumulative)
+    // 🔄 Reset history arrays only — interests KEPT (cumulative)
     try {
       if (typeof window.adikaResetFypContext === "function") {
         window.adikaResetFypContext();
       } else {
-        try { localStorage.removeItem("viewHistory"); } catch (eLS) {}
-        try { localStorage.removeItem("adik_user_intent"); } catch (eLI) {}
+        try {
+          localStorage.removeItem("viewHistory");
+          localStorage.removeItem("adik_user_intent");
+        } catch (eLS) {}
       }
     } catch (eR) {}
 
@@ -8784,17 +8297,206 @@
       return null;
     }
 
+    function parsePrice(v) {
+      if (v == null || v === "") return 0;
+      if (typeof v === "number") return isFinite(v) ? v : 0;
+      var s = String(v).replace(/,/g, "").trim();
+      var m = s.match(/^([\d.]+)\s*(m|M|ሚ|ሚሊ|million|ሚሊዮን)/i);
+      if (m) return Math.round(parseFloat(m[1]) * 1e6);
+      var k = s.match(/^([\d.]+)\s*(k|K|ሺ)/i);
+      if (k) return Math.round(parseFloat(k[1]) * 1e3);
+      var n = Number(s.replace(/[^\d.]/g, ""));
+      return isFinite(n) ? n : 0;
+    }
+
+    function normalizeImages(it) {
+      if (!it || typeof it !== "object") return it;
+      var urls = [];
+      function add(v) {
+        if (!v) return;
+        if (Array.isArray(v)) { v.forEach(add); return; }
+        if (typeof v === "object") {
+          var u = v.url || v.src || v.image_url || v.photo_url || "";
+          if (u) add(u);
+          return;
+        }
+        var s = String(v).trim();
+        if (!s) return;
+        if (s.charAt(0) === "[") {
+          try { add(JSON.parse(s)); return; } catch (e) {}
+        }
+        if (/^https?:\/\//i.test(s) || s.indexOf("data:image") === 0 || s.indexOf("/") === 0) {
+          if (urls.indexOf(s) < 0) urls.push(s);
+        }
+      }
+      add(it.image_url); add(it.photo_url); add(it.telegram_image);
+      add(it.images); add(it.photos); add(it.photo_urls); add(it.listing_photos);
+      add(it.image); add(it.photo);
+      try {
+        var ex = it.extra_data;
+        if (typeof ex === "string") { try { ex = JSON.parse(ex); } catch (e) { ex = null; } }
+        if (ex && typeof ex === "object") {
+          add(ex.image_url); add(ex.photo_url); add(ex.images); add(ex.photos); add(ex.photo_urls);
+        }
+      } catch (eE) {}
+      if (urls.length) {
+        it.image_url = urls[0];
+        it.photo_url = urls[0];
+        it.photos = urls.slice();
+        it.photo_urls = urls.slice();
+        it.images = urls.slice();
+        it._resolved_photos = urls.slice();
+      }
+      return it;
+    }
+    window.normalizeImages = normalizeImages;
+
+    function hardFilter(items, prefs) {
+      if (!items || !items.length) return [];
+      prefs = prefs || {};
+      function parsePriceLocal(v) {
+        var n = Number(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
+        return isFinite(n) ? n : 0;
+      }
+
+      // ===== BASE PREFERENCES =====
+      var prefMaxP = parsePriceLocal(prefs.budget_max || prefs.max_price || prefs.price_max);
+      var prefMinP = parsePriceLocal(prefs.budget_min || prefs.min_price || prefs.price_min);
+      if ((!prefMaxP || prefMaxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
+        var t = String(prefs.budget_range || prefs.budget || "");
+        var parts = t.split(/[-–—toእስከ]/i);
+        var nums = parts.map(parsePriceLocal).filter(function (n) { return n > 0; });
+        if (nums.length >= 2) { prefMinP = Math.min(nums[0], nums[1]); prefMaxP = Math.max(nums[0], nums[1]); }
+        else if (nums.length === 1) { prefMaxP = nums[0]; }
+      }
+
+      // ===== INTEREST POOL (cumulative) =====
+      var interests = [];
+      try {
+        interests = JSON.parse(localStorage.getItem("adika_interests") || "[]");
+      } catch (eP) { interests = []; }
+      if (!Array.isArray(interests)) interests = [];
+
+      var now = Date.now();
+      interests = interests.filter(function (int) {
+        return int && (now - (int.ts || 0) < 30 * 60 * 1000);
+      });
+
+      // Build target categories
+      var wantCar = false, wantHouse = false, wantItem = false;
+      var carMaxP = prefMaxP;
+      var carSub = "";
+      var houseSub = "";
+      var itemSubs = [];
+
+      interests.forEach(function (int) {
+        var t = String(int.type || "").toLowerCase();
+        var sub = String(int.sub || "").toLowerCase();
+        if (t === "car") {
+          wantCar = true;
+          if (int.maxPrice && int.maxPrice > carMaxP) carMaxP = int.maxPrice * 1.15;
+          if (sub) carSub = sub;
+        } else if (t === "house") {
+          wantHouse = true;
+          if (sub) houseSub = sub;
+        } else if (t === "item") {
+          wantItem = true;
+          if (sub && itemSubs.indexOf(sub) < 0) itemSubs.push(sub);
+        }
+      });
+
+      // If no interests, use preferences
+      if (!wantCar && !wantHouse && !wantItem) {
+        var cats = prefs.categories || [];
+        cats.forEach(function (c) {
+          var cl = String(c).toLowerCase();
+          if (/እቃ|item|goods|ቁሳቁስ/.test(cl)) wantItem = true;
+          else if (/መኪና|car/.test(cl)) wantCar = true;
+          else if (/ቤት|house|property/.test(cl)) wantHouse = true;
+        });
+        var mc = String(prefs.main_category || prefs.category || "").toLowerCase();
+        if (/እቃ|item|goods|ቁሳቁስ/.test(mc)) wantItem = true;
+        if (/መኪና|car/.test(mc)) wantCar = true;
+        if (/ቤት|house/.test(mc)) wantHouse = true;
+        if (!wantCar && !wantHouse && !wantItem) {
+          wantCar = true; wantHouse = true; wantItem = true;
+        }
+      }
+
+      function bucket(it) {
+        var extra = it.extra_data || {};
+        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        if (it.item_kind || extra.item_kind) return "item";
+        var raw = String(it.main_category || it.category || "").toLowerCase();
+        if (/እቃ|item|goods|ቁሳቁስ/.test(raw)) return "item";
+        if (/ቤት|house|property|ንብረት/.test(raw)) return "house";
+        if (/መኪና|car/.test(raw)) return "car";
+        return "other";
+      }
+
+      function itemKind(it) {
+        var extra = it.extra_data || {};
+        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        return String(it.item_kind || extra.item_kind || "").toLowerCase();
+      }
+
+      function subMatchItem(it, subList) {
+        if (!subList || !subList.length) return true;
+        var k = itemKind(it);
+        if (!k) return true;
+        for (var i = 0; i < subList.length; i++) {
+          var s = subList[i];
+          if (k.indexOf(s) >= 0 || s.indexOf(k) >= 0) return true;
+        }
+        return false;
+      }
+
+      // CUMULATIVE FILTER — item matches ANY interest
+      return items.filter(function (it) {
+        if (!it) return false;
+        var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
+        if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
+        var b = bucket(it);
+
+        if (b === "item" && wantItem) {
+          if (subMatchItem(it, itemSubs)) return true;
+        }
+        if (b === "house" && wantHouse) {
+          var priceH = parsePriceLocal(it.price || it.asking_price || 0);
+          if (prefMaxP > 0 && prefMaxP < 999999999) {
+            if (priceH > 0) {
+              if (priceH > prefMaxP) return false;
+              if (prefMinP > 0 && priceH < prefMinP) return false;
+            }
+          }
+          return true;
+        }
+        if (b === "car" && wantCar) {
+          var priceC = parsePriceLocal(it.price || it.asking_price || 0);
+          if (carSub) {
+            var subOk = (itemKind(it).indexOf(carSub) >= 0 ||
+              String(it.sub_category || "").toLowerCase().indexOf(carSub.slice(0, 6)) >= 0 ||
+              String(it.description || "").toLowerCase().indexOf(carSub.slice(0, 6)) >= 0);
+            if (!subOk && carSub.length >= 4) return false;
+          }
+          if (carMaxP > 0 && carMaxP < 999999999) {
+            if (priceC <= 0) return false;
+            if (priceC > carMaxP) return false;
+            if (prefMinP > 0 && priceC < prefMinP) return false;
+          }
+          return true;
+        }
+        return false;
+      }).map(function (it) {
+        return (typeof normalizeImages === "function") ? normalizeImages(it) : it;
+      });
+    }
+    window.hardFilter = hardFilter;
+
     function paint(items) {
       items = (items || []).map(normalizeImages);
-      try {
-        if (window.state) {
-          state.loading = false;
-          state.items = items;
-          state.feedMode = "foryou";
-        }
-      } catch (e) {}
+      try { if (window.state) { state.loading = false; state.items = items; state.feedMode = "foryou"; } } catch (e) {}
       if (grid) grid.style.opacity = "1";
-
       if (!items.length) {
         if (grid) {
           grid.innerHTML =
@@ -8806,84 +8508,32 @@
         }
         return;
       }
-
       try {
-        if (typeof finishLoading === "function") {
-          finishLoading(items, false, items.length >= 12);
-          return;
-        }
+        if (typeof finishLoading === "function") { finishLoading(items, false, false); return; }
       } catch (e1) {}
-
       try {
-        if (typeof window.__adikaPaintListings === "function") {
-          window.__adikaPaintListings(items);
-          return;
-        }
+        if (typeof window.__adikaPaintListings === "function") { window.__adikaPaintListings(items); return; }
       } catch (e2) {}
     }
 
     var prefs = readLocalPrefs() || {};
-    fetch("/api/listings?page=1&limit=200&order=DESC&active_only=1&type=SELL", {
-      credentials: "same-origin"
-    })
+    fetch("/api/listings?page=1&limit=60&order=DESC&active_only=1&type=SELL", { credentials: "same-origin" })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         var base = (data && (data.items || data.listings || data.data)) || [];
         if (!Array.isArray(base)) base = [];
-
-        // Normalize images first
-        base = base.map(normalizeImages);
-
-        // Hard filter (cumulative interests)
-        var filtered = hardFilter(base, prefs);
-
-        paint(filtered);
+        paint(hardFilter(base.map(normalizeImages), prefs));
       })
       .catch(function (err) {
         console.warn("[Adika FYP]", err);
         paint([]);
       });
-  }
-  window.__adikaLoadFYP = __adikaLoadFYP;
-  window.loadFYPFeed = __adikaLoadFYP;
-
-  // ============================================================
-  // LOAD SMART FYP — supports append/pagination
-  // ============================================================
-  window.loadSmartFYP = function (opts) {
-    opts = opts || {};
-    if (opts.append && opts.page && opts.page > 1) {
-      var prefs = {};
-      try { prefs = JSON.parse(localStorage.getItem("adika_user_prefs") || "{}"); } catch (e) {}
-      fetch("/api/listings?page=" + opts.page + "&limit=30&order=DESC&active_only=1&type=SELL", {
-        credentials: "same-origin"
-      })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          var base = (data && (data.items || data.listings || data.data)) || [];
-          if (!Array.isArray(base)) base = [];
-          base = base.map(normalizeImages);
-          var filtered = hardFilter(base, prefs);
-          try {
-            if (typeof finishLoading === "function") {
-              finishLoading(filtered, true, filtered.length >= 12);
-            } else if (typeof window.__adikaPaintListings === "function") {
-              window.__adikaPaintListings(
-                (window.__adikaLiveItems || []).concat(filtered)
-              );
-            }
-          } catch (e) {}
-        })
-        .catch(function () {});
-      return;
-    }
-    __adikaLoadFYP();
   };
-  window.triggerSmartFyp = __adikaLoadFYP;
 
-  // ============================================================
-  // BOOT — auto-run FYP if user already onboarded
-  // ============================================================
+  window.loadFYPFeed = window.__adikaLoadFYP;
+  window.loadSmartFYP = function () { window.__adikaLoadFYP(); };
+  window.triggerSmartFyp = function () { window.__adikaLoadFYP(); };
+
   function maybeBootFyp() {
     try {
       var onboarded = false;
@@ -8900,8 +8550,8 @@
     maybeBootFyp();
   }
   try {
-    if (window.Telegram && window.Telegram.WebApp) {
-      window.Telegram.WebApp.ready();
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.ready();
       setTimeout(maybeBootFyp, 500);
     }
   } catch (e) {}
@@ -9645,7 +9295,7 @@
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
 <script>
-/* ===== Data Fetchers + Reset Helpers ===== */
+/* ===== Data Fetchers: Preferences, Favorites, Alerts, Requests, Pool ===== */
 (function () {
   "use strict";
 
@@ -9654,7 +9304,9 @@
       var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
       if (u && u.id != null) return String(u.id);
     } catch (e) {}
-    try { if (window.state && state.userId) return String(state.userId); } catch (e2) {}
+    try {
+      if (window.state && state.userId) return String(state.userId);
+    } catch (e2) {}
     try {
       if (typeof getTelegramUserId === "function") {
         var t = getTelegramUserId();
@@ -9674,21 +9326,17 @@
     return window.supabase || null;
   }
 
-  // ============================================================
-  // RESET FYP CONTEXT — keep interests, clear history
-  // ============================================================
+  /** Reset FYP history arrays — KEEP interest pool so user's interests persist */
   function resetFypContext() {
     try {
       localStorage.removeItem("viewHistory");
       localStorage.removeItem("adik_user_intent");
-      // ⚠️ DO NOT remove adika_interests — user interests persist
+      // DO NOT remove adika_interests, adika_last_view_*
     } catch (e) {}
   }
   window.adikaResetFypContext = resetFypContext;
 
-  // ============================================================
-  // CLEAR RECENT VIEW — clear interests (explicit category switch)
-  // ============================================================
+  /** Clear ALL interest state — called ONLY when user explicitly picks a new top-level category */
   function clearRecentView() {
     try {
       localStorage.removeItem("adika_interests");
@@ -9701,9 +9349,6 @@
   }
   window.adikaClearRecentView = clearRecentView;
 
-  // ============================================================
-  // PREFERENCES FETCHER
-  // ============================================================
   function fetchPreferences(uid) {
     var client = sb();
     if (!client || !uid) return Promise.resolve(null);
@@ -9722,11 +9367,7 @@
           .catch(function () { return null; });
       });
   }
-  window.adikaFetchPreferences = fetchPreferences;
 
-  // ============================================================
-  // FAVORITES FETCHER
-  // ============================================================
   function fetchFavorites(uid) {
     var client = sb();
     if (!client || !uid) return Promise.resolve([]);
@@ -9742,11 +9383,7 @@
           .catch(function () { return []; });
       });
   }
-  window.adikaFetchFavorites = fetchFavorites;
 
-  // ============================================================
-  // SEARCH ALERTS FETCHER
-  // ============================================================
   function fetchSearchAlerts(uid) {
     var client = sb();
     if (!client || !uid) return Promise.resolve([]);
@@ -9762,18 +9399,11 @@
           .catch(function () { return []; });
       });
   }
-  window.adikaFetchSearchAlerts = fetchSearchAlerts;
 
-  // ============================================================
-  // BUYER REQUESTS FETCHER
-  // ============================================================
   function fetchBuyerRequests(uid) {
     var client = sb();
     if (!client) return Promise.resolve([]);
-    var q = client.from("buyer_requests")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(60);
+    var q = client.from("buyer_requests").select("*").order("created_at", { ascending: false }).limit(60);
     return q.then(function (res) { return (res && res.data) || []; })
       .catch(function () {
         return fetch("/api/buyer-requests?limit=60", { credentials: "same-origin" })
@@ -9782,11 +9412,7 @@
           .catch(function () { return []; });
       });
   }
-  window.adikaFetchBuyerRequests = fetchBuyerRequests;
 
-  // ============================================================
-  // LISTING POOL FETCHER
-  // ============================================================
   function fetchListingPool(limit) {
     limit = limit || 80;
     var client = sb();
@@ -9819,10 +9445,17 @@
       })
       .catch(function () { return []; });
   }
+
+  window.adikaFetchPreferences = fetchPreferences;
+  window.adikaFetchFavorites = fetchFavorites;
+  window.adikaFetchSearchAlerts = fetchSearchAlerts;
+  window.adikaFetchBuyerRequests = fetchBuyerRequests;
   window.adikaFetchListingPool = fetchListingPool;
 })();
 </script>
 <!-- ======================= END SECTION 30 ======================= -->
+
+
 
 <!-- ================================================================ -->
 <!-- SECTION 31 — JS: EVENT HANDLERS & UTILITIES -->
