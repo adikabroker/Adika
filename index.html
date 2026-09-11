@@ -4513,27 +4513,9 @@
       // ============================================================
       // 🔧 NEW: SIGNAL TRACKING — "view" (weight 1.0)
       // ============================================================
-  // 🔧 FIX: Ensure item has main_category before signaling
-try {
+ try {
   if (typeof window.pushViewHistory === "function") {
-    var signalItem = item;
-    // Ensure category present
-    if (!signalItem.main_category && !signalItem.category) {
-      var extraSig = signalItem.extra_data || {};
-      if (typeof extraSig === "string") {
-        try { extraSig = JSON.parse(extraSig); } catch (e) { extraSig = {}; }
-      }
-      var catHint = String(extraSig.category || extraSig.item_kind || "").toLowerCase();
-      if (/መኪና|car|vehicle/.test(catHint) || extraSig.car_model || extraSig.transmission) {
-        signalItem = Object.assign({}, signalItem, { main_category: "መኪና" });
-      } else if (/ቤት|house|property/.test(catHint) || extraSig.house_type || extraSig.bedrooms) {
-        signalItem = Object.assign({}, signalItem, { main_category: "ቤት" });
-      } else if (/እቃ|item|goods/.test(catHint) || extraSig.item_kind) {
-        signalItem = Object.assign({}, signalItem, { main_category: "እቃ" });
-      }
-    }
-    window.pushViewHistory(signalItem, "view");
-    console.log("[Adika Signal] view tracked for:", signalItem.main_category || "unknown", signalItem.id);
+    window.pushViewHistory(item, "view");
   }
 } catch (eSig) {
   console.warn("[Adika] view signal failed:", eSig);
