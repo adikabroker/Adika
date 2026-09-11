@@ -2938,7 +2938,7 @@ function shareContract() {{
     # SECTION 14 — BROKERS & OTP
     # Change/maintain this entire section as one unit. Logic is unchanged.
     # ==============================================================================
-    @web_app.route('/api/brokers/register', methods=['POST', 'OPTIONS'])
+       @web_app.route('/api/brokers/register', methods=['POST', 'OPTIONS'])
     def api_broker_register():
         if request.method == 'OPTIONS':
             return ('', 204)
@@ -2970,9 +2970,9 @@ function shareContract() {{
                 sub_city=str(data.get('sub_city') or "አዲስ አበባ"),
                 specialty=specialty,
                 username=username,
+                national_id_photo=data.get("id_photo") or None,
             )
             if rid:
-                # Notify admin for approval (Telegram bot style)
                 try:
                     from config import ADMIN_CHAT_ID_INT
                     import os
@@ -2982,7 +2982,7 @@ function shareContract() {{
                     if uname and not str(uname).startswith("@"):
                         uname = "@" + str(uname)
                     msg = (
-                        "🆕 <b>የደላላ ምዝገባ ጥያቄ</b>\n"
+                        "🆕 <b>የደላላ ምዝገባ ጥያቄ (Mini App)</b>\n"
                         "─────────────────\n"
                         f"👤 ስም: <b>{name}</b>\n"
                         f"📞 ስልክ: <code>{phone}</code>\n"
@@ -2990,33 +2990,55 @@ function shareContract() {{
                         f"🆔 chat_id: <code>{tid}</code>\n"
                         f"📦 ምድብ: {specialty}\n"
                         f"📎 ID ፎቶ: {'አለ' if id_photo else 'የለም'}\n\n"
-                        "እባክዎ ያረጋግጡ / ይቀበሉ።"
+                        "እባክዎ ያጽድቁ ወይም ይሰርዙ።"
                     )
+                    keyboard = {
+                        "inline_keyboard": [[
+                            {"text": "✅ አጽድቅ", "callback_data": "admin_appr_%s" % tid},
+                            {"text": "❌ ሰርዝ", "callback_data": "admin_reje_%s" % tid},
+                        ]]
+                    }
                     token = os.getenv("TELEGRAM_BOT_TOKEN") or os.getenv("BOT_TOKEN") or ""
                     if token and admin_id:
                         import requests as _req
-                        _req.post(
-                            f"https://api.telegram.org/bot{token}/sendMessage",
-                            json={"chat_id": admin_id, "text": msg, "parse_mode": "HTML"},
-                            timeout=12,
-                        )
+                        sent = False
                         if id_photo and isinstance(id_photo, str) and id_photo.startswith("data:image"):
-                            import base64
-                            import io
-                            b64 = id_photo.split(",", 1)[-1]
-                            raw = base64.b64decode(b64)
+                            try:
+                                import base64
+                                import io
+                                b64 = id_photo.split(",", 1)[-1]
+                                raw = base64.b64decode(b64)
+                                pr = _req.post(
+                                    f"https://api.telegram.org/bot{token}/sendPhoto",
+                                    data={
+                                        "chat_id": str(admin_id),
+                                        "caption": msg,
+                                        "parse_mode": "HTML",
+                                        "reply_markup": json.dumps(keyboard),
+                                    },
+                                    files={"photo": ("id.jpg", io.BytesIO(raw), "image/jpeg")},
+                                    timeout=20,
+                                )
+                                sent = pr.ok
+                            except Exception as pe:
+                                logger.warning("broker admin photo: %s", pe)
+                        if not sent:
                             _req.post(
-                                f"https://api.telegram.org/bot{token}/sendPhoto",
-                                data={"chat_id": str(admin_id), "caption": f"ደላላ ID — {name} ({phone})"},
-                                files={"photo": ("id.jpg", io.BytesIO(raw), "image/jpeg")},
-                                timeout=20,
+                                f"https://api.telegram.org/bot{token}/sendMessage",
+                                json={
+                                    "chat_id": admin_id,
+                                    "text": msg,
+                                    "parse_mode": "HTML",
+                                    "reply_markup": keyboard,
+                                },
+                                timeout=12,
                             )
                 except Exception as ne:
                     logger.warning("broker admin notify: %s", ne)
 
                 return jsonify({
                     "success": True,
-                    "message": "Registered successfully — pending admin approval",
+                    "message": "ምዝገባዎ ተልኳል። አድሚን ካረጋገጠ በኋላ ደላላ ይሆናሉ።",
                     "broker_id": rid,
                     "pending_approval": True,
                 }), 200
