@@ -3809,6 +3809,7 @@ function shareContract() {{
                     where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
                     params.extend(['sold', 'rented', 'expired'])
           # Match req_type OR Amharic/English action_type
+            # Match req_type OR Amharic/English action_type
             if req_type == 'SELL':
                 where.append(
                     f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('SELL','SALE','') "
@@ -3832,6 +3833,9 @@ function shareContract() {{
                         f"OR UPPER(TRIM(COALESCE(action_type,''))) IN ({p},{p},{p},{p},{p}))"
                     )
                     params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ'])
+            else:
+                # 🛡️ Fallback safe block so Python never throws an empty block SyntaxError
+                pass
                 like = "ILIKE" if is_postgres() else "LIKE"
                 # STRICT category isolation: ቤት never mixes with መኪና
                 cat_mode = ""  # "", "car", "house", "biz"
