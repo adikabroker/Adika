@@ -3773,12 +3773,11 @@ function shareContract() {{
 
 
     # ============================ END SECTION 17 ============================
-  # ==============================================================================
+ # ==============================================================================
     # SECTION 18 — LISTING EXPLORER / CATEGORY FILTERING
     # Change/maintain this entire section as one unit. Logic is unchanged.
     # ==============================================================================
     @web_app.route('/api/explorer/listings', methods=['GET', 'OPTIONS'])
-    @web_app.route('/api/listings', methods=['GET', 'OPTIONS'])
     def api_explorer_listings():
         if request.method == 'OPTIONS':
             return ('', 204)
@@ -3819,6 +3818,7 @@ function shareContract() {{
                 )
                 params.extend(['መሸጥ', 'SELL', 'sell', 'ለመሸጥ', 'Sale'])
             elif req_type == 'BUY':
+                # 🔴 የፈላጊዎችን ጥያቄዎች (Buy requests) ብቻ በትክክል ማምጣት (Cross-DB Safe)
                 if is_postgres():
                     where.append(
                         f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('BUY','REQUEST','WANT') "
@@ -3832,9 +3832,11 @@ function shareContract() {{
                         f"OR UPPER(TRIM(COALESCE(action_type,''))) IN ({p},{p},{p},{p},{p}))"
                     )
                     params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ'])
+            else:
+                pass
 
             like = "ILIKE" if is_postgres() else "LIKE"
-            cat_mode = ""
+            cat_mode = ""  # "", "car", "house", "biz"
             if category and str(category).strip().lower() not in ('', 'all', 'null', 'none', 'undefined', '✨ ሁሉም', '✨ all', 'ሁሉም', 'foryou', 'for_you'):
                 cat_raw = str(category).strip()
                 cat_l = cat_raw.lower()
@@ -3871,6 +3873,16 @@ function shareContract() {{
                         parts.append(f"CAST(COALESCE(description,'') AS TEXT) {like} {p}")
                         params.append(f"%{a}%")
                     where.append("(" + " OR ".join(parts) + ")")
+                elif cat_l in ('ንግድ', 'commercial', 'business', 'biz'):
+                    cat_mode = "biz"
+                    aliases = ['ንግድ', 'commercial', 'business']
+                    parts = []
+                    for a in aliases:
+                        parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                    where.append("(" + " OR ".join(parts) + ")")
                 else:
                     where.append(
                         f"(CAST(COALESCE(main_category,'') AS TEXT) {like} {p} "
@@ -3900,23 +3912,55 @@ function shareContract() {{
             where_sql = " AND ".join(where)
             total = 0
             rows = []
-            
             try:
                 cur.execute(f"SELECT COUNT(*) AS cnt FROM listings WHERE {where_sql}", params)
                 total_row = cur.fetchone()
                 total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
-                
                 cur.execute(
                     f"SELECT * FROM listings WHERE {where_sql} "
                     f"ORDER BY id DESC LIMIT {p} OFFSET {p}",
                     list(params) + [limit, offset],
                 )
                 rows = cur.fetchall() or []
+                
+                _cat_req = str(category or "").strip().lower()
+                _strict_cat = _cat_req in (
+                    "ቤት", "house", "home", "property", "realestate", "real_estate", "ንብረት",
+                    "መኪና", "car", "cars", "vehicle", "vehicles", "auto", "መኪኖች",
+                    "ንግድ", "commercial", "business", "biz",
+                )
+                if not rows and page == 1 and req_type != 'BUY' and not _strict_cat:
+                    try:
+                        cur.execute(
+                            f"SELECT COUNT(*) AS cnt FROM listings WHERE "
+                            f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN "
+                            f"('deleted','sold','rented','expired')) "
+                            f"AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') "
+                            f"OR COALESCE(req_type,'') = '')"
+                        )
+                        tr = cur.fetchone()
+                        total = tr['cnt'] if isinstance(tr, dict) else (tr[0] if tr else 0)
+                        cur.execute(
+                            f"SELECT * FROM listings WHERE "
+                            f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN "
+                            f"('deleted','sold','rented','expired')) "
+                            f"AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') "
+                            f"OR COALESCE(req_type,'') = '') "
+                            f"ORDER BY id DESC LIMIT {p} OFFSET {p}",
+                            [limit, offset],
+                        )
+                        rows = cur.fetchall() or []
+                    except Exception as _fb0:
+                        logger.warning("explorer empty fallback: %s", _fb0)
             except Exception as qerr:
-                logger.warning(f"api_explorer_listings primary query failed: {qerr}")
-                cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p} OFFSET {p}", [limit, offset])
-                rows = cur.fetchall() or []
-                total = len(rows)
+                logger.warning(f"api_explorer_listings primary query failed, fallback: {qerr}")
+                try:
+                    cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p} OFFSET {p}", [limit, offset])
+                    rows = cur.fetchall() or []
+                    total = len(rows)
+                except Exception:
+                    rows = []
+                    total = 0
 
             items = []
             for row in rows:
@@ -3954,7 +3998,6 @@ function shareContract() {{
                 "has_more": bool(offset + limit < (total or 0)),
                 "items": safe_items,
             })
-
         except Exception as e:
             logger.error(f"api_explorer_listings error: {e}", exc_info=True)
             return jsonify({
@@ -3972,7 +4015,6 @@ function shareContract() {{
                 except Exception:
                     pass
     # ============================ END SECTION 18 ============================
-
     # ============================ END SECTION 18 ============================
     # ==============================================================================
     # SECTION 19 — AI AUTOFILL / MODERATION / SEARCH
