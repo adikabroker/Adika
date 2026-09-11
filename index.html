@@ -10015,6 +10015,65 @@
 (function () {
   "use strict";
 
+  // Global Intent Tracking Helpers
+  window.adikaAddInterest = function (item, dwellSeconds) {
+    try {
+      if (!item || typeof item !== "object") return;
+      var raw = localStorage.getItem("adika_interests") || "[]";
+      var list = [];
+      try { list = JSON.parse(raw); } catch (e) { list = []; }
+      if (!Array.isArray(list)) list = [];
+
+      var extra = item.extra_data || {};
+      if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+
+      var cat = String(item.main_category || item.category || "").toLowerCase();
+      var type = "item";
+      if (/መኪና|car/.test(cat)) type = "car";
+      else if (/ቤት|house|property/.test(cat)) type = "house";
+
+      var sub = String(item.sub_category || item.model || extra.car_model || item.title || "").toLowerCase();
+      var price = Number(String(item.price || item.asking_price || 0).replace(/[^\d.]/g, "")) || 0;
+
+      // Base weight: dwell time >= 8s -> +2 pts, otherwise +1 pt
+      var weight = (dwellSeconds && dwellSeconds >= 8) ? 2 : 1;
+
+      list.push({
+        type: type,
+        sub: sub,
+        maxPrice: price,
+        weight: weight,
+        ts: Date.now()
+      });
+
+      // Keep last 40 entries
+      if (list.length > 40) list = list.slice(list.length - 40);
+      localStorage.setItem("adika_interests", JSON.stringify(list));
+    } catch (e) {
+      console.warn("[Adika Interest Track Error]", e);
+    }
+  };
+
+  window.adikaSignalLike = function (item) {
+    if (item) window.adikaAddInterest(item, 0);
+    try {
+      var raw = localStorage.getItem("adika_interests") || "[]";
+      var list = JSON.parse(raw);
+      if (list.length) list[list.length - 1].weight = (list[list.length - 1].weight || 1) + 5;
+      localStorage.setItem("adika_interests", JSON.stringify(list));
+    } catch (e) {}
+  };
+
+  window.adikaSignalContact = function (item) {
+    if (item) window.adikaAddInterest(item, 0);
+    try {
+      var raw = localStorage.getItem("adika_interests") || "[]";
+      var list = JSON.parse(raw);
+      if (list.length) list[list.length - 1].weight = (list[list.length - 1].weight || 1) + 10;
+      localStorage.setItem("adika_interests", JSON.stringify(list));
+    } catch (e) {}
+  };
+
   function tgId() {
     try {
       var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
@@ -10701,13 +10760,15 @@
       return it;
     }
 
-        function hardFilter(items, prefs) {
+    function hardFilter(items, prefs) {
       if (!items || !items.length) return [];
       prefs = prefs || {};
+
       function parsePriceLocal(v) {
         var n = Number(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
         return isFinite(n) ? n : 0;
       }
+
       function inferItemKind(it, extra) {
         extra = extra || {};
         var k = String(it.item_kind || extra.item_kind || "").toLowerCase();
@@ -10720,6 +10781,7 @@
         if (/shirt|dress|shoe|ልብስ|ጫማ|clothing/.test(blob)) return "clothing";
         return "";
       }
+
       function inferCarSub(it, extra) {
         extra = extra || {};
         var s = String(extra.car_model || extra.car_type || it.sub_category || it.model || "").toLowerCase();
@@ -10727,14 +10789,14 @@
         return String(it.title || "").toLowerCase();
       }
 
-      var prefMaxP = parsePriceLocal(prefs.budget_max || prefs.max_price || prefs.price_max);
+      var userBudget = parsePriceLocal(prefs.budget_max || prefs.max_price || prefs.price_max);
       var prefMinP = parsePriceLocal(prefs.budget_min || prefs.min_price || prefs.price_min);
-      if ((!prefMaxP || prefMaxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
+      if ((!userBudget || userBudget >= 999999999) && (prefs.budget_range || prefs.budget)) {
         var t = String(prefs.budget_range || prefs.budget || "");
         var parts = t.split(/[-–—toእስከ]/i);
         var nums = parts.map(parsePriceLocal).filter(function (n) { return n > 0; });
-        if (nums.length >= 2) { prefMinP = Math.min(nums[0], nums[1]); prefMaxP = Math.max(nums[0], nums[1]); }
-        else if (nums.length === 1) { prefMaxP = nums[0]; }
+        if (nums.length >= 2) { prefMinP = Math.min(nums[0], nums[1]); userBudget = Math.max(nums[0], nums[1]); }
+        else if (nums.length === 1) { userBudget = nums[0]; }
       }
 
       var wantCar = false, wantHouse = false, wantItem = false;
@@ -10750,35 +10812,48 @@
       if (/መኪና|car/.test(mc)) wantCar = true;
       if (/ቤት|house/.test(mc)) wantHouse = true;
 
-      var carMaxP = prefMaxP;
+      // Category-Specific Budget Multipliers
+      var carMaxP = userBudget > 0 ? userBudget * 1.15 : 0;
+      var houseMaxP = userBudget > 0 ? userBudget * 1.50 : 0;
+      var itemMaxP = 300000; // Cap at category average (300,000 ETB)
+
       var carSubs = [];
       var houseSubs = [];
       var itemSubs = [];
       var prefKind = String(prefs.item_kind || (prefs.specs && prefs.specs.item_kind) || "").toLowerCase();
       if (wantItem && prefKind) itemSubs.push(prefKind);
 
-      var interests = [];
-      try { interests = JSON.parse(localStorage.getItem("adika_interests") || "[]"); } catch (eP) { interests = []; }
-      if (!Array.isArray(interests)) interests = [];
+      var rawInterests = [];
+      try { rawInterests = JSON.parse(localStorage.getItem("adika_interests") || "[]"); } catch (eP) { rawInterests = []; }
+      if (!Array.isArray(rawInterests)) rawInterests = [];
       var now = Date.now();
-      interests = interests.filter(function (int) { return int && (now - (int.ts || 0) < 30 * 60 * 1000); });
 
-      interests.forEach(function (int) {
-        var typ = String(int.type || "").toLowerCase();
-        var sub = String(int.sub || "").toLowerCase();
-        if (typ === "car") {
-          wantCar = true;
-          if (int.maxPrice && int.maxPrice > 0) {
-            var stretch = int.maxPrice * 1.15;
-            if (stretch > carMaxP) carMaxP = stretch;
+      // Interest Time Decay Calculation: Weight = Initial * (0.8 ^ Days_Passed)
+      var live = [];
+      rawInterests.forEach(function (int) {
+        if (!int) return;
+        var ageDays = (now - (int.ts || now)) / 86400000;
+        if (ageDays <= 14) { // keep within 14 days
+          var decay = Math.pow(0.8, ageDays);
+          var w = (int.weight || 1) * decay;
+          var typ = String(int.type || "").toLowerCase();
+          var sub = String(int.sub || "").toLowerCase();
+
+          if (typ === "car") {
+            wantCar = true;
+            if (int.maxPrice && int.maxPrice > 0) {
+              var stretch = int.maxPrice * 1.15;
+              if (stretch > carMaxP) carMaxP = stretch;
+            }
+            if (sub && carSubs.indexOf(sub) < 0) carSubs.push(sub);
+          } else if (typ === "house") {
+            wantHouse = true;
+            if (sub && houseSubs.indexOf(sub) < 0) houseSubs.push(sub);
+          } else if (typ === "item") {
+            wantItem = true;
+            if (sub && itemSubs.indexOf(sub) < 0) itemSubs.push(sub);
           }
-          if (sub && carSubs.indexOf(sub) < 0) carSubs.push(sub);
-        } else if (typ === "house") {
-          wantHouse = true;
-          if (sub && houseSubs.indexOf(sub) < 0) houseSubs.push(sub);
-        } else if (typ === "item") {
-          wantItem = true;
-          if (sub && itemSubs.indexOf(sub) < 0) itemSubs.push(sub);
+          live.push({ type: typ, sub: sub, _w: w });
         }
       });
 
@@ -10791,6 +10866,7 @@
         if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
         return extra || {};
       }
+
       function bucket(it) {
         var extra = extraOf(it);
         if (it.item_kind || extra.item_kind) return "item";
@@ -10798,10 +10874,10 @@
         if (/እቃ|item|goods|ቁሳቁስ/.test(raw)) return "item";
         if (/ቤት|house|property|ንብረት/.test(raw)) return "house";
         if (/መኪና|car/.test(raw)) return "car";
-        var infer = inferItemKind(it, extra);
-        if (infer) return "item";
+        if (inferItemKind(it, extra)) return "item";
         return "other";
       }
+
       function subHit(hay, list) {
         if (!list || !list.length) return true;
         hay = String(hay || "").toLowerCase();
@@ -10815,50 +10891,57 @@
         return false;
       }
 
-      return items.filter(function (it) {
+      function listingScore(it, b) {
+        var extra = extraOf(it);
+        var blob = [it.title, it.sub_category, it.model, extra.car_model, extra.item_kind, it.item_kind].join(" ").toLowerCase();
+        var s = 1;
+        live.forEach(function (int) {
+          if (String(int.type) !== b) return;
+          var sub = String(int.sub || "").toLowerCase();
+          if (!sub || blob.indexOf(sub) >= 0 || sub.indexOf(blob.slice(0, 6)) >= 0) s += (int._w || 0);
+        });
+        return s;
+      }
+
+      var out = items.filter(function (it) {
         if (!it) return false;
         var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
         if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
         var extra = extraOf(it);
         var b = bucket(it);
+        var price = parsePriceLocal(it.price || it.asking_price || 0);
 
         if (b === "item") {
           if (!wantItem) return false;
+          if (price > itemMaxP && itemMaxP > 0) return false;
           var kind = inferItemKind(it, extra);
           return subHit(kind + " " + (it.title || "") + " " + (it.sub_category || ""), itemSubs);
         }
         if (b === "house") {
           if (!wantHouse) return false;
-          var priceH = parsePriceLocal(it.price || it.asking_price || 0);
-          if (prefMaxP > 0 && prefMaxP < 999999999 && priceH > 0) {
-            if (priceH > prefMaxP) return false;
-            if (prefMinP > 0 && priceH < prefMinP) return false;
-          }
+          if (houseMaxP > 0 && price > 0 && price > houseMaxP) return false;
           if (houseSubs.length) {
-            var hblob = [it.sub_category, extra.house_type, extra.property_type, it.title].join(" ").toLowerCase();
-            return subHit(hblob, houseSubs);
+            return subHit([it.sub_category, extra.house_type, extra.property_type, it.title].join(" "), houseSubs);
           }
           return true;
         }
         if (b === "car") {
           if (!wantCar) return false;
-          var priceC = parsePriceLocal(it.price || it.asking_price || 0);
           if (carMaxP > 0 && carMaxP < 999999999) {
-            if (priceC <= 0) return false;
-            if (priceC > carMaxP) return false;
-          }
-          if (carSubs.length) {
-            var cblob = inferCarSub(it, extra) + " " + (it.title || "") + " " + (it.description || "");
-            if (!subHit(cblob, carSubs)) {
-              if (priceC > prefMaxP && prefMaxP > 0) return false;
-            }
+            if (price <= 0) return false;
+            if (price > carMaxP) return false;
           }
           return true;
         }
         return false;
       }).map(function (it) {
-        return (typeof normalizeImages === "function") ? normalizeImages(it) : it;
+        if (typeof normalizeImages === "function") it = normalizeImages(it);
+        it._fyp_score = listingScore(it, bucket(it));
+        return it;
       });
+
+      out.sort(function (a, b) { return (b._fyp_score || 0) - (a._fyp_score || 0); });
+      return out;
     }
 
     function paint(items) {
@@ -10925,7 +11008,6 @@
   } catch (e) {}
 })();
 </script>
-
 <!-- ======================= END SECTION 32 ======================= -->
 <!-- SECTION 33 — CLOSING TAGS -->
 <!-- Change/maintain this entire section as one unit. -->
