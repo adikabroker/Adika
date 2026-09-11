@@ -5165,71 +5165,107 @@
 <!-- SECTION 22 — JS: AUTH / TABS / CATEGORIES -->
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
-    function selectCategory(catId) {
-      try { state.loading = false; } catch (e) {}
+<script>
+(function () {
+  "use strict";
 
-      catId = (catId || "").trim();
+  // ============================================================
+  // selectCategory — clear pool BEFORE state change for explicit cats
+  // ============================================================
+  function selectCategory(catId) {
+    try { state.loading = false; } catch (e) {}
 
-      var isForYou = (catId === "foryou" || catId === "ለእርስዎ" || catId === "✨ ለእርስዎ");
-      var isAll = (!catId || catId === "all" || catId === "null" || catId === "undefined" || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም" || catId === "🌐 ሁሉም");
+    catId = (catId || "").trim();
 
-      // 🆕 When user picks a specific category, clear interest pool (fresh start)
-      if (!isForYou && !isAll) {
-        try {
-          if (typeof window.adikaClearRecentView === "function") {
-            window.adikaClearRecentView();
-          } else {
-            localStorage.removeItem("adika_interests");
-            localStorage.removeItem("adika_last_view_category");
-            localStorage.removeItem("adika_last_view_sub");
-            localStorage.removeItem("adika_last_view_price");
-            localStorage.removeItem("adika_last_view_model");
-            localStorage.removeItem("adika_last_view_ts");
-          }
-        } catch (e) {}
+    var isForYou = (catId === "foryou" || catId === "ለእርስዎ" || catId === "✨ ለእርስዎ");
+    var isAll = (!catId || catId === "all" || catId === "null" || catId === "undefined"
+      || catId === "✨ ሁሉም" || catId === "✨ All" || catId === "ሁሉም" || catId === "🌐 ሁሉም");
+
+    // ============================================================
+    // For explicit categories — clear pool FIRST, then set state
+    // ============================================================
+    if (!isForYou && !isAll) {
+      try {
+        if (typeof window.adikaClearRecentView === "function") {
+          window.adikaClearRecentView();
+        } else {
+          try { localStorage.removeItem("adika_interests"); } catch (e1) {}
+          try { localStorage.removeItem("adika_last_view_category"); } catch (e2) {}
+          try { localStorage.removeItem("adika_last_view_sub"); } catch (e3) {}
+          try { localStorage.removeItem("adika_last_view_price"); } catch (e4) {}
+          try { localStorage.removeItem("adika_last_view_model"); } catch (e5) {}
+          try { localStorage.removeItem("adika_last_view_ts"); } catch (e6) {}
+        }
+      } catch (e) {
+        console.warn("[Adika] clearRecentView failed:", e);
       }
 
-      if (isForYou) {
-        // Reset history only — interests KEPT (cumulative)
-        try {
-          if (typeof window.adikaResetFypContext === "function") {
-            window.adikaResetFypContext();
-          } else {
-            try {
-              localStorage.removeItem("viewHistory");
-              localStorage.removeItem("adik_user_intent");
-            } catch (eLS) {}
-          }
-        } catch (eR) {}
+      // Set explicit category state
+      state.feedMode = "cat";
+      state.category = catId;
+      state.page = 1;
+      state.items = [];
+      state.hasMore = true;
+      state.q = "";
+    }
 
-        try { if (typeof window.openFYPWithOnboarding === "function") window.openFYPWithOnboarding(); } catch (eOb) {}
-        if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) {
-          state.feedMode = "foryou";
-          state.category = "";
-          try {
-            var buttons = catsEl.querySelectorAll("button");
-            buttons.forEach(function(b) {
-              if (b.getAttribute("data-filter") === "chassis") return;
-              var bId = b.getAttribute("data-id") || "";
-              var on = (bId === "foryou");
-              b.className = on
-                ? "cat-pill active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all"
-                : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all";
-            });
-          } catch (eP) {}
-          return;
+    // ============================================================
+    // For You — reset history only, KEEP interests (cumulative)
+    // ============================================================
+    if (isForYou) {
+      try {
+        if (typeof window.adikaResetFypContext === "function") {
+          window.adikaResetFypContext();
+        } else {
+          try { localStorage.removeItem("viewHistory"); } catch (eH) {}
+          try { localStorage.removeItem("adik_user_intent"); } catch (eI) {}
         }
+      } catch (eR) {}
+
+      try {
+        if (typeof window.openFYPWithOnboarding === "function") {
+          window.openFYPWithOnboarding();
+        }
+      } catch (eOb) {}
+
+      if (typeof requireOnboardingForFyp === "function" && requireOnboardingForFyp()) {
         state.feedMode = "foryou";
         state.category = "";
-      } else if (isAll) {
-        state.feedMode = "all";
-        state.category = "";
-      } else {
-        state.feedMode = "cat";
-        state.category = catId;
+        try {
+          var buttons0 = catsEl.querySelectorAll("button");
+          buttons0.forEach(function (b) {
+            if (b.getAttribute("data-filter") === "chassis") return;
+            var bId = b.getAttribute("data-id") || "";
+            var on = (bId === "foryou");
+            b.className = on
+              ? "cat-pill active px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all"
+              : "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all";
+          });
+        } catch (eP) {}
+        return;
       }
+
+      state.feedMode = "foryou";
+      state.category = "";
+      state.page = 1;
+      state.items = [];
+      state.hasMore = true;
+      state.q = "";
+    } else if (isAll) {
+      state.feedMode = "all";
+      state.category = "";
+      state.page = 1;
+      state.items = [];
+      state.hasMore = true;
+      state.q = "";
+    }
+
+    // ============================================================
+    // Paint category pills
+    // ============================================================
+    try {
       var buttons = catsEl.querySelectorAll("button");
-      buttons.forEach(function(b) {
+      buttons.forEach(function (b) {
         if (b.getAttribute("data-filter") === "chassis") return;
         var bId = b.getAttribute("data-id") || "";
         var on = (state.feedMode === "foryou" && bId === "foryou")
@@ -5241,401 +5277,217 @@
           b.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all";
         }
       });
-      load(false);
-    }
+    } catch (eP2) {}
 
-    catsEl.onclick = function (ev) {
-      var btn = ev.target.closest("button");
-      if (!btn || !catsEl.contains(btn)) return;
-      if (btn.id === "filterChassisChip") {
-        state.chassisOnly = !state.chassisOnly;
-        if (state.chassisOnly) {
-          btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-400 text-slate-900 shadow-md ring-2 ring-emerald-200";
-          filterText.textContent = "🛡️ ሻሲ ያላቸው ብቻ (VIN Verified Only)";
-          filterBanner.classList.remove("hidden");
-        } else {
-          btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40";
-          filterBanner.classList.add("hidden");
+    // ============================================================
+    // For You → use FYP loader, else use generic load
+    // ============================================================
+    try {
+      if (isForYou) {
+        if (typeof window.loadFYPFeed === "function") {
+          window.loadFYPFeed();
+          return;
         }
+        if (typeof window.loadSmartFYP === "function") {
+          window.loadSmartFYP({ page: 1, append: false });
+          return;
+        }
+        if (typeof window.__adikaLoadFYP === "function") {
+          window.__adikaLoadFYP();
+          return;
+        }
+      }
+      if (typeof load === "function") {
         load(false);
-        return;
       }
-      var catId = btn.getAttribute("data-id") || "";
-      selectCategory(catId);
-    };
+    } catch (eLoad) {
+      console.warn("[Adika] load after selectCategory:", eLoad);
+    }
+  }
+  window.selectCategory = selectCategory;
 
-    moreBtn.onclick = function () { loadMoreVehicles(); };
+  // ============================================================
+  // DETAIL CLOSE HOOK — refresh FYP when returning
+  // ============================================================
+  (function hookDetailClose() {
+    if (window.__adikaDetailCloseHooked) return;
+    window.__adikaDetailCloseHooked = true;
 
-    (function bindInfiniteScroll() {
-      var ticking = false;
-      function nearBottom() {
-        var el = document.documentElement;
-        return (el.scrollTop + el.clientHeight >= el.scrollHeight - 100);
-      }
-      window.addEventListener("scroll", function () {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(function () {
-          ticking = false;
-          if (nearBottom()) loadMoreVehicles();
-        });
-      }, { passive: true });
-      var wrap = document.getElementById("loadMoreWrap");
-      if (wrap && "IntersectionObserver" in window) {
+    function attachHook() {
+      var _origClose = window.closeDetailModalPreserve;
+      if (typeof _origClose !== "function" || _origClose.__fypHooked) return false;
+
+      window.closeDetailModalPreserve = function () {
+        var wasFyp = false;
         try {
-          var io = new IntersectionObserver(function (entries) {
-            if (entries[0] && entries[0].isIntersecting) loadMoreVehicles();
-          }, { rootMargin: "120px 0px" });
-          io.observe(wrap);
+          wasFyp = window.state && state.feedMode === "foryou" && !state.q;
         } catch (e) {}
-      }
-    })();
 
-    var deb = null;
-    qInput.oninput = function () {
-      clearTimeout(deb);
-      deb = setTimeout(function () {
-        state.q = (qInput.value || "").trim();
-        load(false);
-      }, 300);
-    };
+        var r = _origClose.apply(this, arguments);
 
-    var aiToolsView = document.getElementById("aiToolsView");
-    var aiSearchView = document.getElementById("aiSearchView");
-    var aiTabTools = document.getElementById("aiTabTools");
-    var aiTabSearch = document.getElementById("aiTabSearch");
-
-    function closeSmartSearchPanel() {
-      if (aiSearchView) {
-        aiSearchView.classList.add("hidden");
-        aiSearchView.classList.remove("flex");
-        aiSearchView.style.setProperty("display","none","important");
-        aiSearchView.style.setProperty("pointer-events","none","important");
-      }
-      if (aiToolsView) aiToolsView.classList.remove("hidden");
-      if (aiTabTools) aiTabTools.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
-      if (aiTabSearch) aiTabSearch.className = "py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center";
-    }
-    window.closeSmartSearchPanel = closeSmartSearchPanel;
-
-    aiTabTools.onclick = function() {
-      closeSmartSearchPanel();
-    };
-
-    aiTabSearch.onclick = function() {
-      if (aiToolsView) aiToolsView.classList.remove("hidden");
-      if (aiSearchView) {
-        aiSearchView.classList.remove("hidden");
-        aiSearchView.classList.add("flex");
-        aiSearchView.style.setProperty("display","flex","important");
-        aiSearchView.style.setProperty("pointer-events","auto","important");
-      }
-      if (aiTabSearch) aiTabSearch.className = "py-1.5 rounded-lg bg-cyan-400/25 text-cyan-100 border border-cyan-400/30 shadow-sm transition-all text-center font-semibold";
-      if (aiTabTools) aiTabTools.className = "py-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-all text-center";
-    };
-
-    var aiSearchBackBtn = document.getElementById("aiSearchBackBtn");
-    var aiSearchCloseBtn = document.getElementById("aiSearchCloseBtn");
-    if (aiSearchBackBtn) aiSearchBackBtn.onclick = closeSmartSearchPanel;
-    if (aiSearchCloseBtn) aiSearchCloseBtn.onclick = closeSmartSearchPanel;
-
-    function adikaAdvisorCtaHtml(carModel, summary) {
-      var model = (carModel || "መኪናዎ").toString().trim() || "መኪናዎ";
-      var sum = (summary || "").toString().trim();
-      return (
-        '<div class="mt-3 p-3 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 via-cyan-50 to-sky-50 shadow-sm space-y-2">' +
-          '<div class="flex items-start gap-2">' +
-            '<span class="text-lg shrink-0">🤖</span>' +
-            '<p class="text-[11px] text-slate-700 leading-relaxed font-medium">' +
-              'ስለ <span class="font-black text-[#0e7490]">' + esc(model) + '</span> ተጨማሪ መረጃ ወይም የባለሙያ ምክር ይፈልጋሉ? ' +
-              '<span class="font-bold">Adika Digital Adviser</span>ን ያነጋግሩ!' +
-            '</p>' +
-          '</div>' +
-          '<button type="button" class="adika-advisor-cta-btn w-full text-center py-2.5 rounded-xl bg-[#16acbd] hover:bg-[#1394a3] text-white font-bold text-[11px] shadow-md active:scale-[0.98]" ' +
-            'data-car="' + esc(model).replace(/"/g, '&quot;') + '" data-summary="' + esc(sum).replace(/"/g, '&quot;') + '">' +
-            '💬 አሁኑኑ አማክር (Chat Now)' +
-          '</button>' +
-        '</div>'
-      );
+        // Debounced silent FYP refresh (no scroll reset)
+        if (wasFyp) {
+          if (window.__fypRefreshTimer) clearTimeout(window.__fypRefreshTimer);
+          window.__fypRefreshTimer = setTimeout(function () {
+            try {
+              if (typeof window.__adikaLoadFYP === "function") {
+                var scrollY = window.scrollY || window.pageYOffset || 0;
+                window.__adikaLoadFYP();
+                setTimeout(function () {
+                  try { window.scrollTo(0, scrollY); } catch (e2) {}
+                }, 120);
+              }
+            } catch (e3) {}
+          }, 400);
+        }
+        return r;
+      };
+      window.closeDetailModalPreserve.__fypHooked = true;
+      return true;
     }
 
-    window.openAdviserChat = function(carModelName, diagnosticSummary) {
-      var model = (carModelName || "መኪና").toString().trim() || "መኪና";
-      var summary = (diagnosticSummary || "").toString().trim();
-      ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal"].forEach(function(mid) {
-        try { closeToolModal(mid); } catch (e) {}
+    if (!attachHook()) {
+      // Retry — Section 20 may not have run yet
+      var attempts = 0;
+      var iv = setInterval(function () {
+        attempts++;
+        if (attachHook() || attempts > 20) clearInterval(iv);
+      }, 100);
+    }
+  })();
+
+  // ============================================================
+  // Category pill click delegation
+  // ============================================================
+  try {
+    var catsEl = document.getElementById("cats");
+    if (catsEl && !catsEl.__selectCategoryBound) {
+      catsEl.__selectCategoryBound = true;
+      catsEl.addEventListener("click", function (ev) {
+        var btn = ev.target && ev.target.closest ? ev.target.closest("button") : null;
+        if (!btn || !catsEl.contains(btn)) return;
+
+        // Chassis-only filter chip
+        if (btn.id === "filterChassisChip") {
+          state.chassisOnly = !state.chassisOnly;
+          var filterBannerEl = document.getElementById("filterBanner");
+          var filterTextEl = document.getElementById("filterText");
+          if (state.chassisOnly) {
+            btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-400 text-slate-900 shadow-md ring-2 ring-emerald-200";
+            if (filterTextEl) filterTextEl.textContent = "🛡️ ሻሲ ያላቸው ብቻ (VIN Verified Only)";
+            if (filterBannerEl) filterBannerEl.classList.remove("hidden");
+          } else {
+            btn.className = "cat-pill px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all bg-emerald-500/25 text-white hover:bg-emerald-500/35 border border-emerald-300/40";
+            if (filterBannerEl) filterBannerEl.classList.add("hidden");
+          }
+          if (typeof load === "function") load(false);
+          return;
+        }
+
+        var catId = btn.getAttribute("data-id") || "";
+        selectCategory(catId);
       });
-      showAnalysisView(true);
-      var prompt = "ሰላም፣ ስለ " + model + " የምርመራ ውጤት ምክር እፈልጋለሁ።";
-      if (summary) prompt += "\n\nማጠቃለያ:\n" + summary;
-      else prompt += " Hello, I need advice regarding the diagnostic results for " + model + ".";
-      var input = document.getElementById("advisorChatInput");
-      if (input) {
-        input.value = prompt;
+    }
+  } catch (eBind) {
+    console.warn("[Adika] catsEl bind:", eBind);
+  }
+
+  // ============================================================
+  // Tab switching (Sell / Buy)
+  // ============================================================
+  try {
+    var tabSell = document.getElementById("tabSell");
+    var tabBuy = document.getElementById("tabBuy");
+
+    function setActiveTab(tab) {
+      if (!tabSell || !tabBuy) return;
+      if (tab === "buy") {
+        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+        window.__adikaIsBuy = true;
         try {
-          input.style.height = "auto";
-          input.style.height = Math.min(input.scrollHeight, 120) + "px";
+          if (state) { state.tab = "buy"; state.feedMode = "buy"; }
         } catch (e) {}
-        input.focus();
-      }
-      var log = document.getElementById("advisorChatLog");
-      if (log && !log.children.length) {
-        appendAdvisorChat("advisor", "ሰላም! እኔ Adika Senior Financial Advisor ነኝ። ስለ " + model + " ጥያቄዎን ይላኩ — ወይም ከታች ያለውን ቅድመ-ጥያቄ ይላኩ።");
-      }
-    };
-
-    document.addEventListener("click", function(ev) {
-      var btn = ev.target && ev.target.closest ? ev.target.closest(".adika-advisor-cta-btn") : null;
-      if (!btn) return;
-      ev.preventDefault();
-      openAdviserChat(btn.getAttribute("data-car") || "", btn.getAttribute("data-summary") || "");
-    });
-
-    window.__adikaOpenToolFromHub = function(modalId) {
-      var ai = document.getElementById("aiModal");
-      if (ai) {
-        ai.classList.add("hidden");
-        ai.classList.remove("flex");
-        try { ai.style.display = "none"; } catch (e) {}
-      }
-      openToolModal(modalId);
-    };
-
-    window.openToolModal = function(id, ev) {
-      try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e0) {}
-      var m = document.getElementById(id);
-      if (m) {
-        m.classList.remove("hidden");
-        m.classList.add("flex");
+        try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
+        if (typeof load === "function") load(false);
+      } else {
+        tabSell.className = "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+        tabBuy.className = "py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1";
+        window.__adikaIsBuy = false;
         try {
-          m.style.display = "flex";
-          m.style.zIndex = "9999";
+          if (state) { state.tab = "marketplace"; state.feedMode = "foryou"; }
         } catch (e) {}
-      }
-      if (id === "aiModal") {
+        try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
         try {
-          var nav = document.getElementById("adikaBottomNav");
-          var fab = document.getElementById("fabBtn");
-          var hdr = document.getElementById("adikaFixedHeader");
-          var hero = document.getElementById("homeHero");
-          if (nav) nav.style.display = "none";
-          if (fab) fab.style.display = "none";
-          if (hdr) hdr.style.display = "none";
-          if (hero) hero.style.display = "none";
-          document.body.style.overflow = "hidden";
-        } catch (e2) {}
+          if (typeof window.loadFYPFeed === "function") { window.loadFYPFeed(); return; }
+          if (typeof window.loadSmartFYP === "function") { window.loadSmartFYP({ page: 1, append: false }); return; }
+        } catch (e3) {}
+        if (typeof load === "function") load(false);
       }
-    };
-
-    window.closeToolModal = function(id) {
-      var m = document.getElementById(id);
-      if (m) {
-        m.classList.add("hidden");
-        m.classList.remove("flex");
-        try { m.style.display = "none"; } catch (e) {}
-      }
-      var anyOpen = false;
-      ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal","aiModal"].forEach(function(mid) {
-        var el = document.getElementById(mid);
-        if (el && !el.classList.contains("hidden")) anyOpen = true;
-      });
-      var av = document.getElementById("analysisView");
-      if (av && !av.classList.contains("hidden")) anyOpen = true;
-      if (!anyOpen) document.body.style.overflow = "";
-    };
-
-    window.returnToToolsHub = function() {
-      var ai = document.getElementById("aiModal");
-      if (ai) {
-        ai.classList.remove("hidden");
-        ai.classList.add("flex");
-        try { ai.style.display = "flex"; } catch (e) {}
-      }
-      try {
-        var nav = document.getElementById("adikaBottomNav");
-        var fab = document.getElementById("fabBtn");
-        var hdr = document.getElementById("adikaFixedHeader");
-        var hero = document.getElementById("homeHero");
-        if (nav) nav.style.display = "none";
-        if (fab) fab.style.display = "none";
-        if (hdr) hdr.style.display = "none";
-        if (hero) hero.style.display = "none";
-        document.body.style.overflow = "hidden";
-      } catch (e2) {}
-    };
-
-    window.goHomeFromTool = function(id) {
-      if (id) closeToolModal(id);
-      var ai = document.getElementById("aiModal");
-      if (ai) {
-        ai.classList.add("hidden");
-        ai.classList.remove("flex");
-        try { ai.style.display = "none"; } catch (e) {}
-      }
-      try { if (typeof showAnalysisView === "function") showAnalysisView(false); } catch (e3) {}
-      try {
-        var nav = document.getElementById("adikaBottomNav");
-        var fab = document.getElementById("fabBtn");
-        var hdr = document.getElementById("adikaFixedHeader");
-        var hero = document.getElementById("homeHero");
-        if (nav) nav.style.display = "";
-        if (fab) fab.style.display = "";
-        if (hdr) hdr.style.display = "";
-        if (hero) hero.style.display = "";
-        document.body.style.overflow = "";
-      } catch (e4) {}
-    };
-
-    window.closeModal = function(id) {
-      var tools = ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal"];
-      if (id && tools.indexOf(id) !== -1) {
-        closeToolModal(id);
-        returnToToolsHub();
-        return;
-      }
-      if (id) closeToolModal(id);
-      else {
-        tools.concat(["aiModal"]).forEach(function(mid) { closeToolModal(mid); });
-        showAnalysisView(false);
-      }
-    };
-
-    window.navigateBack = function(id) {
-      if (id === "analysisView") { showAnalysisView(false); returnToToolsHub(); return; }
-      if (id) { closeModal(id); return; }
-      goHomeFromTool(null);
-    };
-
-    ["dutyModal","loanModal","compareModal","contractModal","poaModal","diagModal","chassisModal","landMapModal"].forEach(function(mid) {
-      var el = document.getElementById(mid);
-      if (!el) return;
-      el.addEventListener("click", function(e) {
-        if (e.target === el) closeToolModal(mid);
-      });
-    });
-
-    document.getElementById("toolDutyBtn").onclick = function() { __adikaOpenToolFromHub("dutyModal"); };
-    document.getElementById("toolLoanBtn").onclick = function() { __adikaOpenToolFromHub("loanModal"); };
-    document.getElementById("toolCompareBtn").onclick = function() { __adikaOpenToolFromHub("compareModal"); };
-    document.getElementById("toolContractBtn").onclick = function() { __adikaOpenToolFromHub("contractModal"); };
-    document.getElementById("toolPoaBtn").onclick = function() { __adikaOpenToolFromHub("poaModal"); };
-    document.getElementById("toolDiagBtn").onclick = function() { __adikaOpenToolFromHub("diagModal"); };
-    if (document.getElementById("toolChassisBtn")) {
-      document.getElementById("toolChassisBtn").onclick = function() { __adikaOpenToolFromHub("chassisModal"); };
-      var _lmBtn = document.getElementById("toolLandMapBtn");
-      if (_lmBtn) _lmBtn.onclick = function() { __adikaOpenToolFromHub("landMapModal"); };
     }
+    window.setActiveTab = setActiveTab;
 
-    var selectedPurpose = "business";
-    var selectedPay = "cash";
-
-    var budgetInputEl = document.getElementById("advisorBudget");
-    var budgetFormattedEl = document.getElementById("advisorBudgetFormatted");
-
-    if (budgetInputEl && budgetFormattedEl) {
-      budgetInputEl.oninput = function() {
-        var v = Number(budgetInputEl.value) || 0;
-        budgetFormattedEl.textContent = v > 0 ? (v.toLocaleString() + " ETB") : "0 ETB";
+    if (tabSell && !tabSell.__bound) {
+      tabSell.__bound = true;
+      tabSell.onclick = function (e) {
+        if (e) e.preventDefault();
+        setActiveTab("marketplace");
       };
     }
-    var incomeInputEl = document.getElementById("advisorMonthlyIncome");
-    var incomeFormattedEl = document.getElementById("advisorIncomeFormatted");
-    if (incomeInputEl && incomeFormattedEl) {
-      incomeInputEl.oninput = function() {
-        var v = Number(incomeInputEl.value) || 0;
-        incomeFormattedEl.textContent = v > 0 ? (v.toLocaleString() + " / ወር") : "0 / ወር";
+    if (tabBuy && !tabBuy.__bound) {
+      tabBuy.__bound = true;
+      tabBuy.onclick = function (e) {
+        if (e) e.preventDefault();
+        setActiveTab("buy");
       };
     }
+  } catch (eTab) {
+    console.warn("[Adika] tab bind:", eTab);
+  }
 
-    document.querySelectorAll(".advisor-preset-chip").forEach(function(btn) {
-      btn.onclick = function() {
-        var b = btn.getAttribute("data-budget");
-        if (budgetInputEl) {
-          budgetInputEl.value = b;
-          if (budgetFormattedEl) budgetFormattedEl.textContent = Number(b).toLocaleString() + " ETB";
-        }
-      };
-    });
+  // ============================================================
+  // Language switcher (AM / EN)
+  // ============================================================
+  try {
+    var langAmBtn = document.getElementById("langAmBtn");
+    var langEnBtn = document.getElementById("langEnBtn");
 
-    var purposeBizBtn = document.getElementById("advisorPurposeBiz");
-    var purposeFamBtn = document.getElementById("advisorPurposeFam");
-    if (purposeBizBtn && purposeFamBtn) {
-      purposeBizBtn.onclick = function() {
-        selectedPurpose = "business";
-        purposeBizBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
-        purposeFamBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
-      };
-      purposeFamBtn.onclick = function() {
-        selectedPurpose = "personal";
-        purposeFamBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
-        purposeBizBtn.className = "advisor-purpose-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
-      };
-    }
-
-    var payCashBtn = document.getElementById("advisorPayCash");
-    var payLoanBtn = document.getElementById("advisorPayLoan");
-    var incomeRow = document.getElementById("advisorIncomeRow");
-    if (payCashBtn && payLoanBtn) {
-      payCashBtn.onclick = function() {
-        selectedPay = "cash";
-        payCashBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
-        payLoanBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
-        if (incomeRow) incomeRow.classList.add("hidden");
-      };
-      payLoanBtn.onclick = function() {
-        selectedPay = "loan";
-        payLoanBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg bg-[#16acbd] text-white font-bold text-[10px] text-center transition-all shadow-sm flex items-center justify-center gap-1";
-        payCashBtn.className = "advisor-pay-btn py-1.5 px-2 rounded-lg text-slate-600 font-bold text-[10px] text-center hover:bg-slate-100 transition-all flex items-center justify-center gap-1";
-        if (incomeRow) incomeRow.classList.remove("hidden");
-      };
-    }
-
-    (function(){
-      var ha = document.getElementById("heroAdvisorBtn");
-      var hp = document.getElementById("heroPoaBtn");
-      var ht = document.getElementById("heroToolsBtn");
-      if (ha) ha.onclick = function() {
-        if (typeof openToolModal === "function") openToolModal("aiModal");
-        else {
-          var m = document.getElementById("aiModal");
-          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
-        }
-      };
-      if (hp) hp.onclick = function() {
-        if (typeof openToolModal === "function") openToolModal("aiModal");
-        else {
-          var m = document.getElementById("aiModal");
-          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
-        }
-      };
-      if (ht) ht.onclick = function() {
-        if (typeof openToolModal === "function") openToolModal("aiModal");
-        else {
-          var m = document.getElementById("aiModal");
-          if (m) { m.classList.remove("hidden"); m.classList.add("flex"); }
-        }
-      };
-      var car = document.getElementById("heroCarousel");
-      var dots = document.querySelectorAll("#heroDots .hero-dot");
-      if (car && dots.length) {
-        car.addEventListener("scroll", function() {
-          var i = Math.round(car.scrollLeft / Math.max(car.clientWidth * 0.78, 1));
-          dots.forEach(function(d, idx){ d.classList.toggle("active", idx === i); });
-        }, { passive: true });
+    function setLanguage(lang) {
+      try { localStorage.setItem("adika_lang", lang); } catch (e) {}
+      if (lang === "en") {
+        document.body.classList.add("lang-en-active");
+        if (langEnBtn) langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
+        if (langAmBtn) langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
+        var qEl = document.getElementById("q");
+        if (qEl) qEl.placeholder = "Search listings...";
+      } else {
+        document.body.classList.remove("lang-en-active");
+        if (langAmBtn) langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
+        if (langEnBtn) langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
+        var qEl2 = document.getElementById("q");
+        if (qEl2) qEl2.placeholder = "ንብረት ይፈልጉ...";
       }
-    })();
+      try { if (typeof paintFeedModes === "function") paintFeedModes(); } catch (e2) {}
+    }
+    window.setLanguage = setLanguage;
 
-    window.setActiveTab = function(tab){
-      if(tab === "chat" || tab === "advisor"){
-        if(typeof showAnalysisView === "function") showAnalysisView(true);
-        else if(typeof window.openAiChat === "function") window.openAiChat();
-      } else if(tab === "tools"){
-        if(typeof window.openTools === "function") window.openTools();
-      } else if(tab === "home" || tab === "marketplace"){
-        if(typeof window.openHome === "function") window.openHome();
-      }
-    };
+    if (langAmBtn && !langAmBtn.__bound) {
+      langAmBtn.__bound = true;
+      langAmBtn.onclick = function (e) { if (e) e.preventDefault(); setLanguage("am"); };
+    }
+    if (langEnBtn && !langEnBtn.__bound) {
+      langEnBtn.__bound = true;
+      langEnBtn.onclick = function (e) { if (e) e.preventDefault(); setLanguage("en"); };
+    }
 
+    var initialLang = "am";
+    try { initialLang = localStorage.getItem("adika_lang") || "am"; } catch (e) {}
+    setLanguage(initialLang);
+  } catch (eLang) {
+    console.warn("[Adika] language bind:", eLang);
+  }
+})();
+</script>
 <!-- ======================= END SECTION 22 ======================= -->
 <!-- ================================================================ -->
 <!-- SECTION 23 — JS: SUPABASE & ANALYSIS VIEW -->
