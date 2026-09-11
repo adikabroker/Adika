@@ -5689,72 +5689,7 @@ try {
   })();
 
 <!-- ======================= END SECTION 22 ======================= -->
-  <!-- ======================= END SECTION 22 ======================= -->
 
-<!-- ================================================================ -->
-<!-- SECTION 22b — Detail Close Hook (FYP Silent Refresh) -->
-<!-- ================================================================ -->
-<script>
-(function () {
-  "use strict";
-
-  if (window.__adikaDetailCloseHookedV2) return;
-  window.__adikaDetailCloseHookedV2 = true;
-
-  function attachHook() {
-    var orig = window.closeDetailModalPreserve;
-    if (typeof orig !== "function" || orig.__fypHookedV2) return false;
-
-    window.closeDetailModalPreserve = function () {
-      var wasFyp = false;
-      try {
-        wasFyp = window.state && window.state.feedMode === "foryou" && !window.state.q;
-      } catch (e) {}
-
-      var r = orig.apply(this, arguments);
-
-      if (wasFyp) {
-        if (window.__fypRefreshTimerV2) clearTimeout(window.__fypRefreshTimerV2);
-        window.__fypRefreshTimerV2 = setTimeout(function () {
-          try {
-            var loader = window.loadFYPFeed || window.__adikaLoadFYP;
-            if (typeof loader === "function") {
-              var scrollY = window.scrollY || window.pageYOffset || 0;
-              console.log("[Adika FYP] Silent refresh after detail close");
-              loader();
-              setTimeout(function () {
-                try { window.scrollTo(0, scrollY); } catch (e2) {}
-              }, 150);
-            } else {
-              console.warn("[Adika FYP] No FYP loader available");
-            }
-          } catch (e3) {
-            console.error("[Adika FYP] Refresh error:", e3);
-          }
-        }, 300);
-      }
-      return r;
-    };
-    window.closeDetailModalPreserve.__fypHookedV2 = true;
-    console.log("[Adika FYP] Detail close hook attached ✅");
-    return true;
-  }
-
-  if (!attachHook()) {
-    var attempts = 0;
-    var iv = setInterval(function () {
-      attempts++;
-      if (attachHook() || attempts > 30) {
-        clearInterval(iv);
-        if (attempts > 30) {
-          console.warn("[Adika FYP] Hook attach timeout — closeDetailModalPreserve not found");
-        }
-      }
-    }, 100);
-  }
-})();
-</script>
-<!-- ======================= END SECTION 22b ======================= -->
 <!-- ================================================================ -->
 <!-- SECTION 23 — JS: SUPABASE & ANALYSIS VIEW -->
 <!-- Change/maintain this entire section as one unit. -->
