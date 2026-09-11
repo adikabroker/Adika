@@ -4473,7 +4473,7 @@
       var favBtnEl = card.querySelector(".card-fav-btn");
       if (favBtnEl) favBtnEl.onclick = function(e) {
         e.stopPropagation();
-        toggleFav(item.id);
+        toggleFav(item.id, item);
       };
       var delBtnEl = card.querySelector(".card-del-btn");
       if (delBtnEl) delBtnEl.onclick = function(e) {
@@ -4509,7 +4509,18 @@
       if (!item || typeof item !== "object") return;
       state.selectedItem = item;
       try { window.state = state; } catch (e) {}
-      try { pushViewHistory(item); } catch (e) {}
+
+      // ============================================================
+      // 🔧 NEW: SIGNAL TRACKING — "view" (weight 1.0)
+      // ============================================================
+      try {
+        if (typeof window.pushViewHistory === "function") {
+          window.pushViewHistory(item, "view");
+        }
+      } catch (eSig) {
+        console.warn("[Adika] view signal failed:", eSig);
+      }
+
       var extra = item.extra_data || {};
       if (typeof extra === "string") {
         try { extra = JSON.parse(extra); } catch (e) { extra = {}; }
@@ -4791,6 +4802,12 @@
         if (phone) {
           modalCallBtn.href = "tel:" + phone;
           modalCallBtn.onclick = function(ev) {
+            // 🔧 NEW: SIGNAL — "contact" (highest weight 4.0)
+            try {
+              if (typeof window.pushViewHistory === "function") {
+                window.pushViewHistory(item, "contact");
+              }
+            } catch (eSig) {}
             try {
               if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
                 // keep default too
@@ -4809,6 +4826,12 @@
       if (modalChatBtn) {
         modalChatBtn.onclick = function(ev) {
           if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          // 🔧 NEW: SIGNAL — "contact" (highest weight 4.0)
+          try {
+            if (typeof window.pushViewHistory === "function") {
+              window.pushViewHistory(item, "contact");
+            }
+          } catch (eSig) {}
           try {
             if (typeof window.openListingMessage === "function") {
               window.openListingMessage(item);
@@ -4843,13 +4866,19 @@
         modalFavBtn.innerHTML = (favorites && favorites[item.id]) ? "❤️" : "🤍";
         modalFavBtn.onclick = function(ev) {
           if (ev) ev.stopPropagation();
-          try { toggleFav(item.id); } catch (e) {}
+          try { toggleFav(item.id, item); } catch (e) {}
         };
       }
 
       if (modalShareBtn) {
         modalShareBtn.onclick = function(ev) {
           if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          // 🔧 NEW: SIGNAL — "share" (weight 3.0)
+          try {
+            if (typeof window.pushViewHistory === "function") {
+              window.pushViewHistory(item, "share");
+            }
+          } catch (eSig) {}
           var shareUrl = (window.location.origin || "") + "/explorer?id=" + (item.id || "");
           var titleTxt = (modalTitle && modalTitle.textContent) ? modalTitle.textContent : "Adika";
           var priceTxt2 = (modalPrice && modalPrice.textContent) ? modalPrice.textContent : "";
