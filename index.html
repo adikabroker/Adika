@@ -3531,8 +3531,9 @@
 <!-- ================================================================ -->
     var savedFeedScrollY = 0;
 
-    function pushViewHistory(item) {
+      function pushViewHistory(item) {
       try {
+        if (!item || typeof item !== "object") return;
         var extra = item.extra_data || {};
         if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
         var bm = {};
@@ -3540,12 +3541,11 @@
         var priceNum = 0;
         try { priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0; } catch (e) {}
 
-        // 🆕 Determine category + sub-category
-                var mc = String(item.main_category || item.category || "").toLowerCase();
+        var mc = String(item.main_category || item.category || "").toLowerCase();
         var itemKind = String(extra.item_kind || item.item_kind || "").toLowerCase();
         var blob = [item.title, item.sub_category, item.description].join(" ").toLowerCase();
         if (!itemKind) {
-          if (/tv|samsung|lg|phone|laptop|ኤሌክትሮ|ቴሌቪ/.test(blob)) itemKind = "electronics";
+          if (/tv|samsung|lg|phone|laptop|ኤሌክትሮ|ቴሌቪ|electronics/.test(blob)) itemKind = "electronics";
           else if (/motor|ሞተር|bike|scooter|bajaj/.test(blob)) itemKind = "bikes";
           else if (/sofa|furniture|ፈርኒቸ/.test(blob)) itemKind = "furniture";
         }
@@ -3559,51 +3559,45 @@
           viewSub = String(extra.house_type || extra.property_type || item.sub_category || "").toLowerCase();
         } else {
           viewCat = "car";
-          viewSub = String(extra.car_model || extra.car_type || item.sub_category || item.title || "").toLowerCase();
+          viewSub = String(extra.car_model || extra.car_type || item.sub_category || item.title || bm.display || "").toLowerCase();
         }
 
-        // 🆕 INTEREST POOL — cumulative list of what user viewed
-        try {
+        if (typeof window.adikaAddInterest === "function") {
+          window.adikaAddInterest({
+            type: viewCat,
+            sub: viewSub,
+            price: priceNum,
+            weight: 2,
+            reason: "detail"
+          });
+        } else {
           var pool = [];
           try { pool = JSON.parse(localStorage.getItem("adika_interests") || "[]"); } catch (eP) { pool = []; }
           if (!Array.isArray(pool)) pool = [];
-
-          if (viewCat) {
-            var exists = false;
-            var interestKey = viewCat + "|" + viewSub;
-            for (var i = 0; i < pool.length; i++) {
-              var pKey = (pool[i].type || "") + "|" + (pool[i].sub || "");
-              if (pKey === interestKey) {
-                pool[i].ts = Date.now();
-                if (viewCat === "car" && priceNum > 0) {
-                  pool[i].maxPrice = Math.max(pool[i].maxPrice || 0, priceNum);
-                }
-                exists = true;
-                break;
-              }
+          var key = viewCat + "|" + viewSub;
+          var found = false;
+          for (var i = 0; i < pool.length; i++) {
+            if ((pool[i].type || "") + "|" + (pool[i].sub || "") === key) {
+              pool[i].ts = Date.now();
+              pool[i].weight = (pool[i].weight || 0) + 2;
+              if (priceNum > (pool[i].maxPrice || 0)) pool[i].maxPrice = priceNum;
+              found = true;
+              break;
             }
-            if (!exists) {
-              var newInterest = {
-                type: viewCat,
-                sub: viewSub,
-                maxPrice: (viewCat === "car" && priceNum > 0) ? priceNum : 0,
-                ts: Date.now()
-              };
-              pool.push(newInterest);
-            }
-            pool = pool.slice(-10);
-            localStorage.setItem("adika_interests", JSON.stringify(pool));
-
-            localStorage.setItem("adika_last_view_category", viewCat);
-            localStorage.setItem("adika_last_view_sub", viewSub);
-            localStorage.setItem("adika_last_view_ts", String(Date.now()));
-            if (viewCat === "car" && priceNum > 0) {
-              localStorage.setItem("adika_last_view_price", String(priceNum));
-            }
-            var vm = bm.display || item.sub_category || extra.car_model || "";
-            if (vm) localStorage.setItem("adika_last_view_model", String(vm));
           }
-        } catch (eCat) {}
+          if (!found && viewCat) {
+            pool.push({ type: viewCat, sub: viewSub, maxPrice: priceNum || 0, weight: 2, ts: Date.now() });
+          }
+          localStorage.setItem("adika_interests", JSON.stringify(pool.slice(-12)));
+        }
+        try {
+          localStorage.setItem("adika_last_view_category", viewCat);
+          localStorage.setItem("adika_last_view_sub", viewSub);
+          localStorage.setItem("adika_last_view_ts", String(Date.now()));
+          if (priceNum > 0) localStorage.setItem("adika_last_view_price", String(priceNum));
+          var vm = bm.display || item.sub_category || extra.car_model || "";
+          if (vm) localStorage.setItem("adika_last_view_model", String(vm));
+        } catch (eLs) {}
 
         var entry = {
           id: item.id,
@@ -3628,6 +3622,7 @@
         } catch (e2) {}
       } catch (e) {}
     }
+
 
     function getViewHistory() {
       try {
