@@ -3808,8 +3808,7 @@ function shareContract() {{
                 if active_only:
                     where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
                     params.extend(['sold', 'rented', 'expired'])
-          # Match req_type OR Amharic/English action_type
-            # Match req_type OR Amharic/English action_type
+         # Match req_type OR Amharic/English action_type
             if req_type == 'SELL':
                 where.append(
                     f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('SELL','SALE','') "
