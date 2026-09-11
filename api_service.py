@@ -3808,21 +3808,22 @@ function shareContract() {{
                 if active_only:
                     where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
                     params.extend(['sold', 'rented', 'expired'])
-                # Match req_type OR Amharic/English action_type (many rows only have action_type)
-                if req_type == 'SELL':
-                    # Broad match: SELL rows OR seller-style action OR blank type (legacy Telegram posts)
-                    where.append(
-                        f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('SELL','SALE','') "
-                        f"OR COALESCE(action_type,'') IN ({p},{p},{p},{p},{p}) "
-                        f"OR UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT'))"
-                    )
-                    params.extend(['መሸጥ', 'SELL', 'sell', 'ለመሸጥ', 'Sale'])
-                elif req_type == 'BUY':
-                    where.append(
-                        f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('BUY','REQUEST','WANT') "
-                        f"OR COALESCE(action_type,'') IN ({p},{p},{p},{p},{p},{p}))"
-                    )
-                    params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ', 'Request'])
+              # Match req_type OR Amharic/English action_type
+            if req_type == 'SELL':
+                where.append(
+                    f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('SELL','SALE','') "
+                    f"OR COALESCE(action_type,'') IN ({p},{p},{p},{p},{p}) "
+                    f"OR UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','REQUEST','WANT'))"
+                )
+                params.extend(['መሸጥ', 'SELL', 'sell', 'ለመሸጥ', 'Sale'])
+            elif req_type == 'BUY':
+                # 🔴 የፈላጊዎችን ጥያቄዎች (Buy requests) ብቻ በትክክል ማምጣት
+                where.append(
+                    f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('BUY','REQUEST','WANT') "
+                    f"OR UPPER(TRIM(COALESCE(action_type,''))) IN ('መግዛት','BUY','BUYER','ፈላጊ','REQUEST') "
+                    f"OR COALESCE(extra_data->>'is_buyer_request','false') = 'true')"
+                )
+                params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ', 'Request'])
                 like = "ILIKE" if is_postgres() else "LIKE"
                 # STRICT category isolation: ቤት never mixes with መኪና
                 cat_mode = ""  # "", "car", "house", "biz"
