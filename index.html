@@ -9610,7 +9610,7 @@
 <!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
 <script>
-/* ===== Data Fetchers: Preferences, Favorites, Alerts, Requests, Pool ===== */
+/* ===== Data Fetchers + Reset Helpers ===== */
 (function () {
   "use strict";
 
@@ -9619,9 +9619,7 @@
       var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
       if (u && u.id != null) return String(u.id);
     } catch (e) {}
-    try {
-      if (window.state && state.userId) return String(state.userId);
-    } catch (e2) {}
+    try { if (window.state && state.userId) return String(state.userId); } catch (e2) {}
     try {
       if (typeof getTelegramUserId === "function") {
         var t = getTelegramUserId();
@@ -9641,17 +9639,21 @@
     return window.supabase || null;
   }
 
-  /** Reset FYP history arrays — KEEP interest pool so user's interests persist */
+  // ============================================================
+  // RESET FYP CONTEXT — keep interests, clear history
+  // ============================================================
   function resetFypContext() {
     try {
       localStorage.removeItem("viewHistory");
       localStorage.removeItem("adik_user_intent");
-      // DO NOT remove adika_interests, adika_last_view_*
+      // ⚠️ DO NOT remove adika_interests — user interests persist
     } catch (e) {}
   }
   window.adikaResetFypContext = resetFypContext;
 
-  /** Clear ALL interest state — called ONLY when user explicitly picks a new top-level category */
+  // ============================================================
+  // CLEAR RECENT VIEW — clear interests (explicit category switch)
+  // ============================================================
   function clearRecentView() {
     try {
       localStorage.removeItem("adika_interests");
@@ -9664,6 +9666,9 @@
   }
   window.adikaClearRecentView = clearRecentView;
 
+  // ============================================================
+  // PREFERENCES FETCHER
+  // ============================================================
   function fetchPreferences(uid) {
     var client = sb();
     if (!client || !uid) return Promise.resolve(null);
@@ -9682,7 +9687,11 @@
           .catch(function () { return null; });
       });
   }
+  window.adikaFetchPreferences = fetchPreferences;
 
+  // ============================================================
+  // FAVORITES FETCHER
+  // ============================================================
   function fetchFavorites(uid) {
     var client = sb();
     if (!client || !uid) return Promise.resolve([]);
@@ -9698,7 +9707,11 @@
           .catch(function () { return []; });
       });
   }
+  window.adikaFetchFavorites = fetchFavorites;
 
+  // ============================================================
+  // SEARCH ALERTS FETCHER
+  // ============================================================
   function fetchSearchAlerts(uid) {
     var client = sb();
     if (!client || !uid) return Promise.resolve([]);
@@ -9714,11 +9727,18 @@
           .catch(function () { return []; });
       });
   }
+  window.adikaFetchSearchAlerts = fetchSearchAlerts;
 
+  // ============================================================
+  // BUYER REQUESTS FETCHER
+  // ============================================================
   function fetchBuyerRequests(uid) {
     var client = sb();
     if (!client) return Promise.resolve([]);
-    var q = client.from("buyer_requests").select("*").order("created_at", { ascending: false }).limit(60);
+    var q = client.from("buyer_requests")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(60);
     return q.then(function (res) { return (res && res.data) || []; })
       .catch(function () {
         return fetch("/api/buyer-requests?limit=60", { credentials: "same-origin" })
@@ -9727,7 +9747,11 @@
           .catch(function () { return []; });
       });
   }
+  window.adikaFetchBuyerRequests = fetchBuyerRequests;
 
+  // ============================================================
+  // LISTING POOL FETCHER
+  // ============================================================
   function fetchListingPool(limit) {
     limit = limit || 80;
     var client = sb();
@@ -9760,17 +9784,10 @@
       })
       .catch(function () { return []; });
   }
-
-  window.adikaFetchPreferences = fetchPreferences;
-  window.adikaFetchFavorites = fetchFavorites;
-  window.adikaFetchSearchAlerts = fetchSearchAlerts;
-  window.adikaFetchBuyerRequests = fetchBuyerRequests;
   window.adikaFetchListingPool = fetchListingPool;
 })();
 </script>
 <!-- ======================= END SECTION 30 ======================= -->
-
-
 
 <!-- ================================================================ -->
 <!-- SECTION 31 — JS: EVENT HANDLERS & UTILITIES -->
