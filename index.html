@@ -1,6 +1,5 @@
 <!-- ================================================================ -->
 <!-- SECTION 01 — GLOBAL SETUP -->
-<!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
 <!DOCTYPE html>
 <html lang="en">
@@ -127,13 +126,8 @@
 })();
 </script>
 
-
-<!-- ======================= END SECTION 01 ======================= -->
-
-
 <!-- ================================================================ -->
 <!-- SECTION 02 — ROOT HTML & META -->
-<!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
@@ -143,7 +137,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // Optional: set window.__ADIKA_SUPABASE = { url: "...", anonKey: "..." } before this runs
     (function () {
       try {
         var lib = window.supabase || (typeof supabase !== "undefined" ? supabase : null);
@@ -162,12 +155,10 @@
       }
     })();
   </script>
-
 <!-- ======================= END SECTION 02 ======================= -->
 
 <!-- ================================================================ -->
 <!-- SECTION 03 — GLOBAL CSS -->
-<!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
   <style>
     html, body {
@@ -184,7 +175,6 @@
       50% { opacity: 0.25; box-shadow: 0 0 2px rgba(16,185,129,0.4); }
     }
 
-    /* Bottom nav — uniform turquoise labels (all 4 tabs) */
     #adikaBottomNav .adika-nav-btn {
       color: #0e7490 !important;
       opacity: 1 !important;
@@ -200,11 +190,7 @@
       font-size: 9px !important;
       opacity: 1 !important;
     }
-    #adikaBottomNav, #adikaBottomNav * {
-      transition: none !important;
-    }
 
-    /* My Listings — 4-column grid, no overlap */
     #myListingsGrid {
       display: grid !important;
       grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
@@ -221,25 +207,17 @@
       display: flex !important;
       flex-direction: column !important;
       position: relative !important;
-      float: none !important;
       min-width: 0 !important;
       width: 100% !important;
       max-width: 100% !important;
-      min-height: 0 !important;
-      height: auto !important;
-      margin: 0 !important;
-      overflow: hidden !important;
       background: #fff !important;
       border-radius: 10px !important;
       border: 1px solid rgba(226,232,240,0.9) !important;
       box-shadow: 0 1px 4px rgba(15,23,42,0.06) !important;
-      z-index: 1 !important;
     }
     #myListingsGrid .my-listing-card .my-listing-photo {
       width: 100% !important;
       aspect-ratio: 1 / 1 !important;
-      max-height: none !important;
-      flex: 0 0 auto !important;
       overflow: hidden !important;
       border-radius: 10px 10px 0 0 !important;
       background: #e2e8f0 !important;
@@ -249,24 +227,14 @@
       width: 100% !important;
       height: 100% !important;
       object-fit: cover !important;
-      object-position: center !important;
       display: block !important;
-      position: relative !important;
     }
     #myListingsGrid .my-listing-card .my-listing-body {
-      flex: 0 0 auto !important;
       padding: 5px 6px 6px !important;
       display: flex !important;
       flex-direction: column !important;
       gap: 2px !important;
       background: #fff !important;
-      min-width: 0 !important;
-    }
-    #myListingsGrid .my-listing-card .my-listing-body > div:first-child {
-      font-size: 9px !important;
-      white-space: nowrap !important;
-      overflow: hidden !important;
-      text-overflow: ellipsis !important;
     }
     #myListingsGrid .my-listing-card .my-listing-del {
       display: block !important;
@@ -279,10 +247,6 @@
       font-size: 9px !important;
       font-weight: 900 !important;
       border: 0 !important;
-      flex-shrink: 0 !important;
-      visibility: visible !important;
-      opacity: 1 !important;
-      line-height: 1.2 !important;
     }
 
     .adika-live-dot {
@@ -292,45 +256,10 @@
       border: 0;
     }
 
-    @keyframes adikaShimmer {
-      0% { transform: translateX(-120%); }
-      100% { transform: translateX(120%); }
-    }
-    @keyframes adikaLetterIn {
-      0% { opacity: 0; transform: translateY(14px) rotateX(55deg); filter: blur(4px); }
-      100% { opacity: 1; transform: translateY(0) rotateX(0); filter: blur(0); }
-    }
-    @keyframes adikaSubIn {
-      0% { opacity: 0; transform: translateX(-18px); }
-      100% { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes adikaCtaPulse {
-      0%,100% { transform: scale(1); box-shadow: 0 2px 8px rgba(14,165,233,0.35); }
-      50% { transform: scale(1.05); box-shadow: 0 4px 14px rgba(14,165,233,0.55); }
-    }
-    @keyframes adikaWipe {
-      0% { opacity: 0.15; transform: translateX(12px); }
-      100% { opacity: 1; transform: translateX(0); }
-    }
-    .promo-slide.is-active .promo-title { animation: adikaWipe .45s cubic-bezier(.16,1,.3,1) both; }
-    .promo-slide.is-active .promo-letter {
-      display: inline-block;
-      animation: adikaLetterIn .42s cubic-bezier(.22,1,.36,1) both;
-    }
-    .promo-slide.is-active .promo-sub { animation: adikaSubIn .4s ease .12s both; }
-    .promo-slide.is-active .promo-cta { animation: adikaCtaPulse 1.8s ease-in-out .2s infinite; }
-    .promo-slide.is-active .promo-icon { animation: adikaLetterIn .5s cubic-bezier(.34,1.56,.64,1) both; }
-
-    /* View badge — compact elegant (does not obstruct photo) */
-    .adika-view-chip,
-    .adika-card .adika-view-chip,
-    .adika-card .card-views,
-    .listing-photo-frame .adika-view-chip {
+    .adika-view-chip {
       position: absolute !important;
       bottom: 6px !important;
       left: 6px !important;
-      top: auto !important;
-      right: auto !important;
       font-size: 8px !important;
       padding: 1px 5px !important;
       border-radius: 8px !important;
@@ -338,287 +267,86 @@
       backdrop-filter: blur(3px) !important;
       -webkit-backdrop-filter: blur(3px) !important;
       color: rgba(255, 255, 255, 0.92) !important;
-      border: 0.5px solid rgba(255, 255, 255, 0.18) !important;
       font-weight: 600 !important;
-      line-height: 1.15 !important;
       z-index: 6 !important;
-      box-shadow: none !important;
       display: inline-flex !important;
       align-items: center !important;
       gap: 1px !important;
-      max-width: none !important;
       transform: scale(0.92);
       transform-origin: left bottom;
     }
-    .adika-view-chip .eye-ico {
-      font-size: 8px !important;
-      line-height: 1 !important;
-      opacity: 0.9;
-    }
 
-    /* FYP Match confidence badge */
     .fyp-match-badge {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      z-index: 12;
+      position: absolute; top: 8px; right: 8px; z-index: 12;
       background: linear-gradient(135deg, rgba(16,185,129,0.92), rgba(6,182,212,0.92));
-      color: #fff;
-      font-size: 9px;
-      font-weight: 900;
-      padding: 3px 8px;
-      border-radius: 999px;
+      color: #fff; font-size: 9px; font-weight: 900;
+      padding: 3px 8px; border-radius: 999px;
       box-shadow: 0 2px 10px rgba(6,182,212,0.45);
       border: 1px solid rgba(255,255,255,0.35);
-      line-height: 1.2;
-      letter-spacing: 0.01em;
-      white-space: nowrap;
-      pointer-events: none;
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-    }
-    .fyp-match-badge.high { background: linear-gradient(135deg, #10b981, #06b6d4); }
-    .fyp-match-badge.mid  { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
-    .fyp-match-badge.low  { background: linear-gradient(135deg, #64748b, #475569); }
-    #fypPrefsCtaBanner {
-      margin: 0 0 8px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(236,254,255,0.95), rgba(224,242,254,0.95));
-      border: 1px solid rgba(34,211,238,0.45);
-      box-shadow: 0 4px 14px rgba(6,182,212,0.12);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    #fypPrefsCtaBanner .fyp-cta-text { font-size: 11px; font-weight: 800; color: #0f172a; line-height: 1.35; }
-    #fypPrefsCtaBanner button {
-      flex-shrink: 0;
-      padding: 7px 12px;
-      border-radius: 999px;
-      background: linear-gradient(135deg, #0ea5e9, #14b8a6);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 900;
-      border: 0;
-      box-shadow: 0 2px 8px rgba(14,165,233,0.35);
+      white-space: nowrap; pointer-events: none;
     }
 
-    /* Hub-matched tool sheets */
-    .hub-sheet {
-      background: linear-gradient(165deg, rgba(15,23,42,0.98) 0%, rgba(8,47,73,0.96) 50%, rgba(2,6,23,0.98) 100%) !important;
-      color: #f8fafc !important;
-      border: 1px solid rgba(34,211,238,0.28) !important;
-      box-shadow: 0 -16px 48px rgba(6,182,212,0.22) !important;
-    }
-    .hub-sheet label, .hub-sheet .text-slate-700, .hub-sheet .text-slate-600, .hub-sheet .text-slate-500 {
-      color: #e2e8f0 !important;
-    }
-    .hub-sheet input, .hub-sheet select, .hub-sheet textarea {
-      background: rgba(255,255,255,0.08) !important;
-      border-color: rgba(255,255,255,0.22) !important;
-      color: #fff !important;
-    }
-    .hub-sheet input::placeholder, .hub-sheet textarea::placeholder { color: rgba(148,163,184,0.85) !important; }
-    .hub-sheet .bg-slate-50, .hub-sheet .bg-white { background: rgba(255,255,255,0.06) !important; }
-    .hub-sheet .text-slate-800, .hub-sheet .text-slate-900 { color: #f8fafc !important; }
-    .hub-header {
-      background: linear-gradient(90deg, #0f172a, #0e7490, #16acbd) !important;
-      border-bottom: 1px solid rgba(255,255,255,0.12);
-    }
-
-    /* Bulletproof CSS Dual-Class Language Switcher */
     .lang-en { display: none !important; }
     .lang-am { display: inline-block !important; }
     body.lang-en-active .lang-en { display: inline-block !important; }
     body.lang-en-active .lang-am { display: none !important; }
 
     .adika-card {
-      background: transparent;
-      border: none;
-      border-radius: 18px;
+      background: transparent; border: none; border-radius: 18px;
       box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
-      transition: transform 0.12s ease, box-shadow 0.12s ease;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      overflow: hidden;
-      position: relative;
+      display: flex; flex-direction: column; justify-content: space-between;
+      overflow: hidden; position: relative;
     }
     .adika-card:active { transform: scale(0.98); }
 
-    /* Frameless photo — edge to edge, no inner frame */
     .adika-card > .relative.w-full {
-      border-radius: 18px 18px 0 0;
-      background: #0f172a !important;
+      border-radius: 18px 18px 0 0; background: #0f172a !important;
     }
     .adika-card .listing-photo-frame {
-      position: absolute !important;
-      inset: 0 !important;
-      width: 100% !important;
-      height: 100% !important;
-      aspect-ratio: auto !important;
-      border-radius: 0 !important;
-      background: transparent !important;
-      overflow: hidden;
+      position: absolute !important; inset: 0 !important;
+      width: 100% !important; height: 100% !important; overflow: hidden;
     }
-    .adika-card .listing-photo-frame::before { display: none !important; }
     .adika-card .listing-photo-enhance {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      object-position: center;
-      border-radius: 0 !important;
-      display: block;
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      filter: contrast(108%) brightness(102%) saturate(110%);
     }
 
-    /* Dark frosted glass footer */
-    .adika-card .card-glass-foot,
-    .adika-card > .px-2.py-1\.5,
-    .adika-card > div:last-child:not(.relative) {
+    .adika-card .card-glass-foot {
       background: rgba(15, 23, 42, 0.35);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
       border-top: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 0 0 18px 18px;
-      padding: 8px 10px !important;
+      border-radius: 0 0 18px 18px; padding: 8px 10px !important;
     }
 
-    .adika-card .card-title-row { display:flex; align-items:center; justify-content:space-between; gap:4px; min-width:0; }
-    .adika-card .card-title { font-size:10px !important; font-weight:800; color:#ffffff !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; line-height:1.2; }
-    .adika-card .card-time { font-size:8px !important; color:#e2e8f0 !important; font-weight:600; white-space:nowrap; flex-shrink:0; }
-    .adika-card .card-price {
-      font-size:9px !important; font-weight:800; color:#ecfeff;
-      background: rgba(6, 182, 212, 0.35);
-      border: 1px solid rgba(255,255,255,0.18);
-      padding:2px 7px; border-radius:999px;
-      white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis;
-      max-width:78%; line-height:1.2;
+    .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
+    .card-title { font-size: 10px !important; font-weight: 800; color: #ffffff !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-time { font-size: 8px !important; color: #e2e8f0 !important; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+    .card-price {
+      font-size: 9px !important; font-weight: 800; color: #ecfeff;
+      background: rgba(6, 182, 212, 0.35); border: 1px solid rgba(255,255,255,0.18);
+      padding: 2px 7px; border-radius: 999px; white-space: nowrap !important;
+      overflow: hidden; text-overflow: ellipsis; max-width: 78%;
     }
-    .adika-card .card-fav-btn,
-    .adika-card .card-del-btn,
-    .adika-card .adika-card-del {
-      width: 22px; height: 22px;
-      border-radius: 999px;
-      background: rgba(15, 23, 42, 0.4);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.2);
-      display: inline-flex; align-items: center; justify-content: center;
-    }
-    #grid { gap: 8px !important; }
 
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-    /* vibrant-cat-tabs */
-    #feedModes button, .feed-mode-btn, [data-feed-mode], #catsRow button, #cats .cat-pill, .cat-pill {
-      font-weight: 700 !important;
-      transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
-    }
-    #feedModes button.active, .feed-mode-btn.active, [data-feed-mode].active,
-    #catsRow button.active, #cats .cat-pill.active, .cat-pill.active {
-      background: linear-gradient(135deg, #0ea5e9, #06b6d4) !important;
-      color: #ffffff !important;
-      font-weight: 700 !important;
-      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35) !important;
-      border: 0 !important;
-    }
-    #feedModes button:not(.active), .feed-mode-btn:not(.active),
-    #catsRow button:not(.active), #cats .cat-pill:not(.active), .cat-pill:not(.active) {
-      background: rgba(255, 255, 255, 0.6) !important;
-      color: #475569 !important;
-      box-shadow: none !important;
-      border: 1px solid rgba(255,255,255,0.45) !important;
-    }
-
-    .smart-dot {
-      width: 6px; height: 6px; border-radius: 999px;
-      background: rgba(255,255,255,0.25); transition: all 0.3s ease;
-      border: none; padding: 0; cursor: pointer;
-    }
-    .smart-dot.active {
-      width: 18px; background: #22d3ee;
-    }
-    .smart-slide { display: none; }
-    .smart-slide.active { display: block; animation: smartFade 0.4s ease; }
-    @keyframes smartFade {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    #smartToolsBanner { max-height: 78px; }
-    .line-clamp-1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .hero-carousel {
-      display: flex; gap: 0.4rem; overflow-x: auto; scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch; padding-bottom: 0;
-      max-height: 110px;
-    }
-    .hero-carousel::-webkit-scrollbar { display: none; }
-    .hero-slide {
-      scroll-snap-align: start; flex: 0 0 72%; min-width: 72%;
-      max-height: 96px; border-radius: 0.7rem; border: 1px solid rgb(30 41 59);
-      background: linear-gradient(90deg, #020617 0%, #0f172a 50%, #020617 100%);
-      padding: 0.4rem 0.65rem; color: #f8fafc;
-      box-shadow: 0 4px 12px rgba(2, 6, 23, 0.28);
-      transition: transform 0.12s ease;
-      display: flex; flex-direction: column; justify-content: center;
-    }
-    .hero-slide:active { transform: scale(0.985); }
-    .hero-slide .accent { color: #fbbf24; font-size: 9px; }
-    .hero-slide .hero-title { font-size: 11px; font-weight: 900; line-height: 1.2; }
-    .hero-slide .hero-sub { font-size: 8px; color: #94a3b8; line-height: 1.25; margin-top: 2px; }
-    .hero-slide .hero-cta-line { font-size: 8px; font-weight: 700; margin-top: 4px; }
-    .hero-dots { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
-    .hero-dot { width: 4px; height: 4px; border-radius: 999px; background: rgba(15,23,42,0.25); }
-    .hero-dot.active { background: #0e7490; width: 12px; }
-    #cats {
-      display: flex !important;
-      width: 100% !important;
-      gap: 4px !important;
-    }
+    #cats { display: flex !important; width: 100% !important; gap: 4px !important; }
     #cats .cat-pill {
-      flex: 1 1 0 !important;
-      min-width: 0 !important;
-      padding: 6px 2px !important;
-      font-size: 10px !important;
-      line-height: 1.15 !important;
-      text-align: center !important;
-      white-space: normal !important;
+      flex: 1 1 0 !important; min-width: 0 !important;
+      padding: 6px 2px !important; font-size: 10px !important;
+      text-align: center !important; white-space: normal !important;
     }
-
-    /* Instagram-style listing photo auto-enhancement (zero-cost CSS) */
-    .listing-photo-frame {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 4 / 3;
-      overflow: hidden;
-      border-radius: 0;
-      background: #0f172a;
+    .cat-pill.active {
+      background: linear-gradient(135deg, #0ea5e9, #06b6d4) !important;
+      color: #ffffff !important; font-weight: 700 !important;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35) !important; border: 0 !important;
     }
-    .listing-photo-frame::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      z-index: 0;
-      background: linear-gradient(145deg, #cbd5e1, #94a3b8);
-      filter: blur(12px);
-      transform: scale(1.08);
+    .cat-pill:not(.active) {
+      background: rgba(255, 255, 255, 0.6) !important;
+      color: #475569 !important; border: 1px solid rgba(255,255,255,0.45) !important;
     }
-    .listing-photo-enhance {
-      position: relative;
-      z-index: 1;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center;
-      border-radius: 0.75rem;
-      filter: contrast(108%) brightness(102%) saturate(110%);
-      -webkit-filter: contrast(108%) brightness(102%) saturate(110%);
-      transition: filter 0.2s ease, transform 0.2s ease;
-    }
-    .adika-card:active .listing-photo-enhance {
-      transform: scale(1.02);
-    }
+  </style>
 <!-- ======================= END SECTION 03 ======================= -->
 
 <!-- ================================================================ -->
@@ -1294,40 +1022,27 @@
   <!-- ================================================================= -->
 <!-- ======================= END SECTION 05 ======================= -->
 <!-- ================================================================ -->
-<!-- SECTION 06 — NAVIGATION -->
-<!-- Change/maintain this entire section as one unit. -->
+<!-- ================================================================ -->
+<!-- SECTION 06 — NAVIGATION & HEADER -->
 <!-- ================================================================ -->
   <header id="adikaFixedHeader" class="fixed top-0 left-0 right-0 z-[100] text-white p-2 flex flex-col gap-1.5" style="background: rgba(0, 131, 143, 0.12); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.18); box-shadow: 0 4px 24px rgba(15,23,42,0.08);">
     <div class="w-full max-w-md mx-auto flex flex-col gap-1.5">
-      <!-- Top Row: Segmented Switcher + AM | EN Language Switcher -->
       <div class="flex items-center gap-2">
         <div class="flex-1 grid grid-cols-2 gap-1 p-0.5 bg-black/15 rounded-xl">
-          <button id="tabSell" type="button"
-            class="py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1">
-            <span>🛒</span>
-            <span class="lang-am">ገበያ</span>
-            <span class="lang-en">Marketplace</span>
+          <button id="tabSell" type="button" class="py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1">
+            <span>🛒</span><span class="lang-am">ገበያ</span><span class="lang-en">Marketplace</span>
           </button>
-          <button id="tabBuy" type="button"
-            class="py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1">
-            <span>📋</span>
-            <span class="lang-am">ፈላጊዎች</span>
-            <span class="lang-en">Buyers</span>
+          <button id="tabBuy" type="button" class="py-1 rounded-lg text-xs font-bold transition-all text-white/90 hover:text-white flex items-center justify-center gap-1">
+            <span>📋</span><span class="lang-am">ፈላጊዎች</span><span class="lang-en">Buyers</span>
           </button>
         </div>
 
-        <!-- Global AM | EN Language Switcher Button -->
         <div class="flex items-center bg-black/20 p-0.5 rounded-xl shrink-0">
-          <button id="langAmBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm">
-            AM
-          </button>
-          <button id="langEnBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white">
-            EN
-          </button>
+          <button id="langAmBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm">AM</button>
+          <button id="langEnBtn" type="button" class="px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white">EN</button>
         </div>
       </div>
 
-      <!-- Search + Broker glass badge -->
       <div class="flex items-center gap-2">
         <div class="relative flex-1 min-w-0">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none">🔍</span>
@@ -1335,12 +1050,11 @@
             class="w-full pl-8 pr-3 py-1.5 rounded-full bg-white/90 text-slate-800 placeholder-slate-400 text-xs font-medium outline-none shadow-sm focus:ring-2 focus:ring-white/50" />
         </div>
         <button type="button" id="brokerCtaHome" class="shrink-0 backdrop-blur-3xl px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap active:scale-95 transition-all shadow-sm flex items-center gap-1"
-                style="background: rgba(255,255,255,0.10); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.30); color: #004d40;">
+                style="background: rgba(255,255,255,0.10); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.30); color: #004d40;">
           <span>🤝</span><span class="lang-am">ደላላ የት?</span><span class="lang-en">Find Broker</span>
         </button>
       </div>
 
-      <!-- Third Row: Category Pills (Horizontal Scroll) -->
       <div id="cats" class="flex w-full gap-1 pb-0.5">
         <button type="button" class="cat-pill active flex-1 min-w-0 px-1 py-1.5 rounded-full text-[10px] font-bold text-center leading-tight transition-all" data-id="foryou">
           <span class="lang-am">✨ ለእርስዎ</span><span class="lang-en">✨ For You</span>
@@ -1357,10 +1071,6 @@
       </div>
     </div>
   </header>
-
-  <!-- ================================================================= -->
-  <!-- 2. MAIN CONTENT AREA (Snug pt-32 Spacing & Wide px-2.5 Grid)      -->
-  <!-- ================================================================= -->
 <!-- ======================= END SECTION 06 ======================= -->
 <!-- ================================================================ -->
 <!-- SECTION 07 — HEADER / PROMO BANNER -->
@@ -1477,167 +1187,37 @@
 
 <!-- ======================= END SECTION 07 ======================= -->
 <!-- ================================================================ -->
-<!-- SECTION 08 — HOME UI (GRID) -->
-<!-- Change/maintain this entire section as one unit. -->
+<!-- SECTION 08 — MAIN FEED GRID -->
 <!-- ================================================================ -->
-    <!-- 2-Column Grid — STATIC DEMO CARDS so UI never blank even if JS fails -->
-    <div id="grid" class="grid grid-cols-2 gap-2"></div>
-    <script>
-    (function(){
-      function money(v, item){
-        try {
-          if (item && typeof item === "object") {
-            return formatListingPrice(v, item);
-          }
-        } catch (e) {}
-        var n = Number(String(v||"").replace(/[^\d.]/g,""));
-        if(!n || n<=0 || n>300000000) return "ለዋጋ ደውሉ";
-        return Math.round(n).toLocaleString("en-US") + " ETB";
-      }
-      function photoOf(it){
-        var p = (it&&(it.photo_urls||it.photos||it.listing_photos||it.image_url||it.image||it.photo)) || "";
-        if(Array.isArray(p)) p = p[0]||"";
-        if(p && typeof p==="object") p = p.url||p.src||"";
-        if(typeof p==="string" && p.charAt(0)==="["){ try{ p=JSON.parse(p)[0]||""; }catch(e){} }
-        p = String(p||"").trim();
-        if(!p || p==="null") return "";
-        return p;
-      }
-      function titleOf(it){
-        var t=[it.brand,it.model].filter(Boolean).join(" ").trim();
-        if(t) return t;
-        return it.sub_category||it.title||it.category||it.main_category||"ማስታወቂያ";
-      }
-      function isHouse(it){
-        var c=String(it.main_category||it.category||"");
-        return c.indexOf("ቤት")>=0 || /house|property|real/i.test(c);
-      }
-      function pick(d){
-        if(!d) return [];
-        if(Array.isArray(d)) return d;
-        var keys=["items","listings","results"];
-        for(var i=0;i<keys.length;i++){ if(Array.isArray(d[keys[i]])) return d[keys[i]]; }
-        if(d.data){
-          if(Array.isArray(d.data)) return d.data;
-          for(var j=0;j<keys.length;j++){ if(Array.isArray(d.data[keys[j]])) return d.data[keys[j]]; }
-        }
-        return [];
-      }
-      function ago(s){
-        if(!s) return "";
-        var d=new Date(s); if(isNaN(d.getTime())) return "";
-        var sec=Math.max(0,Math.floor((Date.now()-d.getTime())/1000));
-        if(sec<60) return "now";
-        if(sec<3600) return Math.floor(sec/60)+"m ago";
-        if(sec<86400) return Math.floor(sec/3600)+"h ago";
-        return Math.floor(sec/86400)+"d ago";
-      }
-      function viewsOf(it){
-        var v=Number(it.view_count||it.views_count||0);
-        if(v>0) return v;
-        var id=String(it.id||it.title||"x");
-        var h=0; for(var i=0;i<id.length;i++) h=((h<<5)-h)+id.charCodeAt(i);
-        return Math.abs(h%87)+12;
-      }
-      function isBuyItem(it){
-        var t=((it&&it.req_type)||"")+" "+((it&&it.action_type)||"")+" "+((it&&it.listing_type)||"");
-        return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t);
-      }
-      function paint(items){
-        var g=document.getElementById("grid");
-        if(!g) return;
-        items = items || [];
-        if(window.__adikaIsBuy) items = items.filter(isBuyItem);
-        else items = items.filter(function(it){ return !isBuyItem(it); });
-        if(!items.length){
-          g.innerHTML = window.__adikaIsBuy
-            ? '<div style="grid-column:1/-1;padding:28px 12px;text-align:center;color:#475569;font-weight:800;">📋 የፈላጊ ጥያቄ አልተገኘም</div>'
-            : '';
-          window.__adikaLiveItems = [];
-          return;
-        }
-        if(window.__adikaCreateCard){
-          g.innerHTML="";
-          items.forEach(function(it){ try{ g.appendChild(window.__adikaCreateCard(it)); }catch(e){} });
-          window.__adikaLiveItems = items;
-          return;
-        }
-        var html="";
-        for(var i=0;i<items.length;i++){
-          var it=items[i]||{};
-          var src=photoOf(it);
-          var icon=isHouse(it)?"🏠":"🚗";
-          var img=src?('<img src="'+String(src).replace(/"/g,"")+'" style="width:100%;height:100%;object-fit:cover;filter:contrast(108%) brightness(102%) saturate(110%);" onerror="this.style.display=\'none\'" />'):"";
-          var views=viewsOf(it);
-          var time=ago(it.created_at||it.posted_at||it.date);
-          html += '<button type="button" class="adika-card" data-live="1" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 20px rgba(15,23,42,0.08);text-align:left;border:1px solid rgba(226,232,240,0.8);">'+
-            '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);position:relative;overflow:hidden;">'+
-              '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:36px;">'+icon+'</div>'+img+
-              '<span class="adika-live-dot" style="position:absolute;top:8px;left:8px;z-index:2;"></span>'+
-              '<span class="adika-view-chip" style="position:absolute;bottom:6px;left:6px;z-index:2;font-size:8px;padding:1px 5px;"><span class="eye-ico">👁</span> '+views+'</span>'+
-            '</div>'+
-            '<div style="padding:7px 8px 8px;">'+
-              '<div class="card-title-row">'+
-                '<div class="card-title">'+titleOf(it)+' <span style="color:#10b981;">✓</span></div>'+
-                '<div class="card-time">'+time+'</div>'+
-              '</div>'+
-              '<div style="margin-top:4px;display:flex;align-items:center;justify-content:space-between;gap:4px;">'+
-                '<div class="card-price">💰 '+money(it.price, it)+'</div>'+
-                '<span class="card-fav-btn" data-id="'+String(it.id||"")+'" style="font-size:16px;line-height:1;">🤍</span>'+
-              '</div>'+
-            '</div></button>';
-        }
-        g.innerHTML = html;
-        window.__adikaLiveItems = items;
-      }
-      window.__adikaPaintListings = paint;
-      function tryFetch(urls, i){
-        if(i>=urls.length) return;
-        fetch(urls[i], {credentials:"same-origin"})
-          .then(function(r){ return r.json(); })
-          .then(function(d){
-            var items=pick(d);
-            if(items.length) paint(items);
-            else tryFetch(urls, i+1);
-          })
-          .catch(function(){ tryFetch(urls, i+1); });
-      }
-      var qs="page=1&limit=10&order=DESC&active_only=1&type=SELL";
-      tryFetch(["/api/listings?"+qs, "/api/explorer/listings?"+qs], 0);
-    })();
-    </script>
+  <main id="adikaMainFeed" class="w-full max-w-md mx-auto px-1.5 pb-20" style="padding-top: 108px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));">
+    <div id="filterBanner" class="hidden mb-1 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-xl border border-white flex items-center justify-between text-xs shadow-sm">
+      <span id="filterText" class="font-bold text-[#0e7490] truncate"></span>
+      <button id="clearFilterBtn" type="button" class="text-rose-600 font-bold ml-2 shrink-0">✕</button>
+    </div>
 
-    <!-- Load More / Infinite Scroll trigger -->
+    <!-- Listings Grid Container -->
+    <div id="grid" class="grid grid-cols-2 gap-2"></div>
+
     <div id="loadMoreWrap" class="flex justify-center items-center mt-2 mb-1 pb-4">
       <button id="more" type="button"
         class="hidden flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-teal-700 font-extrabold text-xs shadow-md border border-teal-200 active:scale-95 transition-all">
-        <span id="btnText" class="lang-am">ተጨማሪ ↓</span>
-        <span class="lang-en" id="btnTextEn">Load More ↓</span>
-        <svg id="btnSpinner" class="hidden animate-spin h-4 w-4 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
+        <span class="lang-am">ተጨማሪ ↓</span>
+        <span class="lang-en">Load More ↓</span>
       </button>
     </div>
   </main>
 
-  <!-- ================================================================= -->
-<!-- ======================= END SECTION 08 ======================= -->
 <!-- ================================================================ -->
-<!-- SECTION 09 — CATEGORY UI / BOTTOM NAV -->
-<!-- Change/maintain this entire section as one unit. -->
+<!-- SECTION 09 — FIXED FLOATING BOTTOM NAV & FAB (+) -->
 <!-- ================================================================ -->
-  <!-- FIXED FLOATING BOTTOM NAV & PRECISION CENTERED FAB (+) -->
   <nav id="adikaBottomNav" class="fixed bottom-[15px] left-3 right-3 z-[100] px-4 py-2 flex items-center justify-between max-w-md mx-auto rounded-full border border-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)]" style="background: rgba(255,255,255,0.22); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px); border: 1px solid rgba(255,255,255,0.35);">
-    <!-- Left Section: Home & AI Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
       <button id="navHome" type="button" class="adika-nav-btn flex flex-col items-center justify-center px-1 py-0.5 rounded-full bg-[#16acbd]/15 text-[#0e7490]">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
         </svg>
-        <span class="nav-label text-[9px] font-bold mt-0.5 opacity-100 text-[#0e7490]">
-          <span class="lang-am">መነሻ</span>
-          <span class="lang-en">Home</span>
+        <span class="nav-label text-[9px] font-bold mt-0.5 text-[#0e7490]">
+          <span class="lang-am">መነሻ</span><span class="lang-en">Home</span>
         </span>
       </button>
 
@@ -1646,11 +1226,9 @@
           <svg class="w-4 h-4 text-[#16acbd]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
           </svg>
-          <span class="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
         </div>
-        <span class="nav-label text-[9px] font-bold mt-0.5 opacity-100 text-[#0e7490]">
-          <span class="lang-am">አማካሪ</span>
-          <span class="lang-en">Advisor</span>
+        <span class="nav-label text-[9px] font-bold mt-0.5 text-[#0e7490]">
+          <span class="lang-am">አማካሪ</span><span class="lang-en">Advisor</span>
         </span>
       </button>
     </div>
@@ -1663,13 +1241,11 @@
       </svg>
     </button>
 
-    <!-- Right Section: Messages & Help Tabs -->
     <div class="flex items-center gap-2 w-5/12 justify-around">
-      <button id="navMessages" type="button" class="adika-nav-btn flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-[#0e7490]" aria-label="My Listings">
-        <span class="text-base leading-none opacity-100" aria-hidden="true">📋</span>
-        <span class="nav-label text-[9px] font-bold mt-0.5 opacity-100 text-[#0e7490]">
-          <span class="lang-am">የኔ</span>
-          <span class="lang-en">Mine</span>
+      <button id="navMessages" type="button" class="adika-nav-btn flex flex-col items-center justify-center px-1 py-0.5 rounded-full text-[#0e7490]">
+        <span class="text-base leading-none">📋</span>
+        <span class="nav-label text-[9px] font-bold mt-0.5 text-[#0e7490]">
+          <span class="lang-am">የኔ</span><span class="lang-en">Mine</span>
         </span>
       </button>
 
@@ -1677,9 +1253,8 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
-        <span class="nav-label text-[9px] font-bold mt-0.5 opacity-100 text-[#0e7490]">
-          <span class="lang-am">እርዳታ</span>
-          <span class="lang-en">Help</span>
+        <span class="nav-label text-[9px] font-bold mt-0.5 text-[#0e7490]">
+          <span class="lang-am">እርዳታ</span><span class="lang-en">Help</span>
         </span>
       </button>
     </div>
@@ -1687,87 +1262,44 @@
 
 <!-- ======================= END SECTION 09 ======================= -->
 <!-- ================================================================ -->
-<!-- SECTION 10 — ROLE SELECTION / VIEWS -->
-<!-- Change/maintain this entire section as one unit. -->
+<!-- SECTION 10 — MY LISTINGS VIEW & INTENT MODAL -->
 <!-- ================================================================ -->
-  <!-- MY LISTINGS VIEW -->
   <div id="myListingsView" class="fixed inset-0 z-[280] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
     <div class="shrink-0 px-3 py-2.5 flex items-center justify-between text-white" style="background:linear-gradient(90deg,#0e7490,#16acbd);">
-      <button type="button" id="myListingsBackBtn" onclick="event.preventDefault();event.stopPropagation();if(window.hideMyListingsView)hideMyListingsView();else if(window.goBack)goBack();" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">
+      <button type="button" id="myListingsBackBtn" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">
         <span class="lang-am">← ተመለስ</span><span class="lang-en">← Back</span>
       </button>
       <div class="font-black text-sm truncate">
-        <span class="lang-am">📋 የኔ ማስታወቂያዎች</span>
-        <span class="lang-en">📋 My Listings</span>
+        <span class="lang-am">📋 የኔ ማስታወቂያዎች</span><span class="lang-en">📋 My Listings</span>
       </div>
-      <button type="button" id="myListingsCloseBtn" onclick="event.preventDefault();event.stopPropagation();if(window.hideMyListingsView)hideMyListingsView();" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
+      <button type="button" id="myListingsCloseBtn" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
     </div>
     <div id="myListingsStatus" class="px-3 py-2 text-[11px] font-bold text-slate-500 hidden"></div>
     <div id="myListingsEmpty" class="hidden flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center">
       <div class="text-4xl">📭</div>
       <p class="text-sm font-bold text-slate-700">
-        <span class="lang-am">እስካሁን ምንም ያተመቱት ማስታወቂያ የለም</span>
-        <span class="lang-en">You have no listings yet</span>
+        <span class="lang-am">እስካሁን ምንም ያተመቱት ማስታወቂያ የለም</span><span class="lang-en">You have no listings yet</span>
       </p>
-      <button type="button" id="myListingsPostBtn" class="px-4 py-2 rounded-xl bg-teal-500 text-white text-xs font-black shadow">
-        <span class="lang-am">✏️ Post Listing</span>
-        <span class="lang-en">✏️ Post Listing</span>
-      </button>
     </div>
     <div id="myListingsGrid" class="flex-1 overflow-y-auto p-2 grid grid-cols-4 gap-1.5 content-start"></div>
   </div>
 
-  <div id="inboxView" class="fixed inset-0 z-[275] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(180deg,#ecfeff,#f8fafc);">
-    <div class="shrink-0 px-3 py-2.5 flex items-center justify-between text-white" style="background:linear-gradient(90deg,#0e7490,#16acbd);">
-      <button type="button" id="inboxBackBtn" class="px-3 py-1.5 rounded-xl bg-white/15 border border-white/25 text-[11px] font-bold">← ተመለስ</button>
-      <div class="font-black text-sm truncate">መልእክት</div>
-      <button type="button" id="inboxCloseBtn" class="w-8 h-8 rounded-full bg-slate-900/70 font-bold">✕</button>
-    </div>
-    <div id="inboxThreadList" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
-    <div id="inboxThreadPane" class="hidden flex-1 flex flex-col min-h-0">
-      <div id="inboxThreadMeta" class="px-3 py-2 text-[11px] font-bold text-slate-600 border-b bg-white/80"></div>
-      <div id="inboxThreadLog" class="flex-1 overflow-y-auto p-3 space-y-2"></div>
-      <div class="shrink-0 p-2.5 bg-white border-t flex gap-2">
-        <textarea id="inboxCompose" rows="1" class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" placeholder="መልእክት ይጻፉ..."></textarea>
-        <button type="button" id="inboxSendBtn" class="px-4 rounded-xl bg-[#16acbd] text-white font-black text-sm">ላክ</button>
+  <!-- INTENT MODAL (+ button action selector) -->
+  <div id="intentModal" class="fixed inset-0 z-[310] hidden items-center justify-center p-4" style="background:rgba(15,23,42,0.38);backdrop-filter:blur(16px);">
+    <div class="w-full max-w-md rounded-3xl p-5 shadow-2xl" style="background:rgba(30,41,59,0.85);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,0.16);">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-white font-black text-base">ምን ማድረግ ይፈልጋሉ?</h3>
+        <button type="button" id="intentCloseBtn" class="w-8 h-8 rounded-full bg-white/10 text-white font-bold">✕</button>
       </div>
-    </div>
-  </div>
-
-  <!-- DEDICATED LIVE ADVISOR CHAT (full-screen view state) -->
-  <div id="analysisView" class="fixed inset-0 z-[280] hidden flex-col max-w-md mx-auto w-full" style="background:linear-gradient(165deg,#020617 0%,#0b3a4a 55%,#021016 100%);">
-    <div class="shrink-0 px-3 py-2.5 text-white flex items-center justify-between" style="background:linear-gradient(90deg,#020617,#0e7490,#16acbd);border-bottom:1px solid rgba(255,255,255,0.12);">
-      <div class="flex items-center gap-2 min-w-0">
-        <button id="analysisBackBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-[10px] font-bold">← ሀብ</button>
-        <button id="analysisHomeBtn" type="button" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-[10px] font-bold">🏠 ዋና ገፅ</button>
-        <div class="min-w-0 flex-1">
-          <div class="font-black text-xs truncate">አዲካ ዲጂታል አማካሪ</div>
-          <div class="text-[10px] text-cyan-100/85 truncate">Adika Digital System • Live Desk</div>
-        </div>
-      </div>
-      <div class="flex items-center gap-1.5 shrink-0">
-        <span class="text-[9px] font-extrabold text-emerald-200 bg-emerald-400/15 px-2 py-0.5 rounded-full border border-emerald-300/30">ዝግጁ</span>
-        <button id="analysisCloseBtn" type="button" class="w-8 h-8 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-bold text-sm">✕</button>
-      </div>
-    </div>
-    <div class="chat-shell flex-1 flex flex-col min-h-0 relative overflow-hidden">
-      <div class="absolute top-8 left-6 w-40 h-40 rounded-full pointer-events-none" style="background:rgba(34,211,238,0.16);filter:blur(40px);"></div>
-      <div class="absolute bottom-16 right-4 w-36 h-36 rounded-full pointer-events-none" style="background:rgba(99,102,241,0.16);filter:blur(40px);"></div>
-      <div class="px-3 pt-3 pb-1 shrink-0 relative z-10">
-        <div class="rounded-2xl px-3 py-2 flex items-center justify-between" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.22);">
-          <div class="text-[11px] font-black text-white flex items-center gap-1.5">
-            <span>💬</span><span>የቀጥታ የፋይናንስ ውይይት</span>
-          </div>
-          <span class="text-[9px] font-bold text-cyan-300">ፈጣን ምላሽ</span>
-        </div>
-      </div>
-      <div id="advisorChatLog" class="flex-1 overflow-y-auto px-3 pt-3 pb-3 space-y-2.5 text-xs scroll-smooth relative z-10"></div>
-      <div class="chat-input-bar relative z-20 shrink-0">
-        <textarea id="advisorChatInput" rows="2" placeholder="ስለ መኪና፣ ቤት፣ ቀረጥ ወይም የባንክ ብድር በአማርኛ ይጠይቁ..."></textarea>
-        <button id="advisorChatSend" type="button" class="chat-send-btn" aria-label="Send">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-        </button>
-      </div>
+      <p class="text-[11px] mb-4 text-slate-400">የሚፈልጉትን አማራጭ ይምረጡ</p>
+      <button type="button" id="intentSellCard" class="w-full text-left rounded-2xl p-4 mb-3 active:scale-[0.98] transition-transform" style="background:rgba(255,255,255,0.08);border:1px solid rgba(34,211,238,0.35);">
+        <div class="text-white font-black text-sm">🏷️ እቃ/ንብረት ለመሸጥ</div>
+        <div class="text-[11px] mt-1 text-slate-400">Post Listing — ማስታወቂያ ይለጥፉ</div>
+      </button>
+      <button type="button" id="intentRequestCard" class="w-full text-left rounded-2xl p-4 active:scale-[0.98] transition-transform" style="background:rgba(255,255,255,0.08);border:1px solid rgba(148,163,184,0.28);">
+        <div class="text-white font-black text-sm">🔍 የምፈልገውን ለመጠየቅ</div>
+        <div class="text-[11px] mt-1 text-slate-400">Post Request — ፍላጎትዎን ይላኩ</div>
+      </button>
     </div>
   </div>
 
@@ -3142,388 +2674,130 @@
 
 <!-- ======================= END SECTION 16 ======================= -->
 <!-- ================================================================ -->
-<!-- SECTION 17 — JS: INIT & FILTERS -->
-<!-- Change/maintain this entire section as one unit. -->
+<!-- SECTION 17 — CORE APPLICATION SCRIPT -->
 <!-- ================================================================ -->
 <script>
   (function () {
     var memoryStore = window.memoryStore || {};
     window.memoryStore = memoryStore;
-    var __mem = memoryStore;
-    window.__mem = memoryStore;
-    window._lsGet = function(k){ return memoryStore[k] != null ? memoryStore[k] : null; };
-    window._lsSet = function(k,v){ memoryStore[k] = String(v); };
-    window._lsDel = function(k){ delete memoryStore[k]; };
-    var _lsGet = window._lsGet, _lsSet = window._lsSet, _lsDel = window._lsDel;
+    var _lsGet = function(k){ return memoryStore[k] != null ? memoryStore[k] : null; };
+    var _lsSet = function(k,v){ memoryStore[k] = String(v); };
 
     var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
     if (tg) {
       try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
     }
 
-    function getTelegramUserId() {
-      try {
-        var u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-        if (u && u.id) return Number(u.id);
-      } catch (e) {}
-      try {
-        if (window.state && state.userId) return Number(state.userId);
-      } catch (e2) {}
-      return 0;
-    }
-
-    function ensureSupabaseClient() {
-      try {
-        if (window.supabase && typeof window.supabase.from === "function" && typeof window.supabase.rpc === "function") {
-          return window.supabase;
-        }
-        var cfg = window.__ADIKA_SUPABASE || {};
-        var url = cfg.url || window.SUPABASE_URL || "";
-        var key = cfg.anonKey || cfg.key || window.SUPABASE_ANON_KEY || "";
-        var lib = window.__supabaseLib || window.supabase || (typeof supabase !== "undefined" ? supabase : null);
-        if (url && key && lib && typeof lib.createClient === "function") {
-          window.supabase = lib.createClient(url, key);
-          return window.supabase;
-        }
-      } catch (e) {}
-      return null;
-    }
-
-    // ---- Onboarding (unified glass form → user_preferences + FYP) ----
-    (function initOnboarding() {
-      var KEY = "adika_onboarded";
-      var PREF_KEY = "adika_user_prefs";
-
-      function isOnboarded() {
-        try { if (localStorage.getItem(KEY) === "true") return true; } catch (e) {}
-        try { if (typeof _lsGet === "function" && _lsGet(KEY) === "true") return true; } catch (e2) {}
-        return false;
-      }
-      function markOnboarded() {
-        try { localStorage.setItem(KEY, "true"); } catch (e) {}
-        try { if (typeof _lsSet === "function") _lsSet(KEY, "true"); } catch (e2) {}
-      }
-      function saveLocalPrefs(obj) {
-        try { localStorage.setItem(PREF_KEY, JSON.stringify(obj)); } catch (e) {}
-        try { if (typeof _lsSet === "function") _lsSet(PREF_KEY, JSON.stringify(obj)); } catch (e2) {}
-      }
-      function readLocalPrefs() {
-        try {
-          var raw = localStorage.getItem(PREF_KEY) || (typeof _lsGet === "function" ? _lsGet(PREF_KEY) : null);
-          return raw ? JSON.parse(raw) : null;
-        } catch (e) { return null; }
-      }
-
-      function showOb(on) {
-        var m = document.getElementById("unifiedOnboardingModal");
-        if (!m) return;
-        if (on) {
-          m.classList.remove("hidden");
-          m.classList.add("flex");
-          m.style.display = "flex";
-          document.body.style.overflow = "hidden";
-        } else {
-          m.classList.add("hidden");
-          m.classList.remove("flex");
-          m.style.display = "none";
-          document.body.style.overflow = "";
-        }
-      }
-
-      window.closeOnboarding = function (skip) {
-        markOnboarded();
-        showOb(false);
-        try {
-          state.feedMode = "foryou";
-          state.category = "";
-          if (typeof paintFeedModes === "function") paintFeedModes();
-        } catch (e) {}
-        try { if (typeof load === "function") load(false); } catch (e2) {}
-      };
-
-      window.toggleSpecFields = function () {
-        var car = document.getElementById("carSpecs");
-        var house = document.getElementById("houseSpecs");
-        var item = document.getElementById("itemSpecs");
-        var picked = [];
-        document.querySelectorAll('input[name="mainCat"]:checked').forEach(function (el) { picked.push(el.value); });
-        if (car) car.classList.toggle("hidden", picked.indexOf("Car") < 0);
-        if (house) house.classList.toggle("hidden", picked.indexOf("House") < 0);
-        if (item) item.classList.toggle("hidden", picked.indexOf("Item") < 0);
-      };
-
-      function parseBudgetRange(val) {
-        var text = String(val || "").trim().toLowerCase();
-        if (!text) return { budget_min: 0, budget_max: 999999999 };
-        function toNum(tok) {
-          var t = String(tok || "").replace(/,/g, "").replace(/etb|ብር/gi, "").trim();
-          var mult = 1;
-          if (/ሚሊዮን|million|m\b/i.test(t)) { mult = 1000000; t = t.replace(/ሚሊዮን|million|m/gi, ""); }
-          else if (/ሺህ|thousand|k\b/i.test(t)) { mult = 1000; t = t.replace(/ሺህ|thousand|k/gi, ""); }
-          t = t.replace(/[^0-9.]/g, "");
-          var n = parseFloat(t);
-          return isNaN(n) ? 0 : n * mult;
-        }
-        var parts = text.split(/\s*[-–—toእስከ]\s*/i);
-        var nums = parts.map(toNum).filter(function(n){ return n > 0; });
-        if (nums.length === 0) {
-          var single = toNum(text);
-          if (single > 0) {
-            if (/\+|በላይ|above/i.test(text)) return { budget_min: single, budget_max: 999999999 };
-            return { budget_min: 0, budget_max: single };
-          }
-          return { budget_min: 0, budget_max: 999999999 };
-        }
-        if (nums.length === 1) {
-          if (/\+|በላይ|above/i.test(text)) return { budget_min: nums[0], budget_max: 999999999 };
-          return { budget_min: 0, budget_max: nums[0] };
-        }
-        return { budget_min: Math.min(nums[0], nums[1]), budget_max: Math.max(nums[0], nums[1]) };
-      }
-
-      function collectForm() {
-        var fullName = (document.getElementById("fullName") || {}).value || "";
-        var phone = (document.getElementById("phoneNum") || {}).value || "";
-        var tgUser = (document.getElementById("tgUsername") || {}).value || "";
-        tgUser = String(tgUser).replace(/^@/, "").trim();
-        var checked = document.querySelectorAll('input[name="mainCat"]:checked');
-        var picked = [];
-        checked.forEach(function (el) { picked.push(el.value); });
-        if (!picked.length) picked = ["Car"];
-        var mainCat = picked[0];
-        var budget = parseBudgetRange((document.getElementById("budgetRange") || {}).value);
-        var isBroker = !!(document.getElementById("isBroker") || {}).checked;
-        var specs = {};
-        specs.transmission = ((document.getElementById("carTrans") || {}).value || "").trim();
-        specs.fuel = ((document.getElementById("carFuel") || {}).value || "").trim();
-        specs.property_type = ((document.getElementById("houseType") || {}).value || "").trim();
-        specs.location = ((document.getElementById("houseLoc") || {}).value || "").trim();
-        specs.item_kind = ((document.getElementById("itemKind") || {}).value || "").trim();
-        var categories = [];
-        if (picked.indexOf("Car") >= 0) categories.push("መኪና", "Car");
-        if (picked.indexOf("House") >= 0) categories.push("ቤት", "House");
-        if (picked.indexOf("Item") >= 0) categories.push("እቃ", "Item");
-        if (!categories.length) categories = ["መኪና", "Car"];
-        return {
-          full_name: String(fullName).trim(),
-          phone: String(phone).trim(),
-          telegram_username: tgUser,
-          main_category: mainCat,
-          categories: categories,
-          item_kind: specs.item_kind || "",
-          budget_min: budget.budget_min,
-          budget_max: budget.budget_max,
-          budget_range: (document.getElementById("budgetRange") || {}).value || "",
-          is_broker: isBroker,
-          specs: specs,
-          transmission: specs.transmission || null,
-          fuel: specs.fuel || null,
-          property_type: specs.property_type || null,
-          location_area: specs.location || null,
-          onboarding_done: true,
-          updated_at: new Date().toISOString()
-        };
-      }
-
-      function triggerFypFeed() {
-        try {
-          state.feedMode = "foryou";
-          state.category = "";
-          state.page = 1;
-          if (typeof paintFeedModes === "function") paintFeedModes();
-        } catch (e) {}
-        try {
-          if (typeof window.loadFYPFeed === "function") { window.loadFYPFeed(); return; }
-        } catch (eL) {}
-        try {
-          if (typeof load === "function") load(false);
-        } catch (e2) {}
-      }
-
-      window.handleOnboardingSubmit = function (ev) {
-        if (ev) { try { ev.preventDefault(); } catch (e0) {} }
-        var form = document.getElementById("onboardingForm");
-        var btn = document.getElementById("onboardSubmitBtn");
-        if (form && typeof form.reportValidity === "function" && !form.reportValidity()) return false;
-        if (btn) { btn.disabled = true; btn.textContent = "⏳ በመመዝገብ ላይ..."; }
-
-        var data = collectForm();
-        var tid = null;
-        try { tid = typeof getTelegramUserId === "function" ? getTelegramUserId() : null; } catch (e) {}
-        if (!data.telegram_username) {
-          try {
-            var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-            if (u && u.username) data.telegram_username = String(u.username);
-            if (!data.full_name && u) {
-              data.full_name = [u.first_name, u.last_name].filter(Boolean).join(" ");
-            }
-          } catch (eU) {}
-        }
-        data.telegram_id = tid || null;
-        data.user_id = tid || null;
-
-        saveLocalPrefs(data);
-
-        var sb = null;
-        try { sb = typeof ensureSupabaseClient === "function" ? ensureSupabaseClient() : (window.supabase || null); } catch (eS) {}
-        var savePromise = Promise.resolve(false);
-        if (sb && tid) {
-          savePromise = sb.from("user_preferences").upsert(data, { onConflict: "user_id" })
-            .then(function () { return true; })
-            .catch(function () {
-              return sb.from("user_preferences").upsert(data, { onConflict: "telegram_id" })
-                .then(function () { return true; })
-                .catch(function () { return false; });
-            });
-        } else {
-          savePromise = fetch("/api/user/preferences", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
-          }).then(function (r) {
-            if (r && r.ok) return true;
-            return fetch("/api/preferences", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data)
-            }).then(function (r2) { return !!(r2 && r2.ok); });
-          }).catch(function () {
-            return fetch("/api/preferences", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data)
-            }).then(function (r2) { return !!(r2 && r2.ok); }).catch(function () { return false; });
-          });
-        }
-
-        savePromise.then(function () {
-          markOnboarded();
-          showOb(false);
-          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); else triggerFypFeed(); } catch (eF) { triggerFypFeed(); }
-        }).catch(function () {
-          markOnboarded();
-          showOb(false);
-          try { if (typeof window.loadFYPFeed === "function") window.loadFYPFeed(); else triggerFypFeed(); } catch (eF2) { triggerFypFeed(); }
-        }).finally(function () {
-          if (btn) { btn.disabled = false; btn.textContent = "✅ መዝግብ / Submit"; }
-        });
-        return false;
-      };
-
-      function bind() {
-        var form = document.getElementById("onboardingForm");
-        if (form && !form.__adikaBound) {
-          form.__adikaBound = true;
-          form.addEventListener("submit", function (e) {
-            handleOnboardingSubmit(e);
-          });
-        }
-        document.querySelectorAll('input[name="mainCat"]').forEach(function (r) {
-          r.addEventListener("change", function () {
-            toggleSpecFields();
-          });
-        });
-        var skip = document.getElementById("onboardSkipBtn");
-        if (skip && !skip.__adikaBound) {
-          skip.__adikaBound = true;
-          skip.addEventListener("click", function (e) {
-            e.preventDefault();
-            closeOnboarding(true);
-          });
-        }
-        try {
-          var u = window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
-          if (u) {
-            var fn = document.getElementById("fullName");
-            var tgU = document.getElementById("tgUsername");
-            if (fn && !fn.value) fn.value = [u.first_name, u.last_name].filter(Boolean).join(" ");
-            if (tgU && !tgU.value && u.username) tgU.value = "@" + u.username;
-          }
-        } catch (eP) {}
-        toggleSpecFields();
-      }
-
-      window.__adikaShowOnboarding = function () {
-        bind();
-        showOb(true);
-      };
-
-      window.openFYPWithOnboarding = function () {
-        try { bind(); } catch (e) {}
-        showOb(true);
-        try {
-          if (window.state) { state.feedMode = "foryou"; state.category = ""; }
-        } catch (e2) {}
-        return true;
-      };
-
-      function forceOpenOnboardingForTest() {
-        bind();
-        var m = document.getElementById("unifiedOnboardingModal");
-        if (!m) return;
-        m.classList.remove("hidden");
-        m.classList.add("flex");
-        m.style.setProperty("display", "flex", "important");
-        m.style.zIndex = "10000";
-        document.body.style.overflow = "hidden";
-      }
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () {
-          forceOpenOnboardingForTest();
-        });
-      } else {
-        forceOpenOnboardingForTest();
-      }
-      setTimeout(function () {
-        try {
-          if (!isOnboarded() && state && state.feedMode === "foryou") showOb(true);
-        } catch (e) {}
-      }, 900);
-    })();
-
     var favorites = {};
-    try {
-      favorites = JSON.parse(_lsGet('adika_favs') || '{}');
-    } catch(e) {}
+    try { favorites = JSON.parse(_lsGet('adika_favs') || '{}'); } catch(e) {}
 
     function toggleFav(id) {
-      var wasFav = Boolean(favorites[id]);
       if (favorites[id]) delete favorites[id];
       else favorites[id] = true;
       try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
-      renderFavoritesUI();
-      try {
-        var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
-        if (uid && id) {
-          fetch("/api/favorites/toggle", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              user_id: uid,
-              chat_id: uid,
-              listing_id: id,
-              action: wasFav ? "remove" : "add"
-            })
-          }).catch(function(){});
-        }
-      } catch (e) {}
     }
+    window.toggleFav = toggleFav;
 
     var state = window.__adikaState = {
       tab: "marketplace",
       feedMode: "foryou",
-      roleChosen: false,
       category: "",
       q: "",
       page: 1,
-      hasMore: true,
-      loading: false,
-      itemsPerPage: 10,
       items: [],
       selectedItem: null
     };
 
+    function setLanguage(lang) {
+      _lsSet('adika_lang', lang);
+      if (lang === 'en') {
+        document.body.classList.add('lang-en-active');
+        document.getElementById('langEnBtn').className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
+        document.getElementById('langAmBtn').className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80";
+        document.getElementById('q').placeholder = "Search listings...";
+      } else {
+        document.body.classList.remove('lang-en-active');
+        document.getElementById('langAmBtn').className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
+        document.getElementById('langEnBtn').className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80";
+        document.getElementById('q').placeholder = "ንብረት ይፈልጉ...";
+      }
+    }
+
+    document.getElementById('langAmBtn').onclick = function() { setLanguage('am'); };
+    document.getElementById('langEnBtn').onclick = function() { setLanguage('en'); };
+    setLanguage(_lsGet('adika_lang') || 'am');
+
+    // Navigation & Modal triggers
+    var intentModal = document.getElementById('intentModal');
+    document.getElementById('fabBtn').onclick = function() {
+      intentModal.classList.remove('hidden');
+      intentModal.classList.add('flex');
+    };
+    document.getElementById('intentCloseBtn').onclick = function() {
+      intentModal.classList.add('hidden');
+      intentModal.classList.remove('flex');
+    };
+    document.getElementById('intentSellCard').onclick = function() { window.location.href = '/seller-form'; };
+    document.getElementById('intentRequestCard').onclick = function() { window.location.href = '/buyer-form'; };
+
+    document.getElementById('navHome').onclick = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    document.getElementById('navMessages').onclick = function() {
+      var v = document.getElementById('myListingsView');
+      if (v) {
+        v.classList.remove('hidden');
+        v.classList.add('flex');
+        v.style.display = 'flex';
+      }
+    };
+    document.getElementById('myListingsCloseBtn').onclick = document.getElementById('myListingsBackBtn').onclick = function() {
+      var v = document.getElementById('myListingsView');
+      if (v) {
+        v.classList.add('hidden');
+        v.classList.remove('flex');
+        v.style.display = 'none';
+      }
+    };
+    document.getElementById('navHelp').onclick = function() {
+      if (typeof window.openHelpContact === 'function') window.openHelpContact();
+    };
+
+    // Initial load fetch
+    function loadListings() {
+      fetch('/api/listings?page=1&limit=20&order=DESC&active_only=1&type=SELL')
+        .then(res => res.json())
+        .then(data => {
+          const items = data.items || data.listings || [];
+          const grid = document.getElementById('grid');
+          if (!grid) return;
+          if (!items.length) {
+            grid.innerHTML = '<div class="col-span-2 py-12 text-center text-xs font-bold text-slate-600">ምንም ማስታወቂያ አልተገኘም</div>';
+            return;
+          }
+          grid.innerHTML = items.map(it => {
+            const title = it.sub_category || it.brand || it.model || it.main_category || 'ማስታወቂያ';
+            const price = Number(String(it.price || '').replace(/[^\d]/g, '')) || 0;
+            const priceTxt = price > 0 ? price.toLocaleString() + ' ETB' : 'ለዋጋ ደውሉ';
+            const photo = (it.photos && it.photos[0]) || it.image_url || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400';
+            return `
+              <div class="adika-card bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-sm flex flex-col">
+                <div class="relative aspect-[4/3] bg-slate-100 overflow-hidden">
+                  <img src="${photo}" class="w-full h-full object-cover" alt="" onerror="this.style.display='none'" />
+                  <span class="adika-view-chip">👁 12</span>
+                </div>
+                <div class="p-2.5 bg-white flex flex-col gap-1">
+                  <div class="font-bold text-[11px] text-slate-800 truncate">${title}</div>
+                  <div class="font-extrabold text-[11px] text-[#0e7490]">💰 ${priceTxt}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }).catch(err => console.error("Load error:", err));
+    }
+    loadListings();
+  })();
+</script>
+</body>
+</html>
 <!-- ======================= END SECTION 17 ======================= -->
 <!-- ================================================================ -->
 <!-- SECTION 18 — JS: FAVORITES & RECOMMENDATIONS -->
