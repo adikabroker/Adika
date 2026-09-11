@@ -3773,14 +3773,17 @@ function shareContract() {{
 
 
     # ============================ END SECTION 17 ============================
-    # ==============================================================================
+  # ==============================================================================
     # SECTION 18 — LISTING EXPLORER / CATEGORY FILTERING
     # Change/maintain this entire section as one unit. Logic is unchanged.
     # ==============================================================================
     @web_app.route('/api/explorer/listings', methods=['GET', 'OPTIONS'])
+    @web_app.route('/api/listings', methods=['GET', 'OPTIONS'])
     def api_explorer_listings():
         if request.method == 'OPTIONS':
             return ('', 204)
+        
+        conn = None
         try:
             page = max(1, int(request.args.get('page', 1) or 1))
             limit = min(50, max(1, int(request.args.get('limit', 12) or 12)))
@@ -3794,21 +3797,20 @@ function shareContract() {{
             if order not in ('ASC', 'DESC'):
                 order = 'DESC'
 
-            conn = None
-            try:
-                conn = get_db_connection()
-                cur = conn.cursor()
-                p = get_placeholder()
-                from models import is_postgres
+            conn = get_db_connection()
+            cur = conn.cursor()
+            p = get_placeholder()
+            from models import is_postgres
 
-                where = ["1=1"]
-                params = []
-                where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) != {p})")
-                params.append('deleted')
-                if active_only:
-                    where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
-                    params.extend(['sold', 'rented', 'expired'])
-         # Match req_type OR Amharic/English action_type
+            where = ["1=1"]
+            params = []
+            where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) != {p})")
+            params.append('deleted')
+            if active_only:
+                where.append(f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ({p},{p},{p}))")
+                params.extend(['sold', 'rented', 'expired'])
+
+            # Match req_type OR Amharic/English action_type
             if req_type == 'SELL':
                 where.append(
                     f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('SELL','SALE','') "
@@ -3817,7 +3819,6 @@ function shareContract() {{
                 )
                 params.extend(['መሸጥ', 'SELL', 'sell', 'ለመሸጥ', 'Sale'])
             elif req_type == 'BUY':
-                # 🔴 የፈላጊዎችን ጥያቄዎች (Buy requests) ብቻ በትክክል ማምጣት (Cross-DB Safe)
                 if is_postgres():
                     where.append(
                         f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('BUY','REQUEST','WANT') "
@@ -3826,289 +3827,125 @@ function shareContract() {{
                     )
                     params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ'])
                 else:
-                    # SQLite fallback (handles JSON text fields safely)
                     where.append(
                         f"(UPPER(TRIM(COALESCE(req_type,''))) IN ('BUY','REQUEST','WANT') "
                         f"OR UPPER(TRIM(COALESCE(action_type,''))) IN ({p},{p},{p},{p},{p}))"
                     )
                     params.extend(['መግዛት', 'BUY', 'buy', 'ለመግዛት', 'ፈላጊ'])
-            else:
-                # 🛡️ Fallback safe block so Python never throws an empty block SyntaxError
-                pass
-                like = "ILIKE" if is_postgres() else "LIKE"
-                # STRICT category isolation: ቤት never mixes with መኪና
-                cat_mode = ""  # "", "car", "house", "biz"
-                if category and str(category).strip().lower() not in ('', 'all', 'null', 'none', 'undefined', '✨ ሁሉም', '✨ all', 'ሁሉም', 'foryou', 'for_you'):
-                    cat_raw = str(category).strip()
-                    cat_l = cat_raw.lower()
-                    if cat_l in ('መኪና', 'car', 'cars', 'vehicle', 'vehicles', 'auto', 'መኪኖች'):
-                        cat_mode = "car"
-                        aliases = ['መኪና', 'car', 'cars', 'vehicle', 'መኪኖች', 'vits', 'vitz', 'toyota', 'chassis']
-                        parts = []
-                        for a in aliases:
-                            parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
-                            params.append(f"%{a}%")
-                            parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
-                            params.append(f"%{a}%")
-                            parts.append(f"CAST(COALESCE(sub_category,'') AS TEXT) {like} {p}")
-                            params.append(f"%{a}%")
-                        where.append("(" + " OR ".join(parts) + ")")
-                        # Exclude rows whose content clearly says house
-                        where.append(
-                            f"(CAST(COALESCE(sub_category,'') AS TEXT) NOT {like} {p} "
-                            f"AND CAST(COALESCE(sub_category,'') AS TEXT) NOT {like} {p} "
-                            f"AND CAST(COALESCE(description,'') AS TEXT) NOT {like} {p} "
-                            f"AND CAST(COALESCE(description,'') AS TEXT) NOT {like} {p})"
-                        )
-                        params.extend(['%ቤት%', '%house%', '%ቤት%', '%house%'])
-                    elif cat_l in ('ቤት', 'house', 'home', 'property', 'realestate', 'real_estate', 'ንብረት'):
-                        cat_mode = "house"
-                        # Match house signals in tags OR content (handles wrong main_category=መኪና)
-                        aliases = ['ቤት', 'house', 'property', 'home', 'ንብረት', 'real_estate', 'apartment', 'villa', 'አፓርታማ', 'መሬት']
-                        parts = []
-                        for a in aliases:
-                            parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
-                            params.append(f"%{a}%")
-                            parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
-                            params.append(f"%{a}%")
-                            parts.append(f"CAST(COALESCE(sub_category,'') AS TEXT) {like} {p}")
-                            params.append(f"%{a}%")
-                            parts.append(f"CAST(COALESCE(description,'') AS TEXT) {like} {p}")
-                            params.append(f"%{a}%")
-                        where.append("(" + " OR ".join(parts) + ")")
-                        # Do NOT hard-exclude main_category=መኪና here — content may still be a house.
-                        # Python post-filter (content-first) will drop real cars.
-                    elif cat_l in ('ንግድ', 'commercial', 'business', 'biz'):
-                        cat_mode = "biz"
-                        aliases = ['ንግድ', 'commercial', 'business']
-                        parts = []
-                        for a in aliases:
-                            parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
-                            params.append(f"%{a}%")
-                            parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
-                            params.append(f"%{a}%")
-                        where.append("(" + " OR ".join(parts) + ")")
-                    else:
-                        where.append(
-                            f"(CAST(COALESCE(main_category,'') AS TEXT) {like} {p} "
-                            f"OR CAST(COALESCE(category,'') AS TEXT) {like} {p})"
-                        )
-                        params.extend([f"%{cat_raw}%", f"%{cat_raw}%"])
-                if chassis_only:
-                    where.append(
-                        f"(CAST(COALESCE(extra_data,'') AS TEXT) {like} {p} "
-                        f"OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p} "
-                        f"OR CAST(COALESCE(description,'') AS TEXT) {like} {p} "
-                        f"OR CAST(COALESCE(description,'') AS TEXT) {like} {p})"
-                    )
-                    params.extend(["%chassis_number%", "%has_chassis%", "%Chassis%", "%ሻሲ%"])
-                if search:
-                    where.append(
-                        f"(CAST(COALESCE(description,'') AS TEXT) {like} {p} "
-                        f"OR CAST(COALESCE(price,'') AS TEXT) {like} {p} "
-                        f"OR CAST(COALESCE(sub_category,'') AS TEXT) {like} {p} "
-                        f"OR CAST(COALESCE(main_category,'') AS TEXT) {like} {p} "
-                        f"OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p})"
-                    )
-                    params.extend([f"%{search}%"] * 5)
 
-                where_sql = " AND ".join(where)
-                total = 0
-                rows = []
+            like = "ILIKE" if is_postgres() else "LIKE"
+            cat_mode = ""
+            if category and str(category).strip().lower() not in ('', 'all', 'null', 'none', 'undefined', '✨ ሁሉም', '✨ all', 'ሁሉም', 'foryou', 'for_you'):
+                cat_raw = str(category).strip()
+                cat_l = cat_raw.lower()
+                if cat_l in ('መኪና', 'car', 'cars', 'vehicle', 'vehicles', 'auto', 'መኪኖች'):
+                    cat_mode = "car"
+                    aliases = ['መኪና', 'car', 'cars', 'vehicle', 'መኪኖች', 'vits', 'vitz', 'toyota', 'chassis']
+                    parts = []
+                    for a in aliases:
+                        parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(sub_category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                    where.append("(" + " OR ".join(parts) + ")")
+                    where.append(
+                        f"(CAST(COALESCE(sub_category,'') AS TEXT) NOT {like} {p} "
+                        f"AND CAST(COALESCE(sub_category,'') AS TEXT) NOT {like} {p} "
+                        f"AND CAST(COALESCE(description,'') AS TEXT) NOT {like} {p} "
+                        f"AND CAST(COALESCE(description,'') AS TEXT) NOT {like} {p})"
+                    )
+                    params.extend(['%ቤት%', '%house%', '%ቤት%', '%house%'])
+                elif cat_l in ('ቤት', 'house', 'home', 'property', 'realestate', 'real_estate', 'ንብረት'):
+                    cat_mode = "house"
+                    aliases = ['ቤት', 'house', 'property', 'home', 'ንብረት', 'real_estate', 'apartment', 'villa', 'አፓርታማ', 'መሬት']
+                    parts = []
+                    for a in aliases:
+                        parts.append(f"CAST(COALESCE(main_category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(sub_category,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                        parts.append(f"CAST(COALESCE(description,'') AS TEXT) {like} {p}")
+                        params.append(f"%{a}%")
+                    where.append("(" + " OR ".join(parts) + ")")
+                else:
+                    where.append(
+                        f"(CAST(COALESCE(main_category,'') AS TEXT) {like} {p} "
+                        f"OR CAST(COALESCE(category,'') AS TEXT) {like} {p})"
+                    )
+                    params.extend([f"%{cat_raw}%", f"%{cat_raw}%"])
+
+            if chassis_only:
+                where.append(
+                    f"(CAST(COALESCE(extra_data,'') AS TEXT) {like} {p} "
+                    f"OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p} "
+                    f"OR CAST(COALESCE(description,'') AS TEXT) {like} {p} "
+                    f"OR CAST(COALESCE(description,'') AS TEXT) {like} {p})"
+                )
+                params.extend(["%chassis_number%", "%has_chassis%", "%Chassis%", "%ሻሲ%"])
+
+            if search:
+                where.append(
+                    f"(CAST(COALESCE(description,'') AS TEXT) {like} {p} "
+                    f"OR CAST(COALESCE(price,'') AS TEXT) {like} {p} "
+                    f"OR CAST(COALESCE(sub_category,'') AS TEXT) {like} {p} "
+                    f"OR CAST(COALESCE(main_category,'') AS TEXT) {like} {p} "
+                    f"OR CAST(COALESCE(extra_data,'') AS TEXT) {like} {p})"
+                )
+                params.extend([f"%{search}%"] * 5)
+
+            where_sql = " AND ".join(where)
+            total = 0
+            rows = []
+            
+            try:
+                cur.execute(f"SELECT COUNT(*) AS cnt FROM listings WHERE {where_sql}", params)
+                total_row = cur.fetchone()
+                total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
+                
+                cur.execute(
+                    f"SELECT * FROM listings WHERE {where_sql} "
+                    f"ORDER BY id DESC LIMIT {p} OFFSET {p}",
+                    list(params) + [limit, offset],
+                )
+                rows = cur.fetchall() or []
+            except Exception as qerr:
+                logger.warning(f"api_explorer_listings primary query failed: {qerr}")
+                cur.execute(f"SELECT * FROM listings ORDER BY id DESC LIMIT {p} OFFSET {p}", [limit, offset])
+                rows = cur.fetchall() or []
+                total = len(rows)
+
+            items = []
+            for row in rows:
+                item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
+                if isinstance(item.get('extra_data'), str):
+                    try:
+                        item['extra_data'] = json.loads(item['extra_data'])
+                    except Exception:
+                        item['extra_data'] = {}
+                photos = []
                 try:
-                    cur.execute(f"SELECT COUNT(*) AS cnt FROM listings WHERE {where_sql}", params)
-                    total_row = cur.fetchone()
-                    total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
-                    cur.execute(
-                        f"SELECT * FROM listings WHERE {where_sql} "
-                        f"ORDER BY id DESC LIMIT {p} OFFSET {p}",
-                        list(params) + [limit, offset],
-                    )
-                    rows = cur.fetchall() or []
-                    # If SELL filters returned empty: only soft-fallback when NO category
-                    # was requested. NEVER dump all cars into ቤት / መኪና tabs.
-                    _cat_req = str(category or "").strip().lower()
-                    _strict_cat = _cat_req in (
-                        "ቤት", "house", "home", "property", "realestate", "real_estate", "ንብረት",
-                        "መኪና", "car", "cars", "vehicle", "vehicles", "auto", "መኪኖች",
-                        "ንግድ", "commercial", "business", "biz",
-                    )
-                    if not rows and page == 1 and req_type != 'BUY' and not _strict_cat:
-                        try:
-                            cur.execute(
-                                f"SELECT COUNT(*) AS cnt FROM listings WHERE "
-                                f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN "
-                                f"('deleted','sold','rented','expired')) "
-                                f"AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') "
-                                f"OR COALESCE(req_type,'') = '')"
-                            )
-                            tr = cur.fetchone()
-                            total = tr['cnt'] if isinstance(tr, dict) else (tr[0] if tr else 0)
-                            cur.execute(
-                                f"SELECT * FROM listings WHERE "
-                                f"(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN "
-                                f"('deleted','sold','rented','expired')) "
-                                f"AND (UPPER(TRIM(COALESCE(req_type,''))) NOT IN ('BUY','RENT') "
-                                f"OR COALESCE(req_type,'') = '') "
-                                f"ORDER BY id DESC LIMIT {p} OFFSET {p}",
-                                [limit, offset],
-                            )
-                            rows = cur.fetchall() or []
-                            logger.info("explorer SELL empty-filter fallback returned %s rows", len(rows))
-                        except Exception as _fb0:
-                            logger.warning("explorer empty fallback: %s", _fb0)
-                    elif not rows and _strict_cat:
-                        logger.info("explorer strict category %r returned 0 rows — no cross-category fallback", _cat_req)
-                except Exception as qerr:
-                    logger.warning(f"api_explorer_listings primary query failed, fallback: {qerr}")
-                    try:
-                        fb = ["(status IS NULL OR LOWER(CAST(status AS TEXT)) NOT IN ('deleted','sold','rented','expired'))"]
-                        fp = []
-                        if req_type == 'SELL':
-                            fb.append(f"(UPPER(COALESCE(req_type,''))='SELL' OR COALESCE(action_type,'') IN ({p},{p}) OR COALESCE(req_type,'')='')")
-                            fp.extend(['መሸጥ', 'SELL'])
-                        elif req_type == 'BUY':
-                            fb.append(f"(UPPER(COALESCE(req_type,''))='BUY' OR COALESCE(action_type,'') IN ({p},{p}))")
-                            fp.extend(['መግዛት', 'BUY'])
-                        if category:
-                            fb.append(f"main_category = {p}")
-                            fp.append(category)
-                        fb_sql = " AND ".join(fb)
-                        cur.execute(f"SELECT COUNT(*) AS cnt FROM listings WHERE {fb_sql}", fp)
-                        total_row = cur.fetchone()
-                        total = total_row['cnt'] if isinstance(total_row, dict) else (total_row[0] if total_row else 0)
-                        cur.execute(f"SELECT * FROM listings WHERE {fb_sql} ORDER BY id DESC LIMIT {p} OFFSET {p}", list(fp)+[limit, offset])
-                        rows = cur.fetchall() or []
-                    except Exception as qerr2:
-                        logger.error(f"api_explorer_listings fallback failed: {qerr2}")
-                        try:
-                            cur.execute(
-                                f"SELECT * FROM listings WHERE (status IS NULL OR status != 'deleted') ORDER BY id DESC LIMIT {p} OFFSET {p}",
-                                [limit, offset],
-                            )
-                            rows = cur.fetchall() or []
-                            total = len(rows)
-                        except Exception as qerr3:
-                            logger.error(f"api_explorer_listings last-resort failed: {qerr3}")
-                            rows = []
-                            total = 0
-
-                items = []
-                for row in rows:
-                    item = dict(row) if isinstance(row, dict) else dict(zip([c[0] for c in cur.description], row))
-                    if isinstance(item.get('extra_data'), str):
-                        try:
-                            item['extra_data'] = json.loads(item['extra_data'])
-                        except Exception:
-                            item['extra_data'] = {}
+                    if item.get('id') is not None:
+                        cur.execute(f"SELECT photo_id FROM listing_photos WHERE listing_id = {p}", (item['id'],))
+                        photos = [r['photo_id'] if isinstance(r, dict) else r[0] for r in (cur.fetchall() or [])]
+                except Exception:
                     photos = []
+                if not photos and item.get('photo_id'):
+                    photos = [item['photo_id']]
+                item['photos'] = photos
+                if item.get('view_count') is None:
+                    item['view_count'] = 0
+                if item.get('created_at') and not isinstance(item['created_at'], str):
                     try:
-                        if item.get('id') is not None:
-                            cur.execute(f"SELECT photo_id FROM listing_photos WHERE listing_id = {p}", (item['id'],))
-                            photos = [r['photo_id'] if isinstance(r, dict) else r[0] for r in (cur.fetchall() or [])]
+                        item['created_at'] = item['created_at'].isoformat()
                     except Exception:
-                        photos = []
-                    if not photos and item.get('photo_id'):
-                        photos = [item['photo_id']]
-                    item['photos'] = photos
-                    if item.get('view_count') is None:
-                        item['view_count'] = 0
-                    if item.get('created_at') and not isinstance(item['created_at'], str):
-                        try:
-                            item['created_at'] = item['created_at'].isoformat()
-                        except Exception:
-                            item['created_at'] = str(item['created_at'])
-                    extra = item.get('extra_data') if isinstance(item.get('extra_data'), dict) else {}
-                    seller = (
-                        item.get('user_chat_id') or item.get('user_id') or item.get('telegram_id')
-                        or item.get('owner_id') or item.get('seller_id')
-                        or extra.get('user_id') or extra.get('telegram_id') or extra.get('chat_id')
-                    )
-                    uname = (
-                        item.get('telegram_username') or item.get('telegram_user') or item.get('user_name')
-                        or extra.get('telegram_user') or extra.get('telegram_username') or extra.get('username')
-                    )
-                    if not uname:
-                        import re as _re
-                        _m = _re.search(r'@([A-Za-z0-9_]{4,})', str(item.get('description') or ''))
-                        if _m:
-                            uname = _m.group(1)
-                    if uname:
-                        uname = str(uname).lstrip('@')
-                    if not seller and uname:
-                        seller = uname
-                    item['user_id'] = seller
-                    item['seller_id'] = seller
-                    item['telegram_id'] = seller or item.get('telegram_id')
-                    item['user_chat_id'] = item.get('user_chat_id') or seller
-                    item['telegram_username'] = uname or ''
-                    items.append(item)
+                        item['created_at'] = str(item['created_at'])
+                items.append(item)
 
-                # STRICT Python post-filter — CONTENT beats wrong main_category tags
-                cat_l2 = str(category or "").strip().lower()
-                def _row_signals(it):
-                    main = str(it.get("main_category") or "").lower()
-                    catv = str(it.get("category") or "").lower()
-                    sub = str(it.get("sub_category") or "").lower()
-                    brand = str(it.get("brand") or "").lower()
-                    model = str(it.get("model") or "").lower()
-                    title = str(it.get("title") or it.get("name") or "").lower()
-                    desc = str(it.get("description") or "").lower()
-                    extra = it.get("extra_data") or {}
-                    if isinstance(extra, str):
-                        try:
-                            import json as _json
-                            extra = _json.loads(extra)
-                        except Exception:
-                            extra = {}
-                    if not isinstance(extra, dict):
-                        extra = {}
-                    house_type = str(extra.get("house_type") or extra.get("property_type") or extra.get("location_area") or "").lower()
-                    content = " ".join([sub, brand, model, title, desc, house_type])
-                    tags = " ".join([main, catv])
-                    house_kw = ("ቤት", "house", "apartment", "villa", "ንብረት", "property", "condo", "መሬት", "land", "አፓርታማ", "የማሸጫ ቤት")
-                    car_kw = ("toyota", "hyundai", "suzuki", "vits", "vitz", "chassis", "sedan", "suv", "pickup", "corolla", "raize", "yaris", "vehicle", "መኪና", "የመኪና")
-                    content_house = any(k in content for k in house_kw)
-                    content_car = any(k in content for k in car_kw)
-                    tag_house = any(k in tags for k in ("ቤት", "house", "property", "ንብረት", "apartment", "villa", "condo", "መሬት", "land"))
-                    tag_car = any(k in tags for k in ("መኪና", "car", "vehicle", "auto"))
-                    is_house = False
-                    is_car = False
-                    if content_house and not content_car:
-                        is_house = True
-                    elif content_car and not content_house:
-                        is_car = True
-                    elif content_house and content_car:
-                        is_house = any(k in (sub + " " + title) for k in ("ቤት", "house", "apartment", "villa", "አፓርታማ", "ንብረት"))
-                        is_car = not is_house
-                    else:
-                        if tag_house and not tag_car:
-                            is_house = True
-                        elif tag_car and not tag_house:
-                            is_car = True
-                        elif tag_house:
-                            is_house = True
-                        elif tag_car:
-                            is_car = True
-                    return is_car, is_house
-
-                if cat_l2 in ("ቤት", "house", "home", "property", "realestate", "real_estate", "ንብረት"):
-                    items = [it for it in items if _row_signals(it)[1]]
-                elif cat_l2 in ("መኪና", "car", "cars", "vehicle", "vehicles", "auto", "መኪኖች"):
-                    items = [it for it in items if _row_signals(it)[0]]
-
-                safe_items = [_safe(it) for it in items]
-                # When strict category yields zero rows, return empty (do NOT fall back to all)
-                if cat_l2 in ("ቤት", "house", "home", "property", "realestate", "real_estate", "ንብረት",
-                              "መኪና", "car", "cars", "vehicle", "vehicles", "auto", "መኪኖች"):
-                    total = len(safe_items)
-            finally:
-                if conn:
-                    try:
-                        conn.close()
-                    except Exception:
-                        pass
-
+            safe_items = [_safe(it) for it in items]
             return jsonify({
                 "status": "success",
                 "page": page,
@@ -4117,6 +3954,7 @@ function shareContract() {{
                 "has_more": bool(offset + limit < (total or 0)),
                 "items": safe_items,
             })
+
         except Exception as e:
             logger.error(f"api_explorer_listings error: {e}", exc_info=True)
             return jsonify({
@@ -4127,125 +3965,13 @@ function shareContract() {{
                 "has_more": False,
                 "items": [],
             }), 200
-
-
-    import re
-    import io
-    import base64
-
-    try:
-        from PIL import Image, ImageEnhance, ImageDraw, ImageFont
-        PIL_AVAILABLE = True
-    except ImportError:
-        Image = None
-        ImageEnhance = None
-        ImageDraw = None
-        ImageFont = None
-        PIL_AVAILABLE = False
-
-
-    def process_listing_image(image_input, enhance: bool = True, watermark_text: str = "Adika Marketplace"):
-        """
-        Enhance listing image (contrast, brightness, sharpness) and add Adika Marketplace watermark.
-        Accepts: base64 string, data URL, bytes, or PIL Image.
-        Returns: base64 data URL string (data:image/jpeg;base64,...)
-        """
-        if not PIL_AVAILABLE or Image is None:
-            if isinstance(image_input, (bytes, bytearray)):
-                b64 = base64.b64encode(image_input).decode("utf-8")
-                return f"data:image/jpeg;base64,{b64}"
-            elif isinstance(image_input, str):
-                if image_input.startswith("data:image/"):
-                    return image_input
-                return f"data:image/jpeg;base64,{image_input}"
-            return image_input
-
-        try:
-            img = None
-            if isinstance(image_input, Image.Image):
-                img = image_input
-            elif isinstance(image_input, (bytes, bytearray)):
-                img = Image.open(io.BytesIO(image_input))
-            elif isinstance(image_input, str):
-                clean_b64 = image_input
-                if "," in image_input and image_input.startswith("data:"):
-                    clean_b64 = image_input.split(",", 1)[1]
-                img_bytes = base64.b64decode(clean_b64)
-                img = Image.open(io.BytesIO(img_bytes))
-            else:
-                return image_input
-
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
-
-            # 1. Image Enhancement
-            if enhance:
+        finally:
+            if conn:
                 try:
-                    enh_contrast = ImageEnhance.Contrast(img)
-                    img = enh_contrast.enhance(1.12)
-                    enh_bright = ImageEnhance.Brightness(img)
-                    img = enh_bright.enhance(1.04)
-                    enh_sharp = ImageEnhance.Sharpness(img)
-                    img = enh_sharp.enhance(1.15)
-                except Exception as e:
-                    logger.warning(f"Image enhancement error: {e}")
-
-            # 2. Watermarking
-            try:
-                width, height = img.size
-                draw = ImageDraw.Draw(img)
-                font_size = max(14, int(min(width, height) * 0.042))
-                try:
-                    font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+                    conn.close()
                 except Exception:
-                    try:
-                        font = ImageFont.truetype("arial.ttf", font_size)
-                    except Exception:
-                        font = ImageFont.load_default()
-
-                text = watermark_text or "Adika Marketplace"
-                # Calculate text bounding box
-                try:
-                    bbox = draw.textbbox((0, 0), text, font=font)
-                    tw = bbox[2] - bbox[0]
-                    th = bbox[3] - bbox[1]
-                except Exception:
-                    tw = len(text) * (font_size * 0.6)
-                    th = font_size
-
-                pad_x = 12
-                pad_y = 6
-                margin = 16
-                x2 = width - margin
-                y2 = height - margin
-                x1 = x2 - tw - (pad_x * 2)
-                y1 = y2 - th - (pad_y * 2)
-
-                # Draw semi-transparent pill overlay
-                overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
-                overlay_draw = ImageDraw.Draw(overlay)
-                overlay_draw.rounded_rectangle(
-                    [x1, y1, x2, y2],
-                    radius=8,
-                    fill=(15, 23, 42, 180),
-                    outline=(22, 172, 189, 230),
-                    width=2
-                )
-                overlay_draw.text((x1 + pad_x, y1 + pad_y), text, font=font, fill=(255, 255, 255, 255))
-
-                img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
-            except Exception as e:
-                logger.warning(f"Watermark error: {e}")
-
-            # Save to JPEG buffer
-            buf = io.BytesIO()
-            img.save(buf, format="JPEG", quality=85, optimize=True)
-            out_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-            return f"data:image/jpeg;base64,{out_b64}"
-        except Exception as e:
-            logger.error(f"process_listing_image error: {e}")
-            return image_input
-
+                    pass
+    # ============================ END SECTION 18 ============================
 
     # ============================ END SECTION 18 ============================
     # ==============================================================================
