@@ -10701,31 +10701,44 @@
       return it;
     }
 
-    function hardFilter(items, prefs) {
+        function hardFilter(items, prefs) {
       if (!items || !items.length) return [];
       prefs = prefs || {};
-      function parsePrice(v) {
+      function parsePriceLocal(v) {
         var n = Number(String(v == null ? "" : v).replace(/[^\d.]/g, ""));
         return isFinite(n) ? n : 0;
       }
-      var maxP = parsePrice(prefs.budget_max || prefs.max_price || prefs.price_max);
-      var minP = parsePrice(prefs.budget_min || prefs.min_price || prefs.price_min);
-      if ((!maxP || maxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
+      function inferItemKind(it, extra) {
+        extra = extra || {};
+        var k = String(it.item_kind || extra.item_kind || "").toLowerCase();
+        if (k) return k;
+        var blob = [it.title, it.sub_category, it.description, extra.item_title].join(" ").toLowerCase();
+        if (/tv|samsung|lg|sony|phone|iphone|laptop|ኤሌክትሮ|ቴሌቪ|electronics/.test(blob)) return "electronics";
+        if (/motor|ሞተር|bike|scooter|bajaj|bikes/.test(blob)) return "bikes";
+        if (/sofa|table|chair|furniture|ፈርኒቸ|የቤት ዕቃ/.test(blob)) return "furniture";
+        if (/fridge|washer|oven|appliance|ማቀዝቀዣ/.test(blob)) return "appliances";
+        if (/shirt|dress|shoe|ልብስ|ጫማ|clothing/.test(blob)) return "clothing";
+        return "";
+      }
+      function inferCarSub(it, extra) {
+        extra = extra || {};
+        var s = String(extra.car_model || extra.car_type || it.sub_category || it.model || "").toLowerCase();
+        if (s) return s;
+        return String(it.title || "").toLowerCase();
+      }
+
+      var prefMaxP = parsePriceLocal(prefs.budget_max || prefs.max_price || prefs.price_max);
+      var prefMinP = parsePriceLocal(prefs.budget_min || prefs.min_price || prefs.price_min);
+      if ((!prefMaxP || prefMaxP >= 999999999) && (prefs.budget_range || prefs.budget)) {
         var t = String(prefs.budget_range || prefs.budget || "");
         var parts = t.split(/[-–—toእስከ]/i);
-        var nums = parts.map(parsePrice).filter(function (n) { return n > 0; });
-        if (nums.length >= 2) { minP = Math.min(nums[0], nums[1]); maxP = Math.max(nums[0], nums[1]); }
-        else if (nums.length === 1) { maxP = nums[0]; }
+        var nums = parts.map(parsePriceLocal).filter(function (n) { return n > 0; });
+        if (nums.length >= 2) { prefMinP = Math.min(nums[0], nums[1]); prefMaxP = Math.max(nums[0], nums[1]); }
+        else if (nums.length === 1) { prefMaxP = nums[0]; }
       }
-      try {
-        var likeP = parsePrice(localStorage.getItem("adika_last_like_price") || 0);
-        var viewP = parsePrice(localStorage.getItem("adika_last_view_price") || 0);
-        var elastic = Math.max(likeP * 1.25, viewP * 1.15, maxP || 0);
-        if (elastic > (maxP || 0)) maxP = elastic;
-      } catch (eEl) {}
 
-      var cats = prefs.categories || [];
       var wantCar = false, wantHouse = false, wantItem = false;
+      var cats = prefs.categories || [];
       cats.forEach(function (c) {
         var cl = String(c).toLowerCase();
         if (/እቃ|item|goods|ቁሳቁስ/.test(cl)) wantItem = true;
@@ -10736,35 +10749,109 @@
       if (/እቃ|item|goods|ቁሳቁስ/.test(mc)) wantItem = true;
       if (/መኪና|car/.test(mc)) wantCar = true;
       if (/ቤት|house/.test(mc)) wantHouse = true;
+
+      var carMaxP = prefMaxP;
+      var carSubs = [];
+      var houseSubs = [];
+      var itemSubs = [];
+      var prefKind = String(prefs.item_kind || (prefs.specs && prefs.specs.item_kind) || "").toLowerCase();
+      if (wantItem && prefKind) itemSubs.push(prefKind);
+
+      var interests = [];
+      try { interests = JSON.parse(localStorage.getItem("adika_interests") || "[]"); } catch (eP) { interests = []; }
+      if (!Array.isArray(interests)) interests = [];
+      var now = Date.now();
+      interests = interests.filter(function (int) { return int && (now - (int.ts || 0) < 30 * 60 * 1000); });
+
+      interests.forEach(function (int) {
+        var typ = String(int.type || "").toLowerCase();
+        var sub = String(int.sub || "").toLowerCase();
+        if (typ === "car") {
+          wantCar = true;
+          if (int.maxPrice && int.maxPrice > 0) {
+            var stretch = int.maxPrice * 1.15;
+            if (stretch > carMaxP) carMaxP = stretch;
+          }
+          if (sub && carSubs.indexOf(sub) < 0) carSubs.push(sub);
+        } else if (typ === "house") {
+          wantHouse = true;
+          if (sub && houseSubs.indexOf(sub) < 0) houseSubs.push(sub);
+        } else if (typ === "item") {
+          wantItem = true;
+          if (sub && itemSubs.indexOf(sub) < 0) itemSubs.push(sub);
+        }
+      });
+
       if (!wantCar && !wantHouse && !wantItem) {
         wantCar = true; wantHouse = true; wantItem = true;
       }
 
-      function bucket(it) {
+      function extraOf(it) {
         var extra = it.extra_data || {};
         if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        return extra || {};
+      }
+      function bucket(it) {
+        var extra = extraOf(it);
         if (it.item_kind || extra.item_kind) return "item";
         var raw = String(it.main_category || it.category || "").toLowerCase();
         if (/እቃ|item|goods|ቁሳቁስ/.test(raw)) return "item";
         if (/ቤት|house|property|ንብረት/.test(raw)) return "house";
         if (/መኪና|car/.test(raw)) return "car";
+        var infer = inferItemKind(it, extra);
+        if (infer) return "item";
         return "other";
+      }
+      function subHit(hay, list) {
+        if (!list || !list.length) return true;
+        hay = String(hay || "").toLowerCase();
+        if (!hay) return true;
+        for (var i = 0; i < list.length; i++) {
+          var s = list[i];
+          if (!s) continue;
+          if (hay.indexOf(s) >= 0 || s.indexOf(hay) >= 0) return true;
+          if (s.length >= 4 && hay.indexOf(s.slice(0, 4)) >= 0) return true;
+        }
+        return false;
       }
 
       return items.filter(function (it) {
         if (!it) return false;
         var typ = String(it.listing_type || it.req_type || it.type || "SELL").toUpperCase();
         if (/BUY|REQUEST|WANT/.test(typ) || it.is_buyer_request) return false;
+        var extra = extraOf(it);
         var b = bucket(it);
-        if (b === "item") return !!wantItem;
-        if (b === "house") return !!wantHouse;
+
+        if (b === "item") {
+          if (!wantItem) return false;
+          var kind = inferItemKind(it, extra);
+          return subHit(kind + " " + (it.title || "") + " " + (it.sub_category || ""), itemSubs);
+        }
+        if (b === "house") {
+          if (!wantHouse) return false;
+          var priceH = parsePriceLocal(it.price || it.asking_price || 0);
+          if (prefMaxP > 0 && prefMaxP < 999999999 && priceH > 0) {
+            if (priceH > prefMaxP) return false;
+            if (prefMinP > 0 && priceH < prefMinP) return false;
+          }
+          if (houseSubs.length) {
+            var hblob = [it.sub_category, extra.house_type, extra.property_type, it.title].join(" ").toLowerCase();
+            return subHit(hblob, houseSubs);
+          }
+          return true;
+        }
         if (b === "car") {
           if (!wantCar) return false;
-          var price = parsePrice(it.price || it.asking_price || 0);
-          if (maxP > 0 && maxP < 999999999) {
-            if (price <= 0) return false;
-            if (price > maxP) return false;
-            if (minP > 0 && price < minP) return false;
+          var priceC = parsePriceLocal(it.price || it.asking_price || 0);
+          if (carMaxP > 0 && carMaxP < 999999999) {
+            if (priceC <= 0) return false;
+            if (priceC > carMaxP) return false;
+          }
+          if (carSubs.length) {
+            var cblob = inferCarSub(it, extra) + " " + (it.title || "") + " " + (it.description || "");
+            if (!subHit(cblob, carSubs)) {
+              if (priceC > prefMaxP && prefMaxP > 0) return false;
+            }
           }
           return true;
         }
