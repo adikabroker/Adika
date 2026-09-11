@@ -8982,11 +8982,12 @@
     var catEl = document.querySelector('input[name="listCat"]:checked');
     var cat = catEl ? catEl.value : "Car";
     var u = tgUser();
+    var itemKind = (cat === "Item") ? (((el("listItemKind") || {}).value) || "") : "";
     return {
       title: (el("listTitle") || {}).value || "",
       main_category: cat === "House" ? "ቤት" : (cat === "Item" ? "እቃ" : "መኪና"),
       category: cat === "House" ? "ቤት" : (cat === "Item" ? "እቃ" : "መኪና"),
-      item_kind: (el("listItemKind") || {}).value || "",
+      item_kind: itemKind,
       listing_type: "SELL",
       price: Number((el("listPrice") || {}).value || 0) || 0,
       negotiable: !!(el("listNeg") || {}).checked,
@@ -9008,7 +9009,6 @@
       status: "active"
     };
   }
-
   function requestPayload() {
     var catEl = document.querySelector('input[name="reqCat"]:checked');
     var cat = catEl ? catEl.value : "Car";
