@@ -1539,10 +1539,10 @@
         var h=0; for(var i=0;i<id.length;i++) h=((h<<5)-h)+id.charCodeAt(i);
         return Math.abs(h%87)+12;
       }
-    function isBuyItem(it) {
-    var t = ((it && it.req_type) || "") + " " + ((it && it.action_type) || "") + " " + ((it && it.listing_type) || "");
-    return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t) || it.is_buyer_request;
-  }
+      function isBuyItem(it){
+        var t=((it&&it.req_type)||"")+" "+((it&&it.action_type)||"")+" "+((it&&it.listing_type)||"");
+        return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t);
+      }
       function paint(items){
         var g=document.getElementById("grid");
         if(!g) return;
@@ -3526,287 +3526,439 @@
 
 <!-- ======================= END SECTION 17 ======================= -->
 <!-- ================================================================ -->
-<!-- SECTION 18 — JS: TABS, SEARCH & BUYERS / SELLERS SWITCHER -->
+<!-- SECTION 18 — JS: FAVORITES & RECOMMENDATIONS -->
+<!-- Change/maintain this entire section as one unit. -->
 <!-- ================================================================ -->
-<script>
-(function () {
-  "use strict";
+    var savedFeedScrollY = 0;
 
-  var memoryStore = window.memoryStore || {};
-  window.memoryStore = memoryStore;
-  window._lsGet = function(k){ return memoryStore[k] != null ? memoryStore[k] : null; };
-  window._lsSet = function(k,v){ memoryStore[k] = String(v); };
-  window._lsDel = function(k){ delete memoryStore[k]; };
+      function pushViewHistory(item) {
+      try {
+        if (!item || typeof item !== "object") return;
+        var extra = item.extra_data || {};
+        if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+        var bm = {};
+        try { bm = extractBrandModel(item, extra) || {}; } catch (e) {}
+        var priceNum = 0;
+        try { priceNum = Number(String(item.price || "").replace(/[^0-9.]/g, "")) || 0; } catch (e) {}
 
-  var tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-  if (tg) {
-    try { tg.ready(); tg.expand(); tg.setHeaderColor('#16acbd'); tg.setBackgroundColor('#b5eff3'); } catch (e) {}
-  }
-
-  var savedFeedScrollY = 0;
-  var favorites = {};
-  try {
-    favorites = JSON.parse(_lsGet('adika_favs') || '{}');
-  } catch(e) {}
-
-  function toggleFav(id) {
-    var wasFav = Boolean(favorites[id]);
-    if (favorites[id]) delete favorites[id];
-    else favorites[id] = true;
-    try { _lsSet('adika_favs', JSON.stringify(favorites)); } catch(e){}
-    try {
-      var uid = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) || 0;
-      if (uid && id) {
-        fetch("/api/favorites/toggle", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: uid,
-            chat_id: uid,
-            listing_id: id,
-            action: wasFav ? "remove" : "add"
-          })
-        }).catch(function(){});
-      }
-    } catch (e) {}
-  }
-
-  var state = window.__adikaState = {
-    tab: "marketplace", // marketplace or buy
-    feedMode: "foryou",
-    category: "",
-    q: "",
-    page: 1,
-    hasMore: true,
-    loading: false,
-    items: [],
-    selectedItem: null
-  };
-
-  function setLanguage(lang) {
-    _lsSet('adika_lang', lang);
-    var qInput = document.getElementById("q");
-    var langAmBtn = document.getElementById("langAmBtn");
-    var langEnBtn = document.getElementById("langEnBtn");
-    if (lang === 'en') {
-      document.body.classList.add('lang-en-active');
-      if(langEnBtn) langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
-      if(langAmBtn) langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
-      if (qInput) qInput.placeholder = "Search listings...";
-    } else {
-      document.body.classList.remove('lang-en-active');
-      if(langAmBtn) langAmBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all bg-white text-[#16acbd] shadow-sm";
-      if(langEnBtn) langEnBtn.className = "px-2 py-1 rounded-lg text-xs font-extrabold transition-all text-white/80 hover:text-white";
-      if (qInput) qInput.placeholder = "ንብረት ይፈልጉ...";
-    }
-  }
-
-  var langAmBtn = document.getElementById("langAmBtn");
-  var langEnBtn = document.getElementById("langEnBtn");
-  if(langAmBtn) langAmBtn.onclick = function() { setLanguage('am'); };
-  if(langEnBtn) langEnBtn.onclick = function() { setLanguage('en'); };
-  setLanguage(_lsGet('adika_lang') || 'am');
-
-  function esc(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  }
-
-  function relativeTime(iso) {
-    if (!iso) return "";
-    try {
-      var secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-      if (secs < 60) return "Just now";
-      if (secs < 3600) return Math.floor(secs / 60) + "m ago";
-      if (secs < 86400) return Math.floor(secs / 3600) + "h ago";
-      if (secs < 86400 * 30) return Math.floor(secs / 86400) + "d ago";
-      return Math.floor(secs / (86400 * 365)) + "y ago";
-    } catch (e) { return ""; }
-  }
-
-  function formatListingPrice(raw, item) {
-    function fmt(n) {
-      n = Math.round(Number(n) || 0);
-      if (n >= 1000000) {
-        var m = n / 1000000;
-        return (m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)) + "M";
-      }
-      if (n >= 1000) {
-        var k = n / 1000;
-        return (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + "K";
-      }
-      return n.toLocaleString("en-US");
-    }
-    try {
-      var it = null;
-      if (item && typeof item === "object") it = item;
-      else if (raw && typeof raw === "object") it = raw;
-      if (it) {
-        var bmin = Number(it.budget_min || it.min_budget || 0) || 0;
-        var bmax = Number(it.budget_max || it.max_budget || 0) || 0;
-        var bflat = Number(it.budget || 0) || 0;
-        if (bmin > 0 && bmax > 0 && bmax < bmin) { var tmp = bmin; bmin = bmax; bmax = tmp; }
-        var hasBudget = bmin > 0 || bmax > 0 || bflat > 0;
-        var priceN = Number(String(it.price != null ? it.price : "").replace(/[^\d.]/g, "")) || 0;
-        var blob = [it.req_type, it.action_type, it.listing_type, it.type, it.status].join(" ");
-        var isBuy = !!(it.is_buyer_request || /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(blob));
-        if (hasBudget && (isBuy || !(priceN > 0))) {
-          if (bmin > 0 && bmax > 0) return fmt(bmin) + " – " + fmt(bmax) + " ETB";
-          if (bmax > 0) return "እስከ " + fmt(bmax) + " ETB";
-          if (bmin > 0) return "ከ " + fmt(bmin) + " ETB";
-          if (bflat > 0) return fmt(bflat) + " ETB";
+        var mc = String(item.main_category || item.category || "").toLowerCase();
+        var itemKind = String(extra.item_kind || item.item_kind || "").toLowerCase();
+        var blob = [item.title, item.sub_category, item.description].join(" ").toLowerCase();
+        if (!itemKind) {
+          if (/tv|samsung|lg|phone|laptop|ኤሌክትሮ|ቴሌቪ|electronics/.test(blob)) itemKind = "electronics";
+          else if (/motor|ሞተር|bike|scooter|bajaj/.test(blob)) itemKind = "bikes";
+          else if (/sofa|furniture|ፈርኒቸ/.test(blob)) itemKind = "furniture";
         }
-        raw = it.price != null ? it.price : raw;
-      }
-    } catch (e) {}
-    if (raw == null || raw === "" || raw === "—") return "ለዋጋ ደውሉ";
-    var cleaned = String(raw).replace(/ETB/gi, "").replace(/ብር/g, "").replace(/,/g, "").trim();
-    var digits = cleaned.replace(/[^\d.]/g, "");
-    var n = Number(digits);
-    if (!isFinite(n) || n <= 0 || n > 300000000) return "ለዋጋ ደውሉ";
-    return Math.round(n).toLocaleString("en-US") + " ETB";
-  }
-  window.formatListingPrice = formatListingPrice;
-
-  function getValidImageUrl(photoData) {
-    if (photoData == null || photoData === "") return null;
-    try {
-      if (Array.isArray(photoData)) {
-        for (var i = 0; i < photoData.length; i++) {
-          var u = getValidImageUrl(photoData[i]);
-          if (u) return u;
+        var viewCat = "";
+        var viewSub = "";
+        if (/እቃ|item|goods|ቁሳቁስ/.test(mc) || itemKind) {
+          viewCat = "item";
+          viewSub = itemKind || "";
+        } else if (/ቤት|house|property|ንብረት/.test(mc)) {
+          viewCat = "house";
+          viewSub = String(extra.house_type || extra.property_type || item.sub_category || "").toLowerCase();
+        } else {
+          viewCat = "car";
+          viewSub = String(extra.car_model || extra.car_type || item.sub_category || item.title || bm.display || "").toLowerCase();
         }
-        return null;
-      }
-      if (typeof photoData === "object") {
-        return getValidImageUrl(photoData.url || photoData.src || photoData.image_url || photoData.photo_url || null);
-      }
-      var s = String(photoData).trim();
-      if (!s || s === "null" || s === "undefined") return null;
-      if (/^(https?:|data:|blob:|\/\/)/i.test(s)) return s;
-      return s;
-    } catch (e) { return null; }
-  }
-  window.getValidImageUrl = getValidImageUrl;
 
-  function parsePhotosList(item) {
-    if (!item) return [];
-    var extra = item.extra_data || {};
-    if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-    var candidates = [item.photos, item.photo_urls, item.image_url, item.images, item.photo_id, extra.photos, extra.image_url];
-    var out = [];
-    candidates.forEach(function(c) {
-      var u = getValidImageUrl(c);
-      if (u && out.indexOf(u) < 0) out.push(u);
-    });
-    return out;
-  }
+        if (typeof window.adikaAddInterest === "function") {
+          window.adikaAddInterest({
+            type: viewCat,
+            sub: viewSub,
+            price: priceNum,
+            weight: 2,
+            reason: "detail"
+          });
+        } else {
+          var pool = [];
+          try { pool = JSON.parse(localStorage.getItem("adika_interests") || "[]"); } catch (eP) { pool = []; }
+          if (!Array.isArray(pool)) pool = [];
+          var key = viewCat + "|" + viewSub;
+          var found = false;
+          for (var i = 0; i < pool.length; i++) {
+            if ((pool[i].type || "") + "|" + (pool[i].sub || "") === key) {
+              pool[i].ts = Date.now();
+              pool[i].weight = (pool[i].weight || 0) + 2;
+              if (priceNum > (pool[i].maxPrice || 0)) pool[i].maxPrice = priceNum;
+              found = true;
+              break;
+            }
+          }
+          if (!found && viewCat) {
+            pool.push({ type: viewCat, sub: viewSub, maxPrice: priceNum || 0, weight: 2, ts: Date.now() });
+          }
+          localStorage.setItem("adika_interests", JSON.stringify(pool.slice(-12)));
+        }
+        try {
+          localStorage.setItem("adika_last_view_category", viewCat);
+          localStorage.setItem("adika_last_view_sub", viewSub);
+          localStorage.setItem("adika_last_view_ts", String(Date.now()));
+          if (priceNum > 0) localStorage.setItem("adika_last_view_price", String(priceNum));
+          var vm = bm.display || item.sub_category || extra.car_model || "";
+          if (vm) localStorage.setItem("adika_last_view_model", String(vm));
+        } catch (eLs) {}
 
-  // ----------------------------------------------------
-  // TAB SWITCHING LOGIC (Marketplace vs Buyers Tab)
-  // ----------------------------------------------------
-  var tabSell = document.getElementById("tabSell");
-  var tabBuy = document.getElementById("tabBuy");
-
-  function markTabs(isBuy) {
-    state.tab = isBuy ? "buy" : "marketplace";
-    if (tabSell) {
-      tabSell.className = isBuy 
-        ? "py-1 rounded-lg text-xs font-bold transition-all text-white/95 hover:text-white flex items-center justify-center gap-1"
-        : "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1";
+        var entry = {
+          id: item.id,
+          category: item.main_category || item.category || "",
+          price: priceNum,
+          fuel_type: extra.fuel_type || "",
+          model: bm.display || item.sub_category || extra.car_model || "",
+          brand: bm.brand || ""
+        };
+        var hist = [];
+        try { hist = JSON.parse(_lsGet("viewHistory") || "[]"); } catch (e) { hist = []; }
+        if (!Array.isArray(hist)) hist = [];
+        hist = hist.filter(function (h) { return String(h.id) !== String(entry.id); });
+        hist.unshift(entry);
+        hist = hist.slice(0, 3);
+        _lsSet("viewHistory", JSON.stringify(hist));
+        try {
+          var intent = hist.map(function (h) {
+            return { category: h.category || "", price: h.price || 0, model: h.model || "", brand: h.brand || "" };
+          });
+          _lsSet("adik_user_intent", JSON.stringify(intent));
+        } catch (e2) {}
+      } catch (e) {}
     }
-    if (tabBuy) {
-      tabBuy.className = isBuy 
-        ? "py-1 rounded-lg text-xs font-bold transition-all bg-white text-[#16acbd] shadow-sm flex items-center justify-center gap-1"
-        : "py-1 rounded-lg text-xs font-bold transition-all text-white/95 hover:text-white flex items-center justify-center gap-1";
-    }
-  }
-  window.markTabs = markTabs;
 
-  function loadListings(extraQuery) {
-    var qBox = document.getElementById("q");
-    var searchTxt = qBox ? (qBox.value || "").trim() : "";
-    var qs = "page=1&limit=40&order=DESC&active_only=1" + (extraQuery || "");
-    if (searchTxt) qs += "&q=" + encodeURIComponent(searchTxt);
+
+    function getViewHistory() {
+      try {
+        var hist = JSON.parse(_lsGet("viewHistory") || "[]");
+        if (!Array.isArray(hist) || !hist.length) hist = JSON.parse(_lsGet("adik_user_intent") || "[]");
+        return Array.isArray(hist) ? hist : [];
+      } catch (e) { return []; }
+    }
+
+    function renderRecoCards(items, intentLabel) {
+      var sc = document.getElementById("modalRecoScroll");
+      var title = document.getElementById("modalRecoTitle");
+      var intentEl = document.getElementById("modalRecoIntent");
+      if (!sc) return;
+      if (intentEl) intentEl.textContent = intentLabel || "";
+      if (title) {
+        var isCar = true;
+        try {
+          isCar = !(state.selectedItem && (state.selectedItem.main_category === "ቤት" || state.selectedItem.category === "ቤት"));
+        } catch (e) {}
+        title.textContent = isCar ? "🤖 ለእርስዎ የተመረጡ ተቀራራቢ መኪኖች" : "🤖 ለእርስዎ የተመረጡ ተቀራራቢ ንብረቶች";
+      }
+      if (!items || !items.length) {
+        sc.innerHTML = '<div class="text-[10px] text-slate-400 font-medium py-2">ተቀራራቢ ዝርዝር በቅርቡ...</div>';
+        return;
+      }
+      sc.innerHTML = items.map(function (it) {
+        var img = "";
+        try {
+          var list = collectPhotoUrls(it);
+          img = (list && list[0]) || getValidImageUrl(it.photo_urls) || getValidImageUrl(it.photos) || "";
+        } catch (e3) { img = ""; }
+        var price = formatListingPrice(it.price, it);
+        var name = it.title || it.sub_category || it.model || it.main_category || "ንብረት";
+        return (
+          '<button type="button" class="reco-card shrink-0 text-left active:scale-95 transition-all" data-id="' + esc(String(it.id || "")) + '">' +
+            '<div class="reco-img-wrap">' +
+              (img
+                ? '<img src="' + escSrc(String(img)) + '" alt="" loading="lazy" onerror="this.onerror=null;this.style.display=\'none\';" />'
+                : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">🚗</div>') +
+            '</div>' +
+            '<div class="reco-body">' +
+              '<p class="reco-name">' + esc(name) + '</p>' +
+              '<p class="reco-price">💰 ' + esc(price) + '</p>' +
+            '</div>' +
+          '</button>'
+        );
+      }).join("");
+      sc.querySelectorAll(".reco-card").forEach(function (btn) {
+        btn.onclick = function (ev) {
+          try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (e0) {}
+          var id = btn.getAttribute("data-id");
+          var found = (items || []).find(function (x) { return String(x.id) === String(id); });
+          if (found) {
+            if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(found);
+            else openDetailModal(found);
+            return;
+          }
+          var f2 = (state.items || window.__adikaLiveItems || []).find(function (x) { return String(x.id) === String(id); });
+          if (f2) openDetailModal(f2);
+          else if (typeof window.openVehicleDetail === "function") window.openVehicleDetail(id);
+        };
+      });
+    }
+
+    function loadRecommendations(item) {
+      var hist = getViewHistory();
+      var sc = document.getElementById("modalRecoScroll") || document.getElementById("recommendationsContainer");
+      var alertCard = document.getElementById("modalAlertCard");
+      var alertText = document.getElementById("modalAlertText");
+      if (sc) sc.innerHTML = '<div class="text-[10px] text-slate-400 py-2">⏳ በመፈለግ ላይ...</div>';
+
+      function categoryBucket(raw) {
+        var s = String(raw || "").toLowerCase().trim();
+        if (!s) return "other";
+        if (/ቤት|house|home|apartment|real.?estate|property|ቪላ|አፓርታ|መሬት|land|condo/.test(s)) return "house";
+        if (/መኪና|car|vehicle|auto|truck|ቶዮታ|toyota|hyundai/.test(s)) return "car";
+        return "other";
+      }
+      function parsePriceNum(raw) {
+        try {
+          var n = parseFloat(String(raw == null ? "" : raw).replace(/[^0-9.]/g, ""));
+          return (isFinite(n) && n > 0) ? n : 0;
+        } catch (e) { return 0; }
+      }
+      function sameBucket(a, b) {
+        var ba = categoryBucket(a), bb = categoryBucket(b);
+        if (ba === "other" || bb === "other") {
+          return String(a || "").trim() === String(b || "").trim() && String(a || "").trim() !== "";
+        }
+        return ba === bb;
+      }
+
+      var curId = item && item.id != null ? item.id : null;
+      var curCatRaw = (item && (item.main_category || item.category)) || "";
+      var curCat = curCatRaw;
+      var curBucket = categoryBucket(curCatRaw);
+      var curCatRpc = curBucket === "house" ? "House" : (curBucket === "car" ? "Car" : String(curCatRaw || "Car"));
+      var curSub = (item && (item.sub_category || item.model || item.car_model)) || "";
+      var curPrice = parsePriceNum(item && item.price);
+      var priceLo = curPrice > 0 ? curPrice * 0.65 : 0;
+      var priceHi = curPrice > 0 ? curPrice * 1.35 : 0;
+      var payload = {
+        viewHistory: hist,
+        exclude_id: curId,
+        current_id: curId,
+        current_category: curCatRpc,
+        current_category_raw: curCat,
+        current_bucket: curBucket,
+        current_sub_category: curSub,
+        current_price: curPrice,
+        min_price: priceLo,
+        max_price: priceHi
+      };
+
+      function applyAlert(it) {
+        if (!(alertCard && alertText && it)) return;
+        try {
+          var extra = it.extra_data || {};
+          if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
+          var bm = {};
+          try { bm = extractBrandModel(it, extra) || {}; } catch (e) {}
+          var priceNum = parsePriceNum(it.price);
+          var lo = priceNum ? Math.round(priceNum * 0.85) : 0;
+          var hi = priceNum ? Math.round(priceNum * 1.15) : 0;
+          var modelName = bm.display || it.sub_category || "ንብረት";
+          var rangeTxt = (lo && hi) ? (lo.toLocaleString() + " – " + hi.toLocaleString() + " ETB") : modelName;
+          alertText.textContent = "💡 ከ " + rangeTxt + " / " + modelName + " ጋር ተመሳሳይ አዳዲስ ንብረቶች ሲለቀቁ በቴሌግራም እንዲደርስዎ ይፈልጋሉ?";
+          alertCard.classList.remove("hidden");
+          alertCard.dataset.minPrice = String(lo || 0);
+          alertCard.dataset.maxPrice = String(hi || 999999999);
+          alertCard.dataset.model = modelName;
+          alertCard.dataset.category = it.main_category || it.category || curCatRpc;
+        } catch (eA) {}
+      }
+
+      function strictFilterList(list) {
+        if (!Array.isArray(list)) return [];
+        return list.filter(function (x) {
+          if (!x) return false;
+          if (curId != null && String(x.id) === String(curId)) return false;
+          var cat = x.main_category || x.category || "";
+          if (!sameBucket(cat, curCatRaw) && categoryBucket(cat) !== curBucket) return false;
+          if (curBucket === "car" && categoryBucket(cat) === "house") return false;
+          if (curBucket === "house" && categoryBucket(cat) === "car") return false;
+          var pr = parsePriceNum(x.price);
+          if (curPrice > 0 && pr > 0) {
+            if (pr < priceLo || pr > priceHi) return false;
+          }
+          return true;
+        });
+      }
+
+      function clientFypFallback() {
+        try {
+          var pool = (window.__adikaLiveItems || state.items || []).filter(function (x) {
+            return x && (curId == null || String(x.id) !== String(curId));
+          });
+          pool = strictFilterList(pool);
+          pool = pool.map(function (x) {
+            var score = 0;
+            var cat = x.main_category || x.category || "";
+            var sub = String(x.sub_category || x.model || "");
+            var pr = parsePriceNum(x.price);
+            if (curBucket !== "other" && categoryBucket(cat) === curBucket) score += 50;
+            if (curSub && sub && sub.toLowerCase().indexOf(String(curSub).toLowerCase().slice(0, 4)) >= 0) score += 25;
+            if (curPrice > 0 && pr > 0) {
+              var ratio = pr / curPrice;
+              if (ratio >= 0.85 && ratio <= 1.15) score += 35;
+              else if (ratio >= 0.65 && ratio <= 1.35) score += 20;
+            }
+            try {
+              hist.forEach(function (h) {
+                if (!h) return;
+                if (categoryBucket(h.category) === curBucket) score += 6;
+                if (h.model && sub && sub.toLowerCase().indexOf(String(h.model).toLowerCase().slice(0, 3)) >= 0) score += 8;
+              });
+            } catch (eH) {}
+            return { item: x, score: score };
+          }).sort(function (a, b) { return b.score - a.score; });
+          var top = pool.slice(0, 10).map(function (r) { return r.item; });
+          renderRecoCards(top, curBucket === "house" ? "ተመሳሳይ ቤቶች" : "በተመሳሳይ ምድብ");
+        } catch (e) {
+          renderRecoCards([], "");
+        }
+        applyAlert(item);
+      }
+
+      var apiPromise = fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).then(function (r) {
+        if (!r.ok) throw new Error("api " + r.status);
+        return r.json();
+      }).then(function (data) {
+        var list = (data && (data.items || data.recommendations || data.data)) || [];
+        list = strictFilterList(list);
+        if (list && list.length) {
+          renderRecoCards(list, (data && data.intent_label) || "ለእርስዎ የተመረጡ");
+          applyAlert(item);
+          return true;
+        }
+        return false;
+      });
+
+      var sbPromise = Promise.resolve(false);
+      try {
+        if (window.supabase && typeof window.supabase.rpc === "function") {
+          sbPromise = window.supabase.rpc("get_recommended_vehicles", {
+            current_id: curId,
+            current_category: curCatRpc,
+            current_sub_category: curSub,
+            current_price: curPrice
+          }).then(function (res) {
+            var list = (res && (res.data || res)) || [];
+            if (!Array.isArray(list)) list = [];
+            list = strictFilterList(list);
+            if (list.length) {
+              renderRecoCards(list, "FYP · ተመሳሳይ");
+              applyAlert(item);
+              return true;
+            }
+            return false;
+          }).catch(function () { return false; });
+        }
+      } catch (eSb) { sbPromise = Promise.resolve(false); }
+
+      Promise.all([apiPromise.catch(function () { return false; }), sbPromise])
+        .then(function (results) {
+          if (results[0] || results[1]) return;
+          clientFypFallback();
+        })
+        .catch(function () { clientFypFallback(); });
+    }
+
+    window.openVehicleDetail = function (idOrItem) {
+      try {
+        if (idOrItem && typeof idOrItem === "object") {
+          openDetailModal(idOrItem);
+          return;
+        }
+        var id = idOrItem;
+        var found = (window.__adikaLiveItems || []).find(function (x) { return String(x.id) === String(id); })
+          || (state.items || []).find(function (x) { return String(x.id) === String(id); });
+        if (found) openDetailModal(found);
+        else {
+          fetch("/api/listing/" + encodeURIComponent(String(id)))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              var it = data.item || data.listing || data;
+              if (it && it.id) openDetailModal(it);
+            })
+            .catch(function () {});
+        }
+      } catch (e) {}
+    };
 
     var grid = document.getElementById("grid");
-    if (grid) grid.style.opacity = "0.5";
+    var statusEl = document.getElementById("status");
+    var DEMO_LISTINGS = [
+      { id: "demo-1", main_category: "መኪና", category: "መኪና", sub_category: "Toyota Vitz", brand: "Toyota", model: "Vitz", price: "1850000", description: "Toyota Vitz — ናሙና ማስታወቂያ", created_at: new Date().toISOString(), view_count: 42, photos: [], photo_urls: [] },
+      { id: "demo-2", main_category: "መኪና", category: "መኪና", sub_category: "Hyundai Tucson", brand: "Hyundai", model: "Tucson", price: "4200000", description: "Hyundai Tucson — ናሙና", created_at: new Date().toISOString(), view_count: 18, photos: [], photo_urls: [] },
+      { id: "demo-3", main_category: "ቤት", category: "ቤት", sub_category: "አፓርታማ ቦሌ", price: "6500000", description: "አፓርታማ ቦሌ — ናሙና", created_at: new Date().toISOString(), view_count: 27, photos: [], photo_urls: [] },
+      { id: "demo-4", main_category: "ቤት", category: "ቤት", sub_category: "መሬት አዲስ ከተማ", price: "0", description: "መሬት — ለዋጋ ደውሉ", created_at: new Date().toISOString(), view_count: 9, photos: [], photo_urls: [] }
+    ];
 
-    fetch("/api/listings?" + qs, { credentials: "same-origin" })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (grid) grid.style.opacity = "1";
-        var items = (d && (d.items || d.listings || d.results || d.data)) || [];
-        if (!Array.isArray(items) && items && items.items) items = items.items;
-
-        function isBuyItem(it) {
-          var t = ((it && it.req_type) || "") + " " + ((it && it.action_type) || "") + " " + ((it && it.listing_type) || "");
-          return /BUY|REQUEST|WANT|መግዛት|ለመግዛት|ፈላጊ/i.test(t) || it.is_buyer_request;
-        }
-
-        if (state.tab === "buy") {
-          items = items.filter(isBuyItem);
-        } else {
-          items = items.filter(function(it) { return !isBuyItem(it); });
-        }
-
-        if (window.__adikaPaintListings) {
-          window.__adikaPaintListings(items);
-        } else {
-          renderFallbackGrid(items);
-        }
-      })
-      .catch(function(err) {
-        if (grid) grid.style.opacity = "1";
-        console.warn("[Adika Tab Load Error]", err);
-        if (window.__adikaPaintListings) window.__adikaPaintListings([]);
-      });
-  }
-  window.loadListings = loadListings;
-
-  if (tabSell) {
-    tabSell.onclick = function(e) {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
-      markTabs(false);
-      loadListings("&type=SELL");
-    };
-  }
-
-  if (tabBuy) {
-    tabBuy.onclick = function(e) {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
-      markTabs(true);
-      loadListings("&type=BUY"); // 🔴 የፈላጊዎችን ጥያቄዎች ብቻ በትክክል ይጠራል
-    };
-  }
-
-  function renderFallbackGrid(items) {
-    var g = document.getElementById("grid");
-    if (!g) return;
-    g.innerHTML = "";
-    if (!items || !items.length) {
-      g.innerHTML = '<div style="grid-column:1/-1;padding:32px;text-align:center;color:#475569;font-weight:800;">ምንም ንብረቶች አልተገኙም</div>';
-      return;
+    function formatDemoPrice(p) {
+      var n = Number(String(p || "").replace(/[^0-9.]/g, ""));
+      if (!n || n <= 0 || n > 300000000) return "ለዋጋ ደውሉ";
+      try { return Math.round(n).toLocaleString("en-US") + " ETB"; } catch (e) { return n + " ETB"; }
     }
-    items.forEach(function(it) {
-      var card = document.createElement("div");
-      card.className = "adika-card cursor-pointer";
-      var title = it.sub_category || it.title || "ማስታወቂያ";
-      var price = formatListingPrice(it.price, it);
-      card.innerHTML = '<div style="background:#fff;border-radius:14px;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,0.06)">'+
-        '<div style="font-weight:900;font-size:12px;color:#0f172a">'+esc(title)+'</div>'+
-        '<div style="font-weight:800;font-size:11px;color:#0d9488;margin-top:4px">💰 '+esc(price)+'</div>'+
-        '</div>';
-      card.onclick = function() {
-        if (typeof window.openDetailModal === "function") window.openDetailModal(it);
-      };
-      g.appendChild(card);
-    });
-    window.__adikaLiveItems = items;
-  }
-})();
-</script>
+
+    function renderFallbackCards(items) {
+      var g = document.getElementById("grid");
+      if (!g) return;
+      var list = (items && items.length) ? items : DEMO_LISTINGS;
+      var html = "";
+      for (var i = 0; i < list.length; i++) {
+        var it = list[i] || {};
+        var title = it.sub_category || it.brand || it.model || it.main_category || it.category || "ማስታወቂያ";
+        if (it.brand && it.model) title = (it.brand + " " + it.model).trim();
+        var priceTxt = formatDemoPrice(it.price);
+        var isCar = (it.main_category === "መኪና" || it.category === "መኪና");
+        var emoji = isCar ? "🚗" : "🏠";
+        html +=
+          '<div class="adika-card" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">' +
+            '<div style="aspect-ratio:4/3;background:linear-gradient(135deg,#e0f7fa,#b2ebf2);display:flex;align-items:center;justify-content:center;font-size:40px;">' + emoji + '</div>' +
+            '<div style="padding:8px 10px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:4px;">' +
+                '<div style="font-weight:800;font-size:12px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + title + ' ✓</div>' +
+                '<div style="font-size:10px;color:#64748b;flex-shrink:0;">now</div>' +
+              '</div>' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">' +
+                '<div style="font-weight:800;font-size:12px;color:#0e7490;">💰 ' + priceTxt + '</div>' +
+                '<div style="color:#94a3b8;font-size:14px;">♡</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+      }
+      g.innerHTML = html;
+      try { if (statusEl) { statusEl.style.display = "none"; statusEl.innerHTML = ""; } } catch (e) {}
+    }
+
+    var moreBtn = document.getElementById("more");
+    var tabSell = document.getElementById("tabSell");
+    var tabBuy = document.getElementById("tabBuy");
+    var qInput = document.getElementById("q");
+    var catsEl = document.getElementById("cats");
+    var fabBtn = document.getElementById("fabBtn");
+    var filterBanner = document.getElementById("filterBanner");
+    var filterText = document.getElementById("filterText");
+    var clearFilterBtn = document.getElementById("clearFilterBtn");
+    var langAmBtn = document.getElementById("langAmBtn");
+    var langEnBtn = document.getElementById("langEnBtn");
+    var modalOverlay = document.getElementById("modalOverlay");
+    var modalClose = document.getElementById("modalClose");
+    var modalCategoryBadge = document.getElementById("modalCategoryBadge");
+    var modalIdBadge = document.getElementById("modalIdBadge");
+    var modalTitle = document.getElementById("modalTitle");
+    var modalPrice = document.getElementById("modalPrice");
+    var modalTime = document.getElementById("modalTime");
+    var modalMediaContainer = document.getElementById("modalMediaContainer");
+    var modalSpecs = document.getElementById("modalSpecs");
+    var modalDesc = document.getElementById("modalDesc");
+    var modalCallBtn = document.getElementById("modalCallBtn");
+    var modalChatBtn = document.getElementById("modalChatBtn");
+    var modalShareBtn = document.getElementById("modalShareBtn");
+    var modalDeleteBtn = document.getElementById("modalDeleteBtn");
+    var modalFavBtn = document.getElementById("modalFavBtn");
+    var aiModal = document.getElementById("aiModal");
+    var aiModalClose = document.getElementById("aiModalClose");
+    var aiPrompt = document.getElementById("aiPrompt");
+    var aiApplyBtn = document.getElementById("aiApplyBtn");
+    var aiResetBtn = document.getElementById("aiResetBtn");
+
 <!-- ======================= END SECTION 18 ======================= -->
 <!-- ================================================================ -->
 <!-- SECTION 19 — JS: GLOBAL FUNCTIONS & LOAD -->
@@ -8830,12 +8982,11 @@
     var catEl = document.querySelector('input[name="listCat"]:checked');
     var cat = catEl ? catEl.value : "Car";
     var u = tgUser();
-    var itemKind = (cat === "Item") ? (((el("listItemKind") || {}).value) || "") : "";
     return {
       title: (el("listTitle") || {}).value || "",
       main_category: cat === "House" ? "ቤት" : (cat === "Item" ? "እቃ" : "መኪና"),
       category: cat === "House" ? "ቤት" : (cat === "Item" ? "እቃ" : "መኪና"),
-      item_kind: itemKind,
+      item_kind: (el("listItemKind") || {}).value || "",
       listing_type: "SELL",
       price: Number((el("listPrice") || {}).value || 0) || 0,
       negotiable: !!(el("listNeg") || {}).checked,
@@ -8857,6 +9008,7 @@
       status: "active"
     };
   }
+
   function requestPayload() {
     var catEl = document.querySelector('input[name="reqCat"]:checked');
     var cat = catEl ? catEl.value : "Car";
