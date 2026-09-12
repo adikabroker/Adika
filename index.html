@@ -8423,14 +8423,19 @@
         }
       }
 
-      function bucket(it) {
+    function bucket(it) {
         var extra = it.extra_data || {};
         if (typeof extra === "string") { try { extra = JSON.parse(extra); } catch (e) { extra = {}; } }
-        if (it.item_kind || extra.item_kind) return "item";
+        
         var raw = String(it.main_category || it.category || "").toLowerCase();
-        if (/እቃ|item|goods|ቁሳቁስ/.test(raw)) return "item";
-        if (/ቤት|house|property|ንብረት/.test(raw)) return "house";
-        if (/መኪና|car/.test(raw)) return "car";
+        
+        // 🔴 ትክክለኛ ቅደም ተከተል፡ መጀመሪያ መኪና ወይም ቤት መሆኑን ማረጋገጥ!
+        if (/መኪና|car|vehicle|auto/.test(raw) || extra.car_model || extra.transmission) return "car";
+        if (/ቤት|house|property|ንብረት|real/.test(raw) || extra.house_type) return "house";
+        
+        // ከዚያም እቃ
+        if (/እቃ|item|goods|ቁሳቁስ/.test(raw) || it.item_kind || extra.item_kind) return "item";
+        
         return "other";
       }
 
